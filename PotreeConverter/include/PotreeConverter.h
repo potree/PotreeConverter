@@ -3,6 +3,8 @@
 #ifndef POTREE_CONVERTER_H
 #define POTREE_CONVERTER_H
 
+#define POTREE_FORMAT_VERSION "1.0"
+
 #include "AABB.h"
 
 #include <string>

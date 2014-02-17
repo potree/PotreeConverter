@@ -52,6 +52,7 @@ void PotreeConverter::convert(int numPoints){
 
 	cloudJs.clear();
 	cloudJs << "{" << endl;
+	cloudJs << "\t" << "\"version\": \"" << POTREE_FORMAT_VERSION << "\"," << endl;
 	cloudJs << "\t" << "\"octreeDir\": \"data\"," << endl;
 	cloudJs << "\t" << "\"boundingBox\": {" << endl;
 	cloudJs << "\t\t" << "\"lx\": " << aabb.min.x << "," << endl;
