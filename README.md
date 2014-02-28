@@ -15,4 +15,4 @@ Converts las files to the potree file format.
     PotreeConverter <sourcePath> <targetDir> <pointDensity> <maxRecursions>
     
     # example
-    PotreeConverter C:/pointclouds/pointcloud.bin C:/pointclouds/converted 1.0 5
+    PotreeConverter C:/pointclouds/pointcloud.las C:/pointclouds/converted 1.0 5
