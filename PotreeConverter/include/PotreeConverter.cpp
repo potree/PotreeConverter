@@ -3,6 +3,9 @@
 
 #include "PotreeConverter.h"
 #include "stuff.h"
+#include "LASPointReader.h"
+
+#include <liblas/liblas.hpp>
 
 #include <chrono>
 #include <sstream>
@@ -35,9 +38,12 @@ struct Task{
 	}
 };
 
+void PotreeConverter::initReader(){
+	reader = new LASPointReader(fData);
+}
+
 void PotreeConverter::convert(){
-	int numPoints = filesize(fData) / 16;
-	convert(numPoints);
+	convert(reader->numPoints());
 }
 
 
@@ -47,8 +53,18 @@ void PotreeConverter::convert(int numPoints){
 	system(("mkdir \"" + dataDir + "\"").c_str());
 	system(("mkdir \"" + tempDir + "\"").c_str());
 
-	aabb = readAABB(fData, numPoints);
+	//aabb = readAABB(fData, numPoints);
 
+	//std::ifstream ifs;
+	//ifs.open(fData, std::ios::in | std::ios::binary);
+	//liblas::ReaderFactory f;
+	//liblas::Reader reader = f.CreateWithStream(ifs);
+	//liblas::Header const& header = reader.GetHeader();
+	//liblas::Bounds<double> const &extent = header.GetExtent();
+	//Vector3 min = Vector3(extent.minx(), extent.miny(), extent.minz());
+	//Vector3 max = Vector3(extent.maxx(), extent.maxy(), extent.maxz());
+	//aabb = AABB(min, max);
+	aabb = reader->getAABB();
 
 	cloudJs.clear();
 	cloudJs << "{" << endl;
@@ -71,47 +87,38 @@ void PotreeConverter::convert(int numPoints){
 	{ // handle root
 		cout << "processing root" << endl;
 		SparseGrid grid(aabb, minGap);
-
-		ifstream sIn(fData, ios::in | ios::binary);
 		int pointsRead = 0;
-		int batchSize = min(10*1000*1000, numPoints);
-		int batchByteSize = 4*batchSize*sizeof(float);
-		//char *buffer = new char[batchByteSize];
-		float *points = reinterpret_cast<float*>(buffer);
-		char *cPoints = buffer;
 
 		ofstream srOut(workDir + "/data/r", ios::out | ios::binary);
 		ofstream sdOut(workDir + "/temp/d", ios::out | ios::binary);
 		int numAccepted = 0;
 		float minGapAtMaxDepth = minGap / pow(2.0f, maxDepth);
-		while(pointsRead < numPoints){
-			sIn.read(buffer, batchByteSize);
-			long pointsReadRightNow = (long)(sIn.gcount() / (4*sizeof(float)));
-			pointsRead += pointsReadRightNow;
-			//cout << "pointsRead: " << pointsRead << endl;
+		int i = 0;
+		while(reader->readNextPoint()){
+			//liblas::Point const &point = reader.GetPoint();
+			//float x = point.GetX();
+			//float y = point.GetY();
+			//float z = point.GetZ();
+			//char r = (unsigned char)(float(point.GetColor().GetRed()) / 256.0f);
+			//char g = (unsigned char)(float(point.GetColor().GetGreen()) / 256.0f);
+			//char b = (unsigned char)(float(point.GetColor().GetBlue()) / 256.0f);
+			//Point p(x,y,z, r, g, b);
+			//if(i < 10){
+			//	cout << p << endl;
+			//}
+			Point p = reader->getPoint();
 
-			for(long i = 0; i < pointsReadRightNow; i++){
-				float x = points[4*i+0];
-				float y = points[4*i+1];
-				float z = points[4*i+2];
-				char r = cPoints[16*i+12];
-				char g = cPoints[16*i+13];
-				char b = cPoints[16*i+14];
-				Point p(x,y,z, r, g, b);
-				//float gap = MAX_FLOAT;
-				bool accepted = grid.add(p);
-				int index = nodeIndex(aabb, p);
-				if(accepted){
-					// write point to ./data/r-file
-					srOut.write((const char*)&p, sizeof(Point));
-					numAccepted++;
-				}else{
-					// write point to ./temp/d-file
-					//if(gap > minGapAtMaxDepth){
-						sdOut.write((const char*)&p, sizeof(Point));
-					//}
-				}
+			bool accepted = grid.add(p);
+			int index = nodeIndex(aabb, p);
+			if(accepted){
+				// write point to ./data/r-file
+				srOut.write((const char*)&p, sizeof(Point));
+				numAccepted++;
+			}else{
+				// write point to ./temp/d-file
+				sdOut.write((const char*)&p, sizeof(Point));
 			}
+			i++;
 		}
 		//delete[] buffer;
 		cloudJs << "\t\t" << "[\"r\"," << numAccepted << "]," << endl;
@@ -119,6 +126,59 @@ void PotreeConverter::convert(int numPoints){
 		srOut.close();
 		sdOut.close();
 	}
+	reader->close();
+
+	//{ // handle root
+	//	cout << "processing root" << endl;
+	//	SparseGrid grid(aabb, minGap);
+
+	//	ifstream sIn(fData, ios::in | ios::binary);
+	//	int pointsRead = 0;
+	//	int batchSize = min(10*1000*1000, numPoints);
+	//	int batchByteSize = 4*batchSize*sizeof(float);
+	//	//char *buffer = new char[batchByteSize];
+	//	float *points = reinterpret_cast<float*>(buffer);
+	//	char *cPoints = buffer;
+
+	//	ofstream srOut(workDir + "/data/r", ios::out | ios::binary);
+	//	ofstream sdOut(workDir + "/temp/d", ios::out | ios::binary);
+	//	int numAccepted = 0;
+	//	float minGapAtMaxDepth = minGap / pow(2.0f, maxDepth);
+	//	while(pointsRead < numPoints){
+	//		sIn.read(buffer, batchByteSize);
+	//		long pointsReadRightNow = (long)(sIn.gcount() / (4*sizeof(float)));
+	//		pointsRead += pointsReadRightNow;
+	//		//cout << "pointsRead: " << pointsRead << endl;
+
+	//		for(long i = 0; i < pointsReadRightNow; i++){
+	//			float x = points[4*i+0];
+	//			float y = points[4*i+1];
+	//			float z = points[4*i+2];
+	//			char r = cPoints[16*i+12];
+	//			char g = cPoints[16*i+13];
+	//			char b = cPoints[16*i+14];
+	//			Point p(x,y,z, r, g, b);
+	//			//float gap = MAX_FLOAT;
+	//			bool accepted = grid.add(p);
+	//			int index = nodeIndex(aabb, p);
+	//			if(accepted){
+	//				// write point to ./data/r-file
+	//				srOut.write((const char*)&p, sizeof(Point));
+	//				numAccepted++;
+	//			}else{
+	//				// write point to ./temp/d-file
+	//				//if(gap > minGapAtMaxDepth){
+	//					sdOut.write((const char*)&p, sizeof(Point));
+	//				//}
+	//			}
+	//		}
+	//	}
+	//	//delete[] buffer;
+	//	cloudJs << "\t\t" << "[\"r\"," << numAccepted << "]," << endl;
+
+	//	srOut.close();
+	//	sdOut.close();
+	//}
 
 
 	//string source = workDir + "/temp/d";

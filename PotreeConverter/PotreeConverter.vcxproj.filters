@@ -13,6 +13,12 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Header Files\PointReader">
+      <UniqueIdentifier>{5d9cc867-d212-49a0-8e34-ac3ba0b248d0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\PointReader">
+      <UniqueIdentifier>{35adb11b-e925-448c-be85-db135b062f5f}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\GridCell.cpp">
@@ -26,6 +32,9 @@
     </ClCompile>
     <ClCompile Include="include\PotreeConverter.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\LASPointReader.cpp">
+      <Filter>Source Files\PointReader</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -52,6 +61,12 @@
     </ClInclude>
     <ClInclude Include="include\stuff.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\LASPointReader.h">
+      <Filter>Header Files\PointReader</Filter>
+    </ClInclude>
+    <ClInclude Include="include\PointReader.h">
+      <Filter>Header Files\PointReader</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

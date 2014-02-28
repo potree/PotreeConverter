@@ -6,6 +6,7 @@
 #define POTREE_FORMAT_VERSION "1.0"
 
 #include "AABB.h"
+#include "PointReader.h"
 
 #include <string>
 #include <vector>
@@ -20,6 +21,7 @@ using std::stringstream;
 class PotreeConverter{
 
 private:
+	PointReader *reader;
 	AABB aabb;
 	string fData;
 	string workDir;
@@ -37,10 +39,13 @@ public:
 		this->minGap = minGap;
 		this->maxDepth = maxDepth;
 		buffer = new char[4*10*1000*1000*sizeof(float)];
+
+		initReader();
 	}
 
 	void convert(int numPoints);
 	void convert();
+	void initReader();
 
 
 

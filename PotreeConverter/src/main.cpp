@@ -40,6 +40,8 @@ class SparseGrid;
 //xyzrgb2bin C:/dev/pointclouds/map.archi.fr/Pompei_Ortho.xyz C:/dev/pointclouds/map.archi.fr/Pompei_test.bin 255
 //PotreeConverter.exe C:/dev/pointclouds/map.archi.fr/Pompei_test.bin C:/dev/pointclouds/map.archi.fr/pompei_test 1.0 5
 
+#include "LASPointReader.h"
+
 int main(int arg_c, char**argv){
 
 	if(arg_c != 5){
