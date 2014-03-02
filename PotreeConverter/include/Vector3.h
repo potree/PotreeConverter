@@ -38,11 +38,11 @@ public:
 		return ((*this) - p).length();
 	}
 
-	Vector3 operator-(Vector3& right) const {
+	Vector3 operator-(const Vector3& right) const {
 		return Vector3(x - right.x, y - right.y, z - right.z);
 	}
 
-	Vector3 operator+(Vector3& right) const {
+	Vector3 operator+(const Vector3& right) const {
 		return Vector3(x + right.x, y + right.y, z + right.z);
 	}
 
