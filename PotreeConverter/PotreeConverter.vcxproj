@@ -129,7 +129,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalLibraryDirectories>$(BOOST_LIBRARYDIR);$(LIBLAS_LIBRARY_DIR)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(LIBLAS_LIBRARY_DIR);$(BOOST_LIBRARYDIR)</AdditionalLibraryDirectories>
       <AdditionalDependencies>liblas.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
