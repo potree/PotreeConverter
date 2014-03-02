@@ -4,6 +4,7 @@
 #include "PotreeConverter.h"
 #include "stuff.h"
 #include "LASPointReader.h"
+#include "BinPointReader.h"
 
 #include <liblas/liblas.hpp>
 
@@ -39,7 +40,18 @@ struct Task{
 };
 
 void PotreeConverter::initReader(){
-	reader = new LASPointReader(fData);
+	string fname = toUpper(fData);
+	if(endsWith(fname, ".LAS") || endsWith(fname, ".LAZ")){
+		cout << "creating LAS reader" << endl;
+		reader = new LASPointReader(fname);
+	}else if(endsWith(fname, ".BIN")){
+		cout << "creating bin reader" << endl;
+		reader = new BinPointReader(fname);
+	}else{
+		cout << "filename did not match a known format" << endl;
+	}
+
+	
 }
 
 void PotreeConverter::convert(){

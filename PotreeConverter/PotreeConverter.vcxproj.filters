@@ -36,6 +36,12 @@
     <ClCompile Include="src\LASPointReader.cpp">
       <Filter>Source Files\PointReader</Filter>
     </ClCompile>
+    <ClCompile Include="src\BinPointReader.cpp">
+      <Filter>Source Files\PointReader</Filter>
+    </ClCompile>
+    <ClCompile Include="src\stuff.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\AABB.h">
@@ -66,6 +72,9 @@
       <Filter>Header Files\PointReader</Filter>
     </ClInclude>
     <ClInclude Include="include\PointReader.h">
+      <Filter>Header Files\PointReader</Filter>
+    </ClInclude>
+    <ClInclude Include="include\BinPointReader.h">
       <Filter>Header Files\PointReader</Filter>
     </ClInclude>
   </ItemGroup>
