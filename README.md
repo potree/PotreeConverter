@@ -1,5 +1,10 @@
 # Potree Converter
 
+## Dependencies
+
+* [liblas](http://www.liblas.org/)
+* [boost](http://www.boost.org/)
+
 ## PotreeConverter Usage
 
 Converts las or xyzrgba-binary files to the potree file format.
