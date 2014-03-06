@@ -7,7 +7,7 @@
 # LIBLAS_LIBRARIES   = full path to the library
 # LIBLAS_INCLUDE_DIR = where to find the library headers also defined,
 #                       but not for general use are
-# LIBLAS_LIBRARY     = where to find the PROJ.4 library.
+# LIBLAS_LIBRARY     = where to find the library.
 # LIBLAS_VERSION     = version of library which was found, e.g. "1.2.5"
 #
 # Copyright (c) 2009 Mateusz Loskot <mateusz@loskot.net>
@@ -25,16 +25,16 @@ IF(LIBLAS_INCLUDE_DIR)
   SET(LIBLAS_FIND_QUIETLY TRUE)
 ENDIF()
 
-IF(WIN32)
-  SET(OSGEO4W_IMPORT_LIBRARY liblas)
-  IF(DEFINED ENV{OSGEO4W_ROOT})
-    SET(OSGEO4W_ROOT_DIR $ENV{OSGEO4W_ROOT})
-    #MESSAGE(STATUS " FindLibLAS: trying OSGeo4W using environment variable OSGEO4W_ROOT=$ENV{OSGEO4W_ROOT}")
-  ELSE()
-    SET(OSGEO4W_ROOT_DIR c:/OSGeo4W)
-    #MESSAGE(STATUS " FindLibLAS: trying OSGeo4W using default location OSGEO4W_ROOT=${OSGEO4W_ROOT_DIR}")
-  ENDIF()
-ENDIF()
+#IF(WIN32)
+#  SET(OSGEO4W_IMPORT_LIBRARY liblas)
+#  IF(DEFINED ENV{OSGEO4W_ROOT})
+#    SET(OSGEO4W_ROOT_DIR $ENV{OSGEO4W_ROOT})
+#    #MESSAGE(STATUS " FindLibLAS: trying OSGeo4W using environment variable OSGEO4W_ROOT=$ENV{OSGEO4W_ROOT}")
+#  ELSE()
+#    SET(OSGEO4W_ROOT_DIR c:/OSGeo4W)
+#    #MESSAGE(STATUS " FindLibLAS: trying OSGeo4W using default location OSGEO4W_ROOT=${OSGEO4W_ROOT_DIR}")
+#  ENDIF()
+#ENDIF()
 
 
 FIND_PATH(LIBLAS_INCLUDE_DIR
@@ -43,13 +43,14 @@ FIND_PATH(LIBLAS_INCLUDE_DIR
   PATHS
   /usr/include
   /usr/local/include
-  /tmp/lasjunk/include
-  ${OSGEO4W_ROOT_DIR}/include)
+  /tmp/lasjunk/include)
+#  ${OSGEO4W_ROOT_DIR}/include)
 
 if(WIN32)
-    SET(LIBLAS_NAMES ${OSGEO4W_IMPORT_LIBRARY} liblas)
+    SET(LIBLAS_NAMES liblas)
+#    SET(LIBLAS_NAMES ${OSGEO4W_IMPORT_LIBRARY} liblas)
 else()
-    SET(LIBLAS_NAMES ${OSGEO4W_IMPORT_LIBRARY} las)
+    SET(LIBLAS_NAMES las)
 endif()
 
 FIND_LIBRARY(LIBLAS_LIBRARY
@@ -57,8 +58,8 @@ FIND_LIBRARY(LIBLAS_LIBRARY
   PATHS
   /usr/lib
   /usr/local/lib
-  /tmp/lasjunk/lib
-  ${OSGEO4W_ROOT_DIR}/lib)
+  /tmp/lasjunk/lib)
+#  ${OSGEO4W_ROOT_DIR}/lib)
 
 IF(LIBLAS_FOUND)
   SET(LIBLAS_LIBRARIES ${LIBLAS_LIBRARY})
