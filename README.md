@@ -13,6 +13,20 @@ Linux/MacOSX:
     cmake ../
     make
 
+Ubuntu:
+
+    sudo apt-get install libboost-system-dev libboost-thread-dev
+
+    # Add UbuntuGIS "unstable" PPA from Launchpad 
+    # (TODO: test if this PPA is really necessary)
+    sudo add-apt-repository ppa:ubuntugis/ubuntugis-unstable
+    sudo apt-get update
+    sudo apt-get install liblas-dev liblas-c-dev
+
+    mkdir build && cd build
+    cmake ../
+    make
+
 Windows:
 
     mkdir build && cd build
