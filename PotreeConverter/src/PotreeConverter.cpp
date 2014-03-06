@@ -43,10 +43,10 @@ void PotreeConverter::initReader(){
 	string fname = toUpper(fData);
 	if(endsWith(fname, ".LAS") || endsWith(fname, ".LAZ")){
 		cout << "creating LAS reader" << endl;
-		reader = new LASPointReader(fname);
+		reader = new LASPointReader(fData);
 	}else if(endsWith(fname, ".BIN")){
 		cout << "creating bin reader" << endl;
-		reader = new BinPointReader(fname);
+		reader = new BinPointReader(fData);
 	}else{
 		cout << "filename did not match a known format" << endl;
 	}
