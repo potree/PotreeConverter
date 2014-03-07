@@ -5,6 +5,19 @@
 * [liblas](http://www.liblas.org/)
 * [boost](http://www.boost.org/)
 
+## Build
+
+Linux/MacOSX:
+
+    mkdir build && cd build
+    cmake ../
+    make
+
+Windows:
+
+    mkdir build && cd build
+    cmake -G "Visual Studio 11" -T "v110" -DBoost_USE_STATIC_LIBS=ON -DBOOST_ROOT=[...] -DBOOST_LIBRARYDIR=[...]  ..\
+
 ## PotreeConverter Usage
 
 Converts las or xyzrgba-binary files to the potree file format.

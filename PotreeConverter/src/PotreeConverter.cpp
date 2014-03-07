@@ -43,10 +43,10 @@ void PotreeConverter::initReader(){
 	string fname = toUpper(fData);
 	if(endsWith(fname, ".LAS") || endsWith(fname, ".LAZ")){
 		cout << "creating LAS reader" << endl;
-		reader = new LASPointReader(fname);
+		reader = new LASPointReader(fData);
 	}else if(endsWith(fname, ".BIN")){
 		cout << "creating bin reader" << endl;
-		reader = new BinPointReader(fname);
+		reader = new BinPointReader(fData);
 	}else{
 		cout << "filename did not match a known format" << endl;
 	}
@@ -353,16 +353,16 @@ vector<int> PotreeConverter::process(string source, string target, AABB aabb, in
 		float *points = reinterpret_cast<float*>(buffer);
 		char *cPoints = buffer;
 		bool done = false;
-		vector<ofstream> srOut;
-		vector<ofstream> sdOut;
+		vector<ofstream*> srOut;
+		vector<ofstream*> sdOut;
 		vector<int> numPoints;
 		numPoints.resize(8);
 		for(int i = 0; i < 8; i++){
 			stringstream ssr, ssd;
 			ssr << target << i;
 			ssd << source << i;
-			srOut.push_back(ofstream(ssr.str(), ios::out | ios::binary));
-			sdOut.push_back(ofstream(ssd.str(), ios::out | ios::binary));
+			srOut.push_back(new ofstream(ssr.str(), ios::out | ios::binary));
+			sdOut.push_back(new ofstream(ssd.str(), ios::out | ios::binary));
 		}
 		long pointsProcessed = 0;
 		while(!done){
@@ -397,14 +397,14 @@ vector<int> PotreeConverter::process(string source, string target, AABB aabb, in
 				//	cout << "index is 1" << endl;
 				//}
 				if(accepted){
-					srOut[index].write((const char*)&p, sizeof(Point));
+					srOut[index]->write((const char*)&p, sizeof(Point));
 					if(find(indices.begin(), indices.end(), index) == indices.end()){
 						indices.push_back(index);
 					}
 					numPoints[index]++;
 				}else{
 					//if(gap > minGap / pow(2.0f, maxDepth)){
-						sdOut[index].write((const char*)&p, sizeof(Point));
+						sdOut[index]->write((const char*)&p, sizeof(Point));
 					//}
 				}
 				pointsProcessed++;
@@ -412,8 +412,10 @@ vector<int> PotreeConverter::process(string source, string target, AABB aabb, in
 		}
 
 		for(int i = 0; i < 8; i++){
-			srOut[i].close();
-			sdOut[i].close();
+			srOut[i]->close();
+      delete srOut[i];
+			sdOut[i]->close();
+      delete sdOut[i];
 
 			{// remove empty files
 				stringstream ssr, ssd;
