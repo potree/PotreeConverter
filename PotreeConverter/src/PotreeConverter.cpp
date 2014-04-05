@@ -5,6 +5,7 @@
 #include "stuff.h"
 #include "LASPointReader.h"
 #include "BinPointReader.h"
+#include "PlyPointReader.h"
 
 #include <liblas/liblas.hpp>
 #include <boost/filesystem.hpp>
@@ -48,6 +49,20 @@ void PotreeConverter::initReader(){
 	}else if(endsWith(fname, ".BIN")){
 		cout << "creating bin reader" << endl;
 		reader = new BinPointReader(fData);
+	}else if(endsWith(fname, ".PLY")){
+		cout << "creating ply reader" << endl;
+		PlyPointReader *plyreader = new PlyPointReader(fData);
+
+		cout << "converting ply file to bin file" << endl;
+		ofstream sout(workDir + "/temp/bin", ios::out | ios::binary);
+		while(plyreader->readNextPoint()){
+			Point p = plyreader->getPoint();
+			sout.write((const char*)&p, sizeof(Point));
+		}
+		delete plyreader;
+
+		cout << "creating bin reader" << endl;
+		reader = new BinPointReader(workDir + "/temp/bin");
 	}else{
 		cout << "filename did not match a known format" << endl;
 	}
