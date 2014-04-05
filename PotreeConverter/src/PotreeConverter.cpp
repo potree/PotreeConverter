@@ -41,6 +41,21 @@ struct Task{
 	}
 };
 
+PotreeConverter::PotreeConverter(string fData, string workDir, float minGap, int maxDepth){
+		this->fData = fData;
+		this->workDir = workDir;
+		this->minGap = minGap;
+		this->maxDepth = maxDepth;
+		buffer = new char[4*10*1000*1000*sizeof(float)];
+
+		boost::filesystem::path dataDir(workDir + "/data");
+		boost::filesystem::path tempDir(workDir + "/temp");
+		boost::filesystem::create_directories(dataDir);
+		boost::filesystem::create_directories(tempDir);
+
+		initReader();
+	}
+
 void PotreeConverter::initReader(){
 	string fname = toUpper(fData);
 	if(endsWith(fname, ".LAS") || endsWith(fname, ".LAZ")){
@@ -54,15 +69,17 @@ void PotreeConverter::initReader(){
 		PlyPointReader *plyreader = new PlyPointReader(fData);
 
 		cout << "converting ply file to bin file" << endl;
-		ofstream sout(workDir + "/temp/bin", ios::out | ios::binary);
+		string binpath = workDir + "/temp/bin";
+		ofstream sout(binpath, ios::out | ios::binary);
 		while(plyreader->readNextPoint()){
 			Point p = plyreader->getPoint();
 			sout.write((const char*)&p, sizeof(Point));
 		}
 		delete plyreader;
 
+		cout << "saved bin to " << binpath << endl;
 		cout << "creating bin reader" << endl;
-		reader = new BinPointReader(workDir + "/temp/bin");
+		reader = new BinPointReader(binpath);
 	}else{
 		cout << "filename did not match a known format" << endl;
 	}
@@ -76,10 +93,7 @@ void PotreeConverter::convert(){
 
 
 void PotreeConverter::convert(int numPoints){
-	boost::filesystem::path dataDir(workDir + "/data");
-	boost::filesystem::path tempDir(workDir + "/temp");
-	boost::filesystem::create_directories(dataDir);
-	boost::filesystem::create_directories(tempDir);
+	
 
 	aabb = reader->getAABB();
 
