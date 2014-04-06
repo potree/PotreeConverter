@@ -12,12 +12,15 @@
 #include <regex>
 
 #include "boost/assign.hpp"
+#include "boost/algorithm/string.hpp"
 
 using std::ifstream;
 using std::string;
 using std::cout;
 using std::endl;
 using namespace boost::assign;
+using boost::split;
+using boost::is_any_of;
 
 const int PLY_FILE_FORMAT_ASCII = 0;
 const int PLY_FILE_FORMAT_BINARY_LITTLE_ENDIAN = 1;
@@ -104,11 +107,13 @@ public:
 		
 		string line;
 		while(std::getline(stream, line)){
+			boost::trim(line);
 			cout << line << endl;
 
 			std::smatch sm;
 			if(regex_match(line, rEndHeader)){
 				// stop line parsing when end_header is encountered
+				cout << "stop reading header" << endl;
 				break;
 			}else if(regex_match(line, sm, rFormat)){
 				// parse format
@@ -132,6 +137,7 @@ public:
 				while(true){
 					int len = stream.tellg();
 					getline(stream, line);
+					boost::trim(line);
 					if(regex_match(line, sm, rProperty)){
 						string name = sm[2];
 						PlyPropertyType type = plyPropertyTypes[sm[1]];
@@ -159,6 +165,27 @@ public:
 		if(format == PLY_FILE_FORMAT_ASCII){
 			string line;
 			getline(stream, line);
+			boost::trim(line);
+
+			vector<string> tokens;
+			split(tokens, line, is_any_of("\t "));
+			for(int i = 0; i < vertexElement.properties.size(); i++){
+				string token = tokens[i];
+				PlyProperty prop = vertexElement.properties[i];
+				if(prop.name == "x" && prop.type.name == plyPropertyTypes["float"].name){
+					x = stof(token);
+				}else if(prop.name == "y" && prop.type.name == plyPropertyTypes["float"].name){
+					y = stof(token);
+				}else if(prop.name == "z" && prop.type.name == plyPropertyTypes["float"].name){
+					z = stof(token);
+				}else if(std::find(plyRedNames.begin(), plyRedNames.end(), prop.name) != plyRedNames.end() && prop.type.name == plyPropertyTypes["uchar"].name){
+					r = stof(token);
+				}else if(std::find(plyGreenNames.begin(), plyGreenNames.end(), prop.name) != plyGreenNames.end() && prop.type.name == plyPropertyTypes["uchar"].name){
+					g = stof(token);
+				}else if(std::find(plyBlueNames.begin(), plyBlueNames.end(), prop.name) != plyBlueNames.end() && prop.type.name == plyPropertyTypes["uchar"].name){
+					b = stof(token);
+				}
+			}
 		}else if(format == PLY_FILE_FORMAT_BINARY_LITTLE_ENDIAN){
 			stream.read(buffer, pointByteSize);
 

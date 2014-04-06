@@ -7,6 +7,7 @@
 #include "BinPointReader.h"
 #include "PlyPointReader.h"
 #include "XYZPointReader.h"
+#include "PotreeException.h"
 
 #include <liblas/liblas.hpp>
 #include <boost/filesystem.hpp>
@@ -43,21 +44,25 @@ struct Task{
 };
 
 PotreeConverter::PotreeConverter(string fData, string workDir, float minGap, int maxDepth, string format, float range){
-		this->fData = fData;
-		this->workDir = workDir;
-		this->minGap = minGap;
-		this->maxDepth = maxDepth;
-		this->format = format;
-		this->range = range;
-		buffer = new char[4*10*1000*1000*sizeof(float)];
-
-		boost::filesystem::path dataDir(workDir + "/data");
-		boost::filesystem::path tempDir(workDir + "/temp");
-		boost::filesystem::create_directories(dataDir);
-		boost::filesystem::create_directories(tempDir);
-
-		initReader();
+	if(!boost::filesystem::exists(fData)){
+		throw PotreeException("file not found: " + fData);
 	}
+
+	this->fData = fData;
+	this->workDir = workDir;
+	this->minGap = minGap;
+	this->maxDepth = maxDepth;
+	this->format = format;
+	this->range = range;
+	buffer = new char[4*10*1000*1000*sizeof(float)];
+
+	boost::filesystem::path dataDir(workDir + "/data");
+	boost::filesystem::path tempDir(workDir + "/temp");
+	boost::filesystem::create_directories(dataDir);
+	boost::filesystem::create_directories(tempDir);
+
+	initReader();
+}
 
 void PotreeConverter::initReader(){
 	string fname = toUpper(fData);
@@ -102,7 +107,7 @@ void PotreeConverter::initReader(){
 		cout << "creating bin reader" << endl;
 		reader = new BinPointReader(binpath);
 	}else{
-		cout << "filename did not match a known format" << endl;
+		throw PotreeException("filename did not match a known format");
 	}
 
 	
