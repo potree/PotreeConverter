@@ -8,8 +8,6 @@
 #include <math.h>
 #include <vector>
 
-using std::min;
-using std::max;
 using std::vector;
 
 #define MAX_FLOAT std::numeric_limits<float>::max()

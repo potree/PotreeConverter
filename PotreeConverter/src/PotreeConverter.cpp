@@ -3,6 +3,14 @@
 
 #include "PotreeConverter.h"
 #include "stuff.h"
+#include "LASPointReader.h"
+#include "BinPointReader.h"
+#include "PlyPointReader.h"
+#include "XYZPointReader.h"
+#include "PotreeException.h"
+
+#include <liblas/liblas.hpp>
+#include <boost/filesystem.hpp>
 
 #include <chrono>
 #include <sstream>
@@ -35,20 +43,85 @@ struct Task{
 	}
 };
 
+PotreeConverter::PotreeConverter(string fData, string workDir, float minGap, int maxDepth, string format, float range){
+	if(!boost::filesystem::exists(fData)){
+		throw PotreeException("file not found: " + fData);
+	}
+
+	this->fData = fData;
+	this->workDir = workDir;
+	this->minGap = minGap;
+	this->maxDepth = maxDepth;
+	this->format = format;
+	this->range = range;
+	buffer = new char[4*10*1000*1000*sizeof(float)];
+
+	boost::filesystem::path dataDir(workDir + "/data");
+	boost::filesystem::path tempDir(workDir + "/temp");
+	boost::filesystem::create_directories(dataDir);
+	boost::filesystem::create_directories(tempDir);
+
+	initReader();
+}
+
+void PotreeConverter::initReader(){
+	string fname = toUpper(fData);
+	if(endsWith(fname, ".LAS") || endsWith(fname, ".LAZ")){
+		cout << "creating LAS reader" << endl;
+		reader = new LASPointReader(fData);
+	}else if(endsWith(fname, ".BIN")){
+		cout << "creating bin reader" << endl;
+		reader = new BinPointReader(fData);
+	}else if(endsWith(fname, ".PLY")){
+		cout << "creating ply reader" << endl;
+		PlyPointReader *plyreader = new PlyPointReader(fData);
+
+		cout << "converting ply file to bin file" << endl;
+		string binpath = workDir + "/temp/bin";
+		ofstream sout(binpath, ios::out | ios::binary);
+		while(plyreader->readNextPoint()){
+			Point p = plyreader->getPoint();
+			sout.write((const char*)&p, sizeof(Point));
+		}
+		plyreader->close();
+		delete plyreader;
+
+		cout << "saved bin to " << binpath << endl;
+		cout << "creating bin reader" << endl;
+		reader = new BinPointReader(binpath);
+	}else if(endsWith(fname, ".XYZ")){
+		cout << "creating xyz reader" << endl;
+		XYZPointReader *xyzreader = new XYZPointReader(fData, format, range);
+
+		cout << "converting xyz file to bin file" << endl;
+		string binpath = workDir + "/temp/bin";
+		ofstream sout(binpath, ios::out | ios::binary);
+		while(xyzreader->readNextPoint()){
+			Point p = xyzreader->getPoint();
+			sout.write((const char*)&p, sizeof(Point));
+		}
+		xyzreader->close();
+		delete xyzreader;
+
+		cout << "saved bin to " << binpath << endl;
+		cout << "creating bin reader" << endl;
+		reader = new BinPointReader(binpath);
+	}else{
+		throw PotreeException("filename did not match a known format");
+	}
+
+	
+}
+
 void PotreeConverter::convert(){
-	int numPoints = filesize(fData) / 16;
-	convert(numPoints);
+	convert(reader->numPoints());
 }
 
 
 void PotreeConverter::convert(int numPoints){
-	string dataDir = workDir + "/data";
-	string tempDir = workDir + "/temp";
-	system(("mkdir \"" + dataDir + "\"").c_str());
-	system(("mkdir \"" + tempDir + "\"").c_str());
+	
 
-	aabb = readAABB(fData, numPoints);
-
+	aabb = reader->getAABB();
 
 	cloudJs.clear();
 	cloudJs << "{" << endl;
@@ -71,47 +144,27 @@ void PotreeConverter::convert(int numPoints){
 	{ // handle root
 		cout << "processing root" << endl;
 		SparseGrid grid(aabb, minGap);
-
-		ifstream sIn(fData, ios::in | ios::binary);
 		int pointsRead = 0;
-		int batchSize = min(10*1000*1000, numPoints);
-		int batchByteSize = 4*batchSize*sizeof(float);
-		//char *buffer = new char[batchByteSize];
-		float *points = reinterpret_cast<float*>(buffer);
-		char *cPoints = buffer;
 
 		ofstream srOut(workDir + "/data/r", ios::out | ios::binary);
 		ofstream sdOut(workDir + "/temp/d", ios::out | ios::binary);
 		int numAccepted = 0;
 		float minGapAtMaxDepth = minGap / pow(2.0f, maxDepth);
-		while(pointsRead < numPoints){
-			sIn.read(buffer, batchByteSize);
-			long pointsReadRightNow = (long)(sIn.gcount() / (4*sizeof(float)));
-			pointsRead += pointsReadRightNow;
-			//cout << "pointsRead: " << pointsRead << endl;
+		int i = 0;
+		while(reader->readNextPoint()){
+			Point p = reader->getPoint();
 
-			for(long i = 0; i < pointsReadRightNow; i++){
-				float x = points[4*i+0];
-				float y = points[4*i+1];
-				float z = points[4*i+2];
-				char r = cPoints[16*i+12];
-				char g = cPoints[16*i+13];
-				char b = cPoints[16*i+14];
-				Point p(x,y,z, r, g, b);
-				//float gap = MAX_FLOAT;
-				bool accepted = grid.add(p);
-				int index = nodeIndex(aabb, p);
-				if(accepted){
-					// write point to ./data/r-file
-					srOut.write((const char*)&p, sizeof(Point));
-					numAccepted++;
-				}else{
-					// write point to ./temp/d-file
-					//if(gap > minGapAtMaxDepth){
-						sdOut.write((const char*)&p, sizeof(Point));
-					//}
-				}
+			bool accepted = grid.add(p);
+			int index = nodeIndex(aabb, p);
+			if(accepted){
+				// write point to ./data/r-file
+				srOut.write((const char*)&p, sizeof(Point));
+				numAccepted++;
+			}else{
+				// write point to ./temp/d-file
+				sdOut.write((const char*)&p, sizeof(Point));
 			}
+			i++;
 		}
 		//delete[] buffer;
 		cloudJs << "\t\t" << "[\"r\"," << numAccepted << "]," << endl;
@@ -119,7 +172,7 @@ void PotreeConverter::convert(int numPoints){
 		srOut.close();
 		sdOut.close();
 	}
-
+	reader->close();
 
 	//string source = workDir + "/temp/d";
 	string source = workDir + "/temp/d";
@@ -281,16 +334,16 @@ vector<int> PotreeConverter::process(string source, string target, AABB aabb, in
 		float *points = reinterpret_cast<float*>(buffer);
 		char *cPoints = buffer;
 		bool done = false;
-		vector<ofstream> srOut;
-		vector<ofstream> sdOut;
+		vector<ofstream*> srOut;
+		vector<ofstream*> sdOut;
 		vector<int> numPoints;
 		numPoints.resize(8);
 		for(int i = 0; i < 8; i++){
 			stringstream ssr, ssd;
 			ssr << target << i;
 			ssd << source << i;
-			srOut.push_back(ofstream(ssr.str(), ios::out | ios::binary));
-			sdOut.push_back(ofstream(ssd.str(), ios::out | ios::binary));
+			srOut.push_back(new ofstream(ssr.str(), ios::out | ios::binary));
+			sdOut.push_back(new ofstream(ssd.str(), ios::out | ios::binary));
 		}
 		long pointsProcessed = 0;
 		while(!done){
@@ -325,14 +378,14 @@ vector<int> PotreeConverter::process(string source, string target, AABB aabb, in
 				//	cout << "index is 1" << endl;
 				//}
 				if(accepted){
-					srOut[index].write((const char*)&p, sizeof(Point));
+					srOut[index]->write((const char*)&p, sizeof(Point));
 					if(find(indices.begin(), indices.end(), index) == indices.end()){
 						indices.push_back(index);
 					}
 					numPoints[index]++;
 				}else{
 					//if(gap > minGap / pow(2.0f, maxDepth)){
-						sdOut[index].write((const char*)&p, sizeof(Point));
+						sdOut[index]->write((const char*)&p, sizeof(Point));
 					//}
 				}
 				pointsProcessed++;
@@ -340,8 +393,10 @@ vector<int> PotreeConverter::process(string source, string target, AABB aabb, in
 		}
 
 		for(int i = 0; i < 8; i++){
-			srOut[i].close();
-			sdOut[i].close();
+			srOut[i]->close();
+      delete srOut[i];
+			sdOut[i]->close();
+      delete sdOut[i];
 
 			{// remove empty files
 				stringstream ssr, ssd;
