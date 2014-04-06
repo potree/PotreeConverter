@@ -6,6 +6,9 @@ The PotreeConverter can transform following file formats into the potree format:
 * __ply__ files with "element vertex" as the first element and x,y,z,r,g,b properties. Subsequent elements will be ignored. xyz must be floats and r,g,b must be uchars. ASCII and binary_little_endian formats are supported.
 * __xyz__ files with either xyzrgb or xyzi data. Specify the type, as well as the range of the data with the -f and -r options.
 
+Windows 64bit binary can be downloaded here: [PotreeConverter_2014.04.06](http://potree.org/downloads/PotreeConverter_2014.04.06.zip)
+
+
 ## Dependencies
 
 * [liblas](http://www.liblas.org/)
