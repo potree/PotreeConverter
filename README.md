@@ -1,5 +1,11 @@
 # Potree Converter
 
+The PotreeConverter can transform following file formats into the potree format:
+
+* __las__ files with XYZ and 2-byte RGB data.
+* __ply__ files with "element vertex" as the first element and x,y,z,r,g,b properties. Subsequent elements will be ignored. xyz must be floats and r,g,b must be uchars. ASCII and binary_little_endian formats are supported.
+* __xyz__ files with either xyzrgb or xyzi data. Specify the type, as well as the range of the data with the -f and -r options.
+
 ## Dependencies
 
 * [liblas](http://www.liblas.org/)
