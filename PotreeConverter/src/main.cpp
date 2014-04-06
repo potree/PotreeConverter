@@ -48,7 +48,19 @@ void printUsage(po::options_description &desc){
 	cout << desc << endl;
 }
 
+#include "XYZPointReader.h"
+
 int main(int argc, char **argv){
+
+	//string file = "C:/dev/pointclouds/testclouds/bunny.xyz";
+	//string format = "xyzi";
+	//float range = 1;
+	//XYZPointReader reader(file, format, range);
+	//reader.readNextPoint();
+	//Point p = reader.getPoint();
+	//cout << p.x << ", " << p.y << ", " << p.z << " | " <<int( p.r) << ", " << int(p.g) << ", " << int(p.b) << endl;
+
+
 	string source;
 	string outdir;
 	float spacing;
@@ -89,10 +101,11 @@ int main(int argc, char **argv){
 
 	// set default parameters 
 	path pSource(source);
-	outdir = vm.count("outdir") ? vm["outdir"].as<string>() : pSource.parent_path().generic_string() + "/potree_converted";
+	//outdir = vm.count("outdir") ? vm["outdir"].as<string>() : pSource.parent_path().generic_string() + "/potree_converted";
+	outdir = vm.count("outdir") ? vm["outdir"].as<string>() : pSource.generic_string() + "_converted";
 	if(!vm.count("spacing")) spacing = 1.0;
 	if(!vm.count("levels")) levels = 3;
-	if(!vm.count("format")) format = "xyzrgb";
+	if(!vm.count("input-format")) format = "xyzrgb";
 	if(!vm.count("range")) range = 255;
 
 	cout << "source: " << source << endl;
@@ -104,7 +117,7 @@ int main(int argc, char **argv){
 	
 	auto start = high_resolution_clock::now();
 	
-	PotreeConverter pc(source, outdir, spacing, levels);
+	PotreeConverter pc(source, outdir, spacing, levels, format, range);
 	pc.convert();
 	
 	auto end = high_resolution_clock::now();

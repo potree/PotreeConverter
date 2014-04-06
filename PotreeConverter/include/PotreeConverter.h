@@ -28,12 +28,14 @@ private:
 	float minGap;
 	stringstream cloudJs;
 	int maxDepth;
+	string format;
+	float range;
 
 	char *buffer;
 
 public:
 
-	PotreeConverter(string fData, string workDir, float minGap, int maxDepth);
+	PotreeConverter(string fData, string workDir, float minGap, int maxDepth, string format, float range);
 
 	void convert(int numPoints);
 	void convert();

@@ -6,6 +6,7 @@
 #include "LASPointReader.h"
 #include "BinPointReader.h"
 #include "PlyPointReader.h"
+#include "XYZPointReader.h"
 
 #include <liblas/liblas.hpp>
 #include <boost/filesystem.hpp>
@@ -41,11 +42,13 @@ struct Task{
 	}
 };
 
-PotreeConverter::PotreeConverter(string fData, string workDir, float minGap, int maxDepth){
+PotreeConverter::PotreeConverter(string fData, string workDir, float minGap, int maxDepth, string format, float range){
 		this->fData = fData;
 		this->workDir = workDir;
 		this->minGap = minGap;
 		this->maxDepth = maxDepth;
+		this->format = format;
+		this->range = range;
 		buffer = new char[4*10*1000*1000*sizeof(float)];
 
 		boost::filesystem::path dataDir(workDir + "/data");
@@ -75,7 +78,25 @@ void PotreeConverter::initReader(){
 			Point p = plyreader->getPoint();
 			sout.write((const char*)&p, sizeof(Point));
 		}
+		plyreader->close();
 		delete plyreader;
+
+		cout << "saved bin to " << binpath << endl;
+		cout << "creating bin reader" << endl;
+		reader = new BinPointReader(binpath);
+	}else if(endsWith(fname, ".XYZ")){
+		cout << "creating xyz reader" << endl;
+		XYZPointReader *xyzreader = new XYZPointReader(fData, format, range);
+
+		cout << "converting xyz file to bin file" << endl;
+		string binpath = workDir + "/temp/bin";
+		ofstream sout(binpath, ios::out | ios::binary);
+		while(xyzreader->readNextPoint()){
+			Point p = xyzreader->getPoint();
+			sout.write((const char*)&p, sizeof(Point));
+		}
+		xyzreader->close();
+		delete xyzreader;
 
 		cout << "saved bin to " << binpath << endl;
 		cout << "creating bin reader" << endl;
