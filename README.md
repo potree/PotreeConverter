@@ -24,32 +24,48 @@ Windows:
 
 ## PotreeConverter Usage
 
-Converts las or xyzrgba-binary files to the potree file format.
+Converts las, xyz or ply files to the potree file format.
 
+Options:
 
-    # pointDensity:		specifies the distance between points at root level. Each subsequent level has half the point density from the previous level
-    # maxRecursions:	number of levels
-    PotreeConverter <sourcePath> <targetDir> <pointDensity> <maxRecursions>
+    -h [ --help ]             prints usage
+    -o [ --outdir ] arg       output directory
+    -s [ --spacing ] arg      Distance between points at root level. Distance
+                              halves each level.
+    -l [ --levels ] arg       Number of levels that will be generated. 0: only
+                              root, 1: root and its children, ...
+    -f [ --input-format ] arg Input format. xyz: cartesian coordinates as floats,
+                              rgb: colors as numbers, i: intensity as number
+    -r [ --range ] arg        Range of rgb or intensity.
+    --source arg              Source file. Can be LAS, PLY or XYZ
     
-    # example
-    PotreeConverter C:/pointclouds/pointcloud.las C:/pointclouds/converted 1.0 5
+Examples:
 
-## xyzrgb2bin usage
+    # convert ply files
+    ./PotreeConverter.exe C:/data.ply -s 0.5 -l 4
+    
+    # convert las files
+    ./PotreeConverter.exe C:/data.las -s 0.5 -l 4 -o C:/potree_converted
+    
+    # convert files in the xyzrgb format with rgb between 0 and 255
+    ./PotreeConverter.exe C:/data.xyz -f xyzrgb -r 255
+    
+    # convert files in the xyzi format with intensity between 0 and 65536
+    ./PotreeConverter.exe C:/data.xyz -f xyzi -r 65536
 
-Converts xyz files with rgb data to xyzrgba-binary files.
-data has to be in following format (<> necessary, [] optional, will be ignored)
+For example, the stanford bunny data in xyz format looks like this:
 
-    <x> <y> <z> <r> <g> <b> [a]
+    -0.0378297 0.12794 0.00447467 0.850855 0.5 
+    -0.0447794 0.128887 0.00190497 0.900159 0.5 
+    -0.0680095 0.151244 0.0371953 0.398443 0.5 
+    -0.00228741 0.13015 0.0232201 0.85268 0.5 	
 
-for example:
+* Columns 1-3: xyz
+* Column 4: intensity in range 0-1
+* Column 5: I don't know, will be ignored
 
-    1.2312 4.311 5.12312 100 125 210
-    5.2312 4.311 5.12312 123 124 125
+xyz values are relatively small, therefore the spacing(-s) has to be small as well.
 
-usage:
+The command to convert this file into the potree format is:
 
-    # rgbMaxValue:		indicates the range of rgb data. this value is used to normalize color values.
-    xyzrgb2bin <sourcePath> <targetPath> <rgbMaxValue>
-
-    # example
-    xyzrgb2bin C:/pointclouds/pointcloud.xyz C:/pointclouds/pointcloud.bin 255
+    ./PotreeConverter.exe C:/bunny.xyz -f xyzi -r 1 -s 0.02
