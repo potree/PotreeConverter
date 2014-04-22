@@ -57,12 +57,12 @@ bool BinPointReader::readNextPoint(){
 }
 
 Point BinPointReader::getPoint(){
-	float x = points[4*offset+0];
-	float y = points[4*offset+1];
-	float z = points[4*offset+2];
-	char r = cPoints[16*offset+12];
-	char g = cPoints[16*offset+13];
-	char b = cPoints[16*offset+14];
+	float x = points[4*localOffset+0];
+	float y = points[4*localOffset+1];
+	float z = points[4*localOffset+2];
+	char r = cPoints[16*localOffset+12];
+	char g = cPoints[16*localOffset+13];
+	char b = cPoints[16*localOffset+14];
 	Point p(x,y,z, r, g, b);
 
 	return p;

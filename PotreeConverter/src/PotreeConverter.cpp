@@ -5,6 +5,9 @@
 #include "stuff.h"
 #include "LASPointReader.h"
 #include "BinPointReader.h"
+#include "PlyPointReader.h"
+#include "XYZPointReader.h"
+#include "PotreeException.h"
 
 #include <liblas/liblas.hpp>
 #include <boost/filesystem.hpp>
@@ -40,6 +43,27 @@ struct Task{
 	}
 };
 
+PotreeConverter::PotreeConverter(string fData, string workDir, float minGap, int maxDepth, string format, float range){
+	if(!boost::filesystem::exists(fData)){
+		throw PotreeException("file not found: " + fData);
+	}
+
+	this->fData = fData;
+	this->workDir = workDir;
+	this->minGap = minGap;
+	this->maxDepth = maxDepth;
+	this->format = format;
+	this->range = range;
+	buffer = new char[4*10*1000*1000*sizeof(float)];
+
+	boost::filesystem::path dataDir(workDir + "/data");
+	boost::filesystem::path tempDir(workDir + "/temp");
+	boost::filesystem::create_directories(dataDir);
+	boost::filesystem::create_directories(tempDir);
+
+	initReader();
+}
+
 void PotreeConverter::initReader(){
 	string fname = toUpper(fData);
 	if(endsWith(fname, ".LAS") || endsWith(fname, ".LAZ")){
@@ -48,8 +72,42 @@ void PotreeConverter::initReader(){
 	}else if(endsWith(fname, ".BIN")){
 		cout << "creating bin reader" << endl;
 		reader = new BinPointReader(fData);
+	}else if(endsWith(fname, ".PLY")){
+		cout << "creating ply reader" << endl;
+		PlyPointReader *plyreader = new PlyPointReader(fData);
+
+		cout << "converting ply file to bin file" << endl;
+		string binpath = workDir + "/temp/bin";
+		ofstream sout(binpath, ios::out | ios::binary);
+		while(plyreader->readNextPoint()){
+			Point p = plyreader->getPoint();
+			sout.write((const char*)&p, sizeof(Point));
+		}
+		plyreader->close();
+		delete plyreader;
+
+		cout << "saved bin to " << binpath << endl;
+		cout << "creating bin reader" << endl;
+		reader = new BinPointReader(binpath);
+	}else if(endsWith(fname, ".XYZ")){
+		cout << "creating xyz reader" << endl;
+		XYZPointReader *xyzreader = new XYZPointReader(fData, format, range);
+
+		cout << "converting xyz file to bin file" << endl;
+		string binpath = workDir + "/temp/bin";
+		ofstream sout(binpath, ios::out | ios::binary);
+		while(xyzreader->readNextPoint()){
+			Point p = xyzreader->getPoint();
+			sout.write((const char*)&p, sizeof(Point));
+		}
+		xyzreader->close();
+		delete xyzreader;
+
+		cout << "saved bin to " << binpath << endl;
+		cout << "creating bin reader" << endl;
+		reader = new BinPointReader(binpath);
 	}else{
-		cout << "filename did not match a known format" << endl;
+		throw PotreeException("filename did not match a known format");
 	}
 
 	
@@ -61,10 +119,7 @@ void PotreeConverter::convert(){
 
 
 void PotreeConverter::convert(int numPoints){
-	boost::filesystem::path dataDir(workDir + "/data");
-	boost::filesystem::path tempDir(workDir + "/temp");
-	boost::filesystem::create_directories(dataDir);
-	boost::filesystem::create_directories(tempDir);
+	
 
 	aabb = reader->getAABB();
 

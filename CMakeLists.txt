@@ -5,7 +5,7 @@ project(Potree)
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake" ${CMAKE_MODULE_PATH})
 
 find_package(LibLAS REQUIRED)
-find_package(Boost COMPONENTS system thread filesystem REQUIRED)
+find_package(Boost COMPONENTS system thread filesystem program_options REQUIRED)
 
 if(UNIX)
   if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
@@ -14,4 +14,6 @@ if(UNIX)
 endif()
 
 add_subdirectory(PotreeConverter)
-add_subdirectory(xyzrgb2bin)
+
+message(STATUS "Boost_INCLUDE_DIRS: ${Boost_INCLUDE_DIRS}")
+message(STATUS "Boost_LIBRARY_DIRS: ${Boost_LIBRARY_DIRS}")
