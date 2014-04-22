@@ -5,6 +5,7 @@
 
 #include "Point.h"
 #include "PointReader.h"
+#include "PotreeException.h"
 
 #include <string>
 #include <fstream>
@@ -14,7 +15,7 @@
 #include <sstream>
 
 #include "boost/assign.hpp"
-#include "boost/algorithm/string.hpp"
+#include "boost/algorithm/string.hpp""
 
 using std::getline;
 using std::ifstream;
@@ -25,7 +26,10 @@ using std::endl;
 using std::stringstream;
 using namespace boost::assign;
 using boost::split;
+using boost::token_compress_on;
 using boost::is_any_of;
+using boost::trim;
+using boost::erase_all;
 
 class XYZPointReader : public PointReader{
 private:
@@ -58,9 +62,12 @@ public:
 		unsigned char a = 255;
 		string line;
 		if(getline(stream, line)){
-			//vector<string> tokens = split(line, ' ');
+			trim(line);
 			vector<string> tokens;
-			split(tokens, line, is_any_of("\t "));
+			split(tokens, line, is_any_of("\t ,"), token_compress_on); 
+			if(tokens.size() < format.size()){
+				throw PotreeException("Not enough tokens for the given format");
+			}
 			for(int i = 0; i < format.size(); i++){
 				string token = tokens[i];
 				if(format[i] == 'x'){

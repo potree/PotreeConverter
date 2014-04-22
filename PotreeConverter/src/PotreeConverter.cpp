@@ -89,7 +89,7 @@ void PotreeConverter::initReader(){
 		cout << "saved bin to " << binpath << endl;
 		cout << "creating bin reader" << endl;
 		reader = new BinPointReader(binpath);
-	}else if(endsWith(fname, ".XYZ")){
+	}else if(endsWith(fname, ".XYZ") || endsWith(fname, ".TXT")){
 		cout << "creating xyz reader" << endl;
 		XYZPointReader *xyzreader = new XYZPointReader(fData, format, range);
 

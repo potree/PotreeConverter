@@ -38,7 +38,7 @@ long BinPointReader::numPoints(){
 bool BinPointReader::readNextPoint(){
 
 	// read next batch
-	if(currentBatchPointCount == 0 || currentBatchPointCount == localOffset){
+	if(currentBatchPointCount == 0 || currentBatchPointCount == localOffset+1){
 		stream.read(buffer, batchByteSize);
 		currentBatchPointCount = (long)(stream.gcount() / (4*sizeof(float)));
 
