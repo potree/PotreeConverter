@@ -15,7 +15,7 @@
 #include <sstream>
 
 #include "boost/assign.hpp"
-#include "boost/algorithm/string.hpp""
+#include "boost/algorithm/string.hpp"
 
 using std::getline;
 using std::ifstream;
