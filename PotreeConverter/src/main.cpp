@@ -71,7 +71,7 @@ int main(int argc, char **argv){
 			("levels,l", po::value<int>(&levels), "Number of levels that will be generated. 0: only root, 1: root and its children, ...")
 			("input-format,f", po::value<string>(&format), "Input format. xyz: cartesian coordinates as floats, rgb: colors as numbers, i: intensity as number")
 			("range,r", po::value<float>(&range), "Range of rgb or intensity. ")
-			("source", po::value<std::vector<std::string>>(), "Source file. Can be LAS, PLY or XYZ");
+			("source", po::value<std::vector<std::string> >(), "Source file. Can be LAS, PLY or XYZ");
 		po::positional_options_description p; 
 		p.add("source", -1); 
 
@@ -86,7 +86,7 @@ int main(int argc, char **argv){
 		}
 
 		if(vm.count("source")){
-			std::vector<std::string> files = vm["source"].as<std::vector<std::string>>();
+			std::vector<std::string> files = vm["source"].as<std::vector<std::string> >();
 			source = files[0];
 		}else{
 			cout << "source file parameter is missing" << endl;
