@@ -102,12 +102,14 @@ int main(int argc, char **argv){
 		if(!vm.count("input-format")) format = "xyzrgb";
 		if(!vm.count("range")) range = 255;
 
+		cout << "== params ==" << endl;
 		cout << "source: " << source << endl;
 		cout << "outdir: " << outdir << endl;
 		cout << "spacing: " << spacing << endl;
 		cout << "levels: " << levels << endl;
 		cout << "format: " << format << endl;
 		cout << "range: " << range << endl;
+		cout << endl;
 	}catch(exception &e){
 		cout << "ERROR: " << e.what() << endl;
 

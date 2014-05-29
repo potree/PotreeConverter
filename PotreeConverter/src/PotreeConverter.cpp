@@ -122,6 +122,23 @@ void PotreeConverter::convert(int numPoints){
 	
 
 	aabb = reader->getAABB();
+	cout << "AABB: " << endl;
+	cout << aabb << endl;
+
+	{ // check dimension
+		double threshold = 10*1000;
+		double width = aabb.size.x / minGap;
+		double height = aabb.size.y / minGap;
+		double depth = aabb.size.z / minGap;
+		
+		if(width > threshold || height > threshold || depth > threshold){
+			cout << endl;
+			cout << "WARNING: It seems that either your bounding box is too large or your spacing too small." << endl;
+			cout << "Conversion might not work" << endl;
+			cout << endl;
+		}
+
+	}
 
 	cloudJs.clear();
 	cloudJs << "{" << endl;
