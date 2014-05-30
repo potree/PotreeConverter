@@ -156,6 +156,7 @@ void PotreeConverter::convert(int numPoints){
 	cloudJs << "\t\t" << "\"POSITION_CARTESIAN\"," << endl;
 	cloudJs << "\t\t" << "\"COLOR_PACKED\"" << endl;
 	cloudJs << "\t" << "]," << endl;
+	cloudJs << "\t" << "\"spacing\": " << minGap << "," << endl;
 	cloudJs << "\t" << "\"hierarchy\": [" << endl;
 
 	{ // handle root
