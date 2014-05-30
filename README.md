@@ -6,8 +6,7 @@ The PotreeConverter can transform following file formats into the potree format:
 * __ply__ files with "element vertex" as the first element and x,y,z,r,g,b properties. Subsequent elements will be ignored. xyz must be floats and r,g,b must be uchars. ASCII and binary_little_endian formats are supported.
 * __xyz__ files with either xyzrgb or xyzi data. Specify the type, as well as the range of the data with the -f and -r options.
 
-Windows 64bit binary can be downloaded here: [PotreeConverter_2014.04.06](http://potree.org/downloads/PotreeConverter_2014.04.06.zip)
-
+Windows 64bit binaries can be downloaded here: [PotreeConverter_2014.05.30.zip](http://potree.org/downloads/PotreeConverter_2014.05.30.zip)
 
 ## Dependencies
 
@@ -17,6 +16,20 @@ Windows 64bit binary can be downloaded here: [PotreeConverter_2014.04.06](http:/
 ## Build
 
 Linux/MacOSX:
+
+    mkdir build && cd build
+    cmake ../
+    make
+
+Ubuntu:
+
+    sudo apt-get install libboost-system-dev libboost-thread-dev
+
+    # Add UbuntuGIS "unstable" PPA from Launchpad 
+    # (TODO: test if this PPA is really necessary)
+    sudo add-apt-repository ppa:ubuntugis/ubuntugis-unstable
+    sudo apt-get update
+    sudo apt-get install liblas-dev liblas-c-dev
 
     mkdir build && cd build
     cmake ../

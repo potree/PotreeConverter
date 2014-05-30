@@ -98,6 +98,7 @@ public:
 		format = -1;
 		pointCount = 0;
 		pointsRead = 0;
+		pointByteSize = 0;
 		buffer = new char[100];
 
 		std::regex rEndHeader("^end_header.*");

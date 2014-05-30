@@ -3,7 +3,7 @@
 #ifndef POTREE_CONVERTER_H
 #define POTREE_CONVERTER_H
 
-#define POTREE_FORMAT_VERSION "1.0"
+#define POTREE_FORMAT_VERSION "1.1"
 
 #include "AABB.h"
 #include "PointReader.h"

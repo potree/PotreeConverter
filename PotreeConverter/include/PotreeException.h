@@ -19,6 +19,9 @@ public:
 		this->message = message;
 	}
 
+	virtual ~PotreeException() throw(){
+	}
+	
 	virtual const char* what() const throw(){    
 		return message.c_str();
 	}

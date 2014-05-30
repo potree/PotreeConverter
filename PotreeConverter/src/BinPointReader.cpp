@@ -16,10 +16,10 @@ BinPointReader::BinPointReader(string file)
 	:stream(file, ios::in | ios::binary)
 	,file(file)
 {
-	buffer = new char[4*10*1000*1000*sizeof(float)];
+	buffer = new char[4*2*1000*1000*sizeof(float)];
 	points = reinterpret_cast<float*>(buffer);
 	cPoints = buffer;
-	batchSize = 10*1000*1000;
+	batchSize = 2*1000*1000;
 	batchByteSize = 4*batchSize*sizeof(float);
 	offset = 0;
 	localOffset = 0;
@@ -38,7 +38,7 @@ long BinPointReader::numPoints(){
 bool BinPointReader::readNextPoint(){
 
 	// read next batch
-	if(currentBatchPointCount == 0 || currentBatchPointCount == localOffset){
+	if(currentBatchPointCount == 0 || currentBatchPointCount == localOffset+1){
 		stream.read(buffer, batchByteSize);
 		currentBatchPointCount = (long)(stream.gcount() / (4*sizeof(float)));
 

@@ -89,7 +89,7 @@ void PotreeConverter::initReader(){
 		cout << "saved bin to " << binpath << endl;
 		cout << "creating bin reader" << endl;
 		reader = new BinPointReader(binpath);
-	}else if(endsWith(fname, ".XYZ")){
+	}else if(endsWith(fname, ".XYZ") || endsWith(fname, ".TXT")){
 		cout << "creating xyz reader" << endl;
 		XYZPointReader *xyzreader = new XYZPointReader(fData, format, range);
 
@@ -122,6 +122,23 @@ void PotreeConverter::convert(int numPoints){
 	
 
 	aabb = reader->getAABB();
+	cout << "AABB: " << endl;
+	cout << aabb << endl;
+
+	{ // check dimension
+		double threshold = 10*1000;
+		double width = aabb.size.x / minGap;
+		double height = aabb.size.y / minGap;
+		double depth = aabb.size.z / minGap;
+		
+		if(width > threshold || height > threshold || depth > threshold){
+			cout << endl;
+			cout << "WARNING: It seems that either your bounding box is too large or your spacing too small." << endl;
+			cout << "Conversion might not work" << endl;
+			cout << endl;
+		}
+
+	}
 
 	cloudJs.clear();
 	cloudJs << "{" << endl;
@@ -139,6 +156,7 @@ void PotreeConverter::convert(int numPoints){
 	cloudJs << "\t\t" << "\"POSITION_CARTESIAN\"," << endl;
 	cloudJs << "\t\t" << "\"COLOR_PACKED\"" << endl;
 	cloudJs << "\t" << "]," << endl;
+	cloudJs << "\t" << "\"spacing\": " << minGap << "," << endl;
 	cloudJs << "\t" << "\"hierarchy\": [" << endl;
 
 	{ // handle root
