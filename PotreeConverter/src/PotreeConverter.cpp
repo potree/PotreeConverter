@@ -11,12 +11,14 @@
 
 #include <liblas/liblas.hpp>
 #include <boost/filesystem.hpp>
+#include <boost/algorithm/string/predicate.hpp>
 
 #include <chrono>
 #include <sstream>
 #include <string>
 #include <map>
 #include <vector>
+#include <math.h>
 
 using std::stringstream;
 using std::map;
@@ -26,6 +28,7 @@ using std::find;
 using std::chrono::high_resolution_clock;
 using std::chrono::milliseconds;
 using std::chrono::duration_cast;
+using boost::iends_with;
 
 long addAncestorTime = 0;
 long addSourceTime = 0;
@@ -43,10 +46,13 @@ struct Task{
 	}
 };
 
-PotreeConverter::PotreeConverter(string fData, string workDir, float minGap, int maxDepth, string format, float range){
-	if(!boost::filesystem::exists(fData)){
-		throw PotreeException("file not found: " + fData);
+PotreeConverter::PotreeConverter(vector<string> fData, string workDir, float minGap, int maxDepth, string format, float range){
+	for(int i = 0; i < fData.size(); i++){
+		if(!boost::filesystem::exists(fData[i])){
+			throw PotreeException("file not found: " + fData[i]);
+		}
 	}
+	
 
 	this->fData = fData;
 	this->workDir = workDir;
@@ -65,66 +71,112 @@ PotreeConverter::PotreeConverter(string fData, string workDir, float minGap, int
 }
 
 void PotreeConverter::initReader(){
-	string fname = toUpper(fData);
-	if(endsWith(fname, ".LAS") || endsWith(fname, ".LAZ")){
-		cout << "creating LAS reader" << endl;
-		reader = new LASPointReader(fData);
-	}else if(endsWith(fname, ".BIN")){
-		cout << "creating bin reader" << endl;
-		reader = new BinPointReader(fData);
-	}else if(endsWith(fname, ".PLY")){
-		cout << "creating ply reader" << endl;
-		PlyPointReader *plyreader = new PlyPointReader(fData);
 
-		cout << "converting ply file to bin file" << endl;
-		string binpath = workDir + "/temp/bin";
-		ofstream sout(binpath, ios::out | ios::binary);
-		while(plyreader->readNextPoint()){
-			Point p = plyreader->getPoint();
-			sout.write((const char*)&p, sizeof(Point));
+	for(int i = 0; i < fData.size(); i++){
+		string fname = fData[i];
+		PointReader *reader = NULL;
+		if(iends_with(fname, ".las") || iends_with(fname, ".laz")){
+			cout << "creating LAS reader" << endl;
+			reader = new LASPointReader(fname);
+		}else if(iends_with(fname, ".bin")){
+			cout << "creating bin reader" << endl;
+			reader = new BinPointReader(fname);
+		}else if(iends_with(fname, ".ply")){
+			cout << "creating ply reader" << endl;
+			PlyPointReader *plyreader = new PlyPointReader(fname);
+
+			cout << "converting ply file to bin file" << endl;
+			string binpath = workDir + "/temp/bin";
+			ofstream sout(binpath, ios::out | ios::binary | ios::app);
+			while(plyreader->readNextPoint()){
+				Point p = plyreader->getPoint();
+				sout.write((const char*)&p, sizeof(Point));
+			}
+			plyreader->close();
+			delete plyreader;
+
+			cout << "saved bin to " << binpath << endl;
+			cout << "creating bin reader" << endl;
+			reader = new BinPointReader(binpath);
+		}else if(iends_with(fname, ".xyz") || iends_with(fname, ".txt")){
+			cout << "creating xyz reader" << endl;
+			XYZPointReader *xyzreader = new XYZPointReader(fname, format, range);
+
+			cout << "converting xyz file to bin file" << endl;
+			string binpath = workDir + "/temp/bin";
+			ofstream sout(binpath, ios::out | ios::binary | ios::app);
+			while(xyzreader->readNextPoint()){
+				Point p = xyzreader->getPoint();
+				sout.write((const char*)&p, sizeof(Point));
+			}
+			xyzreader->close();
+			delete xyzreader;
+
+			cout << "saved bin to " << binpath << endl;
+			cout << "creating bin reader" << endl;
+			reader = new BinPointReader(binpath);
+		}else{
+			throw PotreeException("filename did not match a known format");
 		}
-		plyreader->close();
-		delete plyreader;
 
-		cout << "saved bin to " << binpath << endl;
-		cout << "creating bin reader" << endl;
-		reader = new BinPointReader(binpath);
-	}else if(endsWith(fname, ".XYZ") || endsWith(fname, ".TXT")){
-		cout << "creating xyz reader" << endl;
-		XYZPointReader *xyzreader = new XYZPointReader(fData, format, range);
-
-		cout << "converting xyz file to bin file" << endl;
-		string binpath = workDir + "/temp/bin";
-		ofstream sout(binpath, ios::out | ios::binary);
-		while(xyzreader->readNextPoint()){
-			Point p = xyzreader->getPoint();
-			sout.write((const char*)&p, sizeof(Point));
+		if(reader != NULL){
+			this->reader.insert(std::make_pair(fname, reader));
 		}
-		xyzreader->close();
-		delete xyzreader;
-
-		cout << "saved bin to " << binpath << endl;
-		cout << "creating bin reader" << endl;
-		reader = new BinPointReader(binpath);
-	}else{
-		throw PotreeException("filename did not match a known format");
 	}
 
+	currentReader = reader.begin();
 	
 }
 
 void PotreeConverter::convert(){
-	convert(reader->numPoints());
+	int numPoints = 0;
+	map<string, PointReader*>::iterator it;
+	for(it = reader.begin(); it != reader.end(); it++){
+		numPoints += it->second->numPoints();
+	}
+	convert(numPoints);
 }
 
+bool PotreeConverter::readNextPoint(){
+	bool success = currentReader->second->readNextPoint();
+
+	if(!success){
+		currentReader++;
+		if(currentReader == reader.end()){
+			return false;
+		}
+
+		success = currentReader->second->readNextPoint();
+	}
+
+	return success;
+}
+
+Point PotreeConverter::getPoint(){
+	return currentReader->second->getPoint();
+}
 
 void PotreeConverter::convert(int numPoints){
+
+	{ // calculate aabb
+		Vector3 min(std::numeric_limits<float>::max());
+		Vector3 max(-std::numeric_limits<float>::max());
+		map<string, PointReader*>::iterator it;
+		for(it = reader.begin(); it != reader.end(); it++){
+			AABB box = it->second->getAABB();
+			min.x = std::min(min.x, box.min.x);
+			min.y = std::min(min.y, box.min.y);
+			min.z = std::min(min.z, box.min.z);
+			max.x = std::max(max.x, box.max.x);
+			max.y = std::max(max.y, box.max.y);
+			max.z = std::max(max.z, box.max.z);
+		}
+		aabb = AABB(min, max);
+
+		cout << "AABB: " << endl;
+		cout << aabb << endl;
+	}
 	
-
-	aabb = reader->getAABB();
-	cout << "AABB: " << endl;
-	cout << aabb << endl;
-
 	{ // check dimension
 		double threshold = 10*1000;
 		double width = aabb.size.x / minGap;
@@ -169,8 +221,8 @@ void PotreeConverter::convert(int numPoints){
 		int numAccepted = 0;
 		float minGapAtMaxDepth = minGap / pow(2.0f, maxDepth);
 		int i = 0;
-		while(reader->readNextPoint()){
-			Point p = reader->getPoint();
+		while(readNextPoint()){
+			Point p = getPoint();
 
 			bool accepted = grid.add(p);
 			int index = nodeIndex(aabb, p);
@@ -190,7 +242,11 @@ void PotreeConverter::convert(int numPoints){
 		srOut.close();
 		sdOut.close();
 	}
-	reader->close();
+	cout << "close readers" << endl;
+	map<string, PointReader*>::iterator it;
+	for(it = reader.begin(); it != reader.end(); it++){
+		it->second->close();
+	}
 
 	//string source = workDir + "/temp/d";
 	string source = workDir + "/temp/d";

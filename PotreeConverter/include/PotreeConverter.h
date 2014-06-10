@@ -11,19 +11,22 @@
 #include <string>
 #include <vector>
 #include <sstream>
+#include <map>
 
 
 using std::vector;
 using std::string;
 using std::stringstream;
+using std::map;
 
 
 class PotreeConverter{
 
 private:
-	PointReader *reader;
+	map<string, PointReader*> reader;
+	map<string, PointReader*>::iterator currentReader;
 	AABB aabb;
-	string fData;
+	vector<string> fData;
 	string workDir;
 	float minGap;
 	stringstream cloudJs;
@@ -33,9 +36,12 @@ private:
 
 	char *buffer;
 
+	bool readNextPoint();
+	Point getPoint();
+
 public:
 
-	PotreeConverter(string fData, string workDir, float minGap, int maxDepth, string format, float range);
+	PotreeConverter(vector<string> fData, string workDir, float minGap, int maxDepth, string format, float range);
 
 	void convert(int numPoints);
 	void convert();

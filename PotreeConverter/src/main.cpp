@@ -54,7 +54,7 @@ void printUsage(po::options_description &desc){
 #include "XYZPointReader.h"
 
 int main(int argc, char **argv){
-	string source;
+	vector<string> source;
 	string outdir;
 	float spacing;
 	int levels;
@@ -86,16 +86,14 @@ int main(int argc, char **argv){
 		}
 
 		if(vm.count("source")){
-			std::vector<std::string> files = vm["source"].as<std::vector<std::string> >();
-			source = files[0];
+			source = vm["source"].as<std::vector<std::string> >();
 		}else{
 			cout << "source file parameter is missing" << endl;
 			return 1;
 		}
 
 		// set default parameters 
-		path pSource(source);
-		//outdir = vm.count("outdir") ? vm["outdir"].as<string>() : pSource.parent_path().generic_string() + "/potree_converted";
+		path pSource(source[0]);
 		outdir = vm.count("outdir") ? vm["outdir"].as<string>() : pSource.generic_string() + "_converted";
 		if(!vm.count("spacing")) spacing = 1.0;
 		if(!vm.count("levels")) levels = 3;
@@ -103,7 +101,9 @@ int main(int argc, char **argv){
 		if(!vm.count("range")) range = 255;
 
 		cout << "== params ==" << endl;
-		cout << "source: " << source << endl;
+		for(int i = 0; i < source.size(); i++){
+			cout << "source[" << i << "]: " << source[i] << endl;
+		}
 		cout << "outdir: " << outdir << endl;
 		cout << "spacing: " << spacing << endl;
 		cout << "levels: " << levels << endl;
