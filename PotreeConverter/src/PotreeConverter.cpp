@@ -178,6 +178,12 @@ void PotreeConverter::convert(int numPoints){
 	}
 	
 	{ // check dimension
+		if(minGap == 0.0f){
+			double volume = aabb.size.x * aabb.size.y * aabb.size.z;
+			minGap = pow(volume, 1.0 / 3.0) * 0.005;
+			cout << "automatically calculated spacing: " << minGap << endl;
+		}
+
 		double threshold = 10*1000;
 		double width = aabb.size.x / minGap;
 		double height = aabb.size.y / minGap;
