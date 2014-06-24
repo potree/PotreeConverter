@@ -12,6 +12,7 @@
 #include <vector>
 #include <sstream>
 #include <map>
+#include <cstdint>
 
 
 using std::vector;
@@ -19,6 +20,17 @@ using std::string;
 using std::stringstream;
 using std::map;
 
+struct ProcessResult{
+	vector<int> indices;
+	uint64_t numAccepted;
+	uint64_t numRejected;
+
+	ProcessResult(vector<int> indices, uint64_t numAccepted, uint64_t numRejected){
+		this->indices = indices;
+		this->numAccepted = numAccepted;
+		this->numRejected = numRejected;
+	}
+};
 
 class PotreeConverter{
 
@@ -43,9 +55,10 @@ public:
 
 	PotreeConverter(vector<string> fData, string workDir, float minGap, int maxDepth, string format, float range);
 
-	void convert(int numPoints);
+	void convert(uint64_t numPoints);
 	void convert();
 	void initReader();
+	void saveCloudJS();
 
 
 
@@ -54,7 +67,7 @@ public:
 	 *
 	 * @returns a list of indices of the octree nodes that were created
 	 */
-	vector<int> process(string source, string target, AABB aabb, int depth);
+	ProcessResult process(string source, string target, AABB aabb, int depth);
 
 
 

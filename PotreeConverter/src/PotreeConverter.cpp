@@ -129,7 +129,7 @@ void PotreeConverter::initReader(){
 }
 
 void PotreeConverter::convert(){
-	int numPoints = 0;
+	uint64_t numPoints = 0;
 	map<string, PointReader*>::iterator it;
 	for(it = reader.begin(); it != reader.end(); it++){
 		numPoints += it->second->numPoints();
@@ -156,7 +156,7 @@ Point PotreeConverter::getPoint(){
 	return currentReader->second->getPoint();
 }
 
-void PotreeConverter::convert(int numPoints){
+void PotreeConverter::convert(uint64_t numPoints){
 
 	{ // calculate aabb
 		Vector3 min(std::numeric_limits<float>::max());
@@ -217,16 +217,18 @@ void PotreeConverter::convert(int numPoints){
 	cloudJs << "\t" << "\"spacing\": " << minGap << "," << endl;
 	cloudJs << "\t" << "\"hierarchy\": [" << endl;
 
+	uint64_t numAccepted = 0;
+	uint64_t numRejected = 0;
 	{ // handle root
-		cout << "processing root" << endl;
+		cout << "processing level 0, points: " << numPoints << endl;
 		SparseGrid grid(aabb, minGap);
-		int pointsRead = 0;
+		uint64_t pointsRead = 0;
 
 		ofstream srOut(workDir + "/data/r", ios::out | ios::binary);
 		ofstream sdOut(workDir + "/temp/d", ios::out | ios::binary);
-		int numAccepted = 0;
+		
 		float minGapAtMaxDepth = minGap / pow(2.0f, maxDepth);
-		int i = 0;
+		uint64_t i = 0;
 		while(readNextPoint()){
 			Point p = getPoint();
 
@@ -239,54 +241,54 @@ void PotreeConverter::convert(int numPoints){
 			}else{
 				// write point to ./temp/d-file
 				sdOut.write((const char*)&p, sizeof(Point));
+				numRejected++;
 			}
 			i++;
 		}
-		//delete[] buffer;
 		cloudJs << "\t\t" << "[\"r\"," << numAccepted << "]," << endl;
+		saveCloudJS();
 
 		srOut.close();
 		sdOut.close();
 	}
-	cout << "close readers" << endl;
+
+	// close readers
 	map<string, PointReader*>::iterator it;
 	for(it = reader.begin(); it != reader.end(); it++){
 		it->second->close();
 	}
 
-	//string source = workDir + "/temp/d";
 	string source = workDir + "/temp/d";
 	string target = workDir + "/data/r";
 	int depth = 1;
-	//map<string, string> work;
-	//work[source] = target;
 	vector<Task> work;
+	uint64_t unprocessedPoints = numRejected;
+	uint64_t processedPoints = numAccepted;
 	work.push_back(Task(source, target, aabb));
 
 	// process points in breadth first order
 	while(!work.empty() && depth <= maxDepth){
-		cout << "processing level " << depth << endl;
-		////map<string, string> nextRound;
+		cout << "processing level " << depth << ", points: " << unprocessedPoints << endl;
 		vector<Task> nextRound;
+		unprocessedPoints = 0;
+		processedPoints = 0;
 
-		//map<string, string>::iterator it;
 		vector<Task>::iterator it;
 		for(it = work.begin(); it != work.end(); it++){
-			//source = it->first;
-			//target = it->second;
 			source = it->source;
 			target = it->target;
 			AABB aabb = it->aabb;
 
-			vector<int> indices = process(source, target, aabb, depth);
+			ProcessResult result = process(source, target, aabb, depth);
 
 			// prepare the workload of the next level
-			for(int i = 0; i < indices.size(); i++){
-				int index = indices[i];
+			unprocessedPoints += result.numRejected;
+			processedPoints += result.numAccepted;
+			for(int i = 0; i < result.indices.size(); i++){
+				int index = result.indices[i];
 				stringstream ssSource, ssTarget;
-				ssSource << source << indices[i];
-				ssTarget << target << indices[i];
-				//nextRound[ssSource.str()] = ssTarget.str();
+				ssSource << source << result.indices[i];
+				ssTarget << target << result.indices[i];
 				AABB chAABB = childAABB(aabb, index);
 				Task task(ssSource.str(), ssTarget.str(), chAABB);
 				nextRound.push_back(task);
@@ -295,6 +297,12 @@ void PotreeConverter::convert(int numPoints){
 
 		depth++;
 		work = nextRound;
+	}
+
+	{ // print number of processed points
+		float percentage = float(numPoints - unprocessedPoints) / float(numPoints);
+		cout << (numPoints - unprocessedPoints) << " of " << numPoints << " points were processed - ";
+		cout << int(percentage*100) << "%" << endl;
 	}
 
 
@@ -310,19 +318,12 @@ void PotreeConverter::convert(int numPoints){
 
 	delete[] buffer;
 
-	float addAncestorDuration = float(addAncestorTime)/1000.0f;
-	float addSourceDuration = float(addSourceTime)/1000.0f;
-	float saveCloudJSDuration = float(saveCloudJSTime)/1000.0f;
-	cout << "addAncestorDuration: " << addAncestorDuration << "s" << endl;
-	cout << "addSourceDuration: " << addSourceDuration << "s" << endl;
-	cout << "saveCloudJSDuration: " << saveCloudJSDuration << "s" << endl;
-
-	/*cloudJs << "\t]" << endl;
-	cloudJs << "}" << endl;
-
-	ofstream sCloudJs(workDir + "/cloud.js", ios::out);
-	sCloudJs << cloudJs.str();
-	sCloudJs.close();*/
+	//float addAncestorDuration = float(addAncestorTime)/1000.0f;
+	//float addSourceDuration = float(addSourceTime)/1000.0f;
+	//float saveCloudJSDuration = float(saveCloudJSTime)/1000.0f;
+	//cout << "addAncestorDuration: " << addAncestorDuration << "s" << endl;
+	//cout << "addSourceDuration: " << addSourceDuration << "s" << endl;
+	//cout << "saveCloudJSDuration: " << saveCloudJSDuration << "s" << endl;
 }
 
 /**
@@ -336,16 +337,11 @@ void PotreeConverter::convert(int numPoints){
  *  if nodes [r11, r13, r17] were created, then indices [1,3,7] will be returned
  *
  **/
-vector<int> PotreeConverter::process(string source, string target, AABB aabb, int depth){
+ProcessResult PotreeConverter::process(string source, string target, AABB aabb, int depth){
 	vector<int> indices;
-	//cout << "== processing node ==" << endl;
-	////cout << "process(" << source << ", " << target << ", " << depth << ");" << endl;
-	//cout << "source: " << source << endl;
-	//cout << "target: " << target << endl;
-	//cout << "aabb: " << aabb << endl;
-	//cout << "depth: " << depth << endl;
-	//AABB aabb = readAABB(source);
-
+	uint64_t numAccepted = 0;
+	uint64_t numRejected = 0;
+	
 	{
 		stringstream ssName;
 		ssName << source.substr(source.find_last_of("d"), source.size() - source.find_last_of("d"));
@@ -359,21 +355,17 @@ vector<int> PotreeConverter::process(string source, string target, AABB aabb, in
 
 	SparseGrid grid(aabb, minGap / pow(2.0, depth));
 
-	//cout << "adding ancestors" << endl;
 	{// add all ancestors to the grid
 		auto start = high_resolution_clock::now();
 
-		//cout << "adding ancestors to grid" << endl;
 		int pos = target.find_last_of("r");
 		int numAncestors = target.size() - pos;
 		string ancestor = target;
 		for(int i = 0; i < numAncestors; i++){
-			//cout << "adding " << ancestor << endl;
 			ifstream sIn(ancestor, ios::in | ios::binary);
-			int pointsRead = 0;
+			uint64_t pointsRead = 0;
 			int batchSize = 10*1000*1000;
 			int batchByteSize = 4*batchSize*sizeof(float);
-			//char *buffer = new char[batchByteSize];
 			float *points = reinterpret_cast<float*>(buffer);
 			char *cPoints = buffer;
 			bool done = false;
@@ -395,7 +387,6 @@ vector<int> PotreeConverter::process(string source, string target, AABB aabb, in
 					}
 				}
 			}
-			//delete[] buffer;
 
 			ancestor = ancestor.substr(0, ancestor.size()-1);
 		}
@@ -403,20 +394,18 @@ vector<int> PotreeConverter::process(string source, string target, AABB aabb, in
 		addAncestorTime += duration_cast<milliseconds>(end-start).count();
 	}
 
-	//cout << "adding source points" << endl;
 	{ // add source to the grid
 		auto start = high_resolution_clock::now();
 		ifstream sIn(source, ios::in | ios::binary);
-		int pointsRead = 0;
+		uint64_t pointsRead = 0;
 		int batchSize = 10*1000*1000;
 		int batchByteSize = 4*batchSize*sizeof(float);
-		//char *buffer = new char[batchByteSize];
 		float *points = reinterpret_cast<float*>(buffer);
 		char *cPoints = buffer;
 		bool done = false;
 		vector<ofstream*> srOut;
 		vector<ofstream*> sdOut;
-		vector<int> numPoints;
+		vector<uint64_t> numPoints;
 		numPoints.resize(8);
 		for(int i = 0; i < 8; i++){
 			stringstream ssr, ssd;
@@ -432,9 +421,6 @@ vector<int> PotreeConverter::process(string source, string target, AABB aabb, in
 			done = pointsReadRightNow == 0;
 
 			for(int i = 0; i < pointsReadRightNow; i++){
-				if((pointsProcessed % 1000) == 0){
-					//cout << "processing point " << pointsProcessed << endl;
-				}
 				
 				float x = points[4*i+0];
 				float y = points[4*i+1];
@@ -444,29 +430,22 @@ vector<int> PotreeConverter::process(string source, string target, AABB aabb, in
 				char b = cPoints[16*i+14];
 				Point p(x,y,z, r, g, b);
 
-				//float gap = MAX_FLOAT;
 				bool accepted = grid.add(p);
 				int index = nodeIndex(aabb, p);
 				if(index == -1){
 					continue;
 				}
-				//AABB chAABB = childAABB(aabb, index);
-				//if(!chAABB.isInside(p)){
-				//	cout << "ohje..." << endl;
-				//}
-				//if(index == 1){
-				//	cout << "index is 1" << endl;
-				//}
+
 				if(accepted){
 					srOut[index]->write((const char*)&p, sizeof(Point));
 					if(find(indices.begin(), indices.end(), index) == indices.end()){
 						indices.push_back(index);
 					}
 					numPoints[index]++;
+					numAccepted++;
 				}else{
-					//if(gap > minGap / pow(2.0f, maxDepth)){
-						sdOut[index]->write((const char*)&p, sizeof(Point));
-					//}
+					sdOut[index]->write((const char*)&p, sizeof(Point));
+					numRejected++;
 				}
 				pointsProcessed++;
 			}
@@ -474,9 +453,9 @@ vector<int> PotreeConverter::process(string source, string target, AABB aabb, in
 
 		for(int i = 0; i < 8; i++){
 			srOut[i]->close();
-      delete srOut[i];
+			delete srOut[i];
 			sdOut[i]->close();
-      delete sdOut[i];
+			delete sdOut[i];
 
 			{// remove empty files
 				stringstream ssr, ssd;
@@ -494,17 +473,13 @@ vector<int> PotreeConverter::process(string source, string target, AABB aabb, in
 			if(numPoints[i] > 0){
 				stringstream ssName;
 				ssName << target.substr(target.find_last_of("r"), target.size() - target.find_last_of("r")) << i;
-				cout << "created node: " <<  ssName.str() << endl;
 			}
 		}
 
 		auto end = high_resolution_clock::now();
 		addSourceTime += duration_cast<milliseconds>(end-start).count();
-		
 
-		//delete[] buffer;
-
-		{ // save current cloud.js
+		{ // update cloud.js
 			auto start = high_resolution_clock::now();
 
 			for(int i = 0; i < 8; i++){
@@ -515,22 +490,22 @@ vector<int> PotreeConverter::process(string source, string target, AABB aabb, in
 					cloudJs << endl;
 				}
 			}
-
-			stringstream ssCloudJs;
-			string strCloudJs = cloudJs.str();
-			ssCloudJs << strCloudJs.erase(strCloudJs.find_last_of(",")) << endl;
-			ssCloudJs << "\t]" << endl;
-			ssCloudJs << "}" << endl;
-
-			ofstream sCloudJs(workDir + "/cloud.js", ios::out);
-			sCloudJs << ssCloudJs.str();
-			sCloudJs.close();
-
-			auto end = high_resolution_clock::now();
-			saveCloudJSTime += duration_cast<milliseconds>(end-start).count();
+			saveCloudJS();
 		}
 	}
-	cout << "== finished processing node ==" << endl << endl;
 
-	return indices;
+	return ProcessResult(indices, numAccepted, numRejected);
+}
+
+
+void PotreeConverter::saveCloudJS(){
+	stringstream ssCloudJs;
+	string strCloudJs = cloudJs.str();
+	ssCloudJs << strCloudJs.erase(strCloudJs.find_last_of(",")) << endl;
+	ssCloudJs << "\t]" << endl;
+	ssCloudJs << "}" << endl;
+
+	ofstream sCloudJs(workDir + "/cloud.js", ios::out);
+	sCloudJs << ssCloudJs.str();
+	sCloudJs.close();
 }

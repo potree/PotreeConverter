@@ -61,6 +61,8 @@ int main(int argc, char **argv){
 	string format;
 	float range;
 
+	cout.imbue(std::locale(""));
+
 	try{
 		// read parameters from command line
 		po::options_description desc("Options"); 
