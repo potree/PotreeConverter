@@ -23,13 +23,15 @@ Linux/MacOSX:
 
 Ubuntu:
 
-    sudo apt-get install libboost-system-dev libboost-thread-dev
+    (Assuming you have g++, make and cmake installed)
 
-    # Add UbuntuGIS "unstable" PPA from Launchpad 
-    # (TODO: test if this PPA is really necessary)
-    sudo add-apt-repository ppa:ubuntugis/ubuntugis-unstable
-    sudo apt-get update
+    14.04 LTS (Trusty)
+
+    # Liblas
     sudo apt-get install liblas-dev liblas-c-dev
+
+    # Boost (1.54)
+    sudo apt-get install libboost-all-dev
 
     mkdir build && cd build
     cmake ../
@@ -60,27 +62,27 @@ Options:
                               rgb: colors as numbers, i: intensity as number
     -r [ --range ] arg        Range of rgb or intensity.
     --source arg              Source file. Can be LAS, PLY or XYZ
-    
+
 Examples:
 
     # convert ply files
     ./PotreeConverter.exe C:/data.ply -s 0.5 -l 4
-    
+
     # convert las files
     ./PotreeConverter.exe C:/data.las -s 0.5 -l 4 -o C:/potree_converted
-    
+
     # convert files in the xyzrgb format with rgb between 0 and 255
     ./PotreeConverter.exe C:/data.xyz -f xyzrgb -r 255
-    
+
     # convert files in the xyzi format with intensity between 0 and 65536
     ./PotreeConverter.exe C:/data.xyz -f xyzi -r 65536
 
 For example, the stanford bunny data in xyz format looks like this:
 
-    -0.0378297 0.12794 0.00447467 0.850855 0.5 
-    -0.0447794 0.128887 0.00190497 0.900159 0.5 
-    -0.0680095 0.151244 0.0371953 0.398443 0.5 
-    -0.00228741 0.13015 0.0232201 0.85268 0.5 	
+    -0.0378297 0.12794 0.00447467 0.850855 0.5
+    -0.0447794 0.128887 0.00190497 0.900159 0.5
+    -0.0680095 0.151244 0.0371953 0.398443 0.5
+    -0.00228741 0.13015 0.0232201 0.85268 0.5
 
 * Columns 1-3: xyz
 * Column 4: intensity in range 0-1
