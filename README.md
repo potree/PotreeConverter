@@ -25,36 +25,13 @@ Ubuntu:
 
     (Assuming you have g++, make and cmake installed)
 
-    **12.04 LTS (Precise)**
-
-    # Liblas
-    # Add UbuntuGIS "unstable" PPA from Launchpad
-    sudo add-apt-repository ppa:ubuntugis/ubuntugis-unstable
-    sudo apt-get update
-
-    sudo apt-get install liblas-dev liblas-c-dev
-
-    # Add Boost dependencies
-    Either find and install each dependencies (listed in CMakeList.txt)
-
-    Or, install all of 1.48 dev
-    sudo apt-get install libboost1.48-all-dev
-
-    mkdir build && cd build
-    cmake ../
-    make
-
-
-    **14.04 LTS (Trusty)**
+    14.04 LTS (Trusty)
 
     # Liblas
     sudo apt-get install liblas-dev liblas-c-dev
 
     # Boost (1.54)
     sudo apt-get install libboost-all-dev
-
-    # You will get a segfault unless you change line 12 of CMakeLists.txt to
-    # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
     mkdir build && cd build
     cmake ../
