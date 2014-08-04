@@ -27,6 +27,8 @@ public:
 
 	float minGap(const Point &p);
 
+	float squaredMinGap(const Point &p);
+
 	void add(Point p);
 
 	float minGapAtArea(const Point &p);

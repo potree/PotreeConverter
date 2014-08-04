@@ -6,11 +6,12 @@
 #include <iostream>
 
 using std::ostream;
+using std::max;
 
 class Vector3{
 
 public:
-	float x,y,z;
+	double x,y,z;
 
 	Vector3(){
 		x = 0;
@@ -18,24 +19,32 @@ public:
 		z = 0;
 	}
 
-	Vector3(float x, float y, float z){
+	Vector3(double x, double y, double z){
 		this->x = x;
 		this->y = y;
 		this->z = z;
 	}
 
-	Vector3(float value){
+	Vector3(double value){
 		this->x = value;
 		this->y = value;
 		this->z = value;
 	}
 
-	float length(){
+	double length(){
 		return sqrt(x*x + y*y + z*z);
 	}
 
-	float distanceTo(Vector3 p){
+	double squaredLength(){
+		return x*x + y*y + z*z;
+	}
+
+	double distanceTo(Vector3 p){
 		return ((*this) - p).length();
+	}
+
+	double maxValue(){
+		return max(x, max(y,z));
 	}
 
 	Vector3 operator-(const Vector3& right) const {
@@ -46,7 +55,7 @@ public:
 		return Vector3(x + right.x, y + right.y, z + right.z);
 	}
 
-	Vector3 operator/(const float &a) const{
+	Vector3 operator/(const double &a) const{
 		return Vector3(x / a, y / a, z / a);
 	}
 

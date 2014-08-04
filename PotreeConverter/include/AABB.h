@@ -44,6 +44,40 @@ public:
 		return false;
 	}
 
+	void update(Vector3 &point){
+		min.x = std::min(min.x, point.x);
+		min.y = std::min(min.y, point.y);
+		min.z = std::min(min.z, point.z);
+
+		max.x = std::max(max.x, point.x);
+		max.y = std::max(max.y, point.y);
+		max.z = std::max(max.z, point.z);
+
+		size = max-min;
+	}
+
+	void makeCubic(){
+		double maxlength = size.maxValue();
+
+		if(abs(min.x) > max.x){
+			min.x = max.x - maxlength;
+		}else{
+			max.x = min.x + maxlength;
+		}
+
+		if(abs(min.y) > max.y){
+			min.y = max.y - maxlength;
+		}else{
+			max.y = min.y + maxlength;
+		}
+
+		if(abs(min.z) > max.z){
+			min.z = max.z - maxlength;
+		}else{
+			max.z = min.z + maxlength;
+		}
+	}
+
 	friend ostream &operator<<( ostream &output,  const AABB &value ){ 
 		output << "min: " << value.min << endl;
 		output << "max: " << value.max << endl;

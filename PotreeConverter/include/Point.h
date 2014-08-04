@@ -48,8 +48,12 @@ public:
 		this->a = 255;
 	}
 
-	float distanceTo(const Point &p){
-		return Vector3(x-p.x, y-p.y, z-p.z).length();
+	float distanceTo(const Point &point) {
+		return Vector3(point.x - x, point.y - y, point.z - z).length();
+	}
+
+	float squaredDistanceTo(const Point &point) {
+		return Vector3(point.x - x, point.y - y, point.z - z).squaredLength();
 	}
 
 	friend ostream &operator<<( ostream &output,  const Point &value ){ 

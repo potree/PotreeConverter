@@ -205,40 +205,6 @@ int nodeIndex(const AABB &aabb, const Point &point){
 	}
 	
 	return -1;
-	
-	//float x = (point.x - aabb.min.x) / aabb.size.x;
-	//float y = (point.y - aabb.min.y) / aabb.size.y;
-	//float z = (point.z - aabb.min.z) / aabb.size.z;
-
-	//if(x < 0.5 ){
-	//	if(y < 0.5){
-	//		if(z < 0.5){
-	//			return 0;
-	//		}else{
-	//			return 1;
-	//		}
-	//	}else{
-	//		if(z < 0.5){
-	//			return 2;
-	//		}else{
-	//			return 3;
-	//		}
-	//	}
-	//}else{
-	//	if(y < 0.5){
-	//		if(z < 0.5){
-	//			return 4;
-	//		}else{
-	//			return 5;
-	//		}
-	//	}else{
-	//		if(z < 0.5){
-	//			return 6;
-	//		}else{
-	//			return 7;
-	//		}
-	//	}
-	//}
 }
 
 

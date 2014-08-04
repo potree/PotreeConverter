@@ -26,6 +26,7 @@ public:
 	int depth;
 	float minGap;
 	AABB aabb;
+	float squaredSpacing;
 
 	SparseGrid(AABB aabb, float minGap);
 
@@ -33,14 +34,7 @@ public:
 
 	vector<GridCell*> targetArea(int x, int y, int z);
 
-	float minGapAtTargetArea(const Point &p, int i, int j, int k);
-
 	bool isDistant(const Point &p, int i, int j, int k);
-
-	/**
-	 * @return true if the point has been added to the grid 
-	 */
-	bool add(Point p, float &oMinGap);
 
 	bool add(Point &p);
 
