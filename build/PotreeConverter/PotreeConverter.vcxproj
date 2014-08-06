@@ -634,6 +634,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <ClCompile Include="..\..\PotreeConverter\src\LASPointReader.cpp" />
     <ClCompile Include="..\..\PotreeConverter\src\main.cpp" />
     <ClCompile Include="..\..\PotreeConverter\src\PotreeConverter.cpp" />
+    <ClCompile Include="..\..\PotreeConverter\src\PotreeWriter.cpp" />
     <ClCompile Include="..\..\PotreeConverter\src\SparseGrid.cpp" />
     <ClCompile Include="..\..\PotreeConverter\src\stuff.cpp" />
     <ClCompile Include="..\..\PotreeConverter\src\XYZPointReader.cpp" />

@@ -68,7 +68,7 @@ AABB readAABB(string fIn, int numPoints){
 	}
 	delete buffer;
 	stream.close();
-	AABB aabb(Vector3(minp[0], minp[1], minp[2]), Vector3(maxp[0], maxp[1], maxp[2]));
+	AABB aabb(Vector3<double>(minp[0], minp[1], minp[2]), Vector3<double>(maxp[0], maxp[1], maxp[2]));
 
 	cout << "pointsRead: " << pointsRead << endl;
 	cout << "min: " << minp[0] << ", " << minp[1] << ", " << minp[2] << endl;
@@ -117,7 +117,7 @@ AABB readAABB(string fIn){
 	}
 	delete buffer;
 	stream.close();
-	AABB aabb(Vector3(minp[0], minp[1], minp[2]), Vector3(maxp[0], maxp[1], maxp[2]));
+	AABB aabb(Vector3<double>(minp[0], minp[1], minp[2]), Vector3<double>(maxp[0], maxp[1], maxp[2]));
 
 	//cout << "pointsRead: " << pointsRead << endl;
 	//cout << "min: " << minp[0] << ", " << minp[1] << ", " << minp[2] << endl;
@@ -141,8 +141,8 @@ AABB readAABB(string fIn){
  *
  */
 //AABB childAABB(const AABB &aabb, const int &index){
-//	Vector3 min, max;
-//	Vector3 halfSize = aabb.size / 2.0f;
+//	Vector3<double> min, max;
+//	Vector3<double> halfSize = aabb.size / 2.0f;
 //
 //	min = aabb.min;
 //	max = aabb.min + halfSize;
@@ -150,26 +150,26 @@ AABB readAABB(string fIn){
 //	if(index == 0){
 //		
 //	}else if(index == 1){
-//		min = min + Vector3(0,0,halfSize.z);
-//		max = max + Vector3(0,0,halfSize.z);
+//		min = min + Vector3<double>(0,0,halfSize.z);
+//		max = max + Vector3<double>(0,0,halfSize.z);
 //	}else if(index == 2){
-//		min = min + Vector3(0, halfSize.y, 0);
+//		min = min + Vector3<double>(0, halfSize.y, 0);
 //		max.y = aabb.max.y;
 //	}else if(index == 3){
-//		min = min + Vector3(0, halfSize.y, halfSize.z);
+//		min = min + Vector3<double>(0, halfSize.y, halfSize.z);
 //		max.y = aabb.max.y;
 //		max.z = aabb.max.z;
 //	}else if(index == 4){
-//		min = min + Vector3(halfSize.x, 0, 0);
-//		max = max + Vector3(halfSize.x, 0, 0);
+//		min = min + Vector3<double>(halfSize.x, 0, 0);
+//		max = max + Vector3<double>(halfSize.x, 0, 0);
 //	}else if(index == 5){
-//		min = min + Vector3(halfSize.x, 0, halfSize.z);
-//		//max = max + Vector3(halfSize.x, 0, halfSize.z);
+//		min = min + Vector3<double>(halfSize.x, 0, halfSize.z);
+//		//max = max + Vector3<double>(halfSize.x, 0, halfSize.z);
 //		max.x = aabb.max.x;
 //		max.z = aabb.max.z;
 //	}else if(index == 6){
-//		min = min + Vector3(halfSize.x, halfSize.y, 0);
-//		//max = max + Vector3(halfSize.x, halfSize.y, 0);
+//		min = min + Vector3<double>(halfSize.x, halfSize.y, 0);
+//		//max = max + Vector3<double>(halfSize.x, halfSize.y, 0);
 //		max.x = aabb.max.x;
 //		max.y = aabb.max.y;
 //	}else if(index == 7){
@@ -182,8 +182,8 @@ AABB readAABB(string fIn){
 //}
 
 AABB childAABB(const AABB &aabb, const int &index){
-	Vector3 min, max;
-	Vector3 halfSize = aabb.size / 2.0f;
+	Vector3<double> min, max;
+	Vector3<double> halfSize = aabb.size / 2.0f;
 
 	min = aabb.min;
 	max = aabb.min + halfSize;
@@ -192,26 +192,26 @@ AABB childAABB(const AABB &aabb, const int &index){
 	if(index == 0){
 		
 	}else if(index == 1){
-		min = min + Vector3(0,0,halfSize.z);
-		max = max + Vector3(0,0,halfSize.z);
+		min = min + Vector3<double>(0,0,halfSize.z);
+		max = max + Vector3<double>(0,0,halfSize.z);
 	}else if(index == 2){
-		min = min + Vector3(0, halfSize.y, 0);
+		min = min + Vector3<double>(0, halfSize.y, 0);
 		max.y = aabb.max.y;
 	}else if(index == 3){
-		min = min + Vector3(0, halfSize.y, halfSize.z);
+		min = min + Vector3<double>(0, halfSize.y, halfSize.z);
 		max.y = aabb.max.y;
 		max.z = aabb.max.z;
 	}else if(index == 4){
-		min = min + Vector3(halfSize.x, 0, 0);
-		max = max + Vector3(halfSize.x, 0, 0);
+		min = min + Vector3<double>(halfSize.x, 0, 0);
+		max = max + Vector3<double>(halfSize.x, 0, 0);
 	}else if(index == 5){
-		min = min + Vector3(halfSize.x, 0, halfSize.z);
-		//max = max + Vector3(halfSize.x, 0, halfSize.z);
+		min = min + Vector3<double>(halfSize.x, 0, halfSize.z);
+		//max = max + Vector3<double>(halfSize.x, 0, halfSize.z);
 		max.x = aabb.max.x;
 		max.z = aabb.max.z;
 	}else if(index == 6){
-		min = min + Vector3(halfSize.x, halfSize.y, 0);
-		//max = max + Vector3(halfSize.x, halfSize.y, 0);
+		min = min + Vector3<double>(halfSize.x, halfSize.y, 0);
+		//max = max + Vector3<double>(halfSize.x, halfSize.y, 0);
 		max.x = aabb.max.x;
 		max.y = aabb.max.y;
 	}else if(index == 7){

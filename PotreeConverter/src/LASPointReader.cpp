@@ -35,8 +35,8 @@ LASPointReader::LASPointReader(string file){
 
 	reader = readOpener->open();
 
-	Vector3 min = Vector3(reader->get_min_x(), reader->get_min_y(), reader->get_min_z());
-	Vector3 max = Vector3(reader->get_max_x(), reader->get_max_y(), reader->get_max_z());
+	Vector3<double> min = Vector3<double>(reader->get_min_x(), reader->get_min_y(), reader->get_min_z());
+	Vector3<double> max = Vector3<double>(reader->get_max_x(), reader->get_max_y(), reader->get_max_z());
 	aabb = AABB(min, max);
 }
 
@@ -70,8 +70,8 @@ AABB LASPointReader::getAABB(){
 	return aabb;
 }
 
-Vector3 LASPointReader::getScale(){
-	Vector3 scale;
+Vector3<double> LASPointReader::getScale(){
+	Vector3<double> scale;
 	scale.x = getHeader().x_scale_factor;
 	scale.y = getHeader().y_scale_factor;
 	scale.z = getHeader().z_scale_factor;

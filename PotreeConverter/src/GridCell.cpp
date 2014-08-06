@@ -33,29 +33,29 @@ GridCell::GridCell(SparseGrid *grid, GridIndex &index){
 	}
 }
 
-float GridCell::minGap(const Point &p){
+float GridCell::minGap(const Vector3<double> &p){
 	float minGap = MAX_FLOAT;
 
 	for(int i = 0; i < points.size(); i++){
-		Point point = points[i];
-		minGap = min(minGap, point.distanceTo(p));
+		Vector3<double> point = points[i];
+		minGap = min(minGap, (float)point.distanceTo(p));
 	}
 
 	return minGap;
 }
 
-float GridCell::squaredMinGap(const Point &p){
+float GridCell::squaredMinGap(const Vector3<double> &p){
 	float minGap = MAX_FLOAT;
 
 	for(int i = 0; i < points.size(); i++){
-		Point point = points[i];
-		minGap = min(minGap, point.squaredDistanceTo(p));
+		Vector3<double> point = points[i];
+		minGap = min(minGap, (float)point.squaredDistanceTo(p));
 	}
 
 	return minGap;
 }
 
-float GridCell::minGapAtArea(const Point &p){
+float GridCell::minGapAtArea(const Vector3<double> &p){
 	float areaGap = MAX_FLOAT;
 	for(int a = 0; a < neighbours.size(); a++){
 		GridCell *neighbour = neighbours[a];
@@ -66,6 +66,6 @@ float GridCell::minGapAtArea(const Point &p){
 	return areaGap;
 }
 
-void GridCell::add(Point p){
+void GridCell::add(Vector3<double> p){
 	points.push_back(p);
 }

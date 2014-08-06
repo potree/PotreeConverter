@@ -16,17 +16,17 @@ using std::endl;
 class AABB{
 
 public:
-	Vector3 min;
-	Vector3 max;
-	Vector3 size;
+	Vector3<double> min;
+	Vector3<double> max;
+	Vector3<double> size;
 
 	AABB(){
-		min = Vector3(std::numeric_limits<float>::max());
-		max = Vector3(-std::numeric_limits<float>::max());
-		size = Vector3(std::numeric_limits<float>::max());
+		min = Vector3<double>(std::numeric_limits<float>::max());
+		max = Vector3<double>(-std::numeric_limits<float>::max());
+		size = Vector3<double>(std::numeric_limits<float>::max());
 	}
 
-	AABB(Vector3 min, Vector3 max){
+	AABB(Vector3<double> min, Vector3<double> max){
 		this->min = min;
 		this->max = max;
 		size = max-min;
@@ -44,7 +44,7 @@ public:
 		return false;
 	}
 
-	void update(Vector3 &point){
+	void update(Vector3<double> &point){
 		min.x = std::min(min.x, point.x);
 		min.y = std::min(min.y, point.y);
 		min.z = std::min(min.z, point.z);

@@ -8,10 +8,11 @@
 using std::ostream;
 using std::max;
 
+template<class T>
 class Vector3{
 
 public:
-	double x,y,z;
+	T x,y,z;
 
 	Vector3(){
 		x = 0;
@@ -19,47 +20,51 @@ public:
 		z = 0;
 	}
 
-	Vector3(double x, double y, double z){
+	Vector3(T x, T y, T z){
 		this->x = x;
 		this->y = y;
 		this->z = z;
 	}
 
-	Vector3(double value){
+	Vector3(T value){
 		this->x = value;
 		this->y = value;
 		this->z = value;
 	}
 
-	double length(){
+	T length(){
 		return sqrt(x*x + y*y + z*z);
 	}
 
-	double squaredLength(){
+	T squaredLength(){
 		return x*x + y*y + z*z;
 	}
 
-	double distanceTo(Vector3 p){
+	T distanceTo(Vector3<T> p){
 		return ((*this) - p).length();
 	}
 
-	double maxValue(){
+	T squaredDistanceTo(Vector3<T> p){
+		return ((*this) - p).squaredLength();
+	}
+
+	T maxValue(){
 		return max(x, max(y,z));
 	}
 
-	Vector3 operator-(const Vector3& right) const {
-		return Vector3(x - right.x, y - right.y, z - right.z);
+	Vector3<T> operator-(const Vector3<T>& right) const {
+		return Vector3<T>(x - right.x, y - right.y, z - right.z);
 	}
 
-	Vector3 operator+(const Vector3& right) const {
-		return Vector3(x + right.x, y + right.y, z + right.z);
+	Vector3<T> operator+(const Vector3<T>& right) const {
+		return Vector3<T>(x + right.x, y + right.y, z + right.z);
 	}
 
-	Vector3 operator/(const double &a) const{
-		return Vector3(x / a, y / a, z / a);
+	Vector3<T> operator/(const T &a) const{
+		return Vector3<T>(x / a, y / a, z / a);
 	}
 
-	friend ostream &operator<<( ostream &output,  const Vector3 &value ){ 
+	friend ostream &operator<<( ostream &output,  const Vector3<T> &value ){ 
 		output << "[" << value.x << ", " << value.y << ", " << value.z << "]" ;
 		return output;            
 	}

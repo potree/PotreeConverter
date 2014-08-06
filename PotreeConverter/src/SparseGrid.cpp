@@ -38,7 +38,7 @@ vector<GridCell*> SparseGrid::targetArea(int x, int y, int z){
 	return cells;
 }
 
-bool SparseGrid::isDistant(const Point &p, int i, int j, int k){
+bool SparseGrid::isDistant(const Vector3<double> &p, int i, int j, int k){
 	GridCell *cell = this->operator[](GridIndex(i,j,k));
 	if(cell->minGap(p) < minGap){
 		return false;
@@ -54,7 +54,7 @@ bool SparseGrid::isDistant(const Point &p, int i, int j, int k){
 	return true;
 }
 
-bool SparseGrid::add(Point &p){
+bool SparseGrid::add(Vector3<double> &p){
 	int nx = (int)(width*(p.x - aabb.min.x) / aabb.size.x);
 	int ny = (int)(height*(p.y - aabb.min.y) / aabb.size.y);
 	int nz = (int)(depth*(p.z - aabb.min.z) / aabb.size.z);
@@ -76,7 +76,7 @@ bool SparseGrid::add(Point &p){
 	}
 }
 
-void SparseGrid::addWithoutCheck(Point &p){
+void SparseGrid::addWithoutCheck(Vector3<double> &p){
 	int nx = (int)(width*(p.x - aabb.min.x) / aabb.size.x);
 	int ny = (int)(height*(p.y - aabb.min.y) / aabb.size.y);
 	int nz = (int)(depth*(p.z - aabb.min.z) / aabb.size.z);

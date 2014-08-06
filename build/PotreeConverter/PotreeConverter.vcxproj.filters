@@ -25,6 +25,9 @@
     <ClCompile Include="..\..\PotreeConverter\src\XYZPointReader.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\PotreeConverter\src\PotreeWriter.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\PotreeConverter\include\AABB.h">

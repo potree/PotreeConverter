@@ -42,7 +42,7 @@ public:
 
 	void close();
 
-	Vector3 getScale();
+	Vector3<double> getScale();
 
 	LASheader const &getHeader();
 };

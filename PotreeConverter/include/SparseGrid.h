@@ -34,11 +34,11 @@ public:
 
 	vector<GridCell*> targetArea(int x, int y, int z);
 
-	bool isDistant(const Point &p, int i, int j, int k);
+	bool isDistant(const Vector3<double> &p, int i, int j, int k);
 
-	bool add(Point &p);
+	bool add(Vector3<double> &p);
 
-	void addWithoutCheck(Point &p);
+	void addWithoutCheck(Vector3<double> &p);
 
 };
 

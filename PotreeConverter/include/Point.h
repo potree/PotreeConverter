@@ -50,11 +50,11 @@ public:
 	}
 
 	float distanceTo(const Point &point) {
-		return Vector3(point.x - x, point.y - y, point.z - z).length();
+		return Vector3<double>(point.x - x, point.y - y, point.z - z).length();
 	}
 
 	float squaredDistanceTo(const Point &point) {
-		return Vector3(point.x - x, point.y - y, point.z - z).squaredLength();
+		return Vector3<double>(point.x - x, point.y - y, point.z - z).squaredLength();
 	}
 
 	friend ostream &operator<<( ostream &output,  const Point &value ){ 

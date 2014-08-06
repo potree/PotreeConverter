@@ -34,7 +34,6 @@ public:
 		lq->y_scale_factor = header.y_scale_factor;
 		lq->z_scale_factor = header.z_scale_factor;
 		
-		//lp.quantizer = lq;
 		lp.init(lq, 2, 26);
 	}
 
