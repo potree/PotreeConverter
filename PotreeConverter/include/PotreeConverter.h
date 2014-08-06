@@ -7,6 +7,8 @@
 
 #include "AABB.h"
 #include "lasreader.hpp"
+#include "CloudJS.hpp"
+#include "definitions.hpp"
 
 #include <string>
 #include <vector>
@@ -21,12 +23,6 @@ using std::vector;
 using std::string;
 using std::stringstream;
 using std::map;
-
-enum OutputFormat{
-	BINARY,
-	LAS,
-	LAZ
-};
 
 struct ProcessResult{
 	vector<int> indices;
@@ -49,7 +45,7 @@ private:
 	vector<string> sources;
 	string workDir;
 	float spacing;
-	stringstream cloudJs;
+	CloudJS cloudjs;
 	int maxDepth;
 	string format;
 	OutputFormat outputFormat;

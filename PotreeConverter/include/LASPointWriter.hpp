@@ -42,7 +42,7 @@ public:
 		lp.set_x(point.x);
 		lp.set_y(point.y);
 		lp.set_z(point.z);
-
+		lp.intensity = point.intensity;
 		lp.classification = 0;
 
 		//unsigned short rgb[4];
@@ -55,7 +55,11 @@ public:
 	}
 
 	void close(){
-		writer->close();
+		if(writer != NULL){
+			writer->close();
+			delete writer;
+			writer = NULL;
+		}
 	}
 
 };

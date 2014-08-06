@@ -13,6 +13,7 @@ public:
 	float x;
 	float y;
 	float z;
+	unsigned short intensity;
 	unsigned char r;
 	unsigned char g;
 	unsigned char b;

@@ -78,6 +78,9 @@
     <ClInclude Include="..\..\PotreeConverter\include\CloudJS.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\PotreeConverter\include\PotreeWriter.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="..\..\PotreeConverter\CMakeLists.txt" />

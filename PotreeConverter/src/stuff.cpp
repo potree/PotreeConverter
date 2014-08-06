@@ -140,6 +140,47 @@ AABB readAABB(string fIn){
  * 0----4
  *
  */
+//AABB childAABB(const AABB &aabb, const int &index){
+//	Vector3 min, max;
+//	Vector3 halfSize = aabb.size / 2.0f;
+//
+//	min = aabb.min;
+//	max = aabb.min + halfSize;
+//
+//	if(index == 0){
+//		
+//	}else if(index == 1){
+//		min = min + Vector3(0,0,halfSize.z);
+//		max = max + Vector3(0,0,halfSize.z);
+//	}else if(index == 2){
+//		min = min + Vector3(0, halfSize.y, 0);
+//		max.y = aabb.max.y;
+//	}else if(index == 3){
+//		min = min + Vector3(0, halfSize.y, halfSize.z);
+//		max.y = aabb.max.y;
+//		max.z = aabb.max.z;
+//	}else if(index == 4){
+//		min = min + Vector3(halfSize.x, 0, 0);
+//		max = max + Vector3(halfSize.x, 0, 0);
+//	}else if(index == 5){
+//		min = min + Vector3(halfSize.x, 0, halfSize.z);
+//		//max = max + Vector3(halfSize.x, 0, halfSize.z);
+//		max.x = aabb.max.x;
+//		max.z = aabb.max.z;
+//	}else if(index == 6){
+//		min = min + Vector3(halfSize.x, halfSize.y, 0);
+//		//max = max + Vector3(halfSize.x, halfSize.y, 0);
+//		max.x = aabb.max.x;
+//		max.y = aabb.max.y;
+//	}else if(index == 7){
+//		min = min + halfSize;
+//		//max = max + halfSize;
+//		max = aabb.max;
+//	}
+//
+//	return AABB(min, max);
+//}
+
 AABB childAABB(const AABB &aabb, const int &index){
 	Vector3 min, max;
 	Vector3 halfSize = aabb.size / 2.0f;
@@ -147,6 +188,7 @@ AABB childAABB(const AABB &aabb, const int &index){
 	min = aabb.min;
 	max = aabb.min + halfSize;
 
+	// FIXME - for quadtree
 	if(index == 0){
 		
 	}else if(index == 1){
@@ -177,6 +219,8 @@ AABB childAABB(const AABB &aabb, const int &index){
 		//max = max + halfSize;
 		max = aabb.max;
 	}
+	min.z = aabb.min.z;
+	max.z = aabb.max.z;
 
 	return AABB(min, max);
 }
@@ -196,17 +240,31 @@ AABB childAABB(const AABB &aabb, const int &index){
  * 0----4
  *
  */
+//int nodeIndex(const AABB &aabb, const Point &point){
+//
+//	for(int i = 0; i < 8; i++){
+//		if(childAABB(aabb, i).isInside(point)){
+//			return i;
+//		}
+//	}
+//	
+//	return -1;
+//}
+
+
 int nodeIndex(const AABB &aabb, const Point &point){
 
 	for(int i = 0; i < 8; i++){
 		if(childAABB(aabb, i).isInside(point)){
-			return i;
+			//return i;
+
+			// FIXME - for quadtree
+			return i - (i%2);
 		}
 	}
 	
 	return -1;
 }
-
 
 
 

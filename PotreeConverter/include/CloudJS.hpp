@@ -16,19 +16,20 @@ using std::vector;
 using std::stringstream;
 using std::list;
 
-class Node{
-public:
-	string name;
-	int pointCount;
-
-	Node(string name, int pointCount){
-		this->name = name;
-		this->pointCount = pointCount;
-	}
-};
 
 class CloudJS{
 public:
+
+	class Node{
+	public:
+		string name;
+		int pointCount;
+
+		Node(string name, int pointCount){
+			this->name = name;
+			this->pointCount = pointCount;
+		}
+	};
 
 	string version;
 	string octreeDir;
@@ -70,7 +71,7 @@ public:
 
 		for(int i = 0; i < hierarchy.size(); i++){
 			Node node = hierarchy[i];
-			cloudJs << "\t\t[" << node.name << ", " << node.pointCount << "]";
+			cloudJs << "\t\t[\"" << node.name << "\", " << node.pointCount << "]";
 
 			if(i < hierarchy.size()-1){
 				cloudJs << ",";
@@ -78,24 +79,6 @@ public:
 			cloudJs << endl;
 		}
 		cloudJs << "\t]" << endl;
-
-		//list<Node*> stack;
-		//stack.push_back(root);
-		//while(!stack.empty){
-		//	Node *current = stack.front;
-		//	stack.pop_front();
-		//
-		//	cloudJs << "\t\t[" << current->name << ", " << current->pointCount << "]";
-		//
-		//	for(int i = 0; i < current->children.size(); i++){
-		//		stack.push_back(current->children[i]);
-		//	}
-		//
-		//	if(!stack.empty()){
-		//		cloudJs << "," << endl;
-		//	}
-		//}
-		//cloudJs << endl << "\t]";
 		cloudJs << "}" << endl;
 
 		return cloudJs.str();

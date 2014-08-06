@@ -98,8 +98,8 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup>
     <_ProjectFileVersion>10.0.20506.1</_ProjectFileVersion>
-    <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\dev\workspaces\PotreeConverter\PotreeConverter_develop\build\PotreeConverter\Debug\</OutDir>
-    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">PotreeConverter.dir\Debug\</IntDir>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(SolutionDir)\..\bin\$(Configuration)</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(SolutionDir)\..\obj\$(Configuration)</IntDir>
     <TargetName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">PotreeConverter</TargetName>
     <TargetName Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">PotreeConverter</TargetName>
     <TargetExt Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">.exe</TargetExt>
@@ -108,8 +108,8 @@
     <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</LinkIncremental>
     <GenerateManifest Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</GenerateManifest>
     <GenerateManifest Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</GenerateManifest>
-    <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(SolutionDir)\..\bin\$(Config)</OutDir>
-    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(SolutionDir)\..\obj\$(Config)</IntDir>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(SolutionDir)\..\bin\$(Configuration)</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(SolutionDir)\..\obj\$(Configuration)</IntDir>
     <TargetName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">PotreeConverter</TargetName>
     <TargetName Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">PotreeConverter</TargetName>
     <TargetExt Condition="'$(Configuration)|$(Platform)'=='Release|x64'">.exe</TargetExt>
@@ -141,7 +141,7 @@
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>C:/dev/workspaces/PotreeConverter/PotreeConverter_develop/PotreeConverter/include;C:/dev/lib/liblas/libLAS-1.7.0/include;C:/dev/lib/boost_1_55_0;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)/../PotreeConverter/include;C:/dev/lib/boost_1_55_0;$(LASLIB_INCLUDE_DIR);$(LASZIP_INCLUDE_DIR);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
       <CompileAs>CompileAsCpp</CompileAs>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
@@ -171,7 +171,7 @@
     </Midl>
     <Link>
       <AdditionalOptions> /machine:x64 /debug %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib;C:\dev\lib\liblas\libLAS-1.7.0\build\bin\Release\liblas.lib;C:\Boost\lib\libboost_system-vc110-mt-gd-1_55.lib;C:\Boost\lib\libboost_thread-vc110-mt-gd-1_55.lib;C:\Boost\lib\libboost_filesystem-vc110-mt-gd-1_55.lib;C:\Boost\lib\libboost_program_options-vc110-mt-gd-1_55.lib</AdditionalDependencies>
+      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib;C:\Boost\lib\libboost_system-vc110-mt-gd-1_55.lib;C:\Boost\lib\libboost_thread-vc110-mt-gd-1_55.lib;C:\Boost\lib\libboost_filesystem-vc110-mt-gd-1_55.lib;C:\Boost\lib\libboost_program_options-vc110-mt-gd-1_55.lib;C:\dev\lib\lastools\x64\DebugDLL\laslib.lib</AdditionalDependencies>
       <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ImportLibrary>C:/dev/workspaces/PotreeConverter/PotreeConverter_develop/build/PotreeConverter/Debug/PotreeConverter.lib</ImportLibrary>
@@ -624,6 +624,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <ClInclude Include="..\..\PotreeConverter\include\PointReader.h" />
     <ClInclude Include="..\..\PotreeConverter\include\PotreeConverter.h" />
     <ClInclude Include="..\..\PotreeConverter\include\PotreeException.h" />
+    <ClInclude Include="..\..\PotreeConverter\include\PotreeWriter.h" />
     <ClInclude Include="..\..\PotreeConverter\include\SparseGrid.h" />
     <ClInclude Include="..\..\PotreeConverter\include\stuff.h" />
     <ClInclude Include="..\..\PotreeConverter\include\Vector3.h" />

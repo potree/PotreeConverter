@@ -1,17 +1,16 @@
 
 
-
-#include "PotreeConverter.h"
-#include "stuff.h"
-#include "LASPointReader.h"
-#include "PotreeException.h"
-
 #include <boost/filesystem.hpp>
 #include <boost/algorithm/string/predicate.hpp>
 #include "lasdefinitions.hpp"
 #include "lasreader.hpp"
 #include "laswriter.hpp"
 
+#include "PotreeConverter.h"
+#include "stuff.h"
+#include "LASPointReader.h"
+#include "PotreeException.h"
+#include "PotreeWriter.h"
 #include "LASPointReader.h"
 #include "LASPointWriter.hpp"
 
@@ -58,10 +57,14 @@ PotreeConverter::PotreeConverter(vector<string> sources, string workDir, float s
 		string source = sources[i];
 		path pSource(source);
 		if(boost::filesystem::is_directory(pSource)){
-			for(path::iterator it = pSource.begin(); it != pSource.end(); it++){
-				path pDirectoryEntry = *it;
+			boost::filesystem::directory_iterator it(pSource);
+			for(;it != boost::filesystem::directory_iterator(); it++){
+				path pDirectoryEntry = it->path();
 				if(boost::filesystem::is_regular_file(pDirectoryEntry)){
-					sourceFiles.push_back(pDirectoryEntry.string());
+					string filepath = pDirectoryEntry.string();
+					if(boost::iends_with(filepath, ".las") || boost::iends_with(filepath, ".laz")){
+						sourceFiles.push_back(filepath);
+					}
 				}
 			}
 		}else if(boost::filesystem::is_regular_file(pSource)){
@@ -82,6 +85,10 @@ PotreeConverter::PotreeConverter(vector<string> sources, string workDir, float s
 	boost::filesystem::path tempDir(workDir + "/temp");
 	boost::filesystem::create_directories(dataDir);
 	boost::filesystem::create_directories(tempDir);
+
+	cloudjs.octreeDir = "data";
+	cloudjs.spacing = spacing;
+	cloudjs.outputFormat = OutputFormat::LAS;
 }
 
 
@@ -111,6 +118,7 @@ AABB calculateAABB(vector<string> sources){
 		aabb.update(lmin);
 		aabb.update(lmax);
 
+		reader->close();
 		delete reader;
 	}
 
@@ -128,9 +136,11 @@ public:
 	int maxLevel;
 	string path;
 	LASPointWriter *writer;
+	LASheader header;
 	Node *children[8];
 	int numAccepted;
 	AABB acceptedAABB;
+
 
 
 	Node(string name, string path, AABB aabb, float spacing, int level, int maxLevel)
@@ -142,6 +152,7 @@ public:
 		this->maxLevel = maxLevel;
 		this->path = path;
 		this->aabb = aabb;
+		this->writer = NULL;
 		numAccepted = 0;
 
 		init();
@@ -157,26 +168,45 @@ public:
 
 	void close(){
 
-
+		updateFiles();
 		removeEmpty();
 	}
 
-	void updateAABB(){
-		Vector3 min = acceptedAABB.min;
-		Vector3 max = acceptedAABB.max;
-		writer->header.set_bounding_box(min.x, min.y, min.z, max.x, max.y, max.z);
-		writer->writer->update_header(&writer->header, false);
+	//void updateAABB(){
+	//	Vector3 min = acceptedAABB.min;
+	//	Vector3 max = acceptedAABB.max;
+	//	writer->header.set_bounding_box(min.x, min.y, min.z, max.x, max.y, max.z);
+	//	writer->writer->update_header(&writer->header, false);
+	//
+	//	if(level < maxLevel){
+	//		for(int i = 0; i < 8; i++){
+	//			children[i]->updateAABB();
+	//		}
+	//	}
+	//}
+
+	void updateFiles(){
+		if(writer != NULL){
+			Vector3 min = acceptedAABB.min;
+			Vector3 max = acceptedAABB.max;
+			writer->header.set_bounding_box(min.x, min.y, min.z, max.x, max.y, max.z);
+			writer->header.number_of_point_records = numAccepted;
+			writer->header.start_of_waveform_data_packet_record = 0;
+			writer->writer->update_header(&writer->header, false);
+		}
 
 		if(level < maxLevel){
 			for(int i = 0; i < 8; i++){
-				children[i]->updateAABB();
+				children[i]->updateFiles();
 			}
 		}
-	}
+	} 
 
 	bool removeEmpty(){
-		writer->close();
-		delete writer;
+		if(writer != NULL){
+			writer->close();
+			delete writer;
+		}
 
 		if(level == maxLevel){
 			if(numAccepted == 0){
@@ -206,7 +236,6 @@ public:
 	void init(){
 		//aabb.makeCubic();
 
-		LASheader header;
 		header.clean();
 		header.set_bounding_box(aabb.min.x, aabb.min.y, aabb.min.z, aabb.max.x, aabb.max.y, aabb.max.z);
 		header.x_scale_factor = 0.01;
@@ -216,7 +245,7 @@ public:
 		header.y_offset = 0.0f;
 		header.z_offset = 0.0f;
 
-		writer = new LASPointWriter(path + "/" + name + ".las", header);
+		//writer = new LASPointWriter(path + "/" + name + ".las", header);
 
 		if(level < maxLevel){
 			for(int i = 0; i < 8; i++){
@@ -229,6 +258,10 @@ public:
 
 	void add(Point &p){
 		bool accepted = grid.add(p);
+
+		if(writer == NULL){
+			writer = new LASPointWriter(path + "/" + name + ".las", header);
+		}
 
 		if(accepted){
 			writer->write(p);
@@ -248,19 +281,82 @@ void PotreeConverter::convert(){
 	aabb = calculateAABB(sources);
 	cout << "AABB: " << endl << aabb << endl;
 
-	Node *root = new Node("r", "C:/temp/test/", aabb, spacing, 0, 2);
+	cloudjs.boundingBox = aabb;
 
+	//Node *root = new Node("r", this->workDir  + "/data", aabb, spacing, 0, 7);
+	PotreeWriter *writer = new PotreeWriter(this->workDir + "/data", aabb, spacing, 2);
+
+	long long pointsProcessed = 0;
 	for(int i = 0; i < sources.size(); i++){
 		string source = sources[i];
 
 		LASPointReader *reader = new LASPointReader(source);
 		while(reader->readNextPoint()){
+			pointsProcessed++;
+			//if((pointsProcessed%50) != 0){
+			//	continue;
+			//}
+
 			Point p = reader->getPoint();
-			root->add(p);
+			writer->add(p);
+
+			//if((pointsProcessed % 1000000) == 0){
+			//	cout << (pointsProcessed / 1000000) << "m points processed" << endl;
+			//	root->updateFiles();
+			//
+			//	cloudjs.hierarchy.clear();
+			//	list<Node*> stack;
+			//	stack.push_back(root);
+			//	while(!stack.empty()){
+			//		Node *node = stack.front();
+			//		stack.pop_front();
+			//
+			//		cloudjs.hierarchy.push_back(CloudJS::Node(node->name, node->numAccepted));
+			//
+			//		if(node->level < node->maxLevel){
+			//			for(int i = 0; i < 8; i++){
+			//				Node *child = node->children[i];
+			//				if(child->numAccepted > 0){
+			//					stack.push_back(child);
+			//				}
+			//			}
+			//		}
+			//	}
+			//
+			//	ofstream oCloud( workDir + "/cloud.js", ios::out);
+			//	oCloud << cloudjs.string();
+			//	oCloud.close();
+			//
+			//}
 		}
 	}
 	
-	root->close();
+	writer->close();
+	delete writer;
 
-	delete root;
+	//cloudjs.hierarchy.clear();
+	//list<Node*> stack;
+	//stack.push_back(root);
+	//while(!stack.empty()){
+	//	Node *node = stack.front();
+	//	stack.pop_front();
+	//
+	//	cloudjs.hierarchy.push_back(CloudJS::Node(node->name, node->numAccepted));
+	//	
+	//	if(node->level < node->maxLevel){
+	//		for(int i = 0; i < 8; i++){
+	//			Node *child = node->children[i];
+	//			if(child->numAccepted > 0){
+	//				stack.push_back(child);
+	//			}
+	//		}
+	//	}
+	//}
+	//
+	//delete root;
+	//
+	//ofstream oCloud( workDir + "/cloud.js", ios::out);
+	//oCloud << cloudjs.string();
+	//oCloud.close();
+
 }
