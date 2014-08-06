@@ -34,6 +34,7 @@ public:
 	int numAccepted;
 	PotreeWriterNode *children[8];
 	long long lastAccepted;
+	bool addCalledSinceLastFlush;
 	PotreeWriter *potreeWriter;
 	vector<Point> cache;
 
@@ -41,7 +42,13 @@ public:
 	PotreeWriterNode(PotreeWriter* potreeWriter, string name, string path, AABB aabb, float spacing, int level, int maxLevel);
 
 	~PotreeWriterNode(){
+		for(int i = 0; i < 8; i++){
+			if(children[i] != NULL){
+				delete children[i];
+			}
+		}
 
+		delete [] children;
 	}
 
 	PotreeWriterNode *add(Point &point);
@@ -99,12 +106,19 @@ public:
 	void flush(){
 		root->flush();
 
+
+
+
+
+		// update cloud.js
 		cloudjs.boundingBox = aabb;
 		cloudjs.octreeDir = "data";
 		cloudjs.outputFormat = OutputFormat::LAS;
 		cloudjs.spacing = spacing;
 		cloudjs.version = "1.3";
 		
+		long long numPointsInMemory = 0;
+		long long numPointsInHierarchy = 0;
 		cloudjs.hierarchy = vector<CloudJS::Node>();
 		list<PotreeWriterNode*> stack;
 		stack.push_back(root);
@@ -112,6 +126,8 @@ public:
 			PotreeWriterNode *node = stack.front();
 			stack.pop_front();
 			cloudjs.hierarchy.push_back(CloudJS::Node(node->name, node->numAccepted));
+			numPointsInHierarchy += node->numAccepted;
+			numPointsInMemory += node->grid.numAccepted;
 
 			for(int i = 0; i < 8; i++){
 				if(node->children[i] != NULL){
@@ -119,6 +135,9 @@ public:
 				}
 			}
 		}
+
+		cout << "numAccepted: " << numPointsInHierarchy << endl;
+		cout << "numMemory: " << numPointsInMemory << endl;
 
 		ofstream cloudOut(path + "/cloud.js", ios::out);
 		cloudOut << cloudjs.string();

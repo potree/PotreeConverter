@@ -39,8 +39,6 @@ struct ProcessResult{
 class PotreeConverter{
 
 private:
-	map<string, LASreader*> reader;
-	map<string, LASreader*>::iterator currentReader;
 	AABB aabb;
 	vector<string> sources;
 	string workDir;

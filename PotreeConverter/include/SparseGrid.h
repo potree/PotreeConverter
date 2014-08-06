@@ -27,6 +27,7 @@ public:
 	float minGap;
 	AABB aabb;
 	float squaredSpacing;
+	int numAccepted;
 
 	SparseGrid(AABB aabb, float minGap);
 

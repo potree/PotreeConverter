@@ -1,5 +1,4 @@
 
-
 #include <chrono>
 #include <vector>
 #include <map>
@@ -50,8 +49,6 @@ void printUsage(po::options_description &desc){
 	cout << "usage: PotreeConverter [OPTIONS] SOURCE" << endl;
 	cout << desc << endl;
 }
-
-#include "XYZPointReader.h"
 
 int main(int argc, char **argv){
 	vector<string> source;

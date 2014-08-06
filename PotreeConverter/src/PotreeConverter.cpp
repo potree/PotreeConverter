@@ -109,8 +109,8 @@ AABB calculateAABB(vector<string> sources){
 	for(int i = 0; i < sources.size(); i++){
 		string source = sources[i];
 
-		LASPointReader *reader = new LASPointReader(source);
-		LASheader header = reader->getHeader();
+		LASPointReader reader(source);
+		 const LASheader &header = reader.getHeader();
 
 		Vector3<double> lmin = Vector3<double>(header.min_x, header.min_y, header.min_z);
 		Vector3<double> lmax = Vector3<double>(header.max_x, header.max_y, header.max_z);
@@ -118,8 +118,7 @@ AABB calculateAABB(vector<string> sources){
 		aabb.update(lmin);
 		aabb.update(lmax);
 
-		reader->close();
-		delete reader;
+		reader.close();
 	}
 
 	return aabb;
@@ -131,30 +130,35 @@ void PotreeConverter::convert(){
 
 	cloudjs.boundingBox = aabb;
 
-	PotreeWriter *writer = new PotreeWriter(this->workDir, aabb, spacing, 7);
+	PotreeWriter writer(this->workDir, aabb, spacing, 5);
 
 	long long pointsProcessed = 0;
 	for(int i = 0; i < sources.size(); i++){
 		string source = sources[i];
 
-		LASPointReader *reader = new LASPointReader(source);
-		while(reader->readNextPoint()){
+		LASPointReader reader(source);
+		while(reader.readNextPoint()){
 			pointsProcessed++;
 			//if((pointsProcessed%50) != 0){
 			//	continue;
 			//}
 
-			Point p = reader->getPoint();
-			writer->add(p);
+			Point p = reader.getPoint();
+			writer.add(p);
 
-			if((pointsProcessed % 1000000) == 0){
-				cout << (pointsProcessed / 1000000) << "m points processed" << endl;
+			if((pointsProcessed % (100*1000)) == 0){
+				cout << (pointsProcessed / (100*1000)) << "m points processed" << endl;
 
-				writer->flush();
+				writer.flush();
 			}
+
+			//if(pointsProcessed >= (300*1000)){
+			//	_CrtDumpMemoryLeaks();
+			//	return;
+			//}
 		}
+		reader.close();
 	}
 	
-	writer->close();
-	delete writer;
+	writer.close();
 }

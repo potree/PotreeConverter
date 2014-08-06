@@ -8,6 +8,7 @@ SparseGrid::SparseGrid(AABB aabb, float minGap){
 	this->height = aabb.size.y / minGap;
 	this->depth = aabb.size.z / minGap;
 	this->minGap = minGap;
+	numAccepted = 0;
 }
 
 SparseGrid::~SparseGrid(){
@@ -70,6 +71,7 @@ bool SparseGrid::add(Vector3<double> &p){
 
 	if(isDistant(p, i, j, k)){
 		this->operator[](index)->add(p);
+		numAccepted++;
 		return true;
 	}else{
 		return false;

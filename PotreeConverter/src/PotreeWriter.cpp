@@ -21,6 +21,7 @@ PotreeWriterNode::PotreeWriterNode(PotreeWriter* potreeWriter, string name, stri
 	this->potreeWriter = potreeWriter;
 	numAccepted = 0;
 	lastAccepted = 0;
+	addCalledSinceLastFlush = false;
 
 	for(int i = 0; i < 8; i++){
 		children[i] = NULL;
@@ -29,6 +30,19 @@ PotreeWriterNode::PotreeWriterNode(PotreeWriter* potreeWriter, string name, stri
 
 
 PotreeWriterNode *PotreeWriterNode::add(Point &point){
+	addCalledSinceLastFlush = true;
+
+	// load grid from disk to memory, if necessary
+	if(grid.numAccepted != numAccepted){
+		LASPointReader reader(path + "/data/" + name + ".las");
+		while(reader.readNextPoint()){
+			Point p = reader.getPoint();
+			grid.addWithoutCheck(Vector3<double>(p.x, p.y, p.z));
+		}
+		grid.numAccepted = numAccepted;
+		reader.close();
+	}
+
 	bool accepted = grid.add(Vector3<double>(point.x, point.y, point.z));
 
 	if(accepted){
@@ -81,26 +95,27 @@ void PotreeWriterNode::flush(){
 		header.y_offset = 0.0f;
 		header.z_offset = 0.0f;
 
-		LASPointWriter *writer = new LASPointWriter(path + "/data/" + name + ".las", header);
+		LASPointWriter writer(path + "/data/" + name + ".las", header);
 		if(fs::exists(temppath)){
-			LASPointReader *reader = new LASPointReader(temppath);
-			while(reader->readNextPoint()){
-				writer->write(reader->getPoint());
+			LASPointReader reader(temppath);
+			while(reader.readNextPoint()){
+				writer.write(reader.getPoint());
 			}
-			reader->close();
-			delete reader;
+			reader.close();
 			fs::remove(temppath);
 		}
 
 		for(int i = 0; i < cache.size(); i++){
-			writer->write(cache[i]);
+			writer.write(cache[i]);
 		}
-		writer->close();
+		writer.close();
 
 		cache = vector<Point>();
+	}else if(cache.size() == 0 && grid.numAccepted > 0 && addCalledSinceLastFlush == false){
+		grid = SparseGrid(aabb, spacing);
 	}
 	
-	
+	addCalledSinceLastFlush = false;
 
 	for(int i = 0; i < 8; i++){
 		if(children[i] != NULL){

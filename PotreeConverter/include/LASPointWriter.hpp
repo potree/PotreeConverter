@@ -15,6 +15,7 @@ public:
 	string file;
 	LASheader &header;
 	LASwriter *writer;
+	LASquantizer quantizer;
 	LASpoint lp;
 
 	LASPointWriter(string file, LASheader &header) 
@@ -26,15 +27,18 @@ public:
 		lwrOpener.set_file_name(file.c_str());
 		writer = lwrOpener.open(&header);
 
-		LASquantizer *lq = new LASquantizer();
-		lq->x_offset = header.x_offset;
-		lq->y_offset = header.y_offset;
-		lq->z_offset = header.z_offset;
-		lq->x_scale_factor = header.x_scale_factor;
-		lq->y_scale_factor = header.y_scale_factor;
-		lq->z_scale_factor = header.z_scale_factor;
+		quantizer.x_offset = header.x_offset;
+		quantizer.y_offset = header.y_offset;
+		quantizer.z_offset = header.z_offset;
+		quantizer.x_scale_factor = header.x_scale_factor;
+		quantizer.y_scale_factor = header.y_scale_factor;
+		quantizer.z_scale_factor = header.z_scale_factor;
 		
-		lp.init(lq, 2, 26);
+		lp.init(&quantizer, 2, 26);
+	}
+
+	~LASPointWriter(){
+		close();
 	}
 
 	void write(const Point &point){

@@ -25,12 +25,13 @@ class LASPointReader : public PointReader{
 private:
 	AABB aabb;
 	string file;
-	LASreadOpener *readOpener;
 	LASreader *reader;
 
 public:
 
 	LASPointReader(string file);
+
+	~LASPointReader();
 
 	bool readNextPoint();
 

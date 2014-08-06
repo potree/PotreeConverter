@@ -16,8 +16,8 @@ using std::vector;
 
 LASPointReader::LASPointReader(string file){
 	this->file = file;
-	readOpener = new LASreadOpener();
-	readOpener->set_file_name(file.c_str());
+	LASreadOpener readOpener;
+	readOpener.set_file_name(file.c_str());
 	
 
 	//char first[] = "filter";
@@ -33,15 +33,23 @@ LASPointReader::LASPointReader(string file){
 	//
 	//readOpener->parse(4, args);
 
-	reader = readOpener->open();
+	reader = readOpener.open();
 
 	Vector3<double> min = Vector3<double>(reader->get_min_x(), reader->get_min_y(), reader->get_min_z());
 	Vector3<double> max = Vector3<double>(reader->get_max_x(), reader->get_max_y(), reader->get_max_z());
 	aabb = AABB(min, max);
 }
 
+LASPointReader::~LASPointReader(){
+	close();
+}
+
 void LASPointReader::close(){
-	reader->close();
+	if(reader != NULL){
+		reader->close();
+		delete reader;
+		reader = NULL;
+	}
 }
 
 long LASPointReader::numPoints(){
