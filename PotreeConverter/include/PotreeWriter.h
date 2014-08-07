@@ -30,7 +30,7 @@ public:
 	float spacing;
 	int level;
 	int maxLevel;
-	SparseGrid grid;
+	SparseGrid *grid;
 	int numAccepted;
 	PotreeWriterNode *children[8];
 	long long lastAccepted;
@@ -47,6 +47,7 @@ public:
 				delete children[i];
 			}
 		}
+		delete grid;
 
 		delete [] children;
 	}
@@ -127,7 +128,7 @@ public:
 			stack.pop_front();
 			cloudjs.hierarchy.push_back(CloudJS::Node(node->name, node->numAccepted));
 			numPointsInHierarchy += node->numAccepted;
-			numPointsInMemory += node->grid.numAccepted;
+			numPointsInMemory += node->grid->numAccepted;
 
 			for(int i = 0; i < 8; i++){
 				if(node->children[i] != NULL){

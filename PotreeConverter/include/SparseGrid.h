@@ -29,7 +29,15 @@ public:
 	float squaredSpacing;
 	int numAccepted;
 
+	static long long count;
+
 	SparseGrid(AABB aabb, float minGap);
+
+	SparseGrid(const SparseGrid &other)
+		: width(other.width), height(other.height), depth(other.depth), minGap(other.minGap), aabb(other.aabb), squaredSpacing(other.squaredSpacing), numAccepted(other.numAccepted)
+	{
+		count++;
+	}
 
 	~SparseGrid();
 

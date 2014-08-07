@@ -1,8 +1,11 @@
 
 #include "SparseGrid.h"
 
+long long SparseGrid::count = 0;
 
 SparseGrid::SparseGrid(AABB aabb, float minGap){
+	count++;
+
 	this->aabb = aabb;
 	this->width = aabb.size.x / minGap;
 	this->height = aabb.size.y / minGap;
@@ -12,6 +15,8 @@ SparseGrid::SparseGrid(AABB aabb, float minGap){
 }
 
 SparseGrid::~SparseGrid(){
+	count--;
+
 	SparseGrid::iterator it;
 	for(it = begin(); it != end(); it++){
 		delete it->second;

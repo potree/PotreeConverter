@@ -9,9 +9,7 @@ namespace fs = boost::filesystem;
 
 
 
-PotreeWriterNode::PotreeWriterNode(PotreeWriter* potreeWriter, string name, string path, AABB aabb, float spacing, int level, int maxLevel)
-	: grid(aabb, spacing)
-{
+PotreeWriterNode::PotreeWriterNode(PotreeWriter* potreeWriter, string name, string path, AABB aabb, float spacing, int level, int maxLevel){
 	this->name = name;
 	this->path = path;
 	this->aabb = aabb;
@@ -19,6 +17,7 @@ PotreeWriterNode::PotreeWriterNode(PotreeWriter* potreeWriter, string name, stri
 	this->level = level;
 	this->maxLevel = maxLevel;
 	this->potreeWriter = potreeWriter;
+	this->grid = new SparseGrid(aabb, spacing);
 	numAccepted = 0;
 	lastAccepted = 0;
 	addCalledSinceLastFlush = false;
@@ -33,17 +32,17 @@ PotreeWriterNode *PotreeWriterNode::add(Point &point){
 	addCalledSinceLastFlush = true;
 
 	// load grid from disk to memory, if necessary
-	if(grid.numAccepted != numAccepted){
+	if(grid->numAccepted != numAccepted){
 		LASPointReader reader(path + "/data/" + name + ".las");
 		while(reader.readNextPoint()){
 			Point p = reader.getPoint();
-			grid.addWithoutCheck(Vector3<double>(p.x, p.y, p.z));
+			grid->addWithoutCheck(Vector3<double>(p.x, p.y, p.z));
 		}
-		grid.numAccepted = numAccepted;
+		grid->numAccepted = numAccepted;
 		reader.close();
 	}
 
-	bool accepted = grid.add(Vector3<double>(point.x, point.y, point.z));
+	bool accepted = grid->add(Vector3<double>(point.x, point.y, point.z));
 
 	if(accepted){
 		cache.push_back(point);
@@ -111,8 +110,9 @@ void PotreeWriterNode::flush(){
 		writer.close();
 
 		cache = vector<Point>();
-	}else if(cache.size() == 0 && grid.numAccepted > 0 && addCalledSinceLastFlush == false){
-		grid = SparseGrid(aabb, spacing);
+	}else if(cache.size() == 0 && grid->numAccepted > 0 && addCalledSinceLastFlush == false){
+		delete grid;
+		grid = new SparseGrid(aabb, spacing);
 	}
 	
 	addCalledSinceLastFlush = false;

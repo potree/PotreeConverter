@@ -10,6 +10,8 @@ using std::ostream;
 
 class Point{
 public:
+	static long long count;
+
 	float x;
 	float y;
 	float z;
@@ -27,6 +29,8 @@ public:
 		this->g = 0;
 		this->b = 0;
 		this->a = 255;
+
+		count++;
 	}
 
 	Point(float x, float y, float z, unsigned char r, unsigned char g, unsigned char b){
@@ -37,6 +41,8 @@ public:
 		this->g = g;
 		this->b = b;
 		this->a = 255;
+
+		count++;
 	}
 
 	Point(float x, float y, float z){
@@ -47,6 +53,18 @@ public:
 		this->g = 255;
 		this->b = 255;
 		this->a = 255;
+
+		count++;
+	}
+
+	Point(const Point &other)
+		: x(other.x), y(other.y), z(other.z), intensity(other.intensity), r(other.r), g(other.g), b(other.b)
+	{
+		count++;
+	}
+
+	~Point(){
+		count--;
 	}
 
 	float distanceTo(const Point &point) {

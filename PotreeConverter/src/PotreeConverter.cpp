@@ -130,7 +130,7 @@ void PotreeConverter::convert(){
 
 	cloudjs.boundingBox = aabb;
 
-	PotreeWriter writer(this->workDir, aabb, spacing, 5);
+	PotreeWriter writer(this->workDir, aabb, spacing, maxDepth);
 
 	long long pointsProcessed = 0;
 	for(int i = 0; i < sources.size(); i++){
@@ -146,16 +146,23 @@ void PotreeConverter::convert(){
 			Point p = reader.getPoint();
 			writer.add(p);
 
-			if((pointsProcessed % (100*1000)) == 0){
-				cout << (pointsProcessed / (100*1000)) << "m points processed" << endl;
-
-				writer.flush();
-			}
-
-			//if(pointsProcessed >= (300*1000)){
-			//	_CrtDumpMemoryLeaks();
-			//	return;
+			//if((pointsProcessed % (1000*1000)) == 0){
+			//	//cout << (pointsProcessed / (1000*1000)) << "m points processed" << endl;
+			//	cout << "flushing" << endl;
+			//	writer.flush();
 			//}
+
+			if((pointsProcessed % (1000*1000)) == 0){
+				cout << "vector<double> instances before flush: " << Vector3<double>::count << endl;
+				
+				writer.flush();
+
+				cout << (pointsProcessed / (1000*1000)) << "m points processed" << endl;
+				cout << "point instances: " << Point::count << endl;
+				cout << "grid instances: " << SparseGrid::count << endl;
+				cout << "vector<double> instances after flush: " << Vector3<double>::count << endl;
+
+			}
 		}
 		reader.close();
 	}
