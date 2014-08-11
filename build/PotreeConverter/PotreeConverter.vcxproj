@@ -266,13 +266,13 @@
       <AdditionalOptions> /machine:x64 %(AdditionalOptions)</AdditionalOptions>
       <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib;C:\Boost\lib\libboost_system-vc110-mt-1_55.lib;C:\Boost\lib\libboost_thread-vc110-mt-1_55.lib;C:\Boost\lib\libboost_filesystem-vc110-mt-1_55.lib;C:\Boost\lib\libboost_program_options-vc110-mt-1_55.lib;$(LASLIB_LIBRARY_DIR)\laslib.lib</AdditionalDependencies>
       <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <GenerateDebugInformation>false</GenerateDebugInformation>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
       <ImportLibrary>C:/dev/workspaces/PotreeConverter/PotreeConverter_develop/build/PotreeConverter/Release/PotreeConverter.lib</ImportLibrary>
       <ProgramDataBaseFile>C:/dev/workspaces/PotreeConverter/PotreeConverter_develop/build/PotreeConverter/Release/PotreeConverter.pdb</ProgramDataBaseFile>
       <SubSystem>Console</SubSystem>
       <Version>
       </Version>
-      <Profile>false</Profile>
+      <Profile>true</Profile>
     </Link>
     <ProjectReference>
       <LinkLibraryDependencies>false</LinkLibraryDependencies>

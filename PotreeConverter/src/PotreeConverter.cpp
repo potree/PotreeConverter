@@ -130,11 +130,14 @@ void PotreeConverter::convert(){
 
 	cloudjs.boundingBox = aabb;
 
+	auto start = high_resolution_clock::now();
+
 	PotreeWriter writer(this->workDir, aabb, spacing, maxDepth);
 
 	long long pointsProcessed = 0;
 	for(int i = 0; i < sources.size(); i++){
 		string source = sources[i];
+		cout << "reading " << source << endl;
 
 		LASPointReader reader(source);
 		while(reader.readNextPoint()){
@@ -153,19 +156,25 @@ void PotreeConverter::convert(){
 			//}
 
 			if((pointsProcessed % (1000*1000)) == 0){
-				cout << "vector<double> instances before flush: " << Vector3<double>::count << endl;
-				
 				writer.flush();
 
 				cout << (pointsProcessed / (1000*1000)) << "m points processed" << endl;
-				cout << "point instances: " << Point::count << endl;
-				cout << "grid instances: " << SparseGrid::count << endl;
-				cout << "vector<double> instances after flush: " << Vector3<double>::count << endl;
+				auto end = high_resolution_clock::now();
+				long duration = duration_cast<milliseconds>(end-start).count();
+				cout << "duration: " << (duration / 1000.0f) << "s" << endl;
 
 			}
 		}
+		writer.flush();
 		reader.close();
 	}
+
+	cout << writer.numAccepted << " points written" << endl;
+
+	auto end = high_resolution_clock::now();
+	long duration = duration_cast<milliseconds>(end-start).count();
+	cout << "duration: " << (duration / 1000.0f) << "s" << endl;
 	
+	cout << "closing writer" << endl;
 	writer.close();
 }

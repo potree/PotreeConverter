@@ -49,10 +49,18 @@ public:
 		}
 		delete grid;
 
-		delete [] children;
+		//delete [] children;
 	}
 
+	void addWithoutCheck(Point &point);
+
+	void loadFromDisk();
+
 	PotreeWriterNode *add(Point &point);
+
+	PotreeWriterNode *add(Point &point, int minLevel);
+
+	PotreeWriterNode *createChild(int childIndex);
 
 	void flush();
 
@@ -69,7 +77,7 @@ public:
 	float spacing;
 	int maxLevel;
 	PotreeWriterNode *root;
-	long long pointsWritten;
+	long long numAccepted;
 	CloudJS cloudjs;
 
 	int pointsInMemory;
@@ -82,7 +90,7 @@ public:
 		this->aabb = aabb;
 		this->spacing = spacing;
 		this->maxLevel = maxLevel;
-		pointsWritten = 0;
+		numAccepted = 0;
 		pointsInMemory = 0;
 		pointsInMemoryLimit = 1*1000*1000;
 
@@ -95,12 +103,13 @@ public:
 		delete root;
 	}
 
+
 	void add(Point &p){
 		PotreeWriterNode *acceptedBy = root->add(p);
 
 		if(acceptedBy != NULL){
 			pointsInMemory++;
-			pointsWritten++;
+			numAccepted++;
 		}
 	}
 
@@ -136,9 +145,6 @@ public:
 				}
 			}
 		}
-
-		cout << "numAccepted: " << numPointsInHierarchy << endl;
-		cout << "numMemory: " << numPointsInMemory << endl;
 
 		ofstream cloudOut(path + "/cloud.js", ios::out);
 		cloudOut << cloudjs.string();

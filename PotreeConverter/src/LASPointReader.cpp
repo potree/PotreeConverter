@@ -66,10 +66,11 @@ Point LASPointReader::getPoint(){
 
 	p.intensity = lp.intensity;
 	
-	//const U16 *rgb = lp.get_rgb();
-	//p.r = rgb[0] / 65025.0f;
-	//p.g = rgb[1] / 65025.0f;
-	//p.b = rgb[2] / 65025.0f;
+	const U16 *rgb = lp.get_rgb();
+	p.r = rgb[0] / 256;
+	p.g = rgb[1] / 256;
+	p.b = rgb[2] / 256;
+
 
 	return p;
 }

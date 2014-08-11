@@ -35,6 +35,7 @@ public:
 		quantizer.z_scale_factor = header.z_scale_factor;
 		
 		lp.init(&quantizer, 2, 26);
+		lp.total_point_size = 26;
 	}
 
 	~LASPointWriter(){
@@ -48,18 +49,18 @@ public:
 		lp.intensity = point.intensity;
 		lp.classification = 0;
 
-		//unsigned short rgb[4];
-		//rgb[0] = point.r * 65025;
-		//rgb[1] = point.g * 65025;
-		//rgb[2] = point.b * 65025;
-		//lp.set_rgb(rgb);
+		unsigned short rgb[4];
+		rgb[0] = point.r * 256;
+		rgb[1] = point.g * 256;
+		rgb[2] = point.b * 256;
+		lp.set_rgb(rgb);
 
 		writer->write_point(&lp);
 	}
 
 	void close(){
 		if(writer != NULL){
-			writer->close();
+			writer->close(false);
 			delete writer;
 			writer = NULL;
 		}
