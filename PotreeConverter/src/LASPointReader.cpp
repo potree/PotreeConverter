@@ -4,48 +4,90 @@
 
 #include <fstream>
 #include <iostream>
+#include <vector>
+
+#include "lasfilter.hpp"
 
 
 using std::ifstream;
 using std::cout;
 using std::endl;
+using std::vector;
 
-LASPointReader::LASPointReader(string file)
-	: stream(file, std::ios::in | std::ios::binary)
-	, reader(liblas::ReaderFactory().CreateWithStream(stream))
-{
-	liblas::Header const& header = reader.GetHeader();
-	liblas::Bounds<double> const &extent = header.GetExtent();
-	Vector3 min = Vector3(extent.minx(), extent.miny(), extent.minz());
-	Vector3 max = Vector3(extent.maxx(), extent.maxy(), extent.maxz());
+LASPointReader::LASPointReader(string file){
+	this->file = file;
+	LASreadOpener readOpener;
+	readOpener.set_file_name(file.c_str());
+	
+
+	//char first[] = "filter";
+	//char second[] = "-keep_every_nth";
+	//char third[] = "100";
+	//char fourth[] = "\0";
+	//
+	//char* args[4];
+	//args[0] = first;
+	//args[1] = second;
+	//args[2] = third;
+	//args[3] = fourth;
+	//
+	//readOpener->parse(4, args);
+
+	reader = readOpener.open();
+
+	Vector3<double> min = Vector3<double>(reader->get_min_x(), reader->get_min_y(), reader->get_min_z());
+	Vector3<double> max = Vector3<double>(reader->get_max_x(), reader->get_max_y(), reader->get_max_z());
 	aabb = AABB(min, max);
 }
 
+LASPointReader::~LASPointReader(){
+	close();
+}
+
 void LASPointReader::close(){
-	stream.close();
+	if(reader != NULL){
+		reader->close();
+		delete reader;
+		reader = NULL;
+	}
 }
 
 long LASPointReader::numPoints(){
-	return reader.GetHeader().GetPointRecordsCount();
+	return reader->npoints;
 }
 
 bool LASPointReader::readNextPoint(){
-	return reader.ReadNextPoint();
+	return reader->read_point();
 }
 
 Point LASPointReader::getPoint(){
-	liblas::Point const &point = reader.GetPoint();
-	float x = point.GetX();
-	float y = point.GetY();
-	float z = point.GetZ();
-	char r = (unsigned char)(float(point.GetColor().GetRed()) / 256.0f);
-	char g = (unsigned char)(float(point.GetColor().GetGreen()) / 256.0f);
-	char b = (unsigned char)(float(point.GetColor().GetBlue()) / 256.0f);
-	Point p(x,y,z,r,g,b);
+	LASpoint &lp = reader->point;
+	Point p(lp.get_x(), lp.get_y(), lp.get_z());
+
+	p.intensity = lp.intensity;
+	
+	const U16 *rgb = lp.get_rgb();
+	p.r = rgb[0] / 256;
+	p.g = rgb[1] / 256;
+	p.b = rgb[2] / 256;
+
 
 	return p;
 }
 
 AABB LASPointReader::getAABB(){
 	return aabb;
+}
+
+Vector3<double> LASPointReader::getScale(){
+	Vector3<double> scale;
+	scale.x = getHeader().x_scale_factor;
+	scale.y = getHeader().y_scale_factor;
+	scale.z = getHeader().z_scale_factor;
+
+	return scale;
+}
+
+LASheader const &LASPointReader::getHeader(){
+	return reader->header;
 }

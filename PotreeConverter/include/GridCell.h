@@ -17,7 +17,7 @@ class SparseGrid;
 
 class GridCell{
 public:
-	vector<Point> points;
+	vector<Vector3<double>> points;
 	vector<GridCell*> neighbours;
 	SparseGrid *grid;
 
@@ -25,11 +25,13 @@ public:
 
 	GridCell(SparseGrid *grid, GridIndex &index);
 
-	float minGap(const Point &p);
+	float minGap(const Vector3<double> &p);
 
-	void add(Point p);
+	float squaredMinGap(const Vector3<double> &p);
 
-	float minGapAtArea(const Point &p);
+	void add(Vector3<double> p);
+
+	float minGapAtArea(const Vector3<double> &p);
 };
 
 #endif

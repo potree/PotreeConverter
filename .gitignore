@@ -5,4 +5,5 @@ PotreeConverter/bin
 PotreeConverter/obj
 Potree.opensdf
 bin/
-build/
+obj
+build/obj

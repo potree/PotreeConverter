@@ -3,16 +3,20 @@
 #ifndef POTREE_CONVERTER_H
 #define POTREE_CONVERTER_H
 
-#define POTREE_FORMAT_VERSION "1.1"
+#define POTREE_FORMAT_VERSION "1.2"
 
 #include "AABB.h"
-#include "PointReader.h"
+#include "lasreader.hpp"
+#include "CloudJS.hpp"
+#include "definitions.hpp"
 
 #include <string>
 #include <vector>
 #include <sstream>
 #include <map>
 #include <cstdint>
+
+class SparseGrid;
 
 
 using std::vector;
@@ -35,42 +39,24 @@ struct ProcessResult{
 class PotreeConverter{
 
 private:
-	map<string, PointReader*> reader;
-	map<string, PointReader*>::iterator currentReader;
 	AABB aabb;
-	vector<string> fData;
+	vector<string> sources;
 	string workDir;
-	float minGap;
-	stringstream cloudJs;
+	float spacing;
+	CloudJS cloudjs;
 	int maxDepth;
 	string format;
+	OutputFormat outputFormat;
+
 	float range;
 
-	char *buffer;
-
-	bool readNextPoint();
-	Point getPoint();
+	string getOutputExtension();
 
 public:
 
-	PotreeConverter(vector<string> fData, string workDir, float minGap, int maxDepth, string format, float range);
+	PotreeConverter(vector<string> fData, string workDir, float spacing, int maxDepth, string format, float range, OutputFormat outFormat);
 
-	void convert(uint64_t numPoints);
 	void convert();
-	void initReader();
-	void saveCloudJS();
-
-
-
-	/**
-	 * converts points in fData
-	 *
-	 * @returns a list of indices of the octree nodes that were created
-	 */
-	ProcessResult process(string source, string target, AABB aabb, int depth);
-
-
-
 
 };
 

@@ -1,16 +1,27 @@
 
+#include <iostream>
+#include <math.h>
+
 #include "SparseGrid.h"
 
+using std::min;
 
-SparseGrid::SparseGrid(AABB aabb, float minGap){
+long long SparseGrid::count = 0;
+
+SparseGrid::SparseGrid(AABB aabb, float spacing){
+	count++;
+
 	this->aabb = aabb;
-	this->width = aabb.size.x / minGap;
-	this->height = aabb.size.y / minGap;
-	this->depth = aabb.size.z / minGap;
-	this->minGap = minGap;
+	this->width = aabb.size.x / spacing;
+	this->height = aabb.size.y / spacing;
+	this->depth = aabb.size.z / spacing;
+	this->spacing = spacing;
+	numAccepted = 0;
 }
 
 SparseGrid::~SparseGrid(){
+	count--;
+
 	SparseGrid::iterator it;
 	for(it = begin(); it != end(); it++){
 		delete it->second;
@@ -38,37 +49,15 @@ vector<GridCell*> SparseGrid::targetArea(int x, int y, int z){
 	return cells;
 }
 
-float SparseGrid::minGapAtTargetArea(const Point &p, int i, int j, int k){
-	//cout << "SparseGrid::minGapAtTargetArea(" << p << ", " << i << ", " << j << ", " << k << ", " << level << ")" << endl;
-	//vector<GridCell> targetArea = this->targetArea(i,j,k);
-	float minGap = MAX_FLOAT;
-
-	for(int a = i - 1; a <= i + 1; a++){
-		for(int b = j - 1; b <= j + 1; b++){
-			for(int c = k - 1; c <= k + 1; c++){
-				GridIndex index(a,b,c);
-				if(find(index) != end()){
-					GridCell *cell = this->operator[](index);
-					float gap = cell->minGap(p);
-					minGap = min(minGap, gap);
-				}
-			}
-		}
-	}
-
-	//cout << "returning " << minGap << endl;
-	return minGap;
-}
-
-bool SparseGrid::isDistant(const Point &p, int i, int j, int k){
+bool SparseGrid::isDistant(const Vector3<double> &p, int i, int j, int k){
 	GridCell *cell = this->operator[](GridIndex(i,j,k));
-	if(cell->minGap(p) < minGap){
+	if(cell->minGap(p) < spacing){
 		return false;
 	}
 	for(int a = 0; a < cell->neighbours.size(); a++){
 		GridCell *neighbour = cell->neighbours[a];
 		float gap = neighbour->minGap(p);
-		if(gap < minGap){
+		if(gap < spacing){
 			return false;
 		}
 	}
@@ -76,8 +65,7 @@ bool SparseGrid::isDistant(const Point &p, int i, int j, int k){
 	return true;
 }
 
-bool SparseGrid::add(Point p, float &oMinGap){
-	//cout << "SparseGrid::add(" << p << ")" << endl;
+float SparseGrid::minGap(const Vector3<double> &p){
 	int nx = (int)(width*(p.x - aabb.min.x) / aabb.size.x);
 	int ny = (int)(height*(p.y - aabb.min.y) / aabb.size.y);
 	int nz = (int)(depth*(p.z - aabb.min.z) / aabb.size.z);
@@ -86,56 +74,59 @@ bool SparseGrid::add(Point p, float &oMinGap){
 	int j = min(ny, height-1);
 	int k = min(nz, depth-1);
 
-	//cout << "point: " << p << endl;
-	//cout << "cell: " << i << ", " << j << ", " << k << endl;
-	//float gap = minGapAtTargetArea(p, i, j, k, 0);
-	//if(gap > minGap){
 	GridIndex index(i,j,k);
 	if(find(index) == end()){
 		this->operator[](index) = new GridCell(this, index);
 	}
-	//this->operator[](index)->add(p);
 
-	float gap = minGapAtTargetArea(p, i, j, k);
-	oMinGap = gap;
-	if(gap >= minGap){
+	return minGap(p, i, j, k);
+}
+
+float SparseGrid::minGap(const Vector3<double> &p, int i, int j, int k){
+	GridCell *cell = this->operator[](GridIndex(i,j,k));
+	float minGap = MAX_FLOAT;
+
+	minGap = min(cell->minGap(p), minGap);
+	for(int a = 0; a < cell->neighbours.size(); a++){
+		GridCell *neighbour = cell->neighbours[a];
+		minGap = min(minGap, neighbour->minGap(p));
+	}
+
+	return minGap;
+}
+
+float SparseGrid::add(Vector3<double> &p){
+	int nx = (int)(width*(p.x - aabb.min.x) / aabb.size.x);
+	int ny = (int)(height*(p.y - aabb.min.y) / aabb.size.y);
+	int nz = (int)(depth*(p.z - aabb.min.z) / aabb.size.z);
+
+	int i = min(nx, width-1);
+	int j = min(ny, height-1);
+	int k = min(nz, depth-1);
+
+	GridIndex index(i,j,k);
+	if(find(index) == end()){
+		this->operator[](index) = new GridCell(this, index);
+	}
+
 	//if(isDistant(p, i, j, k)){
+	//	this->operator[](index)->add(p);
+	//	numAccepted++;
+	//	return true;
+	//}else{
+	//	return false;
+	//}
+
+	float gap = minGap(p, i, j, k);
+	if(gap > spacing){
 		this->operator[](index)->add(p);
-		return true;
-	}else{
-		return false;
+		numAccepted++;
 	}
+
+	return gap;
 }
 
-bool SparseGrid::add(Point &p){
-	//cout << "SparseGrid::add(" << p << ")" << endl;
-	int nx = (int)(width*(p.x - aabb.min.x) / aabb.size.x);
-	int ny = (int)(height*(p.y - aabb.min.y) / aabb.size.y);
-	int nz = (int)(depth*(p.z - aabb.min.z) / aabb.size.z);
-
-	int i = min(nx, width-1);
-	int j = min(ny, height-1);
-	int k = min(nz, depth-1);
-
-	//cout << "point: " << p << endl;
-	//cout << "cell: " << i << ", " << j << ", " << k << endl;
-	//float gap = minGapAtTargetArea(p, i, j, k, 0);
-	//if(gap > minGap){
-	GridIndex index(i,j,k);
-	if(find(index) == end()){
-		this->operator[](index) = new GridCell(this, index);
-	}
-	//this->operator[](index)->add(p);
-
-	if(isDistant(p, i, j, k)){
-		this->operator[](index)->add(p);
-		return true;
-	}else{
-		return false;
-	}
-}
-
-void SparseGrid::addWithoutCheck(Point &p){
+void SparseGrid::addWithoutCheck(Vector3<double> &p){
 	int nx = (int)(width*(p.x - aabb.min.x) / aabb.size.x);
 	int ny = (int)(height*(p.y - aabb.min.y) / aabb.size.y);
 	int nz = (int)(depth*(p.z - aabb.min.z) / aabb.size.z);
