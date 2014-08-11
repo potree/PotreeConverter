@@ -12,6 +12,8 @@ Builds a potree octree from las or laz files.
 At the moment, there are only Visual C++ project files for windows.
 Download and build the required dependencies and update the Visual Studio
 Project paths.
+You can find infos on how to build laslib dlls [here](https://groups.google.com/forum/#!msg/lastools/zDfLAcbSR7o/XAFdu1Nvie4J) 
+and [here](https://groups.google.com/forum/#!topic/lastools/Bo4CaAMZIGk).
 
 ## PotreeConverter Usage
 
