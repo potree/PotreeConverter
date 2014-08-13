@@ -13,15 +13,16 @@ class LASPointWriter{
 
 public:
 	string file;
-	LASheader &header;
+	LASheader *header;
 	LASwriter *writer;
 	LASquantizer quantizer;
 	LASpoint lp;
+	int numPoints;
 
-	LASPointWriter(string file, LASheader &header) 
-		: header(header)
-	{
+	LASPointWriter(string file, LASheader header) {
 		this->file = file;
+		this->header = new LASheader(header);
+		numPoints = 0;
 
 		LASwriteOpener lwrOpener;
 		lwrOpener.set_file_name(file.c_str());
@@ -47,7 +48,7 @@ public:
 		lp.set_y(point.y);
 		lp.set_z(point.z);
 		lp.intensity = point.intensity;
-		lp.classification = 0;
+		lp.classification = point.classification;
 
 		unsigned short rgb[4];
 		rgb[0] = point.r * 256;
@@ -56,11 +57,17 @@ public:
 		lp.set_rgb(rgb);
 
 		writer->write_point(&lp);
+
+		numPoints++;
 	}
 
 	void close(){
 		if(writer != NULL){
-			writer->close(false);
+			header->number_of_point_records = numPoints;
+			header->start_of_waveform_data_packet_record = 0;
+
+			writer->update_header(header, false);
+			writer->close(true);
 			delete writer;
 			writer = NULL;
 		}

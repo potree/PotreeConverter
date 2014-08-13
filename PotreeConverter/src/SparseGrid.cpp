@@ -95,7 +95,7 @@ float SparseGrid::minGap(const Vector3<double> &p, int i, int j, int k){
 	return minGap;
 }
 
-float SparseGrid::add(Vector3<double> &p){
+bool SparseGrid::add(Vector3<double> &p){
 	int nx = (int)(width*(p.x - aabb.min.x) / aabb.size.x);
 	int ny = (int)(height*(p.y - aabb.min.y) / aabb.size.y);
 	int nz = (int)(depth*(p.z - aabb.min.z) / aabb.size.z);
@@ -109,21 +109,21 @@ float SparseGrid::add(Vector3<double> &p){
 		this->operator[](index) = new GridCell(this, index);
 	}
 
-	//if(isDistant(p, i, j, k)){
-	//	this->operator[](index)->add(p);
-	//	numAccepted++;
-	//	return true;
-	//}else{
-	//	return false;
-	//}
-
-	float gap = minGap(p, i, j, k);
-	if(gap > spacing){
+	if(isDistant(p, i, j, k)){
 		this->operator[](index)->add(p);
 		numAccepted++;
+		return true;
+	}else{
+		return false;
 	}
 
-	return gap;
+	//float gap = minGap(p, i, j, k);
+	//if(gap > spacing){
+	//	this->operator[](index)->add(p);
+	//	numAccepted++;
+	//}
+	//
+	//return gap;
 }
 
 void SparseGrid::addWithoutCheck(Vector3<double> &p){

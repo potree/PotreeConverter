@@ -49,7 +49,7 @@ public:
 
 	float minGap(const Vector3<double> &p);
 
-	float add(Vector3<double> &p);
+	bool add(Vector3<double> &p);
 
 	void addWithoutCheck(Vector3<double> &p);
 

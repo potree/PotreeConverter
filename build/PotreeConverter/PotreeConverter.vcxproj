@@ -624,6 +624,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <ClInclude Include="..\..\PotreeConverter\include\PotreeConverter.h" />
     <ClInclude Include="..\..\PotreeConverter\include\PotreeException.h" />
     <ClInclude Include="..\..\PotreeConverter\include\PotreeWriter.h" />
+    <ClInclude Include="..\..\PotreeConverter\include\PotreeWriterLBL.hpp" />
     <ClInclude Include="..\..\PotreeConverter\include\SparseGrid.h" />
     <ClInclude Include="..\..\PotreeConverter\include\stuff.h" />
     <ClInclude Include="..\..\PotreeConverter\include\Vector3.h" />

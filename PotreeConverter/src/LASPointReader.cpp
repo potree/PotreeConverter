@@ -1,23 +1,67 @@
 
 
-#include "LASPointReader.h"
-
 #include <fstream>
 #include <iostream>
 #include <vector>
 
 #include "lasfilter.hpp"
+#include "boost/filesystem.hpp"
+#include <boost/algorithm/string.hpp>
 
+#include "LASPointReader.h"
+
+
+namespace fs = boost::filesystem;
 
 using std::ifstream;
 using std::cout;
 using std::endl;
 using std::vector;
+using boost::iequals;
 
-LASPointReader::LASPointReader(string file){
-	this->file = file;
+LASPointReader::LASPointReader(string path){
+	this->path = path;
+
+	
+	if(fs::is_directory(path)){
+		// if directory is specified, find all las and laz files inside directory
+
+		for(fs::directory_iterator it(path); it != fs::directory_iterator(); it++){
+			fs::path filepath = it->path();
+			if(fs::is_regular_file(filepath)){
+				if(iequals(fs::extension(filepath), ".las") || iequals(fs::extension(filepath), ".laz")){
+					files.push_back(filepath.string());
+				}
+			}
+		}
+	}else{
+		files.push_back(path);
+	}
+	
+
+	// read bounding box
+	for(int i = 0; i < files.size(); i++){
+		string file = files[i];
+
+		LASreadOpener readOpener;
+		readOpener.set_file_name(file.c_str());
+
+		LASreader *reader = readOpener.open();
+
+		Vector3<double> min = Vector3<double>(reader->get_min_x(), reader->get_min_y(), reader->get_min_z());
+		Vector3<double> max = Vector3<double>(reader->get_max_x(), reader->get_max_y(), reader->get_max_z());
+		aabb.update(min);
+		aabb.update(max);
+
+		reader->close();
+		delete reader;
+	}
+
+	// open first file
+	currentFile = files.begin();
 	LASreadOpener readOpener;
-	readOpener.set_file_name(file.c_str());
+	readOpener.set_file_name(currentFile->c_str());
+	reader = readOpener.open();
 	
 
 	//char first[] = "filter";
@@ -33,11 +77,7 @@ LASPointReader::LASPointReader(string file){
 	//
 	//readOpener->parse(4, args);
 
-	reader = readOpener.open();
-
-	Vector3<double> min = Vector3<double>(reader->get_min_x(), reader->get_min_y(), reader->get_min_z());
-	Vector3<double> max = Vector3<double>(reader->get_max_x(), reader->get_max_y(), reader->get_max_z());
-	aabb = AABB(min, max);
+	
 }
 
 LASPointReader::~LASPointReader(){
@@ -57,7 +97,24 @@ long LASPointReader::numPoints(){
 }
 
 bool LASPointReader::readNextPoint(){
-	return reader->read_point();
+	bool hasPoints = reader->read_point();
+
+	if(!hasPoints){
+		// try to open next file, if available
+		reader->close();
+		delete reader;
+		reader = NULL;
+		currentFile++;
+
+		if(currentFile != files.end()){
+			LASreadOpener readOpener;
+			readOpener.set_file_name(currentFile->c_str());
+			reader = readOpener.open();
+			hasPoints = reader->read_point();
+		}
+	}
+
+	return hasPoints;
 }
 
 Point LASPointReader::getPoint(){
@@ -65,6 +122,7 @@ Point LASPointReader::getPoint(){
 	Point p(lp.get_x(), lp.get_y(), lp.get_z());
 
 	p.intensity = lp.intensity;
+	p.classification = lp.classification;
 	
 	const U16 *rgb = lp.get_rgb();
 	p.r = rgb[0] / 256;

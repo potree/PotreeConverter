@@ -52,7 +52,7 @@ public:
 		//delete [] children;
 	}
 
-	void addWithoutCheck(Point &point);
+	void addToDescendantsWithoutCheck(Point &point);
 
 	void loadFromDisk();
 

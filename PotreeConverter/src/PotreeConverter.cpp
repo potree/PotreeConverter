@@ -11,6 +11,7 @@
 #include "LASPointReader.h"
 #include "PotreeException.h"
 #include "PotreeWriter.h"
+#include "PotreeWriterLBL.hpp"
 #include "LASPointReader.h"
 #include "LASPointWriter.hpp"
 
@@ -132,7 +133,8 @@ void PotreeConverter::convert(){
 
 	auto start = high_resolution_clock::now();
 
-	PotreeWriter writer(this->workDir, aabb, spacing, maxDepth);
+	//PotreeWriter writer(this->workDir, aabb, spacing, maxDepth);
+	PotreeWriterLBL writer(this->workDir, aabb, spacing, maxDepth);
 
 	long long pointsProcessed = 0;
 	for(int i = 0; i < sources.size(); i++){

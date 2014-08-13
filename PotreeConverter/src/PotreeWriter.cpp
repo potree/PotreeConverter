@@ -91,14 +91,14 @@ PotreeWriterNode *PotreeWriterNode::add(Point &point){
 		loadFromDisk();
 	}
 
-	//bool accepted = grid->add(Vector3<double>(point.x, point.y, point.z));
-	float minGap = grid->add(Vector3<double>(point.x, point.y, point.z));
-	bool accepted = minGap > spacing;
-	int targetLevel = ceil(log((1/minGap) * spacing) / log(2));
-
-	if(targetLevel > maxLevel){
-		return NULL;
-	}
+	bool accepted = grid->add(Vector3<double>(point.x, point.y, point.z));
+	//float minGap = grid->add(Vector3<double>(point.x, point.y, point.z));
+	//bool accepted = minGap > spacing;
+	//int targetLevel = ceil(log((1/minGap) * spacing) / log(2));
+	//
+	//if(targetLevel > maxLevel){
+	//	return NULL;
+	//}
 
 	if(accepted){
 		cache.push_back(point);
@@ -119,8 +119,8 @@ PotreeWriterNode *PotreeWriterNode::add(Point &point){
 				child = createChild(childIndex);
 			}
 
-			//child->add(point);
-			child->add(point, targetLevel);
+			return child->add(point);
+			//child->add(point, targetLevel);
 		}
 	}else{
 		return NULL;

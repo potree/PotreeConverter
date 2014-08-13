@@ -5,6 +5,7 @@
 
 #include <string>
 #include <iostream>
+#include <vector>
 
 #include "lasreader.hpp"
 #include "lasdefinitions.hpp"
@@ -17,6 +18,7 @@ using std::string;
 using std::ifstream;
 using std::cout;
 using std::endl;
+using std::vector;
 
 
 
@@ -24,12 +26,14 @@ using std::endl;
 class LASPointReader : public PointReader{
 private:
 	AABB aabb;
-	string file;
+	string path;
 	LASreader *reader;
+	vector<string> files;
+	vector<string>::iterator currentFile;
 
 public:
 
-	LASPointReader(string file);
+	LASPointReader(string path);
 
 	~LASPointReader();
 
