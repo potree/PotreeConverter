@@ -3,9 +3,12 @@
 #define LASPOINTWRITER_H
 
 #include <string>
+#include <iostream>
 
 #include "laswriter.hpp"
 #include "lasdefinitions.hpp"
+
+#include "AABB.h"
 
 using std::string;
 

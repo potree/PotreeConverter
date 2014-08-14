@@ -58,7 +58,7 @@ public:
 		numRejected = 0;
 		cloudjs.boundingBox = aabb;
 		cloudjs.octreeDir = "data";
-		cloudjs.outputFormat = OutputFormat::LAS;
+		cloudjs.outputFormat = OutputFormat::LAZ;
 		cloudjs.spacing = spacing;
 		cloudjs.version = "1.3";
 
@@ -77,8 +77,8 @@ public:
 		fs::remove_all(fs::path(path + "/data"));
 		fs::remove_all(fs::path(path + "/temp"));
 
-		string rPath = path + "/data/r.las";
-		string dPath = path + "/temp/d/d_0.las";
+		string rPath = path + "/data/r.laz";
+		string dPath = path + "/temp/d/d_0.laz";
 		fs::create_directories(path + "/data");
 		fs::create_directories(path + "/temp/d");
 
@@ -120,7 +120,7 @@ public:
 			header.z_offset = 0.0f;
 
 			stringstream ssDPath;
-			ssDPath << path << "/temp/d/d_" << numFilesInDirectory(path + "/temp/d") << ".las";
+			ssDPath << path << "/temp/d/d_" << numFilesInDirectory(path + "/temp/d") << ".laz";
 			
 			dWriter = new LASPointWriter(ssDPath.str(), header);
 		}
@@ -194,7 +194,7 @@ public:
 			string ancestor = target;
 			
 			for(int i = 0; i < numAncestors; i++){
-				LASPointReader *reader = new LASPointReader(ancestor + ".las");
+				LASPointReader *reader = new LASPointReader(ancestor + ".laz");
 				while(reader->readNextPoint()){
 					Point p = reader->getPoint();
 					grid.addWithoutCheck(p.position());
@@ -215,9 +215,9 @@ public:
 			vector<int> numPointsRejected;
 			for(int i = 0; i < 8; i++){
 				stringstream ssr, ssd, ssdPath;
-				ssr << target << i << ".las";
+				ssr << target << i << ".laz";
 				ssdPath << source << i;
-				ssd << source << i << "/" << fs::path(source).filename().string() << i << "_0.las";
+				ssd << source << i << "/" << fs::path(source).filename().string() << i << "_0.laz";
 
 				fs::create_directories(ssdPath.str());
 
@@ -265,7 +265,7 @@ public:
 						LASheader header(*dWriters[index]->header);
 						stringstream ssDPath, ssDFile;
 						ssDPath << source << index;
-						ssDFile << source << index << "/" << fs::path(source).filename() << index << "_" << numFilesInDirectory(ssDPath.str()) << ".las";
+						ssDFile << source << index << "/" << fs::path(source).filename() << index << "_" << numFilesInDirectory(ssDPath.str()) << ".laz";
 
 						dWriters[index]->close();
 						delete dWriters[index];

@@ -8,6 +8,7 @@
 #include <list>
 
 #include "laswriter.hpp"
+#include "boost/filesystem.hpp"
 
 #include "AABB.h"
 #include "LASPointWriter.hpp"
@@ -17,6 +18,8 @@
 
 using std::string;
 using std::stringstream;
+
+namespace fs = boost::filesystem;
 
 class PotreeWriter;
 
@@ -79,20 +82,34 @@ public:
 	PotreeWriterNode *root;
 	long long numAccepted;
 	CloudJS cloudjs;
+	OutputFormat outputFormat;
 
 	int pointsInMemory;
 	int pointsInMemoryLimit;
 
 
 
-	PotreeWriter(string path, AABB aabb, float spacing, int maxLevel){
+	PotreeWriter(string path, AABB aabb, float spacing, int maxLevel, OutputFormat outputFormat){
 		this->path = path;
 		this->aabb = aabb;
 		this->spacing = spacing;
 		this->maxLevel = maxLevel;
+		this->outputFormat = outputFormat;
 		numAccepted = 0;
 		pointsInMemory = 0;
 		pointsInMemoryLimit = 1*1000*1000;
+
+		fs::remove_all(path + "/data");
+		fs::remove_all(path + "/temp");
+		fs::create_directories(path + "/data");
+		fs::create_directories(path + "/temp");
+		
+
+		cloudjs.outputFormat = outputFormat;
+		cloudjs.boundingBox = aabb;
+		cloudjs.octreeDir = "data";
+		cloudjs.spacing = spacing;
+		cloudjs.version = "1.3";
 
 		root = new PotreeWriterNode(this, "r", path, aabb, spacing, 0, maxLevel);
 	}
@@ -103,6 +120,15 @@ public:
 		delete root;
 	}
 
+	string getExtension(){
+		if(outputFormat == OutputFormat::LAS){
+			return "las";
+		}else if(outputFormat == OutputFormat::LAZ){
+			return "laz";
+		}
+
+		return "";
+	}
 
 	void add(Point &p){
 		PotreeWriterNode *acceptedBy = root->add(p);
@@ -121,11 +147,7 @@ public:
 
 
 		// update cloud.js
-		cloudjs.boundingBox = aabb;
-		cloudjs.octreeDir = "data";
-		cloudjs.outputFormat = OutputFormat::LAS;
-		cloudjs.spacing = spacing;
-		cloudjs.version = "1.3";
+		
 		
 		long long numPointsInMemory = 0;
 		long long numPointsInHierarchy = 0;

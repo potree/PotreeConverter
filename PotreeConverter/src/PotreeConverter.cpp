@@ -129,12 +129,14 @@ void PotreeConverter::convert(){
 	aabb = calculateAABB(sources);
 	cout << "AABB: " << endl << aabb << endl;
 
+	aabb.makeCubic();
+
 	cloudjs.boundingBox = aabb;
 
 	auto start = high_resolution_clock::now();
 
-	//PotreeWriter writer(this->workDir, aabb, spacing, maxDepth);
-	PotreeWriterLBL writer(this->workDir, aabb, spacing, maxDepth);
+	PotreeWriter writer(this->workDir, aabb, spacing, maxDepth, outputFormat);
+	//PotreeWriterLBL writer(this->workDir, aabb, spacing, maxDepth, outputFormat);
 
 	long long pointsProcessed = 0;
 	for(int i = 0; i < sources.size(); i++){

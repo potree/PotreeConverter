@@ -29,7 +29,7 @@ PotreeWriterNode::PotreeWriterNode(PotreeWriter* potreeWriter, string name, stri
 }
 
 void PotreeWriterNode::loadFromDisk(){
-	LASPointReader reader(path + "/data/" + name + ".las");
+	LASPointReader reader(path + "/data/" + name + "." + potreeWriter->getExtension());
 	while(reader.readNextPoint()){
 		Point p = reader.getPoint();
 		grid->addWithoutCheck(Vector3<double>(p.x, p.y, p.z));
@@ -130,8 +130,8 @@ PotreeWriterNode *PotreeWriterNode::add(Point &point){
 void PotreeWriterNode::flush(){
 
 	if(cache.size() > 0){
-		string filepath = path + "/data/" + name + ".las";
-		string temppath = path +"/temp/prepend.las";
+		string filepath = path + "/data/" + name + "." + potreeWriter->getExtension();
+		string temppath = path +"/temp/prepend." + potreeWriter->getExtension();
 		if(fs::exists(filepath)){
 			fs::rename(fs::path(filepath), fs::path(temppath));
 		}
@@ -150,7 +150,7 @@ void PotreeWriterNode::flush(){
 		header.y_offset = 0.0f;
 		header.z_offset = 0.0f;
 
-		LASPointWriter writer(path + "/data/" + name + ".las", header);
+		LASPointWriter writer(path + "/data/" + name + "." + potreeWriter->getExtension(), header);
 		if(fs::exists(temppath)){
 			LASPointReader reader(temppath);
 			while(reader.readNextPoint()){
