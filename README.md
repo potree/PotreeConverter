@@ -2,6 +2,10 @@
 
 Builds a potree octree from las or laz files.
 
+## Downloads
+
+* [Windows 64bit binary](http://potree.org/downloads/PotreeConverter_2014.08.15.zip)
+
 ## Dependencies
 
 * [laslib](http://rapidlasso.com/lastools/)
@@ -17,7 +21,7 @@ and [here](https://groups.google.com/forum/#!topic/lastools/Bo4CaAMZIGk).
 
 ## PotreeConverter Usage
 
-Converts las, xyz or ply files to the potree file format.
+Converts las files to the potree file format.
 You can list multiple input files. If a directory is specified, all files
 inside the directory will be converted.
 
@@ -42,4 +46,4 @@ Examples:
     ./PotreeConverter.exe C:/data1.las C:/data1.las C:/data2.las -s 0.5 -l 4 -o C:/potree_converted
 
     # convert all files inside the data directory
-    ./PotreeConverter.exe C:/data C:/data2.las -s 0.5 -l 4 -o C:/potree_converted
+    ./PotreeConverter.exe C:/data -s 0.5 -l 4 -o C:/potree_converted
