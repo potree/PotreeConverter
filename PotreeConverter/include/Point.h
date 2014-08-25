@@ -12,9 +12,9 @@ class Point{
 public:
 	static long long count;
 
-	float x;
-	float y;
-	float z;
+	double x;
+	double y;
+	double z;
 	unsigned short intensity;
 	unsigned char classification;
 	unsigned char r;
@@ -37,7 +37,7 @@ public:
 		count++;
 	}
 
-	Point(float x, float y, float z, unsigned char r, unsigned char g, unsigned char b){
+	Point(double x, double y, double z, unsigned char r, unsigned char g, unsigned char b){
 		this->x = x;
 		this->y = y;
 		this->z = z;
@@ -51,7 +51,7 @@ public:
 		count++;
 	}
 
-	Point(float x, float y, float z){
+	Point(double x, double y, double z){
 		this->x = x;
 		this->y = y;
 		this->z = z;
@@ -75,11 +75,11 @@ public:
 		count--;
 	}
 
-	float distanceTo(const Point &point) {
+	double distanceTo(const Point &point) {
 		return Vector3<double>(point.x - x, point.y - y, point.z - z).length();
 	}
 
-	float squaredDistanceTo(const Point &point) {
+	double squaredDistanceTo(const Point &point) {
 		return Vector3<double>(point.x - x, point.y - y, point.z - z).squaredLength();
 	}
 
