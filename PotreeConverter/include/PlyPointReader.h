@@ -9,7 +9,7 @@
 #include <string>
 #include <fstream>
 #include <iostream>
-#include <regex>
+#include <boost/regex.hpp>
 
 #include "boost/assign.hpp"
 #include "boost/algorithm/string.hpp"
@@ -101,22 +101,22 @@ public:
 		pointByteSize = 0;
 		buffer = new char[100];
 
-		std::regex rEndHeader("^end_header.*");
-		std::regex rFormat("^format (ascii|binary_little_endian).*");
-		std::regex rElement("^element (\\w*) (\\d*)");
-		std::regex rProperty("^property (char|uchar|short|ushort|int|uint|float|double) (\\w*)");
+		boost::regex rEndHeader("^end_header.*");
+		boost::regex rFormat("^format (ascii|binary_little_endian).*");
+		boost::regex rElement("^element (\\w*) (\\d*)");
+		boost::regex rProperty("^property (char|uchar|short|ushort|int|uint|float|double) (\\w*)");
 		
 		string line;
 		while(std::getline(stream, line)){
 			boost::trim(line);
 			cout << line << endl;
 
-			std::smatch sm;
-			if(regex_match(line, rEndHeader)){
+			boost::cmatch sm;
+			if(boost::regex_match(line, rEndHeader)){
 				// stop line parsing when end_header is encountered
 				cout << "stop reading header" << endl;
 				break;
-			}else if(regex_match(line, sm, rFormat)){
+			}else if(boost::regex_match(line.c_str(), sm, rFormat)){
 				// parse format
 				string f = sm[1];
 				if(f == "ascii"){
@@ -124,7 +124,7 @@ public:
 				}else if(f == "binary_little_endian"){
 					format = PLY_FILE_FORMAT_BINARY_LITTLE_ENDIAN;
 				}
-			}else if(regex_match(line, sm, rElement)){
+			}else if(boost::regex_match(line.c_str(), sm, rElement)){
 				// parse vertex element declaration
 				string name = sm[1];
 				long count = atol(string(sm[2]).c_str());
@@ -139,7 +139,7 @@ public:
 					int len = stream.tellg();
 					getline(stream, line);
 					boost::trim(line);
-					if(regex_match(line, sm, rProperty)){
+					if(boost::regex_match(line.c_str(), sm, rProperty)){
 						string name = sm[2];
 						PlyPropertyType type = plyPropertyTypes[sm[1]];
 						PlyProperty property(name, type);
