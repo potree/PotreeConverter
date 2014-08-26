@@ -50,8 +50,6 @@ private:
 
 	float range;
 
-	string getOutputExtension();
-
 public:
 
 	PotreeConverter(vector<string> fData, string workDir, float spacing, int maxDepth, string format, float range, OutputFormat outFormat);

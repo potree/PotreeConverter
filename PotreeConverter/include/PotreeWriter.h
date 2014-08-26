@@ -15,6 +15,8 @@
 #include "SparseGrid.h"
 #include "stuff.h"
 #include "CloudJS.hpp"
+#include "PointReader.h"
+#include "PointWriter.hpp"
 
 using std::string;
 using std::stringstream;
@@ -41,7 +43,6 @@ public:
 	PotreeWriter *potreeWriter;
 	vector<Point> cache;
 
-
 	PotreeWriterNode(PotreeWriter* potreeWriter, string name, string path, AABB aabb, float spacing, int level, int maxLevel);
 
 	~PotreeWriterNode(){
@@ -66,6 +67,11 @@ public:
 	PotreeWriterNode *createChild(int childIndex);
 
 	void flush();
+
+private:
+
+	PointReader *createReader(string path);
+	PointWriter *createWriter(string path);
 
 };
 
@@ -122,9 +128,9 @@ public:
 
 	string getExtension(){
 		if(outputFormat == OutputFormat::LAS){
-			return "las";
+			return ".las";
 		}else if(outputFormat == OutputFormat::LAZ){
-			return "laz";
+			return ".laz";
 		}
 
 		return "";

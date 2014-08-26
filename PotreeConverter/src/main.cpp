@@ -50,6 +50,30 @@ void printUsage(po::options_description &desc){
 	cout << desc << endl;
 }
 
+//#include "BINPointReader.hpp"
+//#include "BINPointWriter.hpp"
+//
+//int main(int argc, char **argv){
+//	string path = "C:/dev/pointclouds/converted/skatepark/data/r";
+//	string pathOut = "C:/temp/skatepark";
+//	BINPointReader *reader = new BINPointReader(path);
+//	BINPointWriter *writer = new BINPointWriter(pathOut);
+//
+//	int i = 0;
+//	while(reader->readNextPoint()){
+//		Point p = reader->getPoint();
+//		
+//		if(i < 10){
+//			cout << p.position() << endl;
+//		}
+//
+//		writer->write(p);
+//		i++;
+//	}
+//	writer->close();
+//	reader->close();
+//}
+
 int main(int argc, char **argv){
 	vector<string> source;
 	string outdir;
@@ -101,7 +125,7 @@ int main(int argc, char **argv){
 		if(!vm.count("levels")) levels = 3;
 		if(!vm.count("input-format")) format = "xyzrgb";
 		if(!vm.count("range")) range = 255;
-		if(!vm.count("output-format")) outFormatString = "LAS";
+		if(!vm.count("output-format")) outFormatString = "BINARY";
 		if(outFormatString == "BINARY"){
 			outFormat = OutputFormat::BINARY;
 		}else if(outFormatString == "LAS"){

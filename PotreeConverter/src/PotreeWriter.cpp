@@ -6,6 +6,9 @@
 
 #include "PotreeWriter.h"
 #include "LASPointReader.h"
+#include "BINPointReader.hpp"
+#include "LASPointWriter.hpp"
+#include "BINPointWriter.hpp"
 
 namespace fs = boost::filesystem;
 
@@ -28,27 +31,55 @@ PotreeWriterNode::PotreeWriterNode(PotreeWriter* potreeWriter, string name, stri
 	}
 }
 
+PointReader *PotreeWriterNode::createReader(string path){
+	PointReader *reader = NULL;
+	OutputFormat outputFormat = this->potreeWriter->outputFormat;
+	if(outputFormat == OutputFormat::LAS || outputFormat == OutputFormat::LAZ){
+		reader = new LASPointReader(path);
+	}else if(outputFormat == OutputFormat::BINARY){
+		reader = new BINPointReader(path);
+	}
+
+	return reader;
+}
+
+PointWriter *PotreeWriterNode::createWriter(string path){
+	PointWriter *writer = NULL;
+	OutputFormat outputFormat = this->potreeWriter->outputFormat;
+	if(outputFormat == OutputFormat::LAS || outputFormat == OutputFormat::LAZ){
+		LASheader header;
+		header.clean();
+		header.number_of_point_records = numAccepted;
+		header.point_data_format = 2;
+		header.point_data_record_length = 26;
+		//header.set_bounding_box(acceptedAABB.min.x, acceptedAABB.min.y, acceptedAABB.min.z, acceptedAABB.max.x, acceptedAABB.max.y, acceptedAABB.max.z);
+		header.set_bounding_box(aabb.min.x, aabb.min.y, aabb.min.z, aabb.max.x, aabb.max.y, aabb.max.z);
+		header.x_scale_factor = 0.01;
+		header.y_scale_factor = 0.01;
+		header.z_scale_factor = 0.01;
+		header.x_offset = 0.0f;
+		header.y_offset = 0.0f;
+		header.z_offset = 0.0f;
+
+		writer = new LASPointWriter(path, header);
+	}else if(outputFormat == OutputFormat::BINARY){
+		writer = new BINPointWriter(path);
+	}
+
+	return writer;
+
+	
+}
+
 void PotreeWriterNode::loadFromDisk(){
-	LASPointReader reader(path + "/data/" + name + "." + potreeWriter->getExtension());
-	while(reader.readNextPoint()){
-		Point p = reader.getPoint();
+	PointReader *reader = createReader(path + "/data/" + name + potreeWriter->getExtension());
+	while(reader->readNextPoint()){
+		Point p = reader->getPoint();
 		grid->addWithoutCheck(Vector3<double>(p.x, p.y, p.z));
 	}
 	grid->numAccepted = numAccepted;
-	reader.close();
-	//for(int i = name.length(); i >= 1; i--){
-	//	string ancestorName = name.substr(0, i);
-	//
-	//	LASPointReader reader(path + "/data/" + ancestorName + ".las");
-	//	while(reader.readNextPoint()){
-	//		Point p = reader.getPoint();
-	//		if(aabb.isInside(p)){
-	//			grid->addWithoutCheck(Vector3<double>(p.x, p.y, p.z));
-	//		}
-	//	}
-	//	grid->numAccepted = numAccepted;
-	//	reader.close();
-	//}
+	reader->close();
+	delete reader;
 }
 
 PotreeWriterNode *PotreeWriterNode::add(Point &point, int minLevel){
@@ -130,40 +161,30 @@ PotreeWriterNode *PotreeWriterNode::add(Point &point){
 void PotreeWriterNode::flush(){
 
 	if(cache.size() > 0){
-		string filepath = path + "/data/" + name + "." + potreeWriter->getExtension();
-		string temppath = path +"/temp/prepend." + potreeWriter->getExtension();
+		 // move data file aside to temporary directory for reading
+		string filepath = path + "/data/" + name + potreeWriter->getExtension();
+		string temppath = path +"/temp/prepend" + potreeWriter->getExtension();
 		if(fs::exists(filepath)){
 			fs::rename(fs::path(filepath), fs::path(temppath));
 		}
+		
 
-		LASheader header;
-		header.clean();
-		header.number_of_point_records = numAccepted;
-		header.point_data_format = 2;
-		header.point_data_record_length = 26;
-		//header.set_bounding_box(acceptedAABB.min.x, acceptedAABB.min.y, acceptedAABB.min.z, acceptedAABB.max.x, acceptedAABB.max.y, acceptedAABB.max.z);
-		header.set_bounding_box(aabb.min.x, aabb.min.y, aabb.min.z, aabb.max.x, aabb.max.y, aabb.max.z);
-		header.x_scale_factor = 0.01;
-		header.y_scale_factor = 0.01;
-		header.z_scale_factor = 0.01;
-		header.x_offset = 0.0f;
-		header.y_offset = 0.0f;
-		header.z_offset = 0.0f;
-
-		LASPointWriter writer(path + "/data/" + name + "." + potreeWriter->getExtension(), header);
+		PointWriter *writer = createWriter(path + "/data/" + name + potreeWriter->getExtension());
 		if(fs::exists(temppath)){
-			LASPointReader reader(temppath);
-			while(reader.readNextPoint()){
-				writer.write(reader.getPoint());
+			PointReader *reader = createReader(temppath);
+			while(reader->readNextPoint()){
+				writer->write(reader->getPoint());
 			}
-			reader.close();
+			reader->close();
+			delete reader;
 			fs::remove(temppath);
 		}
 
 		for(int i = 0; i < cache.size(); i++){
-			writer.write(cache[i]);
+			writer->write(cache[i]);
 		}
-		writer.close();
+		writer->close();
+		delete writer;
 
 		cache = vector<Point>();
 	}else if(cache.size() == 0 && grid->numAccepted > 0 && addCalledSinceLastFlush == false){

@@ -611,16 +611,23 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     </CustomBuild>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\PotreeConverter\src\BINPointReader.cpp" />
+    <ClCompile Include="..\..\PotreeConverter\src\PointAttributes.cpp" />
     <ClCompile Include="..\..\PotreeConverter\src\Vector3.cpp" />
     <ClInclude Include="..\..\PotreeConverter\include\AABB.h" />
+    <ClInclude Include="..\..\PotreeConverter\include\BINPointReader.hpp" />
+    <ClInclude Include="..\..\PotreeConverter\include\BINPointWriter.hpp" />
     <ClInclude Include="..\..\PotreeConverter\include\CloudJS.hpp" />
     <ClInclude Include="..\..\PotreeConverter\include\definitions.hpp" />
     <ClInclude Include="..\..\PotreeConverter\include\GridCell.h" />
     <ClInclude Include="..\..\PotreeConverter\include\GridIndex.h" />
     <ClInclude Include="..\..\PotreeConverter\include\LASPointReader.h" />
     <ClInclude Include="..\..\PotreeConverter\include\LASPointWriter.hpp" />
+    <ClInclude Include="..\..\PotreeConverter\include\PlyPointReader.h" />
     <ClInclude Include="..\..\PotreeConverter\include\Point.h" />
+    <ClInclude Include="..\..\PotreeConverter\include\PointAttributes.hpp" />
     <ClInclude Include="..\..\PotreeConverter\include\PointReader.h" />
+    <ClInclude Include="..\..\PotreeConverter\include\PointWriter.hpp" />
     <ClInclude Include="..\..\PotreeConverter\include\PotreeConverter.h" />
     <ClInclude Include="..\..\PotreeConverter\include\PotreeException.h" />
     <ClInclude Include="..\..\PotreeConverter\include\PotreeWriter.h" />

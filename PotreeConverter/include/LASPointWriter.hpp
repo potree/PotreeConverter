@@ -9,10 +9,11 @@
 #include "lasdefinitions.hpp"
 
 #include "AABB.h"
+#include "PointWriter.hpp"
 
 using std::string;
 
-class LASPointWriter{
+class LASPointWriter : public PointWriter{
 
 public:
 	string file;

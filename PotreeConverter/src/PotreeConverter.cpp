@@ -14,6 +14,7 @@
 #include "PotreeWriterLBL.hpp"
 #include "LASPointReader.h"
 #include "LASPointWriter.hpp"
+#include "PlyPointReader.h"
 
 #include <chrono>
 #include <sstream>
@@ -50,6 +51,17 @@ struct Task{
 	}
 };
 
+PointReader *createPointReader(string path){
+	PointReader *reader = NULL;
+	if(boost::iends_with(path, ".las") || boost::iends_with(path, ".laz")){
+		reader = new LASPointReader(path);
+	}else if(boost::iends_with(path, ".ply")){
+		reader = new PlyPointReader(path);
+	}
+
+	return reader;
+}
+
 PotreeConverter::PotreeConverter(vector<string> sources, string workDir, float spacing, int maxDepth, string format, float range, OutputFormat outFormat){
 
 	// if sources contains directories, use files inside the directory instead
@@ -63,7 +75,7 @@ PotreeConverter::PotreeConverter(vector<string> sources, string workDir, float s
 				path pDirectoryEntry = it->path();
 				if(boost::filesystem::is_regular_file(pDirectoryEntry)){
 					string filepath = pDirectoryEntry.string();
-					if(boost::iends_with(filepath, ".las") || boost::iends_with(filepath, ".laz")){
+					if(boost::iends_with(filepath, ".las") || boost::iends_with(filepath, ".laz") || boost::iends_with(filepath, ".ply")){
 						sourceFiles.push_back(filepath);
 					}
 				}
@@ -93,33 +105,21 @@ PotreeConverter::PotreeConverter(vector<string> sources, string workDir, float s
 }
 
 
-string PotreeConverter::getOutputExtension(){
-	string outputExtension = "";
-	if(outputFormat == OutputFormat::LAS){
-		outputExtension = ".las";
-	}else if(outputFormat == OutputFormat::LAZ){
-		outputExtension = ".laz";
-	}
-
-	return outputExtension;
-}
-
 AABB calculateAABB(vector<string> sources){
 	AABB aabb;
 
 	for(int i = 0; i < sources.size(); i++){
 		string source = sources[i];
 
-		LASPointReader reader(source);
-		 const LASheader &header = reader.getHeader();
+		PointReader *reader = createPointReader(source);
+		AABB lAABB = reader->getAABB();
+		 
 
-		Vector3<double> lmin = Vector3<double>(header.min_x, header.min_y, header.min_z);
-		Vector3<double> lmax = Vector3<double>(header.max_x, header.max_y, header.max_z);
+		aabb.update(lAABB.min);
+		aabb.update(lAABB.max);
 
-		aabb.update(lmin);
-		aabb.update(lmax);
-
-		reader.close();
+		reader->close();
+		delete reader;
 	}
 
 	return aabb;
@@ -143,14 +143,14 @@ void PotreeConverter::convert(){
 		string source = sources[i];
 		cout << "reading " << source << endl;
 
-		LASPointReader reader(source);
-		while(reader.readNextPoint()){
+		PointReader *reader = createPointReader(source);
+		while(reader->readNextPoint()){
 			pointsProcessed++;
 			//if((pointsProcessed%50) != 0){
 			//	continue;
 			//}
 
-			Point p = reader.getPoint();
+			Point p = reader->getPoint();
 			writer.add(p);
 
 			//if((pointsProcessed % (1000*1000)) == 0){
@@ -170,7 +170,8 @@ void PotreeConverter::convert(){
 			}
 		}
 		writer.flush();
-		reader.close();
+		reader->close();
+		delete reader;
 	}
 
 	cout << writer.numAccepted << " points written" << endl;
