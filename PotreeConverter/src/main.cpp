@@ -50,6 +50,31 @@ void printUsage(po::options_description &desc){
 	cout << desc << endl;
 }
 
+#include "LASPointReader.h"
+#include "LASPointWriter.hpp"
+#include "BINPointWriter.hpp"
+
+//int main(int argc, char **argv){
+//	string path = "C:/dev/workspaces/potree/develop/resources/pointclouds/lion_takanawa/laz/r.laz";
+//	string pathOut = "C:/temp/test.las";
+//	LASPointReader *reader = new LASPointReader(path);
+//	LASPointWriter *writer = new LASPointWriter(pathOut, reader->getAABB());
+//
+//	int i = 0;
+//	while(reader->readNextPoint()){
+//		Point p = reader->getPoint();
+//		
+//		if(i < 10){
+//			cout << p.position() << endl;
+//		}
+//
+//		writer->write(p);
+//		i++;
+//	}
+//	writer->close(); 
+//	reader->close();
+//}
+
 //#include "BINPointReader.hpp"
 //#include "BINPointWriter.hpp"
 //

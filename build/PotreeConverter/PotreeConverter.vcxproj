@@ -233,7 +233,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>$(SolutionDir)/../PotreeConverter/include;C:/dev/lib/boost_1_55_0;$(LASLIB_INCLUDE_DIR);$(LASZIP_INCLUDE_DIR);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)/../PotreeConverter/include;C:/dev/lib/boost_1_55_0;C:\dev\lib\liblas\libLAS-1.7.0\include;$(LASZIP_INCLUDE_DIR);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <CompileAs>CompileAsCpp</CompileAs>
       <ExceptionHandling>Sync</ExceptionHandling>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
@@ -264,7 +264,7 @@
     </Midl>
     <Link>
       <AdditionalOptions> /machine:x64 %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib;C:\Boost\lib\libboost_system-vc110-mt-1_55.lib;C:\Boost\lib\libboost_thread-vc110-mt-1_55.lib;C:\Boost\lib\libboost_filesystem-vc110-mt-1_55.lib;C:\Boost\lib\libboost_program_options-vc110-mt-1_55.lib;$(LASLIB_LIBRARY_DIR)\laslib.lib</AdditionalDependencies>
+      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib;C:\Boost\lib\libboost_system-vc110-mt-1_55.lib;C:\Boost\lib\libboost_thread-vc110-mt-1_55.lib;C:\Boost\lib\libboost_filesystem-vc110-mt-1_55.lib;C:\Boost\lib\libboost_program_options-vc110-mt-1_55.lib;$(LASLIB_LIBRARY_DIR)\laslib.lib;C:\dev\lib\liblas\libLAS-1.7.0\build\bin\Release\liblas.lib</AdditionalDependencies>
       <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ImportLibrary>C:/dev/workspaces/PotreeConverter/PotreeConverter_develop/build/PotreeConverter/Release/PotreeConverter.lib</ImportLibrary>
@@ -503,115 +503,8 @@
     </ProjectReference>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <CustomBuild Include="..\..\PotreeConverter\CMakeLists.txt">
-      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Building Custom Rule C:/dev/workspaces/PotreeConverter/PotreeConverter_develop/PotreeConverter/CMakeLists.txt</Message>
-      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Building Custom Rule C:/dev/workspaces/PotreeConverter/PotreeConverter_develop/PotreeConverter/CMakeLists.txt</Message>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">setlocal
-"C:\Program Files (x86)\CMake 2.8\bin\cmake.exe" -HC:/dev/workspaces/PotreeConverter/PotreeConverter_develop -BC:/dev/workspaces/PotreeConverter/PotreeConverter_develop/build --check-stamp-file C:\dev\workspaces\PotreeConverter\PotreeConverter_develop\build\PotreeConverter\CMakeFiles\generate.stamp
-if %errorlevel% neq 0 goto :cmEnd
-:cmEnd
-endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
-:cmErrorLevel
-exit /b %1
-:cmDone
-if %errorlevel% neq 0 goto :VCEnd</Command>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">setlocal
-"C:\Program Files (x86)\CMake 2.8\bin\cmake.exe" -HC:/dev/workspaces/PotreeConverter/PotreeConverter_develop -BC:/dev/workspaces/PotreeConverter/PotreeConverter_develop/build --check-stamp-file C:\dev\workspaces\PotreeConverter\PotreeConverter_develop\build\PotreeConverter\CMakeFiles\generate.stamp
-if %errorlevel% neq 0 goto :cmEnd
-:cmEnd
-endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
-:cmErrorLevel
-exit /b %1
-:cmDone
-if %errorlevel% neq 0 goto :VCEnd</Command>
-      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:/dev/workspaces/PotreeConverter/PotreeConverter_develop/PotreeConverter/CMakeLists.txt;C:\dev\workspaces\PotreeConverter\PotreeConverter_develop\PotreeConverter\CMakeLists.txt;C:\dev\workspaces\PotreeConverter\PotreeConverter_develop\PotreeConverter\CMakeLists.txt;%(AdditionalInputs)</AdditionalInputs>
-      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">C:/dev/workspaces/PotreeConverter/PotreeConverter_develop/PotreeConverter/CMakeLists.txt;C:\dev\workspaces\PotreeConverter\PotreeConverter_develop\PotreeConverter\CMakeLists.txt;C:\dev\workspaces\PotreeConverter\PotreeConverter_develop\PotreeConverter\CMakeLists.txt;%(AdditionalInputs)</AdditionalInputs>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\dev\workspaces\PotreeConverter\PotreeConverter_develop\build\PotreeConverter\CMakeFiles\generate.stamp</Outputs>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">C:\dev\workspaces\PotreeConverter\PotreeConverter_develop\build\PotreeConverter\CMakeFiles\generate.stamp</Outputs>
-      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
-      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">false</LinkObjects>
-      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Building Custom Rule C:/dev/workspaces/PotreeConverter/PotreeConverter_develop/PotreeConverter/CMakeLists.txt</Message>
-      <Message Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Building Custom Rule C:/dev/workspaces/PotreeConverter/PotreeConverter_develop/PotreeConverter/CMakeLists.txt</Message>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">setlocal
-"C:\Program Files (x86)\CMake 2.8\bin\cmake.exe" -HC:/dev/workspaces/PotreeConverter/PotreeConverter_develop -BC:/dev/workspaces/PotreeConverter/PotreeConverter_develop/build --check-stamp-file C:\dev\workspaces\PotreeConverter\PotreeConverter_develop\build\PotreeConverter\CMakeFiles\generate.stamp
-if %errorlevel% neq 0 goto :cmEnd
-:cmEnd
-endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
-:cmErrorLevel
-exit /b %1
-:cmDone
-if %errorlevel% neq 0 goto :VCEnd</Command>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">setlocal
-"C:\Program Files (x86)\CMake 2.8\bin\cmake.exe" -HC:/dev/workspaces/PotreeConverter/PotreeConverter_develop -BC:/dev/workspaces/PotreeConverter/PotreeConverter_develop/build --check-stamp-file C:\dev\workspaces\PotreeConverter\PotreeConverter_develop\build\PotreeConverter\CMakeFiles\generate.stamp
-if %errorlevel% neq 0 goto :cmEnd
-:cmEnd
-endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
-:cmErrorLevel
-exit /b %1
-:cmDone
-if %errorlevel% neq 0 goto :VCEnd</Command>
-      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">C:/dev/workspaces/PotreeConverter/PotreeConverter_develop/PotreeConverter/CMakeLists.txt;C:\dev\workspaces\PotreeConverter\PotreeConverter_develop\PotreeConverter\CMakeLists.txt;C:\dev\workspaces\PotreeConverter\PotreeConverter_develop\PotreeConverter\CMakeLists.txt;%(AdditionalInputs)</AdditionalInputs>
-      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">C:/dev/workspaces/PotreeConverter/PotreeConverter_develop/PotreeConverter/CMakeLists.txt;C:\dev\workspaces\PotreeConverter\PotreeConverter_develop\PotreeConverter\CMakeLists.txt;C:\dev\workspaces\PotreeConverter\PotreeConverter_develop\PotreeConverter\CMakeLists.txt;%(AdditionalInputs)</AdditionalInputs>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">C:\dev\workspaces\PotreeConverter\PotreeConverter_develop\build\PotreeConverter\CMakeFiles\generate.stamp</Outputs>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">C:\dev\workspaces\PotreeConverter\PotreeConverter_develop\build\PotreeConverter\CMakeFiles\generate.stamp</Outputs>
-      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</LinkObjects>
-      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</LinkObjects>
-      <Message Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">Building Custom Rule C:/dev/workspaces/PotreeConverter/PotreeConverter_develop/PotreeConverter/CMakeLists.txt</Message>
-      <Message Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|Win32'">Building Custom Rule C:/dev/workspaces/PotreeConverter/PotreeConverter_develop/PotreeConverter/CMakeLists.txt</Message>
-      <Command Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">setlocal
-"C:\Program Files (x86)\CMake 2.8\bin\cmake.exe" -HC:/dev/workspaces/PotreeConverter/PotreeConverter_develop -BC:/dev/workspaces/PotreeConverter/PotreeConverter_develop/build --check-stamp-file C:\dev\workspaces\PotreeConverter\PotreeConverter_develop\build\PotreeConverter\CMakeFiles\generate.stamp
-if %errorlevel% neq 0 goto :cmEnd
-:cmEnd
-endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
-:cmErrorLevel
-exit /b %1
-:cmDone
-if %errorlevel% neq 0 goto :VCEnd</Command>
-      <Command Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|Win32'">setlocal
-"C:\Program Files (x86)\CMake 2.8\bin\cmake.exe" -HC:/dev/workspaces/PotreeConverter/PotreeConverter_develop -BC:/dev/workspaces/PotreeConverter/PotreeConverter_develop/build --check-stamp-file C:\dev\workspaces\PotreeConverter\PotreeConverter_develop\build\PotreeConverter\CMakeFiles\generate.stamp
-if %errorlevel% neq 0 goto :cmEnd
-:cmEnd
-endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
-:cmErrorLevel
-exit /b %1
-:cmDone
-if %errorlevel% neq 0 goto :VCEnd</Command>
-      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">C:/dev/workspaces/PotreeConverter/PotreeConverter_develop/PotreeConverter/CMakeLists.txt;C:\dev\workspaces\PotreeConverter\PotreeConverter_develop\PotreeConverter\CMakeLists.txt;C:\dev\workspaces\PotreeConverter\PotreeConverter_develop\PotreeConverter\CMakeLists.txt;%(AdditionalInputs)</AdditionalInputs>
-      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|Win32'">C:/dev/workspaces/PotreeConverter/PotreeConverter_develop/PotreeConverter/CMakeLists.txt;C:\dev\workspaces\PotreeConverter\PotreeConverter_develop\PotreeConverter\CMakeLists.txt;C:\dev\workspaces\PotreeConverter\PotreeConverter_develop\PotreeConverter\CMakeLists.txt;%(AdditionalInputs)</AdditionalInputs>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">C:\dev\workspaces\PotreeConverter\PotreeConverter_develop\build\PotreeConverter\CMakeFiles\generate.stamp</Outputs>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|Win32'">C:\dev\workspaces\PotreeConverter\PotreeConverter_develop\build\PotreeConverter\CMakeFiles\generate.stamp</Outputs>
-      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">false</LinkObjects>
-      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|Win32'">false</LinkObjects>
-      <Message Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">Building Custom Rule C:/dev/workspaces/PotreeConverter/PotreeConverter_develop/PotreeConverter/CMakeLists.txt</Message>
-      <Message Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|Win32'">Building Custom Rule C:/dev/workspaces/PotreeConverter/PotreeConverter_develop/PotreeConverter/CMakeLists.txt</Message>
-      <Command Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">setlocal
-"C:\Program Files (x86)\CMake 2.8\bin\cmake.exe" -HC:/dev/workspaces/PotreeConverter/PotreeConverter_develop -BC:/dev/workspaces/PotreeConverter/PotreeConverter_develop/build --check-stamp-file C:\dev\workspaces\PotreeConverter\PotreeConverter_develop\build\PotreeConverter\CMakeFiles\generate.stamp
-if %errorlevel% neq 0 goto :cmEnd
-:cmEnd
-endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
-:cmErrorLevel
-exit /b %1
-:cmDone
-if %errorlevel% neq 0 goto :VCEnd</Command>
-      <Command Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|Win32'">setlocal
-"C:\Program Files (x86)\CMake 2.8\bin\cmake.exe" -HC:/dev/workspaces/PotreeConverter/PotreeConverter_develop -BC:/dev/workspaces/PotreeConverter/PotreeConverter_develop/build --check-stamp-file C:\dev\workspaces\PotreeConverter\PotreeConverter_develop\build\PotreeConverter\CMakeFiles\generate.stamp
-if %errorlevel% neq 0 goto :cmEnd
-:cmEnd
-endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
-:cmErrorLevel
-exit /b %1
-:cmDone
-if %errorlevel% neq 0 goto :VCEnd</Command>
-      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">C:/dev/workspaces/PotreeConverter/PotreeConverter_develop/PotreeConverter/CMakeLists.txt;C:\dev\workspaces\PotreeConverter\PotreeConverter_develop\PotreeConverter\CMakeLists.txt;C:\dev\workspaces\PotreeConverter\PotreeConverter_develop\PotreeConverter\CMakeLists.txt;%(AdditionalInputs)</AdditionalInputs>
-      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|Win32'">C:/dev/workspaces/PotreeConverter/PotreeConverter_develop/PotreeConverter/CMakeLists.txt;C:\dev\workspaces\PotreeConverter\PotreeConverter_develop\PotreeConverter\CMakeLists.txt;C:\dev\workspaces\PotreeConverter\PotreeConverter_develop\PotreeConverter\CMakeLists.txt;%(AdditionalInputs)</AdditionalInputs>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">C:\dev\workspaces\PotreeConverter\PotreeConverter_develop\build\PotreeConverter\CMakeFiles\generate.stamp</Outputs>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|Win32'">C:\dev\workspaces\PotreeConverter\PotreeConverter_develop\build\PotreeConverter\CMakeFiles\generate.stamp</Outputs>
-      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">false</LinkObjects>
-      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|Win32'">false</LinkObjects>
-    </CustomBuild>
-  </ItemGroup>
-  <ItemGroup>
     <ClCompile Include="..\..\PotreeConverter\src\BINPointReader.cpp" />
+    <ClCompile Include="..\..\PotreeConverter\src\LASPointWriter.cpp" />
     <ClCompile Include="..\..\PotreeConverter\src\PointAttributes.cpp" />
     <ClCompile Include="..\..\PotreeConverter\src\Vector3.cpp" />
     <ClInclude Include="..\..\PotreeConverter\include\AABB.h" />
@@ -631,7 +524,6 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <ClInclude Include="..\..\PotreeConverter\include\PotreeConverter.h" />
     <ClInclude Include="..\..\PotreeConverter\include\PotreeException.h" />
     <ClInclude Include="..\..\PotreeConverter\include\PotreeWriter.h" />
-    <ClInclude Include="..\..\PotreeConverter\include\PotreeWriterLBL.hpp" />
     <ClInclude Include="..\..\PotreeConverter\include\SparseGrid.h" />
     <ClInclude Include="..\..\PotreeConverter\include\stuff.h" />
     <ClInclude Include="..\..\PotreeConverter\include\Vector3.h" />

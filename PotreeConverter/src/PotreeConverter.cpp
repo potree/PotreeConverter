@@ -2,16 +2,12 @@
 
 #include <boost/filesystem.hpp>
 #include <boost/algorithm/string/predicate.hpp>
-#include "lasdefinitions.hpp"
-#include "lasreader.hpp"
-#include "laswriter.hpp"
 
 #include "PotreeConverter.h"
 #include "stuff.h"
 #include "LASPointReader.h"
 #include "PotreeException.h"
 #include "PotreeWriter.h"
-#include "PotreeWriterLBL.hpp"
 #include "LASPointReader.h"
 #include "LASPointWriter.hpp"
 #include "PlyPointReader.h"

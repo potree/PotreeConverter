@@ -7,8 +7,7 @@
 #include <iostream>
 #include <vector>
 
-#include "lasreader.hpp"
-#include "lasdefinitions.hpp"
+#include <liblas/liblas.hpp>
 
 #include "Point.h"
 #include "PointReader.h"
@@ -21,13 +20,37 @@ using std::endl;
 using std::vector;
 
 
+class LIBLASReader{
+public:
+
+	ifstream stream;
+	liblas::Reader reader;
+
+	LIBLASReader(string path)
+		: stream(path, std::ios::in | std::ios::binary)
+		, reader(liblas::ReaderFactory().CreateWithStream(stream))
+	{
+
+	}
+
+	~LIBLASReader(){
+		if(stream.is_open()){
+			stream.close();
+		}
+	}
+
+	void close(){
+		stream.close();
+	}
+
+};
 
 
 class LASPointReader : public PointReader{
 private:
 	AABB aabb;
 	string path;
-	LASreader *reader;
+	LIBLASReader *reader;
 	vector<string> files;
 	vector<string>::iterator currentFile;
 
@@ -48,8 +71,6 @@ public:
 	void close();
 
 	Vector3<double> getScale();
-
-	LASheader const &getHeader();
 };
 
 #endif

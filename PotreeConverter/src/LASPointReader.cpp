@@ -4,9 +4,9 @@
 #include <iostream>
 #include <vector>
 
-#include "lasfilter.hpp"
 #include "boost/filesystem.hpp"
 #include <boost/algorithm/string.hpp>
+#include <liblas/detail/reader/reader.hpp>
 
 #include "LASPointReader.h"
 
@@ -18,6 +18,7 @@ using std::cout;
 using std::endl;
 using std::vector;
 using boost::iequals;
+using std::ios;
 
 LASPointReader::LASPointReader(string path){
 	this->path = path;
@@ -43,13 +44,12 @@ LASPointReader::LASPointReader(string path){
 	for(int i = 0; i < files.size(); i++){
 		string file = files[i];
 
-		LASreadOpener readOpener;
-		readOpener.set_file_name(file.c_str());
+		reader = new LIBLASReader(file);
 
-		LASreader *reader = readOpener.open();
+		liblas::Header header = reader->reader.GetHeader();
 
-		Vector3<double> min = Vector3<double>(reader->get_min_x(), reader->get_min_y(), reader->get_min_z());
-		Vector3<double> max = Vector3<double>(reader->get_max_x(), reader->get_max_y(), reader->get_max_z());
+		Vector3<double> min = Vector3<double>(header.GetMinX(), header.GetMinY(), header.GetMinZ());
+		Vector3<double> max = Vector3<double>(header.GetMaxX(), header.GetMaxY(), header.GetMaxZ());
 		aabb.update(min);
 		aabb.update(max);
 
@@ -59,25 +59,7 @@ LASPointReader::LASPointReader(string path){
 
 	// open first file
 	currentFile = files.begin();
-	LASreadOpener readOpener;
-	readOpener.set_file_name(currentFile->c_str());
-	reader = readOpener.open();
-	
-
-	//char first[] = "filter";
-	//char second[] = "-keep_every_nth";
-	//char third[] = "100";
-	//char fourth[] = "\0";
-	//
-	//char* args[4];
-	//args[0] = first;
-	//args[1] = second;
-	//args[2] = third;
-	//args[3] = fourth;
-	//
-	//readOpener->parse(4, args);
-
-	
+	reader = new LIBLASReader(*currentFile);
 }
 
 LASPointReader::~LASPointReader(){
@@ -93,24 +75,23 @@ void LASPointReader::close(){
 }
 
 long LASPointReader::numPoints(){
-	return reader->npoints;
+	return reader->reader.GetHeader().GetPointRecordsCount();
 }
 
 bool LASPointReader::readNextPoint(){
-	bool hasPoints = reader->read_point();
+	bool hasPoints = reader->reader.ReadNextPoint();
 
 	if(!hasPoints){
 		// try to open next file, if available
 		reader->close();
 		delete reader;
 		reader = NULL;
+
 		currentFile++;
 
 		if(currentFile != files.end()){
-			LASreadOpener readOpener;
-			readOpener.set_file_name(currentFile->c_str());
-			reader = readOpener.open();
-			hasPoints = reader->read_point();
+			reader = new LIBLASReader(*currentFile);
+			hasPoints = reader->reader.ReadNextPoint();
 		}
 	}
 
@@ -118,16 +99,15 @@ bool LASPointReader::readNextPoint(){
 }
 
 Point LASPointReader::getPoint(){
-	LASpoint &lp = reader->point;
-	Point p(lp.get_x(), lp.get_y(), lp.get_z());
+	liblas::Point lp = reader->reader.GetPoint();
+	Point p(lp.GetX(), lp.GetY(), lp.GetZ());
 
-	p.intensity = lp.intensity;
-	p.classification = lp.classification;
+	p.intensity = lp.GetIntensity();
+	p.classification = lp.GetClassification().GetClass();
 	
-	const U16 *rgb = lp.get_rgb();
-	p.r = rgb[0] / 256;
-	p.g = rgb[1] / 256;
-	p.b = rgb[2] / 256;
+	p.r = lp.GetColor().GetRed() / 256;
+	p.g = lp.GetColor().GetGreen() / 256;
+	p.b = lp.GetColor().GetBlue() / 256;
 
 
 	return p;
@@ -138,14 +118,11 @@ AABB LASPointReader::getAABB(){
 }
 
 Vector3<double> LASPointReader::getScale(){
+
 	Vector3<double> scale;
-	scale.x = getHeader().x_scale_factor;
-	scale.y = getHeader().y_scale_factor;
-	scale.z = getHeader().z_scale_factor;
+	scale.x = reader->reader.GetHeader().GetScaleX();
+	scale.y = reader->reader.GetHeader().GetScaleY();
+	scale.z = reader->reader.GetHeader().GetScaleZ();
 
 	return scale;
-}
-
-LASheader const &LASPointReader::getHeader(){
-	return reader->header;
 }

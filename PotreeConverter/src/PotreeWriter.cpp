@@ -47,21 +47,7 @@ PointWriter *PotreeWriterNode::createWriter(string path){
 	PointWriter *writer = NULL;
 	OutputFormat outputFormat = this->potreeWriter->outputFormat;
 	if(outputFormat == OutputFormat::LAS || outputFormat == OutputFormat::LAZ){
-		LASheader header;
-		header.clean();
-		header.number_of_point_records = numAccepted;
-		header.point_data_format = 2;
-		header.point_data_record_length = 26;
-		//header.set_bounding_box(acceptedAABB.min.x, acceptedAABB.min.y, acceptedAABB.min.z, acceptedAABB.max.x, acceptedAABB.max.y, acceptedAABB.max.z);
-		header.set_bounding_box(aabb.min.x, aabb.min.y, aabb.min.z, aabb.max.x, aabb.max.y, aabb.max.z);
-		header.x_scale_factor = 0.01;
-		header.y_scale_factor = 0.01;
-		header.z_scale_factor = 0.01;
-		header.x_offset = 0.0f;
-		header.y_offset = 0.0f;
-		header.z_offset = 0.0f;
-
-		writer = new LASPointWriter(path, header);
+		writer = new LASPointWriter(path, aabb);
 	}else if(outputFormat == OutputFormat::BINARY){
 		writer = new BINPointWriter(path);
 	}

@@ -7,7 +7,6 @@
 #include <sstream>
 #include <list>
 
-#include "laswriter.hpp"
 #include "boost/filesystem.hpp"
 
 #include "AABB.h"

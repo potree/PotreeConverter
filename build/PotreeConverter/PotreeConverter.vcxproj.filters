@@ -34,6 +34,9 @@
     <ClCompile Include="..\..\PotreeConverter\src\PointAttributes.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\PotreeConverter\src\LASPointWriter.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\PotreeConverter\include\AABB.h">
@@ -81,9 +84,6 @@
     <ClInclude Include="..\..\PotreeConverter\include\PotreeWriter.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\PotreeConverter\include\PotreeWriterLBL.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\PotreeConverter\include\PlyPointReader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -99,9 +99,6 @@
     <ClInclude Include="..\..\PotreeConverter\include\PointWriter.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-  </ItemGroup>
-  <ItemGroup>
-    <CustomBuild Include="..\..\PotreeConverter\CMakeLists.txt" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Source Files">

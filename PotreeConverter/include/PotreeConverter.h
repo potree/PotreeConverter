@@ -6,7 +6,6 @@
 #define POTREE_FORMAT_VERSION "1.2"
 
 #include "AABB.h"
-#include "lasreader.hpp"
 #include "CloudJS.hpp"
 #include "definitions.hpp"
 
