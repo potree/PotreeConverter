@@ -24,27 +24,34 @@ public:
 	int width;
 	int height;
 	int depth;
-	float minGap;
+	float spacing;
 	AABB aabb;
+	float squaredSpacing;
+	int numAccepted;
+
+	static long long count;
 
 	SparseGrid(AABB aabb, float minGap);
+
+	SparseGrid(const SparseGrid &other)
+		: width(other.width), height(other.height), depth(other.depth), spacing(other.spacing), aabb(other.aabb), squaredSpacing(other.squaredSpacing), numAccepted(other.numAccepted)
+	{
+		count++;
+	}
 
 	~SparseGrid();
 
 	vector<GridCell*> targetArea(int x, int y, int z);
 
-	float minGapAtTargetArea(const Point &p, int i, int j, int k);
+	bool isDistant(const Vector3<double> &p, int i, int j, int k);
 
-	bool isDistant(const Point &p, int i, int j, int k);
+	float minGap(const Vector3<double> &p, int i, int j, int k);
 
-	/**
-	 * @return true if the point has been added to the grid 
-	 */
-	bool add(Point p, float &oMinGap);
+	float minGap(const Vector3<double> &p);
 
-	bool add(Point &p);
+	bool add(Vector3<double> &p);
 
-	void addWithoutCheck(Point &p);
+	void addWithoutCheck(Vector3<double> &p);
 
 };
 

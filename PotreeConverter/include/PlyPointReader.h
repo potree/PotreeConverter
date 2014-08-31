@@ -3,19 +3,21 @@
 #ifndef PLYPOINTREADER_H
 #define PLYPOINTREADER_H
 
-#include "Point.h"
-#include "PointReader.h"
-
 #include <string>
 #include <fstream>
 #include <iostream>
-#include <boost/regex.hpp>
 
+#include <boost/regex.hpp>
 #include "boost/assign.hpp"
 #include "boost/algorithm/string.hpp"
 
+#include "Point.h"
+#include "PointReader.h"
+
 using std::ifstream;
 using std::string;
+using std::vector;
+using std::map;
 using std::cout;
 using std::endl;
 using namespace boost::assign;
@@ -81,7 +83,7 @@ vector<string> plyBlueNames = list_of("b")("blue")("diffuse_blue");
 
 class PlyPointReader : public PointReader{
 private:
-	AABB aabb;
+	AABB *aabb;
 	ifstream stream;
 	int format;
 	long pointCount;
@@ -90,6 +92,7 @@ private:
 	char *buffer;
 	int pointByteSize;
 	Point point;
+	string file;
 
 public:
 	PlyPointReader(string file)
@@ -100,6 +103,8 @@ public:
 		pointsRead = 0;
 		pointByteSize = 0;
 		buffer = new char[100];
+		aabb = NULL;
+		this->file = file;
 
 		boost::regex rEndHeader("^end_header.*");
 		boost::regex rFormat("^format (ascii|binary_little_endian).*");
@@ -109,12 +114,10 @@ public:
 		string line;
 		while(std::getline(stream, line)){
 			boost::trim(line);
-			cout << line << endl;
 
 			boost::cmatch sm;
 			if(boost::regex_match(line, rEndHeader)){
 				// stop line parsing when end_header is encountered
-				cout << "stop reading header" << endl;
 				break;
 			}else if(boost::regex_match(line.c_str(), sm, rFormat)){
 				// parse format
@@ -130,7 +133,6 @@ public:
 				long count = atol(string(sm[2]).c_str());
 
 				if(name != "vertex"){
-					cout << "As of now, only ply files with 'vertex' as the first element are supported." << endl;
 					continue;
 				}
 				pointCount = count;
@@ -223,9 +225,22 @@ public:
 	}
 
 	AABB getAABB(){
-		AABB aabb;
+		if(aabb == NULL){
 
-		return aabb;
+			aabb = new AABB();
+
+			PlyPointReader *reader = new PlyPointReader(file);
+			while(reader->readNextPoint()){
+				Point p = reader->getPoint();
+				aabb->update(p.position());
+			}
+
+			reader->close();
+			delete reader;
+
+		}
+
+		return *aabb;
 	}
 
 	long numPoints(){

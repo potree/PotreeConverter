@@ -1,5 +1,4 @@
 
-
 #include <chrono>
 #include <vector>
 #include <map>
@@ -51,15 +50,66 @@ void printUsage(po::options_description &desc){
 	cout << desc << endl;
 }
 
-#include "XYZPointReader.h"
+#include "LASPointReader.h"
+#include "LASPointWriter.hpp"
+#include "BINPointWriter.hpp"
+
+//int main(int argc, char **argv){
+//	string path = "C:/dev/workspaces/potree/develop/resources/pointclouds/lion_takanawa/laz/r.laz";
+//	string pathOut = "C:/temp/test.las";
+//	LASPointReader *reader = new LASPointReader(path);
+//	LASPointWriter *writer = new LASPointWriter(pathOut, reader->getAABB());
+//
+//	int i = 0;
+//	while(reader->readNextPoint()){
+//		Point p = reader->getPoint();
+//		
+//		if(i < 10){
+//			cout << p.position() << endl;
+//		}
+//
+//		writer->write(p);
+//		i++;
+//	}
+//	writer->close(); 
+//	reader->close();
+//}
+
+//#include "BINPointReader.hpp"
+//#include "BINPointWriter.hpp"
+//
+//int main(int argc, char **argv){
+//	string path = "C:/dev/pointclouds/converted/skatepark/data/r";
+//	string pathOut = "C:/temp/skatepark";
+//	BINPointReader *reader = new BINPointReader(path);
+//	BINPointWriter *writer = new BINPointWriter(pathOut);
+//
+//	int i = 0;
+//	while(reader->readNextPoint()){
+//		Point p = reader->getPoint();
+//		
+//		if(i < 10){
+//			cout << p.position() << endl;
+//		}
+//
+//		writer->write(p);
+//		i++;
+//	}
+//	writer->close();
+//	reader->close();
+//}
 
 int main(int argc, char **argv){
-	string source;
+	vector<string> source;
 	string outdir;
 	float spacing;
 	int levels;
 	string format;
 	float range;
+	string outFormatString;
+	OutputFormat outFormat;
+
+	cout.imbue(std::locale(""));
 
 	try{
 		// read parameters from command line
@@ -71,7 +121,8 @@ int main(int argc, char **argv){
 			("levels,l", po::value<int>(&levels), "Number of levels that will be generated. 0: only root, 1: root and its children, ...")
 			("input-format,f", po::value<string>(&format), "Input format. xyz: cartesian coordinates as floats, rgb: colors as numbers, i: intensity as number")
 			("range,r", po::value<float>(&range), "Range of rgb or intensity. ")
-			("source", po::value<std::vector<std::string> >(), "Source file. Can be LAS, PLY or XYZ");
+			("output-format", po::value<string>(&outFormatString), "Output format can be BINARY, LAS or LAZ. Default is BINARY")
+			("source", po::value<std::vector<std::string> >(), "Source file. Can be LAS, LAZ or PLY");
 		po::positional_options_description p; 
 		p.add("source", -1); 
 
@@ -86,29 +137,38 @@ int main(int argc, char **argv){
 		}
 
 		if(vm.count("source")){
-			std::vector<std::string> files = vm["source"].as<std::vector<std::string> >();
-			source = files[0];
+			source = vm["source"].as<std::vector<std::string> >();
 		}else{
 			cout << "source file parameter is missing" << endl;
 			return 1;
 		}
 
 		// set default parameters 
-		path pSource(source);
-		//outdir = vm.count("outdir") ? vm["outdir"].as<string>() : pSource.parent_path().generic_string() + "/potree_converted";
+		path pSource(source[0]);
 		outdir = vm.count("outdir") ? vm["outdir"].as<string>() : pSource.generic_string() + "_converted";
-		if(!vm.count("spacing")) spacing = 1.0;
+		if(!vm.count("spacing")) spacing = 1.0f;
 		if(!vm.count("levels")) levels = 3;
 		if(!vm.count("input-format")) format = "xyzrgb";
 		if(!vm.count("range")) range = 255;
+		if(!vm.count("output-format")) outFormatString = "BINARY";
+		if(outFormatString == "BINARY"){
+			outFormat = OutputFormat::BINARY;
+		}else if(outFormatString == "LAS"){
+			outFormat = OutputFormat::LAS;
+		}else if(outFormatString == "LAZ"){
+			outFormat = OutputFormat::LAZ;
+		}
 
 		cout << "== params ==" << endl;
-		cout << "source: " << source << endl;
+		for(int i = 0; i < source.size(); i++){
+			cout << "source[" << i << "]: " << source[i] << endl;
+		}
 		cout << "outdir: " << outdir << endl;
 		cout << "spacing: " << spacing << endl;
 		cout << "levels: " << levels << endl;
 		cout << "format: " << format << endl;
 		cout << "range: " << range << endl;
+		cout << "output-format: " << outFormatString << endl;
 		cout << endl;
 	}catch(exception &e){
 		cout << "ERROR: " << e.what() << endl;
@@ -119,7 +179,7 @@ int main(int argc, char **argv){
 	auto start = high_resolution_clock::now();
 	
 	try{
-		PotreeConverter pc(source, outdir, spacing, levels, format, range);
+		PotreeConverter pc(source, outdir, spacing, levels, format, range, outFormat);
 		pc.convert();
 	}catch(exception &e){
 		cout << "ERROR: " << e.what() << endl;

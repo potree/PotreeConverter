@@ -3,55 +3,57 @@
 #ifndef POTREE_CONVERTER_H
 #define POTREE_CONVERTER_H
 
-#define POTREE_FORMAT_VERSION "1.1"
+#define POTREE_FORMAT_VERSION "1.2"
 
 #include "AABB.h"
-#include "PointReader.h"
+#include "CloudJS.hpp"
+#include "definitions.hpp"
 
 #include <string>
 #include <vector>
 #include <sstream>
+#include <map>
+#include <cstdint>
+
+class SparseGrid;
 
 
 using std::vector;
 using std::string;
 using std::stringstream;
+using std::map;
 
+struct ProcessResult{
+	vector<int> indices;
+	uint64_t numAccepted;
+	uint64_t numRejected;
+
+	ProcessResult(vector<int> indices, uint64_t numAccepted, uint64_t numRejected){
+		this->indices = indices;
+		this->numAccepted = numAccepted;
+		this->numRejected = numRejected;
+	}
+};
 
 class PotreeConverter{
 
 private:
-	PointReader *reader;
 	AABB aabb;
-	string fData;
+	vector<string> sources;
 	string workDir;
-	float minGap;
-	stringstream cloudJs;
+	float spacing;
+	CloudJS cloudjs;
 	int maxDepth;
 	string format;
-	float range;
+	OutputFormat outputFormat;
 
-	char *buffer;
+	float range;
 
 public:
 
-	PotreeConverter(string fData, string workDir, float minGap, int maxDepth, string format, float range);
+	PotreeConverter(vector<string> fData, string workDir, float spacing, int maxDepth, string format, float range, OutputFormat outFormat);
 
-	void convert(int numPoints);
 	void convert();
-	void initReader();
-
-
-
-	/**
-	 * converts points in fData
-	 *
-	 * @returns a list of indices of the octree nodes that were created
-	 */
-	vector<int> process(string source, string target, AABB aabb, int depth);
-
-
-
 
 };
 

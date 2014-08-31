@@ -1,0 +1,7 @@
+.\PotreeConverter.exe C:\dev\pointclouds\mschuetz\lion_takanawa.las -o C:\dev\pointclouds\test\lion\las_bin -s 0.15 -l 3 --output-format BINARY
+.\PotreeConverter.exe C:\dev\pointclouds\mschuetz\lion_takanawa.las -o C:\dev\pointclouds\test\lion\las_las -s 0.15 -l 3 --output-format LAS
+.\PotreeConverter.exe C:\dev\pointclouds\mschuetz\lion_takanawa.las -o C:\dev\pointclouds\test\lion\las_laz -s 0.15 -l 3 --output-format LAZ
+
+.\PotreeConverter.exe C:\dev\pointclouds\mschuetz\lion_takanawa.ply -o C:\dev\pointclouds\test\lion\ply_bin -s 0.15 -l 3 --output-format BINARY
+.\PotreeConverter.exe C:\dev\pointclouds\mschuetz\lion_takanawa.ply -o C:\dev\pointclouds\test\lion\ply_las -s 0.15 -l 3 --output-format LAS
+.\PotreeConverter.exe C:\dev\pointclouds\mschuetz\lion_takanawa.ply -o C:\dev\pointclouds\test\lion\ply_laz -s 0.15 -l 3 --output-format LAZ
