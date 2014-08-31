@@ -1,23 +1,54 @@
 # Potree Converter
 
-Builds a potree octree from las or laz files.
+Builds a potree octree from las, laz or binary ply files.
 
 ## Downloads
 
-* [Windows 64bit binary](http://potree.org/downloads/PotreeConverter_2014.08.15.zip)
+* [Windows 64bit binary](http://potree.org/downloads/PotreeConverter/PotreeConverter_2014.08.31.zip)
 
 ## Dependencies
 
-* [laslib](http://rapidlasso.com/lastools/)
+* [libLAS](https://github.com/libLAS/libLAS)
+* [LASzip](https://github.com/LASzip/LASzip)
 * [boost](http://www.boost.org/)
 
 ## Build
 
-At the moment, there are only Visual C++ project files for windows.
-Download and build the required dependencies and update the Visual Studio
-Project paths.
-You can find infos on how to build laslib dlls [here](https://groups.google.com/forum/#!msg/lastools/zDfLAcbSR7o/XAFdu1Nvie4J) 
-and [here](https://groups.google.com/forum/#!topic/lastools/Bo4CaAMZIGk).
+Linux/MacOSX:
+
+    mkdir build && cd build
+    cmake ../
+    make
+
+Ubuntu:
+
+    sudo apt-get install libboost-system-dev libboost-thread-dev
+
+    # Add UbuntuGIS "unstable" PPA from Launchpad
+    # (TODO: test if this PPA is really necessary)
+    sudo add-apt-repository ppa:ubuntugis/ubuntugis-unstable
+    sudo apt-get update
+    sudo apt-get install liblas-dev liblas-c-dev
+
+    mkdir build && cd build
+    cmake ../
+    make
+
+Windows / Microsoft Visual Studio 2012:
+
+    # make sure you've got these environment variables set:
+	# BOOST_ROOT
+	# BOOST_LIBRARYDIR
+	# LIBLAS_INCLUDE_DIR
+	# LIBLAS_LIBRARY_DIR
+
+    mkdir build && cd build
+
+    # 32bit project
+    cmake -G "Visual Studio 11" -T "v110" -DBoost_USE_STATIC_LIBS=ON -DBOOST_ROOT=%BOOST_ROOT% -DBOOST_LIBRARYDIR=%BOOST_LIBRARYDIR% -DLIBLAS_INCLUDE_DIR=%LIBLAS_INCLUDE_DIR% -DLIBLAS_LIBRARY=%LIBLAS_LIBRARY_DIR%/liblas.lib  ..\
+
+    # or 64bit project
+    cmake -G "Visual Studio 11 Win64" -T "v110" -DBoost_USE_STATIC_LIBS=ON -DBOOST_ROOT=%BOOST_ROOT% -DBOOST_LIBRARYDIR=%BOOST_LIBRARYDIR% -DLIBLAS_INCLUDE_DIR=%LIBLAS_INCLUDE_DIR% -DLIBLAS_LIBRARY=%LIBLAS_LIBRARY_DIR%/liblas.lib  ..\
 
 ## PotreeConverter Usage
 
@@ -35,12 +66,18 @@ Options:
                               root, 1: root and its children, ...
     -f [ --input-format ] arg Input format. xyz: cartesian coordinates as floats,
                               rgb: colors as numbers, i: intensity as number
-    --source arg              Source file. Can be las or laz.
+    -r [ --range ] arg        Range of rgb or intensity.
+    --output-format arg       Output format can be BINARY, LAS or LAZ. Default is
+                              BINARY
+    --source arg              Source file. Can be LAS, LAZ or PLY
 
 Examples:
 
     # convert data.las with a spacing of 0.5 and a depth of 4
     ./PotreeConverter.exe C:/data.las -s 0.5 -l 4 -o C:/potree_converted
+
+    # same as before but output is LAZ compressed
+    ./PotreeConverter.exe C:/data.las -s 0.5 -l 4 -o C:/potree_converted --output-format LAZ
 
     # convert data1.las and data2.las with a spacing of 0.5 and a depth of 4
     ./PotreeConverter.exe C:/data1.las C:/data1.las C:/data2.las -s 0.5 -l 4 -o C:/potree_converted

@@ -121,8 +121,8 @@ int main(int argc, char **argv){
 			("levels,l", po::value<int>(&levels), "Number of levels that will be generated. 0: only root, 1: root and its children, ...")
 			("input-format,f", po::value<string>(&format), "Input format. xyz: cartesian coordinates as floats, rgb: colors as numbers, i: intensity as number")
 			("range,r", po::value<float>(&range), "Range of rgb or intensity. ")
-			("output-format", po::value<string>(&outFormatString), "Output format can be BINARY, LAS or LAZ. Default is LAS")
-			("source", po::value<std::vector<std::string> >(), "Source file. Can be LAS, PLY or XYZ");
+			("output-format", po::value<string>(&outFormatString), "Output format can be BINARY, LAS or LAZ. Default is BINARY")
+			("source", po::value<std::vector<std::string> >(), "Source file. Can be LAS, LAZ or PLY");
 		po::positional_options_description p; 
 		p.add("source", -1); 
 
