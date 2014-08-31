@@ -44,17 +44,13 @@ LASPointReader::LASPointReader(string path){
 	for(int i = 0; i < files.size(); i++){
 		string file = files[i];
 
-		reader = new LIBLASReader(file);
+		LIBLASReader aabbReader(file);
+		AABB lAABB = aabbReader.getAABB();
+		
+		aabb.update(lAABB.min);
+		aabb.update(lAABB.max);
 
-		liblas::Header header = reader->reader.GetHeader();
-
-		Vector3<double> min = Vector3<double>(header.GetMinX(), header.GetMinY(), header.GetMinZ());
-		Vector3<double> max = Vector3<double>(header.GetMaxX(), header.GetMaxY(), header.GetMaxZ());
-		aabb.update(min);
-		aabb.update(max);
-
-		reader->close();
-		delete reader;
+		aabbReader.close();
 	}
 
 	// open first file
@@ -99,7 +95,7 @@ bool LASPointReader::readNextPoint(){
 }
 
 Point LASPointReader::getPoint(){
-	liblas::Point lp = reader->reader.GetPoint();
+	const liblas::Point &lp = reader->reader.GetPoint();
 	Point p(lp.GetX(), lp.GetY(), lp.GetZ());
 
 	p.intensity = lp.GetIntensity();

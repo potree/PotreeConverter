@@ -162,7 +162,7 @@ void PotreeConverter::convert(){
 				auto end = high_resolution_clock::now();
 				long duration = duration_cast<milliseconds>(end-start).count();
 				cout << "duration: " << (duration / 1000.0f) << "s" << endl;
-
+				//return;
 			}
 		}
 		writer.flush();

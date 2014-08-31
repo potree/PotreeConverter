@@ -43,6 +43,19 @@ public:
 		stream.close();
 	}
 
+	AABB getAABB(){
+		AABB aabb;
+
+		const liblas::Header &header = reader.GetHeader();
+
+		Vector3<double> min = Vector3<double>(header.GetMinX(), header.GetMinY(), header.GetMinZ());
+		Vector3<double> max = Vector3<double>(header.GetMaxX(), header.GetMaxY(), header.GetMaxZ());
+		aabb.update(min);
+		aabb.update(max);
+
+		return aabb;
+	}
+
 };
 
 

@@ -141,7 +141,7 @@
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>$(SolutionDir)/../PotreeConverter/include;C:/dev/lib/boost_1_55_0;$(LASLIB_INCLUDE_DIR);$(LASZIP_INCLUDE_DIR);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)/../PotreeConverter/include;C:/dev/lib/boost_1_55_0;C:\dev\lib\liblas\libLAS-1.7.0\include;$(LASZIP_INCLUDE_DIR);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
       <CompileAs>CompileAsCpp</CompileAs>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
@@ -171,7 +171,7 @@
     </Midl>
     <Link>
       <AdditionalOptions> /machine:x64 /debug %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib;C:\Boost\lib\libboost_system-vc110-mt-gd-1_55.lib;C:\Boost\lib\libboost_thread-vc110-mt-gd-1_55.lib;C:\Boost\lib\libboost_filesystem-vc110-mt-gd-1_55.lib;C:\Boost\lib\libboost_program_options-vc110-mt-gd-1_55.lib;C:\dev\lib\lastools\x64\DebugDLL\laslib.lib</AdditionalDependencies>
+      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;comdlg32.lib;advapi32.lib;C:\Boost\lib\libboost_system-vc110-mt-gd-1_55.lib;C:\Boost\lib\libboost_thread-vc110-mt-gd-1_55.lib;C:\Boost\lib\libboost_filesystem-vc110-mt-gd-1_55.lib;C:\Boost\lib\libboost_program_options-vc110-mt-gd-1_55.lib;$(LASLIB_LIBRARY_DIR)\laslib.lib;C:\dev\lib\liblas\libLAS-1.7.0\build\bin\Debug\liblas.lib</AdditionalDependencies>
       <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ImportLibrary>C:/dev/workspaces/PotreeConverter/PotreeConverter_develop/build/PotreeConverter/Debug/PotreeConverter.lib</ImportLibrary>

@@ -7,6 +7,7 @@
 #include <fstream>
 
 #include "liblas\liblas.hpp"
+#include <boost/algorithm/string/predicate.hpp>
 
 #include "AABB.h"
 #include "PointWriter.hpp"
@@ -14,6 +15,7 @@
 using std::string;
 using std::fstream;
 using std::ios;
+using boost::algorithm::iends_with;
 
 class LASPointWriter : public PointWriter{
 
@@ -35,9 +37,14 @@ public:
 		header->SetMin(aabb.min.x, aabb.min.y, aabb.min.z);
 		header->SetMax(aabb.max.x, aabb.max.y, aabb.max.z);
 		header->SetScale(0.01, 0.01, 0.01);
+		header->SetPointRecordsCount(53);
+
+		if(iends_with(file, ".laz")){
+			header->SetCompressed(true);
+		}
 
 		stream = new fstream(file, ios::out | ios::binary);
-		 writer = new liblas::Writer(*stream, *header);
+		writer = new liblas::Writer(*stream, *header);
 
 
 		//LASheader header;
@@ -63,16 +70,22 @@ public:
 	void write(const Point &point);
 
 	void close(){
-		header->SetPointRecordsCount(numPoints);
 
-		writer->SetHeader(*header);
-		writer->WriteHeader();
-
-		stream->close();
+		// close stream
 		delete writer;
+		stream->close();
 		delete stream;
 		writer = NULL;
 		stream = NULL;
+		
+		// update point count
+		stream = new fstream(file, ios::out | ios::binary | ios::in );
+		stream->seekp(107);
+		stream->write(reinterpret_cast<const char*>(&numPoints), 4);
+		stream->close();
+		delete stream;
+		stream = NULL;
+
 	}
 
 };

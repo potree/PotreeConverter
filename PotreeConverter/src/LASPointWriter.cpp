@@ -8,12 +8,12 @@ using std::vector;
 
 void LASPointWriter::write(const Point &point){
 	liblas::Point lp;
+	lp.SetHeader(header);
 	
-	lp.SetX(point.x / header->GetScaleX());
-	lp.SetY(point.y / header->GetScaleY());
-	lp.SetZ(point.z / header->GetScaleZ());
+	lp.SetX(point.x);
+	lp.SetY(point.y);
+	lp.SetZ(point.z);
 
-	
 	vector<uint8_t> &data = lp.GetData();
 
 	unsigned short pr = point.r * 256;
@@ -25,10 +25,10 @@ void LASPointWriter::write(const Point &point){
 	{ // TODO lp.SetColor did not work, do this instead. check for bugs?
 		data[20] = reinterpret_cast<unsigned char*>(&pr)[0];
 		data[21] = reinterpret_cast<unsigned char*>(&pr)[1];
-
+	
 		data[22] = reinterpret_cast<unsigned char*>(&pg)[0];
 		data[23] = reinterpret_cast<unsigned char*>(&pg)[1];
-
+	
 		data[24] = reinterpret_cast<unsigned char*>(&pb)[0];
 		data[25] = reinterpret_cast<unsigned char*>(&pb)[1];
 	}
