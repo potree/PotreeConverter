@@ -146,7 +146,7 @@ int main(int argc, char **argv){
 		// set default parameters 
 		path pSource(source[0]);
 		outdir = vm.count("outdir") ? vm["outdir"].as<string>() : pSource.generic_string() + "_converted";
-		if(!vm.count("spacing")) spacing = 0.0f;
+		if(!vm.count("spacing")) spacing = 1.0f;
 		if(!vm.count("levels")) levels = 3;
 		if(!vm.count("input-format")) format = "xyzrgb";
 		if(!vm.count("range")) range = 255;
