@@ -61,7 +61,8 @@ void PotreeWriterNode::loadFromDisk(){
 	PointReader *reader = createReader(path + "/data/" + name + potreeWriter->getExtension());
 	while(reader->readNextPoint()){
 		Point p = reader->getPoint();
-		grid->addWithoutCheck(Vector3<double>(p.x, p.y, p.z));
+		Vector3<double> position = Vector3<double>(p.x, p.y, p.z);
+		grid->addWithoutCheck(position);
 	}
 	grid->numAccepted = numAccepted;
 	reader->close();
@@ -108,7 +109,8 @@ PotreeWriterNode *PotreeWriterNode::add(Point &point){
 		loadFromDisk();
 	}
 
-	bool accepted = grid->add(Vector3<double>(point.x, point.y, point.z));
+	Vector3<double> position(point.x, point.y, point.z);
+	bool accepted = grid->add(position);
 	//float minGap = grid->add(Vector3<double>(point.x, point.y, point.z));
 	//bool accepted = minGap > spacing;
 	//int targetLevel = ceil(log((1/minGap) * spacing) / log(2));
@@ -119,7 +121,8 @@ PotreeWriterNode *PotreeWriterNode::add(Point &point){
 
 	if(accepted){
 		cache.push_back(point);
-		acceptedAABB.update(Vector3<double>(point.x, point.y, point.z));
+		Vector3<double> position(point.x, point.y, point.z);
+		acceptedAABB.update(position);
 		potreeWriter->numAccepted++;
 		numAccepted++;
 

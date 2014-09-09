@@ -51,7 +51,7 @@ public:
 		for(int i = 0; i < attributes.size(); i++){
 			PointAttribute attribute = attributes[i];
 			if(attribute == PointAttribute::POSITION_CARTESIAN){
-				float pos[3] = {point.x, point.y, point.z};
+				float pos[3] = {(float) point.x,(float)  point.y,(float)  point.z};
 				writer->write((const char*)pos, 3*sizeof(float));
 			}else if(attribute == PointAttribute::COLOR_PACKED){
 				unsigned char rgba[4] = {point.r, point.g, point.b, 255};

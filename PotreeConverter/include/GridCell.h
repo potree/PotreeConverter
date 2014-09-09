@@ -17,7 +17,7 @@ class SparseGrid;
 
 class GridCell{
 public:
-	vector<Vector3<double>> points;
+	vector<Vector3<double> > points;
 	vector<GridCell*> neighbours;
 	SparseGrid *grid;
 
