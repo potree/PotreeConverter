@@ -232,7 +232,8 @@ public:
 			PlyPointReader *reader = new PlyPointReader(file);
 			while(reader->readNextPoint()){
 				Point p = reader->getPoint();
-				aabb->update(p.position());
+				Vector3<double> position = p.position();
+				aabb->update(position);
 			}
 
 			reader->close();
