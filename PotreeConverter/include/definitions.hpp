@@ -2,7 +2,7 @@
 #ifndef DEFINITIONS_H
 #define DEFINITIONS_H
 
-enum OutputFormat{
+enum class OutputFormat{
 	BINARY,
 	LAS,
 	LAZ

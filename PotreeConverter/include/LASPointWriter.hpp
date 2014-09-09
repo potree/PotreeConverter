@@ -6,7 +6,7 @@
 #include <iostream>
 #include <fstream>
 
-#include "liblas\liblas.hpp"
+#include "liblas/liblas.hpp"
 #include <boost/algorithm/string/predicate.hpp>
 
 #include "AABB.h"
