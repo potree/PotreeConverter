@@ -7,3 +7,4 @@ Potree.opensdf
 bin/
 obj
 build/
+.idea
