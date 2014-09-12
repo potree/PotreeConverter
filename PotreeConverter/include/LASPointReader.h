@@ -47,23 +47,16 @@ public:
               reader(liblas::ReaderFactory().CreateWithStream(stream)) {
         std::vector<liblas::VariableRecord> vlrs = reader.GetHeader().GetVLRs();
 
-//      cout << "There are VLRs " << vlrs.size() << endl;
-        if (1 == vlrs.size()) {
-            liblas::VariableRecord vlr = vlrs[0];
-//          cout << vlr << endl;
+//      cout << "There are " << vlrs.size() << " VLRs." << endl;
+        for (int i = 0; i < vlrs.size(); ++i) {
+            liblas::VariableRecord vlr = vlrs[i];
             if (vlr.GetRecordLength() == 272 && vlr.GetRecordId() == 2001) {
                 const uint8_t *data = vlr.GetData().data();
-//              for (int j = 0; j < vlr.GetData().size(); ++j) {
-//                  cout << j << " " << data[j] << " " << (int) data[j] << endl;
-//              }
-//              cout << endl;
-
                 for (int k = 0; k < 16; ++k) {
                     memcpy(tr + k, data + (144 + k * 8), sizeof(double));
-//                    cout << ((double *) (data + (144 + k * 8)))[0] << " ";
                 }
-//                cout << endl;
                 hasTransform = true;
+                break;
 //                cout << "Found a PTX transformation matrix.\n";
             }
         }
