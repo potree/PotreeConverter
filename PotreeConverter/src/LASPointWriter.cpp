@@ -7,8 +7,7 @@ using std::vector;
 
 
 void LASPointWriter::write(const Point &point){
-	liblas::Point lp;
-	lp.SetHeader(header);
+	liblas::Point lp(header);
 	
 	lp.SetX(point.x);
 	lp.SetY(point.y);
