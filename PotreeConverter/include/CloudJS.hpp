@@ -42,7 +42,7 @@ public:
 		version = "1.3";
 	}
 
-	string string(){
+	string getString(){
 		stringstream cloudJs;
 
 		cloudJs << "{" << endl;
