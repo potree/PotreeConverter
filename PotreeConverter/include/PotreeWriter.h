@@ -174,7 +174,7 @@ public:
 		}
 
 		ofstream cloudOut(path + "/cloud.js", ios::out);
-		cloudOut << cloudjs.string();
+		cloudOut << cloudjs.getString();
 		cloudOut.close();
 	}
 
