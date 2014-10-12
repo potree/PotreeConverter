@@ -22,17 +22,17 @@ public:
 
 	class Node{
 	public:
-		string name;
+		std::string name;
 		int pointCount;
 
-		Node(string name, int pointCount){
+		Node(std::string name, int pointCount){
 			this->name = name;
 			this->pointCount = pointCount;
 		}
 	};
 
-	string version;
-	string octreeDir;
+	std::string version;
+	std::string octreeDir;
 	AABB boundingBox;
 	OutputFormat outputFormat;
 	double spacing;
@@ -42,7 +42,7 @@ public:
 		version = "1.3";
 	}
 
-	string string(){
+	std::string string(){
 		stringstream cloudJs;
 
 		cloudJs << "{" << endl;
