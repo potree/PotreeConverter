@@ -1,21 +1,14 @@
-
 #include <chrono>
 #include <vector>
 #include <map>
 #include <iostream>
-#include <math.h>
-#include <string>
 #include <fstream>
-#include <exception>
 
 #include "Vector3.h"
 #include "AABB.h"
-#include "Point.h"
 #include "GridIndex.h"
 #include "SparseGrid.h"
-#include "GridCell.h"
 #include "PotreeConverter.h"
-#include "PotreeException.h"
 
 #include "boost/program_options.hpp" 
 #include <boost/filesystem.hpp>
@@ -51,7 +44,6 @@ void printUsage(po::options_description &desc){
 }
 
 #include "LASPointReader.h"
-#include "LASPointWriter.hpp"
 #include "BINPointWriter.hpp"
 
 //int main(int argc, char **argv){
@@ -127,7 +119,7 @@ int main(int argc, char **argv){
 		p.add("source", -1); 
 
 		po::variables_map vm; 
-		po::store(po::command_line_parser(argc, argv).options(desc).positional(p).run(), vm); 
+		po::store(po::command_line_parser(argc, argv).options(desc).positional(p).run(), vm);
 		po::notify(vm);
 
 		if(vm.count("help") || !vm.count("source")){
