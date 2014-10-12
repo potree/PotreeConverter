@@ -4,7 +4,7 @@ project(PotreeConverter)
 SET(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
 
 find_package(Boost 1.54 COMPONENTS system program_options filesystem regex REQUIRED)
-find_package(LibLas REQUIRED)
+find_package(LibLas 1.8.0 REQUIRED)
 
 include_directories(
     PotreeConverter/include 
