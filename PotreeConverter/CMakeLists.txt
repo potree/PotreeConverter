@@ -1,6 +1,6 @@
 project(PotreeConverter)
 
-file(GLOB files src/*.cpp include/*.h )
+file(GLOB files src/*.cpp include/*.h include/*.hpp )
 
 include_directories(include ${LIBLAS_INCLUDE_DIR} ${Boost_INCLUDE_DIRS})
 
