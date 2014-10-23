@@ -13,6 +13,8 @@ public:
 	string file;
 	int numPoints;
 
+	virtual ~PointWriter(){};
+
 	virtual void write(const Point &point) = 0;
 
 	virtual void close() = 0;
