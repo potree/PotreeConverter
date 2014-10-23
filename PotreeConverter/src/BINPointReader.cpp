@@ -98,7 +98,8 @@ bool BINPointReader::readNextPoint(){
 			}
 			offset += attribute.byteSize;
 		}
-
+		
+		delete [] buffer;
 	}
 
 	return hasPoints;
