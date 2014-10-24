@@ -36,13 +36,14 @@ Ubuntu:
 
 Windows / Microsoft Visual Studio 2012:
 
-    # make sure you've got these environment variables set:
-	# BOOST_ROOT
-	# BOOST_LIBRARYDIR
-	# LIBLAS_INCLUDE_DIR
-	# LIBLAS_LIBRARY_DIR
+    # make sure you've got these environment variables set with your directory structure
+    set BOOST_ROOT=D:\dev\lib\boost_1_56_0
+    set BOOST_LIBRARYDIR=D:\dev\lib\boost\x64
+    set LIBLAS_INCLUDE_DIR=D:\dev\lib\libLAS\include
+    set LIBLAS_LIBRARY_DIR=D:\dev\lib\libLAS\build\bin\Release
 
-    mkdir build && cd build
+    mkdir build
+    cd build
 
     # 32bit project
     cmake -G "Visual Studio 11" -T "v110" -DBoost_USE_STATIC_LIBS=ON -DBOOST_ROOT=%BOOST_ROOT% -DBOOST_LIBRARYDIR=%BOOST_LIBRARYDIR% -DLIBLAS_INCLUDE_DIR=%LIBLAS_INCLUDE_DIR% -DLIBLAS_LIBRARY=%LIBLAS_LIBRARY_DIR%/liblas.lib  ..\
