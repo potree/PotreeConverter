@@ -162,8 +162,12 @@ public:
 			return false;
 		}
 		
-		float x,y,z;
-		unsigned char r,g,b;
+		float x = 0;
+		float y = 0;
+		float z = 0;
+		unsigned char r = 0;
+		unsigned char g = 0;
+		unsigned char b = 0;
 
 		if(format == PLY_FILE_FORMAT_ASCII){
 			string line;

@@ -89,6 +89,7 @@ PotreeWriterNode *PotreeWriterNode::add(Point &point, int minLevel){
 	}else{
 		return add(point);
 	}
+	
 	return NULL;
 }
 
@@ -142,6 +143,8 @@ PotreeWriterNode *PotreeWriterNode::add(Point &point){
 
 			return child->add(point);
 			//child->add(point, targetLevel);
+		} else {
+			return NULL;
 		}
 	}
 	return NULL;
