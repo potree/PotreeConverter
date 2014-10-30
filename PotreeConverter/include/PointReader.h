@@ -16,6 +16,8 @@ using boost::iequals;
 class PointReader{
 public:
 
+	virtual ~PointReader(){};
+
 	virtual bool readNextPoint() = 0;
 
 	virtual Point getPoint() = 0;

@@ -84,11 +84,13 @@ PotreeWriterNode *PotreeWriterNode::add(Point &point, int minLevel){
 				child = createChild(childIndex);
 			}
 
-			child->add(point, minLevel);
+			return child->add(point, minLevel);
 		}
 	}else{
-		add(point);
+		return add(point);
 	}
+	
+	return NULL;
 }
 
 PotreeWriterNode *PotreeWriterNode::createChild(int childIndex ){
@@ -141,10 +143,11 @@ PotreeWriterNode *PotreeWriterNode::add(Point &point){
 
 			return child->add(point);
 			//child->add(point, targetLevel);
+		} else {
+			return NULL;
 		}
-	}else{
-		return NULL;
 	}
+	return NULL;
 }
 
 void PotreeWriterNode::flush(){
