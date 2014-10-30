@@ -80,6 +80,10 @@ bool BINPointReader::readNextPoint(){
 		point = Point();
 		char* buffer = new char[attributes.byteSize];
 		reader->read(buffer, attributes.byteSize);
+
+		if(!reader->good()){
+			return false;
+		}
 		
 		int offset = 0;
 		for(int i = 0; i < attributes.size(); i++){
