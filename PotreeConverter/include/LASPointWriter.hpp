@@ -41,6 +41,8 @@ public:
 
 		if(iends_with(file, ".laz")){
 			header->SetCompressed(true);
+		}else{
+			header->SetCompressed(false);
 		}
 
 		stream = new fstream(file, ios::out | ios::binary);
@@ -71,20 +73,22 @@ public:
 
 	void close(){
 
-		// close stream
-		delete writer;
-		stream->close();
-		delete stream;
-		writer = NULL;
-		stream = NULL;
+		if(writer != NULL){
+			// close stream
+			delete writer;
+			stream->close();
+			delete stream;
+			writer = NULL;
+			stream = NULL;
 		
-		// update point count
-		stream = new fstream(file, ios::out | ios::binary | ios::in );
-		stream->seekp(107);
-		stream->write(reinterpret_cast<const char*>(&numPoints), 4);
-		stream->close();
-		delete stream;
-		stream = NULL;
+			// update point count
+			stream = new fstream(file, ios::out | ios::binary | ios::in );
+			stream->seekp(107);
+			stream->write(reinterpret_cast<const char*>(&numPoints), 4);
+			stream->close();
+			delete stream;
+			stream = NULL;
+		}
 
 	}
 
