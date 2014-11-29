@@ -23,7 +23,7 @@ using std::vector;
 class LIBLASReader{
 private:
     double tr[16];
-    bool hasTransform = false;
+    bool hasTransform;
     Point transform(double x, double y, double z) const {
         Point p;
         if (hasTransform) {
@@ -46,6 +46,8 @@ public:
             : stream(path, std::ios::in | std::ios::binary),
               reader(liblas::ReaderFactory().CreateWithStream(stream)) {
         std::vector<liblas::VariableRecord> vlrs = reader.GetHeader().GetVLRs();
+
+		hasTransform = false;
 
 //      cout << "There are " << vlrs.size() << " VLRs." << endl;
         for (int i = 0; i < vlrs.size(); ++i) {
