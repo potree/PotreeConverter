@@ -48,10 +48,11 @@ private:
 	OutputFormat outputFormat;
 
 	float range;
+	string cloudJsOctreeDirPrefix;
 
 public:
 
-	PotreeConverter(vector<string> fData, string workDir, float spacing, int maxDepth, string format, float range, OutputFormat outFormat);
+	PotreeConverter(vector<string> fData, string workDir, float spacing, int maxDepth, string format, float range, string cloudJsOctreeDirPrefix, OutputFormat outFormat);
 
 	void convert();
 

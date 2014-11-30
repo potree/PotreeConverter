@@ -42,12 +42,12 @@ public:
 		version = "1.3";
 	}
 
-	string getString(){
+	string getString(string jsDataPathPrefix){
 		stringstream cloudJs;
-
+    
 		cloudJs << "{" << endl;
 		cloudJs << "\t" << "\"version\": \"" << version << "\"," << endl;
-		cloudJs << "\t" << "\"octreeDir\": \"data\"," << endl;
+		cloudJs << "\t" << "\"octreeDir\": \"" << jsDataPathPrefix << "data\"," << endl;
 		cloudJs << "\t" << "\"boundingBox\": {" << endl;
 		cloudJs << "\t\t" << "\"lx\": " << boundingBox.min.x << "," << endl;
 		cloudJs << "\t\t" << "\"ly\": " << boundingBox.min.y << "," << endl;

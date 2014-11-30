@@ -82,6 +82,7 @@ public:
 
 	AABB aabb;
 	string path;
+  string jsDataPathPrefix;
 	float spacing;
 	int maxLevel;
 	PotreeWriterNode *root;
@@ -94,11 +95,12 @@ public:
 
 
 
-	PotreeWriter(string path, AABB aabb, float spacing, int maxLevel, OutputFormat outputFormat){
+	PotreeWriter(string path, AABB aabb, float spacing, int maxLevel, string jsDataPathPrefix, OutputFormat outputFormat){
 		this->path = path;
 		this->aabb = aabb;
 		this->spacing = spacing;
 		this->maxLevel = maxLevel;
+    this->jsDataPathPrefix = jsDataPathPrefix;
 		this->outputFormat = outputFormat;
 		numAccepted = 0;
 		pointsInMemory = 0;
@@ -174,7 +176,7 @@ public:
 		}
 
 		ofstream cloudOut(path + "/cloud.js", ios::out);
-		cloudOut << cloudjs.getString();
+		cloudOut << cloudjs.getString(this->jsDataPathPrefix);
 		cloudOut.close();
 	}
 

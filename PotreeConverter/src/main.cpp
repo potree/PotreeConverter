@@ -107,6 +107,7 @@ int main(int argc, char **argv){
 	string format;
 	float range;
 	string outFormatString;
+  string cloudJsOctreeDirPrefix;
 	OutputFormat outFormat;
 
 	cout.imbue(std::locale(""));
@@ -121,6 +122,7 @@ int main(int argc, char **argv){
 			("levels,l", po::value<int>(&levels), "Number of levels that will be generated. 0: only root, 1: root and its children, ...")
 			("input-format,f", po::value<string>(&format), "Input format. xyz: cartesian coordinates as floats, rgb: colors as numbers, i: intensity as number")
 			("range,r", po::value<float>(&range), "Range of rgb or intensity. ")
+			("js-octreedir-prefix,p", po::value<string>(&cloudJsOctreeDirPrefix), "Prefix to be pre-pended to \"octreeDir\" value in \"cloud.js\"")
 			("output-format", po::value<string>(&outFormatString), "Output format can be BINARY, LAS or LAZ. Default is BINARY")
 			("source", po::value<std::vector<std::string> >(), "Source file. Can be LAS, LAZ or PLY");
 		po::positional_options_description p; 
@@ -150,6 +152,7 @@ int main(int argc, char **argv){
 		if(!vm.count("levels")) levels = 3;
 		if(!vm.count("input-format")) format = "xyzrgb";
 		if(!vm.count("range")) range = 255;
+		if(!vm.count("js-octreedir-prefix")) cloudJsOctreeDirPrefix = "";
 		if(!vm.count("output-format")) outFormatString = "BINARY";
 		if(outFormatString == "BINARY"){
 			outFormat = OutputFormat::BINARY;
@@ -168,6 +171,7 @@ int main(int argc, char **argv){
 		cout << "levels: " << levels << endl;
 		cout << "format: " << format << endl;
 		cout << "range: " << range << endl;
+		cout << "js-octreedir-prefix: " << cloudJsOctreeDirPrefix << endl;
 		cout << "output-format: " << outFormatString << endl;
 		cout << endl;
 	}catch(exception &e){
@@ -179,7 +183,7 @@ int main(int argc, char **argv){
 	auto start = high_resolution_clock::now();
 	
 	try{
-		PotreeConverter pc(source, outdir, spacing, levels, format, range, outFormat);
+		PotreeConverter pc(source, outdir, spacing, levels, format, range, cloudJsOctreeDirPrefix, outFormat);
 		pc.convert();
 	}catch(exception &e){
 		cout << "ERROR: " << e.what() << endl;
