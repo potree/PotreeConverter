@@ -21,6 +21,9 @@ public:
 	unsigned char g;
 	unsigned char b;
 	unsigned char a;
+	unsigned char returnNumber;
+	unsigned char numberOfReturns;
+	unsigned short pointSourceID;
 
 	Point(){
 		this->x = 0;
@@ -32,6 +35,9 @@ public:
 		this->g = 0;
 		this->b = 0;
 		this->a = 255;
+		this->returnNumber = 0;
+		this->numberOfReturns = 0;
+		this->pointSourceID = 0;
 		
 
 		count++;
@@ -47,6 +53,9 @@ public:
 		this->g = g;
 		this->b = b;
 		this->a = 255;
+		this->returnNumber = 0;
+		this->numberOfReturns = 0;
+		this->pointSourceID = 0;
 
 		count++;
 	}
@@ -61,12 +70,19 @@ public:
 		this->g = 255;
 		this->b = 255;
 		this->a = 255;
+		this->returnNumber = 0;
+		this->numberOfReturns = 0;
+		this->pointSourceID = 0;
 
 		count++;
 	}
 
 	Point(const Point &other)
-		: x(other.x), y(other.y), z(other.z), intensity(other.intensity), classification(other.classification), r(other.r), g(other.g), b(other.b)
+		: x(other.x), y(other.y), z(other.z), 
+		intensity(other.intensity), classification(other.classification), 
+		r(other.r), g(other.g), b(other.b), 
+		returnNumber(other.returnNumber), numberOfReturns(other.numberOfReturns), 
+		pointSourceID(other.pointSourceID)
 	{
 		count++;
 	}

@@ -79,6 +79,11 @@ public:
         p.r = lp.GetColor().GetRed() / 256;
         p.g = lp.GetColor().GetGreen() / 256;
         p.b = lp.GetColor().GetBlue() / 256;
+
+		p.returnNumber = lp.GetReturnNumber();
+		p.numberOfReturns = lp.GetNumberOfReturns();
+		p.pointSourceID = lp.GetPointSourceID();
+
         return p;
     }
 	void close(){
