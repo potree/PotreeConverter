@@ -34,6 +34,9 @@ void LASPointWriter::write(const Point &point){
 
 	lp.SetIntensity(point.intensity);
 	lp.SetClassification(point.classification);
+	lp.SetReturnNumber(point.returnNumber);
+	lp.SetNumberOfReturns(point.numberOfReturns);
+	lp.SetPointSourceID(point.pointSourceID);
 
 	writer->WritePoint(lp);
 

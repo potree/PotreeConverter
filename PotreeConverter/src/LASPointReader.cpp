@@ -19,6 +19,22 @@ using std::endl;
 using std::vector;
 using boost::iequals;
 using std::ios;
+using liblas::VariableRecord;
+
+AABB LIBLASReader::getAABB(){
+    AABB aabb;
+
+    const liblas::Header &header = reader.GetHeader();
+
+    Point minp = transform(header.GetMinX(), header.GetMinY(), header.GetMinZ());
+    Vector3<double> min = Vector3<double>(minp.x, minp.y, minp.z);
+    Point maxp = transform(header.GetMaxX(), header.GetMaxY(), header.GetMaxZ());
+    Vector3<double> max = Vector3<double>(maxp.x, maxp.y, maxp.z);
+    aabb.update(min);
+    aabb.update(max);
+
+    return aabb;
+}
 
 LASPointReader::LASPointReader(string path){
 	this->path = path;
@@ -56,6 +72,7 @@ LASPointReader::LASPointReader(string path){
 	// open first file
 	currentFile = files.begin();
 	reader = new LIBLASReader(*currentFile);
+//    cout << "let's go..." << endl;
 }
 
 LASPointReader::~LASPointReader(){
@@ -95,18 +112,8 @@ bool LASPointReader::readNextPoint(){
 }
 
 Point LASPointReader::getPoint(){
-	const liblas::Point &lp = reader->reader.GetPoint();
-	Point p(lp.GetX(), lp.GetY(), lp.GetZ());
-
-	p.intensity = lp.GetIntensity();
-	p.classification = lp.GetClassification().GetClass();
-	
-	p.r = lp.GetColor().GetRed() / 256;
-	p.g = lp.GetColor().GetGreen() / 256;
-	p.b = lp.GetColor().GetBlue() / 256;
-
-
-	return p;
+	Point const p = reader->GetPoint();
+    return p;
 }
 
 AABB LASPointReader::getAABB(){
