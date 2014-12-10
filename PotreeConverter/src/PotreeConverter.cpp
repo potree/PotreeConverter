@@ -58,7 +58,7 @@ PointReader *createPointReader(string path){
 	return reader;
 }
 
-PotreeConverter::PotreeConverter(vector<string> sources, string workDir, float spacing, int maxDepth, string format, float range, double scale, OutputFormat outFormat){
+PotreeConverter::PotreeConverter(vector<string> sources, string workDir, float spacing, int fistLevelSize, int maxDepth, string format, float range, double scale, OutputFormat outFormat){
 
 	// if sources contains directories, use files inside the directory instead
 	vector<string> sourceFiles;
@@ -90,6 +90,7 @@ PotreeConverter::PotreeConverter(vector<string> sources, string workDir, float s
 	this->range = range;
 	this->scale = scale;
 	this->outputFormat = outFormat;
+	this->firstLevelSize = fistLevelSize;
 
 	boost::filesystem::path dataDir(workDir + "/data");
 	boost::filesystem::path tempDir(workDir + "/temp");
@@ -125,6 +126,13 @@ AABB calculateAABB(vector<string> sources){
 void PotreeConverter::convert(){
 	aabb = calculateAABB(sources);
 	cout << "AABB: " << endl << aabb << endl;
+
+	if (firstLevelSize != 0) {
+		spacing = aabb.size.length() / firstLevelSize;
+		cout << "Automatically setting spacing to: " << spacing << endl;
+	}
+	cout << "Last level will have spacing:     " << spacing / pow(2, maxDepth - 1) << endl;
+	cout << endl;
 
 	aabb.makeCubic();
 

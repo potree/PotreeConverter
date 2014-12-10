@@ -108,6 +108,7 @@ int main(int argc, char **argv){
 	float range;
 	string outFormatString;
 	double scale;
+	int firstLevelSize;
 	OutputFormat outFormat;
 
 	cout.imbue(std::locale(""));
@@ -119,6 +120,7 @@ int main(int argc, char **argv){
 			("help,h", "prints usage")
 			("outdir,o", po::value<string>(&outdir), "output directory") 
 			("spacing,s", po::value<float>(&spacing), "Distance between points at root level. Distance halves each level.") 
+			("auto-spacing,a", po::value<int>(&firstLevelSize), "Maximum number of points on the diagonal in the first level (sets spacing).")
 			("levels,l", po::value<int>(&levels), "Number of levels that will be generated. 0: only root, 1: root and its children, ...")
 			("input-format,f", po::value<string>(&format), "Input format. xyz: cartesian coordinates as floats, rgb: colors as numbers, i: intensity as number")
 			("range,r", po::value<float>(&range), "Range of rgb or intensity. ")
@@ -149,6 +151,7 @@ int main(int argc, char **argv){
 		path pSource(source[0]);
 		outdir = vm.count("outdir") ? vm["outdir"].as<string>() : pSource.generic_string() + "_converted";
 		if(!vm.count("spacing")) spacing = 1.0f;
+		if(!vm.count("auto-spacing")) firstLevelSize = 0;
 		if(!vm.count("levels")) levels = 3;
 		if(!vm.count("input-format")) format = "xyzrgb";
 		if(!vm.count("range")) range = 255;
@@ -161,6 +164,9 @@ int main(int argc, char **argv){
 		}else if(outFormatString == "LAZ"){
 			outFormat = OutputFormat::LAZ;
 		}
+		if (firstLevelSize != 0) {
+			spacing = 0;
+		}
 
 		cout << "== params ==" << endl;
 		for(int i = 0; i < source.size(); i++){
@@ -168,6 +174,7 @@ int main(int argc, char **argv){
 		}
 		cout << "outdir: " << outdir << endl;
 		cout << "spacing: " << spacing << endl;
+		cout << "auto-spacing: " << firstLevelSize << endl;
 		cout << "levels: " << levels << endl;
 		cout << "format: " << format << endl;
 		cout << "range: " << range << endl;
@@ -183,7 +190,7 @@ int main(int argc, char **argv){
 	auto start = high_resolution_clock::now();
 	
 	try{
-		PotreeConverter pc(source, outdir, spacing, levels, format, range, scale, outFormat);
+		PotreeConverter pc(source, outdir, spacing, firstLevelSize, levels, format, range, scale, outFormat);
 		pc.convert();
 	}catch(exception &e){
 		cout << "ERROR: " << e.what() << endl;
