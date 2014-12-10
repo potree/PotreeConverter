@@ -69,13 +69,21 @@ struct PlyElement{
 
 map<string, PlyPropertyType> plyPropertyTypes = map_list_of
 	("char", PlyPropertyType("char", 1))
+	("int8", PlyPropertyType("char", 1))
 	("uchar", PlyPropertyType("uchar", 1))
+	("uint8", PlyPropertyType("uchar", 1))
 	("short", PlyPropertyType("short", 2))
+	("int16", PlyPropertyType("short", 2))
 	("ushort", PlyPropertyType("ushort", 2))
+	("uint16", PlyPropertyType("ushort", 2))
 	("int", PlyPropertyType("int", 4))
+	("int32", PlyPropertyType("int", 4))
 	("uint", PlyPropertyType("uint", 4))
+	("uint32", PlyPropertyType("uint", 4))
 	("float", PlyPropertyType("float", 4))
-	("double", PlyPropertyType("double", 8));
+	("float32", PlyPropertyType("float", 4))
+	("double", PlyPropertyType("double", 8))
+	("float64", PlyPropertyType("double", 8));
 
 vector<string> plyRedNames = list_of("r")("red")("diffuse_red");
 vector<string> plyGreenNames = list_of("g")("green")("diffuse_green");
@@ -109,7 +117,7 @@ public:
 		boost::regex rEndHeader("^end_header.*");
 		boost::regex rFormat("^format (ascii|binary_little_endian).*");
 		boost::regex rElement("^element (\\w*) (\\d*)");
-		boost::regex rProperty("^property (char|uchar|short|ushort|int|uint|float|double) (\\w*)");
+		boost::regex rProperty("^property (char|int8|uchar|uint8|short|int16|ushort|uint16|int|int32|uint|uint32|float|float32|double|float64) (\\w*)");
 		
 		string line;
 		while(std::getline(stream, line)){
