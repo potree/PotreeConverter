@@ -109,6 +109,7 @@ int main(int argc, char **argv){
 	string outFormatString;
 	double scale;
 	int diagonalFraction;
+	double minSpacing;
 	OutputFormat outFormat;
 
 	cout.imbue(std::locale(""));
@@ -121,6 +122,7 @@ int main(int argc, char **argv){
 			("outdir,o", po::value<string>(&outdir), "output directory") 
 			("spacing,s", po::value<float>(&spacing), "Distance between points at root level. Distance halves each level.") 
 			("spacing-by-diagonal-fraction,d", po::value<int>(&diagonalFraction), "Maximum number of points on the diagonal in the first level (sets spacing). spacing = diagonal / value")
+			("min-spacing,m", po::value<double>(&minSpacing), "Minimum allowed spacing at the lowest level (sets levels).")
 			("levels,l", po::value<int>(&levels), "Number of levels that will be generated. 0: only root, 1: root and its children, ...")
 			("input-format,f", po::value<string>(&format), "Input format. xyz: cartesian coordinates as floats, rgb: colors as numbers, i: intensity as number")
 			("range,r", po::value<float>(&range), "Range of rgb or intensity. ")
@@ -152,6 +154,7 @@ int main(int argc, char **argv){
 		outdir = vm.count("outdir") ? vm["outdir"].as<string>() : pSource.generic_string() + "_converted";
 		if(!vm.count("spacing")) spacing = 0;
 		if(!vm.count("spacing-by-diagonal-fraction")) diagonalFraction = 0;
+		if(!vm.count("min-spacing")) minSpacing = 0.0;
 		if(!vm.count("levels")) levels = 3;
 		if(!vm.count("input-format")) format = "xyzrgb";
 		if(!vm.count("range")) range = 255;
@@ -192,7 +195,7 @@ int main(int argc, char **argv){
 	auto start = high_resolution_clock::now();
 	
 	try{
-		PotreeConverter pc(source, outdir, spacing, diagonalFraction, levels, format, range, scale, outFormat);
+		PotreeConverter pc(source, outdir, spacing, diagonalFraction, levels, minSpacing, format, range, scale, outFormat);
 		pc.convert();
 	}catch(exception &e){
 		cout << "ERROR: " << e.what() << endl;

@@ -61,7 +61,7 @@ PointReader *createPointReader(string path, string format, float range){
 	return reader;
 }
 
-PotreeConverter::PotreeConverter(vector<string> sources, string workDir, float spacing, int diagonalFraction, int maxDepth, string format, float range, double scale, OutputFormat outFormat){
+PotreeConverter::PotreeConverter(vector<string> sources, string workDir, float spacing, int diagonalFraction, int maxDepth, double minSpacing, string format, float range, double scale, OutputFormat outFormat){
 
 	// if sources contains directories, use files inside the directory instead
 	vector<string> sourceFiles;
@@ -98,6 +98,7 @@ PotreeConverter::PotreeConverter(vector<string> sources, string workDir, float s
 	this->scale = scale;
 	this->outputFormat = outFormat;
 	this->diagonalFraction = diagonalFraction;
+	this->minSpacing = minSpacing;
 
 	boost::filesystem::path dataDir(workDir + "/data");
 	boost::filesystem::path tempDir(workDir + "/temp");
@@ -111,6 +112,9 @@ PotreeConverter::PotreeConverter(vector<string> sources, string workDir, float s
 	cloudjs.outputFormat = OutputFormat::LAS;
 }
 
+double Log2(double x) {
+	return log(x)/log(2);
+}
 
 void PotreeConverter::convert(){
 	
@@ -173,7 +177,11 @@ void PotreeConverter::convert(){
 		spacing = (float)(aabb.size.length() / diagonalFraction);
 		cout << "spacing calculated from diagonal: " << spacing << endl;
 	}
-	cout << "Last level will have spacing:     " << spacing / pow(2, maxDepth - 1) << endl;
+	if (minSpacing != 0) {
+		maxDepth = Log2(spacing / minSpacing);
+		cout << "Automatically settings levels to: " << maxDepth << endl;
+	}
+	cout << "Last level will have spacing:     " << spacing / pow(2, maxDepth) << endl;
 	cout << endl;
 
 	cout << "AABB: " << endl << aabb << endl;

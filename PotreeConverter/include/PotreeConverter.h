@@ -50,10 +50,11 @@ private:
 	float range;
 	double scale;
 	int diagonalFraction;
+	double minSpacing;
 
 public:
 
-	PotreeConverter(vector<string> fData, string workDir, float spacing, int diagonalFraction, int maxDepth, string format, float range, double scale, OutputFormat outFormat);
+	PotreeConverter(vector<string> fData, string workDir, float spacing, int diagonalFraction, int maxDepth, double minSpacing, string format, float range, double scale, OutputFormat outFormat);
 
 	void convert();
 
