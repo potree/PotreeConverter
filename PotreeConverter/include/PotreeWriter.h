@@ -41,8 +41,9 @@ public:
 	bool addCalledSinceLastFlush;
 	PotreeWriter *potreeWriter;
 	vector<Point> cache;
+	double scale;
 
-	PotreeWriterNode(PotreeWriter* potreeWriter, string name, string path, AABB aabb, float spacing, int level, int maxLevel);
+	PotreeWriterNode(PotreeWriter* potreeWriter, string name, string path, AABB aabb, float spacing, int level, int maxLevel, double scale);
 
 	~PotreeWriterNode(){
 		for(int i = 0; i < 8; i++){
@@ -70,7 +71,7 @@ public:
 private:
 
 	PointReader *createReader(string path);
-	PointWriter *createWriter(string path);
+	PointWriter *createWriter(string path, double scale);
 
 };
 
@@ -94,7 +95,7 @@ public:
 
 
 
-	PotreeWriter(string path, AABB aabb, float spacing, int maxLevel, OutputFormat outputFormat){
+	PotreeWriter(string path, AABB aabb, float spacing, int maxLevel, double scale, OutputFormat outputFormat){
 		this->path = path;
 		this->aabb = aabb;
 		this->spacing = spacing;
@@ -116,7 +117,7 @@ public:
 		cloudjs.spacing = spacing;
 		cloudjs.version = "1.3";
 
-		root = new PotreeWriterNode(this, "r", path, aabb, spacing, 0, maxLevel);
+		root = new PotreeWriterNode(this, "r", path, aabb, spacing, 0, maxLevel, scale);
 	}
 
 	~PotreeWriter(){

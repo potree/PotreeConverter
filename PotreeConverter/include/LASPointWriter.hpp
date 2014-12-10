@@ -27,7 +27,7 @@ public:
 	liblas::Writer *writer;
 	liblas::Header *header;
 
-	LASPointWriter(string file, AABB aabb) {
+	LASPointWriter(string file, AABB aabb, double scale) {
 		this->file = file;
 		this->aabb = aabb;
 		numPoints = 0;
@@ -36,7 +36,7 @@ public:
 		header->SetDataFormatId(liblas::ePointFormat2);
 		header->SetMin(aabb.min.x, aabb.min.y, aabb.min.z);
 		header->SetMax(aabb.max.x, aabb.max.y, aabb.max.z);
-		header->SetScale(0.01, 0.01, 0.01);
+		header->SetScale(scale, scale, scale);
 		header->SetPointRecordsCount(53);
 
 		if(iends_with(file, ".laz")){
