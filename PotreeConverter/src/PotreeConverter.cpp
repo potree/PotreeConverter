@@ -58,7 +58,7 @@ PointReader *createPointReader(string path){
 	return reader;
 }
 
-PotreeConverter::PotreeConverter(vector<string> sources, string workDir, float spacing, int maxDepth, string format, float range, OutputFormat outFormat){
+PotreeConverter::PotreeConverter(vector<string> sources, string workDir, float spacing, int maxDepth, string format, float range, double scale, OutputFormat outFormat){
 
 	// if sources contains directories, use files inside the directory instead
 	vector<string> sourceFiles;
@@ -88,6 +88,7 @@ PotreeConverter::PotreeConverter(vector<string> sources, string workDir, float s
 	this->maxDepth = maxDepth;
 	this->format = format;
 	this->range = range;
+	this->scale = scale;
 	this->outputFormat = outFormat;
 
 	boost::filesystem::path dataDir(workDir + "/data");
@@ -131,7 +132,7 @@ void PotreeConverter::convert(){
 
 	auto start = high_resolution_clock::now();
 
-	PotreeWriter writer(this->workDir, aabb, spacing, maxDepth, outputFormat);
+	PotreeWriter writer(this->workDir, aabb, spacing, maxDepth, scale, outputFormat);
 	//PotreeWriterLBL writer(this->workDir, aabb, spacing, maxDepth, outputFormat);
 
 	long long pointsProcessed = 0;
