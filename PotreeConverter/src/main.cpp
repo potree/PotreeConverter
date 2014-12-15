@@ -152,7 +152,7 @@ int main(int argc, char **argv){
 		if(!vm.count("levels")) levels = 3;
 		if(!vm.count("input-format")) format = "xyzrgb";
 		if(!vm.count("range")) range = 255;
-		if(!vm.count("scale")) scale = 0.001;
+		if(!vm.count("scale")) scale = 0.01;
 		if(!vm.count("output-format")) outFormatString = "BINARY";
 		if(outFormatString == "BINARY"){
 			outFormat = OutputFormat::BINARY;

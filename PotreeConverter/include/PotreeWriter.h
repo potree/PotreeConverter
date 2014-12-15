@@ -117,6 +117,9 @@ public:
 		cloudjs.spacing = spacing;
 		cloudjs.version = "1.3";
 
+		// make bin the default extension but wait until people downloaded the latest potree code
+		//cloudjs.version = "1.3";
+
 		root = new PotreeWriterNode(this, "r", path, aabb, spacing, 0, maxLevel, scale);
 	}
 
@@ -132,6 +135,11 @@ public:
 		}else if(outputFormat == OutputFormat::LAZ){
 			return ".laz";
 		}
+		
+		// make bin the default extension but wait until people downloaded the latest potree code
+		//else if(outputFormat == OutputFormat::BINARY){
+		//	return ".bin";
+		//}
 
 		return "";
 	}
