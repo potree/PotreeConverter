@@ -13,7 +13,7 @@
 namespace fs = boost::filesystem;
 
 
-PotreeWriterNode::PotreeWriterNode(PotreeWriter* potreeWriter, string name, string path, AABB aabb, float spacing, int level, int maxLevel){
+PotreeWriterNode::PotreeWriterNode(PotreeWriter* potreeWriter, string name, string path, AABB aabb, float spacing, int level, int maxLevel, double scale){
 	this->name = name;
 	this->path = path;
 	this->aabb = aabb;
@@ -22,6 +22,7 @@ PotreeWriterNode::PotreeWriterNode(PotreeWriter* potreeWriter, string name, stri
 	this->maxLevel = maxLevel;
 	this->potreeWriter = potreeWriter;
 	this->grid = new SparseGrid(aabb, spacing);
+	this->scale = scale;
 	numAccepted = 0;
 	lastAccepted = 0;
 	addCalledSinceLastFlush = false;
@@ -43,11 +44,11 @@ PointReader *PotreeWriterNode::createReader(string path){
 	return reader;
 }
 
-PointWriter *PotreeWriterNode::createWriter(string path){
+PointWriter *PotreeWriterNode::createWriter(string path, double scale){
 	PointWriter *writer = NULL;
 	OutputFormat outputFormat = this->potreeWriter->outputFormat;
 	if(outputFormat == OutputFormat::LAS || outputFormat == OutputFormat::LAZ){
-		writer = new LASPointWriter(path, aabb);
+		writer = new LASPointWriter(path, aabb, scale);
 	}else if(outputFormat == OutputFormat::BINARY){
 		writer = new BINPointWriter(path);
 	}
@@ -97,7 +98,7 @@ PotreeWriterNode *PotreeWriterNode::createChild(int childIndex ){
 	stringstream childName;
 	childName << name << childIndex;
 	AABB cAABB = childAABB(aabb, childIndex);
-	PotreeWriterNode *child = new PotreeWriterNode(potreeWriter, childName.str(), path, cAABB, spacing / 2.0f, level+1, maxLevel);
+	PotreeWriterNode *child = new PotreeWriterNode(potreeWriter, childName.str(), path, cAABB, spacing / 2.0f, level+1, maxLevel, scale);
 	children[childIndex] = child;
 
 	return child;
@@ -161,7 +162,7 @@ void PotreeWriterNode::flush(){
 		}
 		
 
-		PointWriter *writer = createWriter(path + "/data/" + name + potreeWriter->getExtension());
+		PointWriter *writer = createWriter(path + "/data/" + name + potreeWriter->getExtension(), scale);
 		if(fs::exists(temppath)){
 			PointReader *reader = createReader(temppath);
 			while(reader->readNextPoint()){

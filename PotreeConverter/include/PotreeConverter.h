@@ -48,10 +48,11 @@ private:
 	OutputFormat outputFormat;
 
 	float range;
+	double scale;
 
 public:
 
-	PotreeConverter(vector<string> fData, string workDir, float spacing, int maxDepth, string format, float range, OutputFormat outFormat);
+	PotreeConverter(vector<string> fData, string workDir, float spacing, int maxDepth, string format, float range, double scale, OutputFormat outFormat);
 
 	void convert();
 
