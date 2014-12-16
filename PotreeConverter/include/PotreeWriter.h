@@ -116,6 +116,7 @@ public:
 		cloudjs.octreeDir = "data";
 		cloudjs.spacing = spacing;
 		cloudjs.version = "1.3";
+		cloudjs.scale = scale;
 
 		// make bin the default extension but wait until people downloaded the latest potree code
 		//cloudjs.version = "1.3";
