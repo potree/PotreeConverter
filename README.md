@@ -4,9 +4,14 @@ Builds a potree octree from las, laz or binary ply files.
 
 ## Downloads
 
-* [Windows 64bit binary 2014.11.30 (newest)](http://potree.org/downloads/PotreeConverter/PotreeConverter_2014.11.30.zip)
+* [Windows 64bit binary 2014.12.17 (newest)](http://potree.org/downloads/PotreeConverter/PotreeConverter_2014.12.17.zip)
+* [Windows 64bit binary 2014.11.30](http://potree.org/downloads/PotreeConverter/PotreeConverter_2014.11.30.zip)
 * [Windows 64bit binary 2014.11.18](http://potree.org/downloads/PotreeConverter/PotreeConverter_2014.11.18.zip)
 * [Windows 64bit binary 2014.08.31](http://potree.org/downloads/PotreeConverter/PotreeConverter_2014.08.31.zip)
+
+## Changelog
+
+See [docs/changelog.md](./docs/changelog.md) for a list of new features, bugfixes and changes to the API.
 
 ## Dependencies
 
@@ -61,20 +66,34 @@ inside the directory will be converted.
 
 Options:
 
-    -h [ --help ]             prints usage
-    -o [ --outdir ] arg       output directory
-    -s [ --spacing ] arg      Distance between points at root level. Distance
-                              halves each level.
-    -l [ --levels ] arg       Number of levels that will be generated. 0: only
-                              root, 1: root and its children, ...
-    -f [ --input-format ] arg Input format. xyz: cartesian coordinates as floats,
-                              rgb: colors as numbers, i: intensity as number
-    -r [ --range ] arg        Range of rgb or intensity.
-    --output-format arg       Output format can be BINARY, LAS or LAZ. Default is
-                              BINARY
-    --source arg              Source file. Can be LAS, LAZ or PLY
+
+```
+  -h [ --help ]                         prints usage
+  -o [ --outdir ] arg                   output directory
+  -s [ --spacing ] arg                  Distance between points at root level.
+                                        Distance halves each level.
+  -d [ --spacing-by-diagonal-fraction ] arg
+                                        Maximum number of points on the
+                                        diagonal in the first level (sets
+                                        spacing). spacing = diagonal / value
+  -l [ --levels ] arg                   Number of levels that will be
+                                        generated. 0: only root, 1: root and
+                                        its children, ...
+  -f [ --input-format ] arg             Input format. xyz: cartesian
+                                        coordinates as floats, rgb: colors as
+                                        numbers, i: intensity as number
+  -r [ --range ] arg                    Range of rgb or intensity.
+  --output-format arg                   Output format can be BINARY, LAS or
+                                        LAZ. Default is BINARY
+  --scale arg                           Scale of the X, Y, Z coordinate in LAS
+                                        and LAZ files.
+  --source arg                          Source file. Can be LAS, LAZ or PLY
+```
 
 Examples:
+
+    # convert data.las with automatically calulated spacing and a depth of 4
+    ./PotreeConverter.exe C:/data.las -l 4 -o C:/potree_converted
 
     # convert data.las with a spacing of 0.5 and a depth of 4
     ./PotreeConverter.exe C:/data.las -s 0.5 -l 4 -o C:/potree_converted
