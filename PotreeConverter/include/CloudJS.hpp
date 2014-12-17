@@ -37,6 +37,7 @@ public:
 	OutputFormat outputFormat;
 	double spacing;
 	vector<Node> hierarchy;
+	double scale;
 
 	CloudJS(){
 		version = "1.3";
@@ -45,6 +46,7 @@ public:
 	string getString(){
 		stringstream cloudJs;
 
+		cloudJs.precision(15);
 		cloudJs << "{" << endl;
 		cloudJs << "\t" << "\"version\": \"" << version << "\"," << endl;
 		cloudJs << "\t" << "\"octreeDir\": \"data\"," << endl;
@@ -67,6 +69,7 @@ public:
 			cloudJs << "\t" << "\"pointAttributes\": \"LAZ\"," << endl;
 		}
 		cloudJs << "\t" << "\"spacing\": " << spacing << "," << endl;
+		cloudJs << "\t" << "\"scale\": " << scale << "," << endl;
 		cloudJs << "\t" << "\"hierarchy\": [" << endl;
 
 		for(int i = 0; i < hierarchy.size(); i++){
