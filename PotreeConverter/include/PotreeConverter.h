@@ -49,11 +49,11 @@ private:
 
 	float range;
 	double scale;
-	int firstLevelSize;
+	int diagonalFraction;
 
 public:
 
-	PotreeConverter(vector<string> fData, string workDir, float spacing, int fistLevelSize, int maxDepth, string format, float range, double scale, OutputFormat outFormat);
+	PotreeConverter(vector<string> fData, string workDir, float spacing, int diagonalFraction, int maxDepth, string format, float range, double scale, OutputFormat outFormat);
 
 	void convert();
 
