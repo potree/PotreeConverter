@@ -6,9 +6,9 @@
 #include "PotreeConverter.h"
 #include "stuff.h"
 #include "LASPointReader.h"
+#include "PTXPointReader.h"
 #include "PotreeException.h"
 #include "PotreeWriter.h"
-#include "LASPointReader.h"
 #include "LASPointWriter.hpp"
 #include "PlyPointReader.h"
 #include "XYZPointReader.hpp"
@@ -52,6 +52,8 @@ PointReader *createPointReader(string path, string format, float range){
 	PointReader *reader = NULL;
 	if(boost::iends_with(path, ".las") || boost::iends_with(path, ".laz")){
 		reader = new LASPointReader(path);
+	}else if(boost::iends_with(path, ".ptx")){
+		reader = new PTXPointReader(path);
 	}else if(boost::iends_with(path, ".ply")){
 		reader = new PlyPointReader(path);
 	}else if(boost::iends_with(path, ".xyz") || boost::iends_with(path, ".pts")){
@@ -78,6 +80,7 @@ PotreeConverter::PotreeConverter(vector<string> sources, string workDir, float s
 						|| boost::iends_with(filepath, ".laz") 
 						|| boost::iends_with(filepath, ".xyz")
 						|| boost::iends_with(filepath, ".pts")
+						|| boost::iends_with(filepath, ".ptx")
 						|| boost::iends_with(filepath, ".ply")){
 						sourceFiles.push_back(filepath);
 					}
@@ -120,7 +123,7 @@ void PotreeConverter::convert(){
 	for(int i = 0; i < sources.size(); i++){
 		string source = sources[i];
 
-		if(boost::iends_with(source, ".xyz") || boost::iends_with(source, ".pts")){
+		if(boost::iends_with(source, ".xyz") || boost::iends_with(source, ".pts") || boost::iends_with(source, ".ptx")){
 			boost::filesystem::path lasDir(workDir + "/las");
 			boost::filesystem::create_directories(lasDir);
 			string dest = workDir + "/las/" + fs::path(source).stem().string() + ".las";
