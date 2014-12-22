@@ -6,9 +6,9 @@
 #include "PotreeConverter.h"
 #include "stuff.h"
 #include "LASPointReader.h"
+#include "PTXPointReader.h"
 #include "PotreeException.h"
 #include "PotreeWriter.h"
-#include "LASPointReader.h"
 #include "LASPointWriter.hpp"
 #include "PlyPointReader.h"
 
@@ -51,6 +51,8 @@ PointReader *createPointReader(string path){
 	PointReader *reader = NULL;
 	if(boost::iends_with(path, ".las") || boost::iends_with(path, ".laz")){
 		reader = new LASPointReader(path);
+	}else if(boost::iends_with(path, ".ptx")){
+		reader = new PTXPointReader(path);
 	}else if(boost::iends_with(path, ".ply")){
 		reader = new PlyPointReader(path);
 	}
@@ -71,7 +73,7 @@ PotreeConverter::PotreeConverter(vector<string> sources, string workDir, float s
 				path pDirectoryEntry = it->path();
 				if(boost::filesystem::is_regular_file(pDirectoryEntry)){
 					string filepath = pDirectoryEntry.string();
-					if(boost::iends_with(filepath, ".las") || boost::iends_with(filepath, ".laz") || boost::iends_with(filepath, ".ply")){
+					if(boost::iends_with(filepath, ".las") || boost::iends_with(filepath, ".laz") || boost::iends_with(filepath, ".ptx") || boost::iends_with(filepath, ".ply")){
 						sourceFiles.push_back(filepath);
 					}
 				}
