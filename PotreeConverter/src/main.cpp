@@ -19,6 +19,7 @@
 
 #include "boost/program_options.hpp" 
 #include <boost/filesystem.hpp>
+#include <PotreeTiler.h>
 
 namespace po = boost::program_options; 
 
@@ -110,6 +111,7 @@ int main(int argc, char **argv){
 	double scale;
 	int diagonalFraction;
 	OutputFormat outFormat;
+	double tile;
 
 	cout.imbue(std::locale(""));
 
@@ -126,6 +128,7 @@ int main(int argc, char **argv){
 			("range,r", po::value<float>(&range), "Range of rgb or intensity. ")
 			("output-format", po::value<string>(&outFormatString), "Output format can be BINARY, LAS or LAZ. Default is BINARY")
 			("scale", po::value<double>(&scale), "Scale of the X, Y, Z coordinate in LAS and LAZ files.")
+			("tile,t", po::value<double>(&tile), "Set to non zero to perform a preemptive tiling of the pointcloud.")
 			("source", po::value<std::vector<std::string> >(), "Source file. Can be LAS, LAZ or PLY");
 		po::positional_options_description p; 
 		p.add("source", -1); 
@@ -156,6 +159,7 @@ int main(int argc, char **argv){
 		if(!vm.count("input-format")) format = "xyzrgb";
 		if(!vm.count("range")) range = 255;
 		if(!vm.count("scale")) scale = 0.01;
+		if(!vm.count("tile")) tile = 0.0;
 		if(!vm.count("output-format")) outFormatString = "BINARY";
 		if(outFormatString == "BINARY"){
 			outFormat = OutputFormat::BINARY;
@@ -192,8 +196,19 @@ int main(int argc, char **argv){
 	auto start = high_resolution_clock::now();
 	
 	try{
-		PotreeConverter pc(source, outdir, spacing, diagonalFraction, levels, format, range, scale, outFormat);
+		if(0.0 != tile) {
+			cout << "Tiling the cloud with spacing: " << tile << endl;
+			PotreeTiler tiler(source, outdir, tile, format, scale);
+			tiler.tile();
+			cout << "Tiling done." << endl;
+			std::vector<string> tilepath;
+			tilepath.push_back(outdir + "/tiles");
+			PotreeConverter pc(tilepath, outdir, spacing, diagonalFraction, levels, format, range, scale, outFormat, false);
+			pc.convert();
+		} else {
+			PotreeConverter pc(source, outdir, spacing, diagonalFraction, levels, format, range, scale, outFormat, true);
 		pc.convert();
+		}
 	}catch(exception &e){
 		cout << "ERROR: " << e.what() << endl;
 		return 1;
