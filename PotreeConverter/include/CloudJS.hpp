@@ -34,13 +34,14 @@ public:
 	string version;
 	string octreeDir;
 	AABB boundingBox;
+	AABB tightBoundingBox;
 	OutputFormat outputFormat;
 	double spacing;
 	vector<Node> hierarchy;
 	double scale;
 
 	CloudJS(){
-		version = "1.3";
+		version = "1.4";
 	}
 
 	string getString(){
@@ -57,6 +58,14 @@ public:
 		cloudJs << "\t\t" << "\"ux\": " << boundingBox.max.x << "," << endl;
 		cloudJs << "\t\t" << "\"uy\": " << boundingBox.max.y << "," << endl;
 		cloudJs << "\t\t" << "\"uz\": " << boundingBox.max.z << endl;
+		cloudJs << "\t" << "}," << endl;
+		cloudJs << "\t" << "\"tightBoundingBox\": {" << endl;
+		cloudJs << "\t\t" << "\"lx\": " << tightBoundingBox.min.x << "," << endl;
+		cloudJs << "\t\t" << "\"ly\": " << tightBoundingBox.min.y << "," << endl;
+		cloudJs << "\t\t" << "\"lz\": " << tightBoundingBox.min.z << "," << endl;
+		cloudJs << "\t\t" << "\"ux\": " << tightBoundingBox.max.x << "," << endl;
+		cloudJs << "\t\t" << "\"uy\": " << tightBoundingBox.max.y << "," << endl;
+		cloudJs << "\t\t" << "\"uz\": " << tightBoundingBox.max.z << endl;
 		cloudJs << "\t" << "}," << endl;
 		if(outputFormat == OutputFormat::BINARY){
 			cloudJs << "\t" << "\"pointAttributes\": [" << endl;

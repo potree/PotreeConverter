@@ -21,6 +21,7 @@ using std::vector;
 class BINPointReader : public PointReader{
 private:
 	AABB aabb;
+	double scale;
 	string path;
 	vector<string> files;
 	vector<string>::iterator currentFile;
@@ -30,7 +31,7 @@ private:
 
 public:
 
-	BINPointReader(string path);
+	BINPointReader(string path, AABB aabb, double scale);
 
 	~BINPointReader();
 

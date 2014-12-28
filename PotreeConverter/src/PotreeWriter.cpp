@@ -38,7 +38,7 @@ PointReader *PotreeWriterNode::createReader(string path){
 	if(outputFormat == OutputFormat::LAS || outputFormat == OutputFormat::LAZ){
 		reader = new LASPointReader(path);
 	}else if(outputFormat == OutputFormat::BINARY){
-		reader = new BINPointReader(path);
+		reader = new BINPointReader(path, aabb, scale);
 	}
 
 	return reader;
@@ -50,7 +50,7 @@ PointWriter *PotreeWriterNode::createWriter(string path, double scale){
 	if(outputFormat == OutputFormat::LAS || outputFormat == OutputFormat::LAZ){
 		writer = new LASPointWriter(path, aabb, scale);
 	}else if(outputFormat == OutputFormat::BINARY){
-		writer = new BINPointWriter(path);
+		writer = new BINPointWriter(path, aabb, scale);
 	}
 
 	return writer;
