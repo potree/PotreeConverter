@@ -35,6 +35,8 @@ public:
 	~TilingGrid();
 
 	void add(Point &point);
+
+	void flush();
 };
 
 

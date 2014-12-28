@@ -11,10 +11,7 @@ TilingGrid::TilingGrid(float spacing, double scale, string tilesDir) {
 }
 
 TilingGrid::~TilingGrid() {
-    TilingGrid::iterator it;
-    for (it = begin(); it != end(); it++) {
-        delete it->second;
-    }
+    flush();
 }
 
 void TilingGrid::add(Point &point) {
@@ -33,4 +30,12 @@ void TilingGrid::add(Point &point) {
         this->operator[](index) = new LASPointWriter(fileName, myAABB, scale);
     }
     this->operator[](index)->write(point);
+}
+
+void TilingGrid::flush() {
+    TilingGrid::iterator it;
+    for (it = begin(); it != end(); it++) {
+        delete it->second;
+    }
+    this->clear();
 }

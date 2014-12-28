@@ -32,7 +32,7 @@ using boost::filesystem::is_regular_file;
 using boost::filesystem::path;
 
 PotreeTiler::PotreeTiler(vector<string> sources, string workDir, float spacing, string format,
-         double scale) {
+        double scale) {
     // if sources contains directories, use files inside the directory instead
     vector<string> sourceFiles;
     for (int i = 0; i < sources.size(); i++) {
@@ -89,6 +89,8 @@ void PotreeTiler::tile() {
                 auto end = high_resolution_clock::now();
                 long duration = duration_cast<milliseconds>(end - start).count();
                 cout << (duration / 1000.0f) << "s" << endl;
+                if ((pointsProcessed % 10000000) == 0)
+                    grid.flush();
                 //return;
             }
         }
