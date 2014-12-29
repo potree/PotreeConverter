@@ -10,6 +10,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <PlyPointReader.h>
+#include <PTXPointReader.h>
 #include <LASPointReader.h>
 
 #include "Vector3.h"
@@ -212,6 +213,8 @@ PointReader *createPointReader(string path){
 	PointReader *reader = NULL;
 	if(boost::iends_with(path, ".las") || boost::iends_with(path, ".laz")){
 		reader = new LASPointReader(path);
+	}else if(boost::iends_with(path, ".ptx")){
+		reader = new PTXPointReader(path);
 	}else if(boost::iends_with(path, ".ply")){
 		reader = new PlyPointReader(path);
 	}

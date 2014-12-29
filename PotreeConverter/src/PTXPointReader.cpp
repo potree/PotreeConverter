@@ -19,6 +19,9 @@ using std::vector;
 using boost::iequals;
 using std::ios;
 
+static const int COORD_THRESHOLD = 10000;
+static const int INVALID_INTENSITY = 32767;
+
 /**
 * The constructor needs to scan the whole PTX file to find out the bounding box. Unluckily.
 * TODO: during the scan all the points are read and transformed. Afterwards, during loading
@@ -134,7 +137,7 @@ bool PTXPointReader::readNextPoint() {
         bool result = doReadNextPoint();
         if (!result)
             return false;
-        if (32767 != p.intensity)
+        if (INVALID_INTENSITY != p.intensity)
             return true;
     }
     return false;
@@ -163,6 +166,9 @@ bool PTXPointReader::doReadNextPoint() {
     this->stream >> x >> y >> z >> i;
     this->currentPointInChunk++;
     this->p = transform(x, y, z);
-    this->p.intensity = 65535.0 * i;
+    if (x > COORD_THRESHOLD || y > COORD_THRESHOLD || z > COORD_THRESHOLD)
+        this->p.intensity = INVALID_INTENSITY;
+    else
+        this->p.intensity = 65535.0 * i;
     return true;
 }

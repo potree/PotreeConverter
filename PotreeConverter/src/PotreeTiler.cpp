@@ -44,7 +44,7 @@ PotreeTiler::PotreeTiler(vector<string> sources, string workDir, float spacing, 
                 path pDirectoryEntry = it->path();
                 if (boost::filesystem::is_regular_file(pDirectoryEntry)) {
                     string filepath = pDirectoryEntry.string();
-                    if (boost::iends_with(filepath, ".las") || boost::iends_with(filepath, ".laz") || boost::iends_with(filepath, ".ply")) {
+                    if (boost::iends_with(filepath, ".las") || boost::iends_with(filepath, ".laz") || boost::iends_with(filepath, ".ply") || boost::iends_with(filepath, ".ptx")) {
                         sourceFiles.push_back(filepath);
                     }
                 }
