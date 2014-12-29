@@ -112,6 +112,7 @@ void PTXPointReader::scanForAABB() {
 bool PTXPointReader::loadChunk() {
     long rows, cols;
     double dummy;
+    cout << "Loading a new PTX chunk: " << this->currentChunk << endl;
 
     this->currentPointInChunk = 0;
     this->stream >> cols >> rows;
