@@ -128,7 +128,7 @@ int main(int argc, char **argv){
 			("range,r", po::value<float>(&range), "Range of rgb or intensity. ")
 			("output-format", po::value<string>(&outFormatString), "Output format can be BINARY, LAS or LAZ. Default is BINARY")
 			("scale", po::value<double>(&scale), "Scale of the X, Y, Z coordinate in LAS and LAZ files.")
-			("source", po::value<std::vector<std::string> >(), "Source file. Can be LAS, LAZ or PLY");
+			("source", po::value<std::vector<std::string> >(), "Source file. Can be LAS, LAZ, PTX or PLY");
 		po::positional_options_description p; 
 		p.add("source", -1); 
 
