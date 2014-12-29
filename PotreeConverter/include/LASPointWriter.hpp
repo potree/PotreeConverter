@@ -5,6 +5,7 @@
 #include <string>
 #include <iostream>
 #include <fstream>
+#include <boost/filesystem.hpp>
 
 #include "liblas/liblas.hpp"
 #include <boost/algorithm/string/predicate.hpp>
@@ -16,6 +17,7 @@ using std::string;
 using std::fstream;
 using std::ios;
 using boost::algorithm::iends_with;
+namespace fs = boost::filesystem;
 
 class LASPointWriter : public PointWriter{
 
@@ -30,24 +32,36 @@ public:
 	LASPointWriter(string file, AABB aabb, double scale) {
 		this->file = file;
 		this->aabb = aabb;
-		numPoints = 0;
+		if (fs::exists(file)){
+			std::ifstream ifs;
+			ifs.open(file, std::ios::in | std::ios::binary);
+			liblas::Reader *r = new liblas::Reader(ifs);
+			const liblas::Header h = r->GetHeader();
+			numPoints= h.GetPointRecordsCount();
+			header = new liblas::Header(h);
 
-		header = new liblas::Header();
-		header->SetDataFormatId(liblas::ePointFormat2);
-		header->SetMin(aabb.min.x, aabb.min.y, aabb.min.z);
-		header->SetMax(aabb.max.x, aabb.max.y, aabb.max.z);
-		header->SetScale(scale, scale, scale);
-		header->SetPointRecordsCount(53);
+			stream = new fstream(file, std::ios::out | std::ios::in | std::ios::binary | std::ios::ate);
+			writer = new liblas::Writer(*stream, *header);
+			delete r;
+		} else {
+			numPoints = 0;
 
-		if(iends_with(file, ".laz")){
-			header->SetCompressed(true);
-		}else{
-			header->SetCompressed(false);
+			header = new liblas::Header();
+			header->SetDataFormatId(liblas::ePointFormat2);
+			header->SetMin(aabb.min.x, aabb.min.y, aabb.min.z);
+			header->SetMax(aabb.max.x, aabb.max.y, aabb.max.z);
+			header->SetScale(scale, scale, scale);
+			header->SetPointRecordsCount(53);
+
+			if (iends_with(file, ".laz")) {
+				header->SetCompressed(true);
+			} else {
+				header->SetCompressed(false);
+			}
+
+			stream = new fstream(file, ios::out | ios::binary);
+			writer = new liblas::Writer(*stream, *header);
 		}
-
-		stream = new fstream(file, ios::out | ios::binary);
-		writer = new liblas::Writer(*stream, *header);
-
 
 		//LASheader header;
 		//header.clean();
