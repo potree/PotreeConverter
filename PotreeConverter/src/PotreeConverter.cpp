@@ -10,7 +10,6 @@
 #include "PotreeException.h"
 #include "PotreeWriter.h"
 #include "LASPointWriter.hpp"
-#include "PlyPointReader.h"
 
 #include <chrono>
 #include <sstream>
@@ -47,20 +46,7 @@ struct Task{
 	}
 };
 
-PointReader *createPointReader(string path){
-	PointReader *reader = NULL;
-	if(boost::iends_with(path, ".las") || boost::iends_with(path, ".laz")){
-		reader = new LASPointReader(path);
-	}else if(boost::iends_with(path, ".ptx")){
-		reader = new PTXPointReader(path);
-	}else if(boost::iends_with(path, ".ply")){
-		reader = new PlyPointReader(path);
-	}
-
-	return reader;
-}
-
-PotreeConverter::PotreeConverter(vector<string> sources, string workDir, float spacing, int diagonalFraction, int maxDepth, double minSpacing, string format, float range, double scale, OutputFormat outFormat){
+PotreeConverter::PotreeConverter(vector<string> sources, string workDir, float spacing, int diagonalFraction, int maxDepth, double minSpacing, string format, float range, double scale, OutputFormat outFormat, bool printFileName){
 
 	// if sources contains directories, use files inside the directory instead
 	vector<string> sourceFiles;
@@ -93,6 +79,7 @@ PotreeConverter::PotreeConverter(vector<string> sources, string workDir, float s
 	this->scale = scale;
 	this->outputFormat = outFormat;
 	this->diagonalFraction = diagonalFraction;
+	this->printFileName = printFileName;
 	this->minSpacing = minSpacing;
 
 	boost::filesystem::path dataDir(workDir + "/data");
@@ -103,27 +90,6 @@ PotreeConverter::PotreeConverter(vector<string> sources, string workDir, float s
 	cloudjs.octreeDir = "data";
 	cloudjs.spacing = spacing;
 	cloudjs.outputFormat = OutputFormat::LAS;
-}
-
-
-AABB calculateAABB(vector<string> sources){
-	AABB aabb;
-
-	for(int i = 0; i < sources.size(); i++){
-		string source = sources[i];
-
-		PointReader *reader = createPointReader(source);
-		AABB lAABB = reader->getAABB();
-		 
-
-		aabb.update(lAABB.min);
-		aabb.update(lAABB.max);
-
-		reader->close();
-		delete reader;
-	}
-
-	return aabb;
 }
 
 void PotreeConverter::convert(){
@@ -153,6 +119,7 @@ void PotreeConverter::convert(){
 	long long pointsProcessed = 0;
 	for(int i = 0; i < sources.size(); i++){
 		string source = sources[i];
+		if (printFileName)
 		cout << "reading " << source << endl;
 
 		PointReader *reader = createPointReader(source);

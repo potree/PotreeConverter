@@ -46,6 +46,7 @@ private:
 	int maxDepth;
 	string format;
 	OutputFormat outputFormat;
+	bool printFileName;
 
 	float range;
 	double scale;
@@ -54,7 +55,7 @@ private:
 
 public:
 
-	PotreeConverter(vector<string> fData, string workDir, float spacing, int diagonalFraction, int maxDepth, double minSpacing, string format, float range, double scale, OutputFormat outFormat);
+	PotreeConverter(vector<string> fData, string workDir, float spacing, int diagonalFraction, int maxDepth, double minSpacing, string format, float range, double scale, OutputFormat outFormat, bool printFileName);
 
 	void convert();
 
