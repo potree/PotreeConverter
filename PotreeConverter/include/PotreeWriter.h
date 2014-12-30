@@ -82,6 +82,7 @@ class PotreeWriter{
 public:
 
 	AABB aabb;
+	AABB tightAABB;
 	string path;
 	float spacing;
 	int maxLevel;
@@ -115,11 +116,8 @@ public:
 		cloudjs.boundingBox = aabb;
 		cloudjs.octreeDir = "data";
 		cloudjs.spacing = spacing;
-		cloudjs.version = "1.3";
+		cloudjs.version = "1.4";
 		cloudjs.scale = scale;
-
-		// make bin the default extension but wait until people downloaded the latest potree code
-		//cloudjs.version = "1.3";
 
 		root = new PotreeWriterNode(this, "r", path, aabb, spacing, 0, maxLevel, scale);
 	}
@@ -135,12 +133,9 @@ public:
 			return ".las";
 		}else if(outputFormat == OutputFormat::LAZ){
 			return ".laz";
+		}else if(outputFormat == OutputFormat::BINARY){
+			return ".bin";
 		}
-		
-		// make bin the default extension but wait until people downloaded the latest potree code
-		//else if(outputFormat == OutputFormat::BINARY){
-		//	return ".bin";
-		//}
 
 		return "";
 	}
@@ -151,6 +146,9 @@ public:
 		if(acceptedBy != NULL){
 			pointsInMemory++;
 			numAccepted++;
+
+			Vector3<double> position = p.position();
+			tightAABB.update(position);
 		}
 	}
 
@@ -167,6 +165,7 @@ public:
 		long long numPointsInMemory = 0;
 		long long numPointsInHierarchy = 0;
 		cloudjs.hierarchy = vector<CloudJS::Node>();
+		cloudjs.tightBoundingBox = tightAABB;
 		list<PotreeWriterNode*> stack;
 		stack.push_back(root);
 		while(!stack.empty()){

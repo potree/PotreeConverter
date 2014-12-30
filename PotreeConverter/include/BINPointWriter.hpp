@@ -25,9 +25,13 @@ public:
 	int numPoints;
 	PointAttributes attributes;
 	ofstream *writer;
+	AABB aabb;
+	double scale;
 
-	BINPointWriter(string file) {
+	BINPointWriter(string file, AABB aabb, double scale) {
 		this->file = file;
+		this->aabb = aabb;
+		this->scale = scale;
 		numPoints = 0;
 		attributes.add(PointAttribute::POSITION_CARTESIAN);
 		attributes.add(PointAttribute::COLOR_PACKED);
@@ -51,8 +55,12 @@ public:
 		for(int i = 0; i < attributes.size(); i++){
 			PointAttribute attribute = attributes[i];
 			if(attribute == PointAttribute::POSITION_CARTESIAN){
-				float pos[3] = {(float) point.x,(float)  point.y,(float)  point.z};
-				writer->write((const char*)pos, 3*sizeof(float));
+				//float pos[3] = {(float) point.x,(float)  point.y,(float)  point.z};
+				int x = (point.x - aabb.min.x) / scale;
+				int y = (point.y - aabb.min.y) / scale;
+				int z = (point.z - aabb.min.z) / scale;
+				int pos[3] = {x, y, z};
+				writer->write((const char*)pos, 3*sizeof(int));
 			}else if(attribute == PointAttribute::COLOR_PACKED){
 				unsigned char rgba[4] = {point.r, point.g, point.b, 255};
 				writer->write((const char*)rgba, 4*sizeof(unsigned char));
