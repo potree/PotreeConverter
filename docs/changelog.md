@@ -1,4 +1,9 @@
 
+## 2014.12.30
+
+* Updated BINARY format to version 1.4. Coordinates are now stored as integers, rather than floats. Additionaly, a tightBoundingBox is also saved in the cloud.js file. The normal boundingBox specifies the cubic octree bounds whereas the tightBoundingBox specifies the extent of the actual data.
+
+
 ## 2014.12.17
 
 ### features
