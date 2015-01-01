@@ -19,6 +19,7 @@
 #include "GridIndex.h"
 #include "SparseGrid.h"
 #include "GridCell.h"
+#include "PointReader.h"
 
 using std::ifstream;
 using std::ofstream;
@@ -87,5 +88,9 @@ bool endsWith (std::string const &fullString, std::string const &ending);
  * see http://stackoverflow.com/questions/735204/convert-a-string-in-c-to-upper-case
  */
 string toUpper(string str);
+
+PointReader *createPointReader(string path);
+
+AABB calculateAABB(vector<string> sources);
 
 #endif
