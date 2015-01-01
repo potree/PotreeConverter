@@ -1,20 +1,10 @@
 #ifndef PTXPOINTREADER_H
 #define PTXPOINTREADER_H
 
-#include <string>
-#include <iostream>
-#include <vector>
-
-#include <liblas/liblas.hpp>
-
-#include "Point.h"
 #include "PointReader.h"
 
 using std::string;
-
 using std::fstream;
-using std::cout;
-using std::endl;
 using std::vector;
 
 /**
@@ -26,9 +16,7 @@ class PTXPointReader : public PointReader {
 private:
     double tr[16];
     long count;
-    long currentPointInChunk;
     Point p;
-    long pointsInCurrentChunk;
     long currentChunk;
     bool hasAABB = false;
 
