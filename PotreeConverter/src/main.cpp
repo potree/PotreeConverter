@@ -198,7 +198,7 @@ int main(int argc, char **argv){
 	try{
 		if(0.0 != tile) {
 			cout << "Tiling the cloud with spacing: " << tile << endl;
-			PotreeTiler tiler(source, outdir, tile, format, scale);
+			PotreeTiler tiler(source, outdir, tile, scale);
 			tiler.tile();
 			cout << "Tiling done." << endl;
 			std::vector<string> tilepath;

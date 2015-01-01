@@ -1,26 +1,13 @@
-
-
 #ifndef TILING_GRID_H
 #define TILING_GRID_H
 
-#include "AABB.h"
-#include "Point.h"
-#include "GridIndex.h"
-#include "GridCell.h"
-#include "LASPointWriter.hpp"
-
 #include <map>
-#include <vector>
-#include <math.h>
-
-using std::vector;
-using std::map;
-using std::min;
-using std::max;
+#include "GridIndex.h"
+#include "LASPointWriter.hpp"
 
 #define MAX_FLOAT std::numeric_limits<float>::max()
 
-class TilingGrid : public map<GridIndex, LASPointWriter*>{
+class TilingGrid : public std::map<GridIndex, LASPointWriter*>{
 public:
 	float spacing;
 	int numAccepted;
@@ -38,7 +25,5 @@ public:
 
 	void flush();
 };
-
-
 
 #endif

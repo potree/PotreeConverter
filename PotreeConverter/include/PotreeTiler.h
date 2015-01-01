@@ -24,12 +24,11 @@ private:
     vector<string> sources;
     string workDir;
     float spacing;
-    string format;
     double scale;
 
 public:
 
-    PotreeTiler(vector<string> fData, string workDir, float spacing, string format, double scale);
+    PotreeTiler(vector<string> fData, string workDir, float spacing, double scale);
 
     void tile();
 };

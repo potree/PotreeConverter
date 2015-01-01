@@ -31,8 +31,7 @@ using boost::filesystem::directory_iterator;
 using boost::filesystem::is_regular_file;
 using boost::filesystem::path;
 
-PotreeTiler::PotreeTiler(vector<string> sources, string workDir, float spacing, string format,
-        double scale) {
+PotreeTiler::PotreeTiler(vector<string> sources, string workDir, float spacing, double scale) {
     // if sources contains directories, use files inside the directory instead
     vector<string> sourceFiles;
     for (int i = 0; i < sources.size(); i++) {
@@ -57,7 +56,6 @@ PotreeTiler::PotreeTiler(vector<string> sources, string workDir, float spacing, 
     this->sources = sourceFiles;
     this->workDir = workDir;
     this->spacing = spacing;
-    this->format = format;
     this->scale = scale;
 
     boost::filesystem::path tilesDir(workDir + "/tiles");
@@ -98,6 +96,8 @@ void PotreeTiler::tile() {
         delete reader;
     }
 
+    grid.flush();
+
 //	cout << writer.numAccepted << " points written" << endl;
 
     auto end = high_resolution_clock::now();
@@ -105,5 +105,4 @@ void PotreeTiler::tile() {
     cout << "duration: " << (duration / 1000.0f) << "s" << endl;
 
     cout << "closing writer" << endl;
-//	writer.close();
 }

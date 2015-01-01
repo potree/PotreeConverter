@@ -1,6 +1,5 @@
-#include <iostream>
-#include <stuff.h>
-
+#include <ostream>
+using std::ostream;
 #include "TilingGrid.h"
 
 TilingGrid::TilingGrid(float spacing, double scale, string tilesDir) {
@@ -33,8 +32,7 @@ void TilingGrid::add(Point &point) {
 }
 
 void TilingGrid::flush() {
-    TilingGrid::iterator it;
-    for (it = begin(); it != end(); it++) {
+    for (TilingGrid::iterator it = begin(); it != end(); it++) {
         delete it->second;
     }
     this->clear();
