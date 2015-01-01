@@ -1,26 +1,41 @@
 #include <fstream>
-#include <iostream>
-#include <vector>
-
-#include "boost/filesystem.hpp"
-#include <boost/algorithm/string.hpp>
-#include <term.h>
+#include <sstream>
 
 #include "PTXPointReader.h"
 
-
-namespace fs = boost::filesystem;
-
-using std::ifstream;
-using std::fstream;
 using std::cout;
 using std::endl;
 using std::vector;
-using boost::iequals;
 using std::ios;
+using std::string;
 
-static const int COORD_THRESHOLD = 10000;
+static const int COORD_THRESHOLD = 100000;
 static const int INVALID_INTENSITY = 32767;
+
+void split(const string &s, vector<double> &v) {
+    if (s.length() > 200) return;
+
+    std::stringstream in(s);
+    v = vector<double>((std::istream_iterator<double>(in)), std::istream_iterator<double>());
+}
+
+void getlined(fstream &stream, vector<double> &result) {
+    string str;
+    getline(stream, str);
+    split(str, result);
+}
+
+void skipline(fstream &stream) {
+    string str;
+    getline(stream, str);
+}
+
+bool assertd(fstream &stream, int i) {
+    vector<double> tokens;
+    getlined(stream, tokens);
+    bool result = i == tokens.size();
+    return result;
+}
 
 /**
 * The constructor needs to scan the whole PTX file to find out the bounding box. Unluckily.
@@ -54,9 +69,8 @@ PTXPointReader::PTXPointReader(string path) {
     this->currentFile = files.begin();
     stream = fstream(*(this->currentFile), ios::in);
     this->currentChunk = 0;
+    skipline(stream);
     loadChunk();
-
-//    cout << "let's go..." << endl;
 }
 
 void PTXPointReader::scanForAABB() {
@@ -69,32 +83,42 @@ void PTXPointReader::scanForAABB() {
     for (int i = 0; i < files.size(); i++) {
         this->stream = fstream(files[i], ios::in);
         this->currentChunk = 0;
+        vector<double> split;
         while (!pleaseStop) {
             cout << "PTXPointReader: scanning " << files[i] << " chunk " << currentChunk << endl;
-            if (!loadChunk()) {
+            getlined(stream, split);
+            if (1 == split.size() && !loadChunk()) {
                 break;
             }
-            for (int j = 0; j < this->pointsInCurrentChunk; j++) {
-                this->stream >> x >> y >> z >> intensity;
-                if (0.5 != intensity) {
-                    Point p = transform(x, y, z);
-                    if (firstPoint) {
-                        maxx = minx = p.x;
-                        maxy = miny = p.y;
-                        maxz = minz = p.z;
-                        firstPoint = false;
-                    } else {
-                        minx = p.x < minx ? p.x : minx;
-                        maxx = p.x > maxx ? p.x : maxx;
-                        miny = p.y < miny ? p.y : miny;
-                        maxy = p.y > maxy ? p.y : maxy;
-                        minz = p.z < minz ? p.z : minz;
-                        maxz = p.z > maxz ? p.z : maxz;
+            while (true) {
+                if (4 == split.size()) {
+                    x = split[0];
+                    y = split[1];
+                    z = split[2];
+                    intensity = split[3];
+                    if (0.5 != intensity) {
+                        Point p = transform(x, y, z);
+                        if (firstPoint) {
+                            maxx = minx = p.x;
+                            maxy = miny = p.y;
+                            maxz = minz = p.z;
+                            firstPoint = false;
+                        } else {
+                            minx = p.x < minx ? p.x : minx;
+                            maxx = p.x > maxx ? p.x : maxx;
+                            miny = p.y < miny ? p.y : miny;
+                            maxy = p.y > maxy ? p.y : maxy;
+                            minz = p.z < minz ? p.z : minz;
+                            maxz = p.z > maxz ? p.z : maxz;
+                        }
+                        this->count++;
+                        if (0 == this->count % 1000000)
+                            cout << "PTXPointReader: scanned " << count / 1000000 << "m points.\n";
                     }
-                    this->count++;
-                    if (0 == this->count % 1000000)
-                        cout << "PTXPointReader: scanned " << count / 1000000 << "m points.\n";
+                } else {
+                    break;
                 }
+                getlined(stream, split);
             }
             if (this->stream.eof()) {
                 pleaseStop = true;
@@ -113,22 +137,39 @@ void PTXPointReader::scanForAABB() {
 }
 
 bool PTXPointReader::loadChunk() {
-    long rows, cols;
-    double dummy;
     cout << "Loading a new PTX chunk: " << this->currentChunk << endl;
 
-    this->currentPointInChunk = 0;
-    this->stream >> cols >> rows;
-    if (this->stream.eof())
+    if (!assertd(stream, 1))return false;
+    if (!assertd(stream, 3))return false;
+    if (!assertd(stream, 3))return false;
+    if (!assertd(stream, 3))return false;
+    if (!assertd(stream, 3))return false;
+
+    vector<double> split;
+    getlined(stream, split);
+    if (4 != split.size()) {
         return false;
-    this->pointsInCurrentChunk = cols * rows;
-    for (int j = 0; j < 4; j++) {
-        this->stream >> dummy >> dummy >> dummy;
-    }
-    this->stream >> tr[0] >> tr[1] >> tr[2] >> tr[3]
-            >> tr[4] >> tr[5] >> tr[6] >> tr[7]
-            >> tr[8] >> tr[9] >> tr[10] >> tr[11]
-            >> tr[12] >> tr[13] >> tr[14] >> tr[15];
+    };
+    tr[0] = split[0]; tr[1] = split[1]; tr[2] = split[2]; tr[3] = split[3];
+
+    getlined(stream, split);
+    if (4 != split.size()) {
+        return false;
+    };
+    tr[4] = split[0]; tr[5] = split[1]; tr[6] = split[2]; tr[7] = split[3];
+
+    getlined(stream, split);
+    if (4 != split.size()) {
+        return false;
+    };
+    tr[8] = split[0]; tr[9] = split[1]; tr[10] = split[2]; tr[11] = split[3];
+
+    getlined(stream, split);
+    if (4 != split.size()) {
+        return false;
+    };
+    tr[12] = split[0]; tr[13] = split[1]; tr[14] = split[2]; tr[15] = split[3];
+
     return true;
 }
 
@@ -144,31 +185,37 @@ bool PTXPointReader::readNextPoint() {
 }
 
 bool PTXPointReader::doReadNextPoint() {
-    if (this->currentPointInChunk == this->pointsInCurrentChunk) {
-        if (this->stream.eof()) {
-            this->stream.close();
-            this->currentFile++;
-            this->currentPointInChunk = 0;
+    if (this->stream.eof()) {
+        this->stream.close();
+        this->currentFile++;
 
-            if (this->currentFile != files.end()) {
-                this->stream = fstream(*(this->currentFile), ios::in);
-                this->currentChunk = 0;
-                loadChunk();
-            } else {
-                return false;
-            }
-        } else {
-            this->currentChunk++;
+        if (this->currentFile != files.end()) {
+            this->stream = fstream(*(this->currentFile), ios::in);
+            this->currentChunk = 0;
+            skipline(stream);
             loadChunk();
+        } else {
+            return false;
         }
     }
-    double x, y, z, i;
-    this->stream >> x >> y >> z >> i;
-    this->currentPointInChunk++;
-    this->p = transform(x, y, z);
-    if (x > COORD_THRESHOLD || y > COORD_THRESHOLD || z > COORD_THRESHOLD)
-        this->p.intensity = INVALID_INTENSITY;
-    else
+    vector<double> split;
+    getlined(stream, split);
+    if (1 == split.size()) {
+        this->currentChunk++;
+        skipline(stream);
+        loadChunk();
+        getlined(stream, split);
+    }
+    if (4 == split.size()) {
+        double x = split[0], y = split[1], z = split[2], i = split[3];
+        this->p = transform(x, y, z);
         this->p.intensity = 65535.0 * i;
+        p.r = 255;
+        p.g = 0;
+        p.b = 0;
+        p.a = 0;
+    } else {
+        this->p.intensity = INVALID_INTENSITY;
+    }
     return true;
 }
