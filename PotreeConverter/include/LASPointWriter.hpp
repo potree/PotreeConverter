@@ -88,6 +88,12 @@ public:
 			stream->close();
 			delete stream;
 			stream = NULL;
+
+		}
+
+		if(header != NULL) {
+			delete header;
+			header = NULL;
 		}
 
 	}
