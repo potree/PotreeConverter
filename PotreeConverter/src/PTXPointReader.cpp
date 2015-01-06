@@ -9,7 +9,6 @@ using std::vector;
 using std::ios;
 using std::string;
 
-static const int COORD_THRESHOLD = 100000;
 static const int INVALID_INTENSITY = 32767;
 
 void split(const string &s, vector<double> &v) {
@@ -150,25 +149,37 @@ bool PTXPointReader::loadChunk() {
     if (4 != split.size()) {
         return false;
     };
-    tr[0] = split[0]; tr[1] = split[1]; tr[2] = split[2]; tr[3] = split[3];
+    tr[0] = split[0];
+    tr[1] = split[1];
+    tr[2] = split[2];
+    tr[3] = split[3];
 
     getlined(stream, split);
     if (4 != split.size()) {
         return false;
     };
-    tr[4] = split[0]; tr[5] = split[1]; tr[6] = split[2]; tr[7] = split[3];
+    tr[4] = split[0];
+    tr[5] = split[1];
+    tr[6] = split[2];
+    tr[7] = split[3];
 
     getlined(stream, split);
     if (4 != split.size()) {
         return false;
     };
-    tr[8] = split[0]; tr[9] = split[1]; tr[10] = split[2]; tr[11] = split[3];
+    tr[8] = split[0];
+    tr[9] = split[1];
+    tr[10] = split[2];
+    tr[11] = split[3];
 
     getlined(stream, split);
     if (4 != split.size()) {
         return false;
     };
-    tr[12] = split[0]; tr[13] = split[1]; tr[14] = split[2]; tr[15] = split[3];
+    tr[12] = split[0];
+    tr[13] = split[1];
+    tr[14] = split[2];
+    tr[15] = split[3];
 
     return true;
 }
@@ -202,18 +213,22 @@ bool PTXPointReader::doReadNextPoint() {
     getlined(stream, split);
     if (1 == split.size()) {
         this->currentChunk++;
-        skipline(stream);
         loadChunk();
         getlined(stream, split);
     }
-    if (4 == split.size()) {
-        double x = split[0], y = split[1], z = split[2], i = split[3];
-        this->p = transform(x, y, z);
-        this->p.intensity = 65535.0 * i;
-        p.r = 255;
-        p.g = 0;
-        p.b = 0;
-        p.a = 0;
+    unsigned long size1 = split.size();
+    if (size1 > 3) {
+        this->p = transform(split[0], split[1], split[2]);
+        double sqrtIntensity = sqrt(split[3]);
+        this->p.intensity = 65535.0 * sqrtIntensity;
+        this->p.a = 0;
+        if (4 == size1) {
+            this->p.r = this->p.g = this->p.b = sqrtIntensity * 255.0;
+        } else if (7 == size1) {
+            this->p.r = split[4];
+            this->p.g = split[5];
+            this->p.b = split[6];
+        }
     } else {
         this->p.intensity = INVALID_INTENSITY;
     }
