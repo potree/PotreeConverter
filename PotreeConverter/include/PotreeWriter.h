@@ -147,7 +147,8 @@ public:
 			pointsInMemory++;
 			numAccepted++;
 
-			tightAABB.update(p.position());
+			Vector3<double> position = p.position();
+			tightAABB.update(position);
 		}
 	}
 
