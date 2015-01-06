@@ -216,20 +216,19 @@ bool PTXPointReader::doReadNextPoint() {
         loadChunk();
         getlined(stream, split);
     }
-    if (4 == split.size()) {
+    unsigned long size1 = split.size();
+    if (size1 > 3) {
         this->p = transform(split[0], split[1], split[2]);
-        this->p.intensity = 65535.0 * split[3];
-        this->p.r = 0;
-        this->p.g = 0;
-        this->p.b = 0;
+        double sqrtIntensity = sqrt(split[3]);
+        this->p.intensity = 65535.0 * sqrtIntensity;
         this->p.a = 0;
-    } else if (7 == split.size()) {
-        this->p = transform(split[0], split[1], split[2]);
-        this->p.intensity = 65535.0 * split[3];
-        this->p.r = split[4];
-        this->p.g = split[5];
-        this->p.b = split[6];
-        this->p.a = 0;
+        if (4 == size1) {
+            this->p.r = this->p.g = this->p.b = sqrtIntensity * 255.0;
+        } else if (7 == size1) {
+            this->p.r = split[4];
+            this->p.g = split[5];
+            this->p.b = split[6];
+        }
     } else {
         this->p.intensity = INVALID_INTENSITY;
     }
