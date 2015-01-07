@@ -172,16 +172,16 @@ int main(int argc, char **argv){
 
 		cout << "== params ==" << endl;
 		for(int i = 0; i < source.size(); i++){
-			cout << "source[" << i << "]: " << source[i] << endl;
+			cout << "source[" << i << "]:         \t" << source[i] << endl;
 		}
-		cout << "outdir: " << outdir << endl;
-		cout << "spacing: " << spacing << endl;
-		cout << "diagonal-fraction: " << diagonalFraction << endl;
-		cout << "levels: " << levels << endl;
-		cout << "format: " << format << endl;
-		cout << "range: " << range << endl;
-		cout << "scale: " << scale << endl;
-		cout << "output-format: " << outFormatString << endl;
+		cout << "outdir:            \t" << outdir << endl;
+		cout << "spacing:           \t" << spacing << endl;
+		cout << "diagonal-fraction: \t" << diagonalFraction << endl;
+		cout << "levels:            \t" << levels << endl;
+		cout << "format:            \t" << format << endl;
+		cout << "range:             \t" << range << endl;
+		cout << "scale:             \t" << scale << endl;
+		cout << "output-format:     \t" << outFormatString << endl;
 		cout << endl;
 	}catch(exception &e){
 		cout << "ERROR: " << e.what() << endl;
@@ -201,7 +201,7 @@ int main(int argc, char **argv){
 	
 	auto end = high_resolution_clock::now();
 	milliseconds duration = duration_cast<milliseconds>(end-start);
-	cout << "duration: " << (duration.count()/1000.0f) << "s" << endl;
+	//cout << "duration: " << (duration.count()/1000.0f) << "s" << endl;
 
 
 	return 0;
