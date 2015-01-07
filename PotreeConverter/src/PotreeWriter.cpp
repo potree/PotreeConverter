@@ -126,7 +126,6 @@ PotreeWriterNode *PotreeWriterNode::add(Point &point){
 		cache.push_back(point);
 		Vector3<double> position(point.x, point.y, point.z);
 		acceptedAABB.update(position);
-		potreeWriter->numAccepted++;
 		numAccepted++;
 
 		return this;

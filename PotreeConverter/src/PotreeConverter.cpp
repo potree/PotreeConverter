@@ -141,24 +141,42 @@ void PotreeConverter::convert(){
 			if((pointsProcessed % (1000*1000)) == 0){
 				writer.flush();
 
-				cout << (pointsProcessed / (1000*1000)) << "m points processed" << endl;
 				auto end = high_resolution_clock::now();
 				long duration = duration_cast<milliseconds>(end-start).count();
-				cout << "duration: " << (duration / 1000.0f) << "s" << endl;
-				//return;
+				float seconds = duration / 1000.0f;
+
+				stringstream ssMessage;
+
+				ssMessage.imbue(std::locale(""));
+				ssMessage << "INDEXING: ";
+				ssMessage << pointsProcessed << " points processed; ";
+				ssMessage << writer.numAccepted << " points written; ";
+				ssMessage << seconds << " seconds passed";
+
+				cout << ssMessage.str() << endl;
+
+				//cout << (pointsProcessed / (1000*1000)) << "m points processed" << endl;
+				//cout << "duration: " << (duration / 1000.0f) << "s" << endl;
 			}
 		}
 		writer.flush();
 		reader->close();
 		delete reader;
 	}
-
-	cout << writer.numAccepted << " points written" << endl;
-
-	auto end = high_resolution_clock::now();
-	long duration = duration_cast<milliseconds>(end-start).count();
-	cout << "duration: " << (duration / 1000.0f) << "s" << endl;
 	
 	cout << "closing writer" << endl;
 	writer.close();
+
+	float percent = (float)writer.numAccepted / (float)pointsProcessed;
+	percent = percent * 100;
+
+	auto end = high_resolution_clock::now();
+	long duration = duration_cast<milliseconds>(end-start).count();
+
+	
+	cout << endl;
+	cout << "conversion finished" << endl;
+	cout << pointsProcessed << " points were processed and " << writer.numAccepted << " points ( " << percent << "% ) were written to the output. " << endl;
+
+	cout << "duration: " << (duration / 1000.0f) << "s" << endl;
 }
