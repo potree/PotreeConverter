@@ -13,27 +13,20 @@ class Vector3{
 
 public:
 	T x,y,z;
-	static long long count;
 
 	Vector3(){
-		count++;
-
 		x = 0;
 		y = 0;
 		z = 0;
 	}
 
 	Vector3(T x, T y, T z){
-		count++;
-
 		this->x = x;
 		this->y = y;
 		this->z = z;
 	}
 
 	Vector3(T value){
-		count++;
-
 		this->x = value;
 		this->y = value;
 		this->z = value;
@@ -42,11 +35,11 @@ public:
 	Vector3(const Vector3<T> &other)
 		:x(other.x), y(other.y), z(other.z)
 	{
-		count++;
+
 	}
 
 	~Vector3(){
-		count--;
+
 	}
 
 	T length(){
@@ -77,8 +70,16 @@ public:
 		return Vector3<T>(x + right.x, y + right.y, z + right.z);
 	}
 
+	Vector3<T> operator*(const T &a) const{
+		return Vector3<T>(x * a, y * a, z * a);
+	}
+
 	Vector3<T> operator/(const T &a) const{
 		return Vector3<T>(x / a, y / a, z / a);
+	}
+
+	Vector3<T> operator/(const Vector3<T> &a) const{
+		return Vector3<T>(x / a.x, y / a.y, z / a.z);
 	}
 
 	friend ostream &operator<<( ostream &output,  const Vector3<T> &value ){ 

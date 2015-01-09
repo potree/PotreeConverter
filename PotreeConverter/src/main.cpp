@@ -100,6 +100,7 @@ void printUsage(po::options_description &desc){
 //}
 
 int main(int argc, char **argv){
+
 	vector<string> source;
 	string outdir;
 	float spacing;

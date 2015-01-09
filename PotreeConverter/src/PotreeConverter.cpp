@@ -8,6 +8,8 @@
 #include "LASPointReader.h"
 #include "PotreeException.h"
 #include "PotreeWriter.h"
+#include "PotreeWriterTiling.hpp"
+#include "PotreeWriterTiling1.hpp"
 #include "LASPointReader.h"
 #include "LASPointWriter.hpp"
 #include "PlyPointReader.h"
@@ -140,38 +142,53 @@ void PotreeConverter::convert(){
 
 	auto start = high_resolution_clock::now();
 
-	PotreeWriter writer(this->workDir, aabb, spacing, maxDepth, scale, outputFormat);
+	//PotreeWriter writer(this->workDir, aabb, spacing, maxDepth, scale, outputFormat);
+	//PotreeWriterTiling writer(this->workDir, aabb, spacing, maxDepth, scale, outputFormat);
+	PotreeWriterTiling1 writer(this->workDir, aabb, spacing, maxDepth, scale, outputFormat);
 	//PotreeWriterLBL writer(this->workDir, aabb, spacing, maxDepth, outputFormat);
 
+	long readTime = 0;
 	long long pointsProcessed = 0;
 	for(int i = 0; i < sources.size(); i++){
 		string source = sources[i];
 		cout << "reading " << source << endl;
 
+		bool morePoints = true;
 		PointReader *reader = createPointReader(source);
-		while(reader->readNextPoint()){
+		while(morePoints){
+
+			auto startRead = high_resolution_clock::now();
+			morePoints = reader->readNextPoint();
+			{
+			auto endRead = high_resolution_clock::now();
+			milliseconds duration = duration_cast<milliseconds>(endRead-startRead);
+			readTime += duration.count();
+			}
+			
+
+			if(!morePoints){
+				break;
+			}
+
 			pointsProcessed++;
-			//if((pointsProcessed%50) != 0){
-			//	continue;
-			//}
 
 			Point p = reader->getPoint();
+			
+			
+
 			writer.add(p);
 
-			//if((pointsProcessed % (1000*1000)) == 0){
-			//	//cout << (pointsProcessed / (1000*1000)) << "m points processed" << endl;
-			//	cout << "flushing" << endl;
-			//	writer.flush();
-			//}
-
 			if((pointsProcessed % (1000*1000)) == 0){
+				cout << "readTime: " << (readTime / 1000.0f) << "s" << endl;
+				readTime = 0;
+
 				writer.flush();
 
-				cout << (pointsProcessed / (1000*1000)) << "m points processed" << endl;
+
+				cout << pointsProcessed << " points processed";
 				auto end = high_resolution_clock::now();
 				long duration = duration_cast<milliseconds>(end-start).count();
-				cout << "duration: " << (duration / 1000.0f) << "s" << endl;
-				//return;
+				cout << ", duration: " << (duration / 1000.0f) << "s" << endl;
 			}
 		}
 		writer.flush();
