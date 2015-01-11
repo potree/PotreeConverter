@@ -126,7 +126,33 @@ AABB calculateAABB(vector<string> sources){
 }
 
 void PotreeConverter::convert(){
-	aabb = calculateAABB(sources);
+	AABB aabb;
+	long long numPoints = 0;
+
+	for(int i = 0; i < sources.size(); i++){
+		string source = sources[i];
+
+		PointReader *reader = createPointReader(source);
+		AABB lAABB = reader->getAABB();
+		 
+
+		aabb.update(lAABB.min);
+		aabb.update(lAABB.max);
+
+		numPoints += reader->numPoints();
+
+		reader->close();
+		delete reader;
+	}
+
+
+
+
+
+
+
+
+
 	cout << "AABB: " << endl << aabb << endl;
 
 	if (diagonalFraction != 0) {
@@ -138,13 +164,16 @@ void PotreeConverter::convert(){
 
 	aabb.makeCubic();
 
+	
+	cout << "cubic AABB: " << endl << aabb << endl;
+
 	cloudjs.boundingBox = aabb;
 
 	auto start = high_resolution_clock::now();
 
 	//PotreeWriter writer(this->workDir, aabb, spacing, maxDepth, scale, outputFormat);
 	//PotreeWriterTiling writer(this->workDir, aabb, spacing, maxDepth, scale, outputFormat);
-	PotreeWriterTiling1 writer(this->workDir, aabb, spacing, maxDepth, scale, outputFormat);
+	PotreeWriterTiling1 writer(this->workDir, numPoints, aabb, spacing, scale, outputFormat);
 	//PotreeWriterLBL writer(this->workDir, aabb, spacing, maxDepth, outputFormat);
 
 	long readTime = 0;
@@ -178,23 +207,29 @@ void PotreeConverter::convert(){
 
 			writer.add(p);
 
-			if((pointsProcessed % (1000*1000)) == 0){
-				cout << "readTime: " << (readTime / 1000.0f) << "s" << endl;
-				readTime = 0;
-
+			if((pointsProcessed % (10*1000*1000)) == 0){
+				cout << "indexing" << endl;
 				writer.flush();
+			}
+
+			if((pointsProcessed % (1*1000*1000)) == 0){
+				//cout << "readTime: " << (readTime / 1000.0f) << "s" << endl;
+				//readTime = 0;
+				//
+				//writer.flush();
 
 
-				cout << pointsProcessed << " points processed";
+				cout << pointsProcessed << " points read";
 				auto end = high_resolution_clock::now();
 				long duration = duration_cast<milliseconds>(end-start).count();
 				cout << ", duration: " << (duration / 1000.0f) << "s" << endl;
 			}
 		}
-		writer.flush();
+		
 		reader->close();
 		delete reader;
 	}
+	writer.flush();
 
 	cout << writer.numAccepted << " points written" << endl;
 

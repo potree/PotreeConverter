@@ -34,16 +34,39 @@ public:
 		this->aabb = aabb;
 		
 		if (fs::exists(file)){
-			std::ifstream ifs;
-			ifs.open(file, std::ios::in | std::ios::binary);
-			liblas::Reader *r = new liblas::Reader(ifs);
-			const liblas::Header h = r->GetHeader();
-			numPoints= h.GetPointRecordsCount();
-			header = new liblas::Header(h);
+
+			{ // create header with liblas reader
+				std::ifstream ifs;
+				ifs.open(file, std::ios::in | std::ios::binary);
+				liblas::Reader *r = new liblas::Reader(ifs);
+				const liblas::Header h = r->GetHeader();
+				numPoints= h.GetPointRecordsCount();
+				header = new liblas::Header(h);
+			}
+
+			//{ // create header without liblas reader
+			//	header = new liblas::Header();
+			//	header->SetDataFormatId(liblas::ePointFormat2);
+			//	header->SetMin(aabb.min.x, aabb.min.y, aabb.min.z);
+			//	header->SetMax(aabb.max.x, aabb.max.y, aabb.max.z);
+			//	header->SetScale(scale, scale, scale);
+			//	header->SetPointRecordsCount(53);
+			//
+			//	fstream *s = new fstream(file, ios::binary | ios::in );
+			//	s->seekp(107);
+			//	s->read(reinterpret_cast<char*>(&numPoints), 4);
+			//	s->close();
+			//	delete s;
+			//
+			//	header->SetPointRecordsCount(numPoints);
+			//}
 
 			stream = new fstream(file, std::ios::out | std::ios::in | std::ios::binary | std::ios::ate);
 			writer = new liblas::Writer(*stream, *header);
-			delete r;
+		
+			//ifs.close();
+			//delete r;
+		
 		} else {
 			numPoints = 0;
 
