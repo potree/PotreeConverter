@@ -6,11 +6,10 @@
 #include "PotreeConverter.h"
 #include "stuff.h"
 #include "LASPointReader.h"
+#include "PTXPointReader.h"
 #include "PotreeException.h"
 #include "PotreeWriter.h"
-#include "LASPointReader.h"
 #include "LASPointWriter.hpp"
-#include "PlyPointReader.h"
 
 #include <chrono>
 #include <sstream>
@@ -47,18 +46,7 @@ struct Task{
 	}
 };
 
-PointReader *createPointReader(string path){
-	PointReader *reader = NULL;
-	if(boost::iends_with(path, ".las") || boost::iends_with(path, ".laz")){
-		reader = new LASPointReader(path);
-	}else if(boost::iends_with(path, ".ply")){
-		reader = new PlyPointReader(path);
-	}
-
-	return reader;
-}
-
-PotreeConverter::PotreeConverter(vector<string> sources, string workDir, float spacing, int diagonalFraction, int maxDepth, string format, float range, double scale, OutputFormat outFormat){
+PotreeConverter::PotreeConverter(vector<string> sources, string workDir, float spacing, int diagonalFraction, int maxDepth, double minSpacing, string format, float range, double scale, OutputFormat outFormat, bool printFileName){
 
 	// if sources contains directories, use files inside the directory instead
 	vector<string> sourceFiles;
@@ -71,7 +59,7 @@ PotreeConverter::PotreeConverter(vector<string> sources, string workDir, float s
 				path pDirectoryEntry = it->path();
 				if(boost::filesystem::is_regular_file(pDirectoryEntry)){
 					string filepath = pDirectoryEntry.string();
-					if(boost::iends_with(filepath, ".las") || boost::iends_with(filepath, ".laz") || boost::iends_with(filepath, ".ply")){
+					if(boost::iends_with(filepath, ".las") || boost::iends_with(filepath, ".laz") || boost::iends_with(filepath, ".ptx") || boost::iends_with(filepath, ".ply")){
 						sourceFiles.push_back(filepath);
 					}
 				}
@@ -91,6 +79,8 @@ PotreeConverter::PotreeConverter(vector<string> sources, string workDir, float s
 	this->scale = scale;
 	this->outputFormat = outFormat;
 	this->diagonalFraction = diagonalFraction;
+	this->printFileName = printFileName;
+	this->minSpacing = minSpacing;
 
 	boost::filesystem::path dataDir(workDir + "/data");
 	boost::filesystem::path tempDir(workDir + "/temp");
@@ -102,27 +92,6 @@ PotreeConverter::PotreeConverter(vector<string> sources, string workDir, float s
 	cloudjs.outputFormat = OutputFormat::LAS;
 }
 
-
-AABB calculateAABB(vector<string> sources){
-	AABB aabb;
-
-	for(int i = 0; i < sources.size(); i++){
-		string source = sources[i];
-
-		PointReader *reader = createPointReader(source);
-		AABB lAABB = reader->getAABB();
-		 
-
-		aabb.update(lAABB.min);
-		aabb.update(lAABB.max);
-
-		reader->close();
-		delete reader;
-	}
-
-	return aabb;
-}
-
 void PotreeConverter::convert(){
 	aabb = calculateAABB(sources);
 	cout << "AABB: " << endl << aabb << endl;
@@ -131,7 +100,11 @@ void PotreeConverter::convert(){
 		spacing = aabb.size.length() / diagonalFraction;
 		cout << "spacing calculated from diagonal: " << spacing << endl;
 	}
-	cout << "Last level will have spacing:     " << spacing / pow(2, maxDepth - 1) << endl;
+	if (minSpacing != 0) {
+		maxDepth = log2(spacing / minSpacing);
+		cout << "Automatically settings levels to: " << maxDepth << endl;
+	}
+	cout << "Last level will have spacing:     " << spacing / pow(2, maxDepth) << endl;
 	cout << endl;
 
 	aabb.makeCubic();
@@ -146,6 +119,7 @@ void PotreeConverter::convert(){
 	long long pointsProcessed = 0;
 	for(int i = 0; i < sources.size(); i++){
 		string source = sources[i];
+		if (printFileName)
 		cout << "reading " << source << endl;
 
 		PointReader *reader = createPointReader(source);

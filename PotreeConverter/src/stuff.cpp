@@ -9,6 +9,9 @@
 //#include <unistd.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <PlyPointReader.h>
+#include <PTXPointReader.h>
+#include <LASPointReader.h>
 
 #include "Vector3.h"
 #include "AABB.h"
@@ -204,4 +207,37 @@ string toUpper(string str){
 	std::transform(tmp.begin(), tmp.end(),tmp.begin(), ::toupper);
 
 	return tmp;
+}
+
+PointReader *createPointReader(string path){
+	PointReader *reader = NULL;
+	if(boost::iends_with(path, ".las") || boost::iends_with(path, ".laz")){
+		reader = new LASPointReader(path);
+	}else if(boost::iends_with(path, ".ptx")){
+		reader = new PTXPointReader(path);
+	}else if(boost::iends_with(path, ".ply")){
+		reader = new PlyPointReader(path);
+	}
+
+	return reader;
+}
+
+AABB calculateAABB(vector<string> sources){
+	AABB aabb;
+
+	for(int i = 0; i < sources.size(); i++){
+		string source = sources[i];
+
+		PointReader *reader = createPointReader(source);
+		AABB lAABB = reader->getAABB();
+
+
+		aabb.update(lAABB.min);
+		aabb.update(lAABB.max);
+
+		reader->close();
+		delete reader;
+	}
+
+	return aabb;
 }
