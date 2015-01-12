@@ -1,8 +1,8 @@
 
 
 
-#ifndef POTREEWRITER_TILING1_H
-#define POTREEWRITER_TILING1_H
+#ifndef POTREEWRITER_RANDOM_H
+#define POTREEWRITER_RANDOM_H
 
 #include <chrono>
 #include <string>
@@ -23,6 +23,7 @@
 #include "CloudJS.hpp"
 #include "PointReader.h"
 #include "PointWriter.hpp"
+#include "PotreeWriter.h"
 
 
 
@@ -56,7 +57,7 @@ bool mortonOrder(MortonPoint a, MortonPoint b){
 
 }
 
-class PotreeWriterTiling1{
+class PotreeWriterRandom : public PotreeWriter{
 
 public:
 
@@ -86,8 +87,8 @@ public:
 	float spacing;
 	int maxLevel;
 	CloudJS cloudjs;
-	int numAccepted;
 	long long numPoints;
+	long long numWritten;
 	int mortonDepth;
 	unsigned long long mortonExtent;
 	double scale;
@@ -99,7 +100,7 @@ public:
 	vector<MortonPoint> cache;
 
 
-	PotreeWriterTiling1(string path, long long numPoints, AABB aabb, float spacing, double scale, OutputFormat outputFormat){
+	PotreeWriterRandom(string path, long long numPoints, AABB aabb, float spacing, double scale, OutputFormat outputFormat){
 		this->path = path;
 		this->aabb = aabb;
 		this->spacing = spacing;
@@ -109,8 +110,10 @@ public:
 		int target = 20*1000;
 		double ratio = 4.0;
 
-		mortonDepth = ceil((-log(ratio) + log((target - numPoints + numPoints * ratio) / target)) / log(ratio)) + 1;
-		mortonExtent = pow(2, mortonDepth) ;
+		numWritten = 0;
+
+		mortonDepth = (int)ceil((-log(ratio) + log((target - numPoints + numPoints * ratio) / target)) / log(ratio)) + 1;
+		mortonExtent = (unsigned long long)pow(2, mortonDepth) ;
 		maxLevel = mortonDepth - 1;
 
 		cout << "morton depth: " << mortonDepth << endl;
@@ -143,9 +146,9 @@ public:
 
 	unsigned long long mortonCode(Point p){
 
-		unsigned long long mx = mortonExtent * (p.x - aabb.min.x) / (aabb.max.x - aabb.min.x);
-		unsigned long long my = mortonExtent * (p.y - aabb.min.y) / (aabb.max.y - aabb.min.y);
-		unsigned long long mz = mortonExtent * (p.z - aabb.min.z) / (aabb.max.z - aabb.min.z);
+		unsigned long long mx = (unsigned long long)(mortonExtent * (p.x - aabb.min.x) / (aabb.max.x - aabb.min.x));
+		unsigned long long my = (unsigned long long)(mortonExtent * (p.y - aabb.min.y) / (aabb.max.y - aabb.min.y));
+		unsigned long long mz = (unsigned long long)(mortonExtent * (p.z - aabb.min.z) / (aabb.max.z - aabb.min.z));
 
 		unsigned long long mc = 0;
 		unsigned long long mask = 1;
@@ -170,6 +173,12 @@ public:
 		MortonPoint mp(p, mortonCode(p));
 		cache.push_back(mp);
 
+		Vector3<double> position = p.position();
+		tightAABB.update(position);
+
+		if(cache.size() >= 10*1000*1000){
+			flush();
+		}
 	}
 
 	
@@ -177,15 +186,7 @@ public:
 	void flush(){
 
 		cloudjs.boundingBox = aabb;
-		//cloudjs.boundingBox.min.x = aabb.min.z;
-		//cloudjs.boundingBox.min.z = -aabb.min.x;
-		//cloudjs.boundingBox.max.x = aabb.max.z;
-		//cloudjs.boundingBox.max.z = -aabb.max.x;
-
-		//cloudjs.boundingBox.min.y = aabb.min.z;
-		//cloudjs.boundingBox.min.z = -aabb.min.y;
-
-		cloudjs.tightBoundingBox = cloudjs.boundingBox;
+		cloudjs.tightBoundingBox = tightAABB;
 		cloudjs.outputFormat = OutputFormat::LAS;
 		cloudjs.spacing = spacing;
 		cloudjs.scale = scale;
@@ -236,11 +237,11 @@ public:
 		
 		auto endSort = high_resolution_clock::now();
 		milliseconds duration = duration_cast<milliseconds>(endSort-startSort);
-		cout << "sort: " << (duration.count()/1000.0f) << "s" << endl;
+		//cout << "sort: " << (duration.count()/1000.0f) << "s" << endl;
 
 		auto startWrite = high_resolution_clock::now();
 
-		int prevMc = -2;
+		unsigned long long prevMc = -1;
 		int prevLevel = -1;
 		LASPointWriter *writer = NULL;
 		Node *currentNode = NULL;
@@ -285,6 +286,7 @@ public:
 
 			currentNode->numPoints++;
 			writer->write(mp.p);
+			numWritten++;
 
 			prevMc = mc;
 			prevLevel = mp.level;
@@ -297,7 +299,7 @@ public:
 
 		auto endWrite = high_resolution_clock::now();
 		duration = duration_cast<milliseconds>(endWrite-startWrite);
-		cout << "write: " << (duration.count()/1000.0f) << "s" << endl;
+		//cout << "write: " << (duration.count()/1000.0f) << "s" << endl;
 
 
 		cache.clear();
@@ -341,10 +343,10 @@ public:
 
 	void close(){
 		flush();
+	}
 
-
-
-
+	long long numPointsWritten(){
+		return numWritten;
 	}
 
 

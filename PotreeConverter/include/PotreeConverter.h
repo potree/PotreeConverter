@@ -46,6 +46,7 @@ private:
 	int maxDepth;
 	string format;
 	OutputFormat outputFormat;
+	SelectionAlgorithm algorithm;
 
 	float range;
 	double scale;
@@ -53,7 +54,7 @@ private:
 
 public:
 
-	PotreeConverter(vector<string> fData, string workDir, float spacing, int diagonalFraction, int maxDepth, string format, float range, double scale, OutputFormat outFormat);
+	PotreeConverter(vector<string> fData, string workDir, float spacing, int diagonalFraction, int maxDepth, string format, float range, double scale, OutputFormat outFormat, SelectionAlgorithm selectionAlgorithm);
 
 	void convert();
 

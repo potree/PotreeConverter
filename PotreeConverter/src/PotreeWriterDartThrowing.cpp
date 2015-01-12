@@ -4,7 +4,7 @@
 
 #include <boost/filesystem.hpp>
 
-#include "PotreeWriter.h"
+#include "PotreeWriterDartThrowing.h"
 #include "LASPointReader.h"
 #include "BINPointReader.hpp"
 #include "LASPointWriter.hpp"
@@ -13,7 +13,7 @@
 namespace fs = boost::filesystem;
 
 
-PotreeWriterNode::PotreeWriterNode(PotreeWriter* potreeWriter, string name, string path, AABB aabb, float spacing, int level, int maxLevel, double scale){
+PotreeWriterNode::PotreeWriterNode(PotreeWriterDartThrowing* potreeWriter, string name, string path, AABB aabb, float spacing, int level, int maxLevel, double scale){
 	this->name = name;
 	this->path = path;
 	this->aabb = aabb;

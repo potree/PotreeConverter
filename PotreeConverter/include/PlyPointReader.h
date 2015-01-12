@@ -146,7 +146,7 @@ public:
 				pointCount = count;
 
 				while(true){
-					int len = stream.tellg();
+					std::streamoff len = stream.tellg();
 					getline(stream, line);
 					boost::trim(line);
 					if(boost::regex_match(line.c_str(), sm, rProperty)){
@@ -194,11 +194,11 @@ public:
 				}else if(prop.name == "z" && prop.type.name == plyPropertyTypes["float"].name){
 					z = stof(token);
 				}else if(std::find(plyRedNames.begin(), plyRedNames.end(), prop.name) != plyRedNames.end() && prop.type.name == plyPropertyTypes["uchar"].name){
-					r = stof(token);
+					r = (unsigned char)stof(token);
 				}else if(std::find(plyGreenNames.begin(), plyGreenNames.end(), prop.name) != plyGreenNames.end() && prop.type.name == plyPropertyTypes["uchar"].name){
-					g = stof(token);
+					g = (unsigned char)stof(token);
 				}else if(std::find(plyBlueNames.begin(), plyBlueNames.end(), prop.name) != plyBlueNames.end() && prop.type.name == plyPropertyTypes["uchar"].name){
-					b = stof(token);
+					b = (unsigned char)stof(token);
 				}
 			}
 		}else if(format == PLY_FILE_FORMAT_BINARY_LITTLE_ENDIAN){

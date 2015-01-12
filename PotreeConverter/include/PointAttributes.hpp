@@ -73,7 +73,7 @@ public:
 	}
 
 	int size(){
-		return attributes.size();
+		return (int)attributes.size();
 	}
 
 	PointAttribute& operator[](int i) { 

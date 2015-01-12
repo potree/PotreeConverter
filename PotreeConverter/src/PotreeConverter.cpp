@@ -7,9 +7,8 @@
 #include "stuff.h"
 #include "LASPointReader.h"
 #include "PotreeException.h"
-#include "PotreeWriter.h"
-#include "PotreeWriterTiling.hpp"
-#include "PotreeWriterTiling1.hpp"
+#include "PotreeWriterDartThrowing.h"
+#include "PotreeWriterRandom.hpp"
 #include "LASPointReader.h"
 #include "LASPointWriter.hpp"
 #include "PlyPointReader.h"
@@ -21,6 +20,7 @@
 #include <vector>
 #include <math.h>
 #include <fstream>
+#include <iomanip>
 
 using std::stringstream;
 using std::map;
@@ -60,8 +60,7 @@ PointReader *createPointReader(string path){
 	return reader;
 }
 
-PotreeConverter::PotreeConverter(vector<string> sources, string workDir, float spacing, int diagonalFraction, int maxDepth, string format, float range, double scale, OutputFormat outFormat){
-
+PotreeConverter::PotreeConverter(vector<string> sources, string workDir, float spacing, int diagonalFraction, int maxDepth, string format, float range, double scale, OutputFormat outFormat, SelectionAlgorithm selectionAlgorithm){
 	// if sources contains directories, use files inside the directory instead
 	vector<string> sourceFiles;
 	for(int i = 0; i < sources.size(); i++){
@@ -93,6 +92,7 @@ PotreeConverter::PotreeConverter(vector<string> sources, string workDir, float s
 	this->scale = scale;
 	this->outputFormat = outFormat;
 	this->diagonalFraction = diagonalFraction;
+	this->algorithm = selectionAlgorithm;
 
 	boost::filesystem::path dataDir(workDir + "/data");
 	boost::filesystem::path tempDir(workDir + "/temp");
@@ -151,36 +151,36 @@ void PotreeConverter::convert(){
 
 
 
-
+	cout << "Last level will have spacing:     " << spacing / pow(2, maxDepth - 1) << endl;
+	cout << endl;
 
 	cout << "AABB: " << endl << aabb << endl;
 
 	if (diagonalFraction != 0) {
-		spacing = aabb.size.length() / diagonalFraction;
+		spacing = (float)(aabb.size.length() / diagonalFraction);
 		cout << "spacing calculated from diagonal: " << spacing << endl;
 	}
-	cout << "Last level will have spacing:     " << spacing / pow(2, maxDepth - 1) << endl;
-	cout << endl;
 
 	aabb.makeCubic();
 
-	
 	cout << "cubic AABB: " << endl << aabb << endl;
 
 	cloudjs.boundingBox = aabb;
 
 	auto start = high_resolution_clock::now();
 
-	//PotreeWriter writer(this->workDir, aabb, spacing, maxDepth, scale, outputFormat);
-	//PotreeWriterTiling writer(this->workDir, aabb, spacing, maxDepth, scale, outputFormat);
-	PotreeWriterTiling1 writer(this->workDir, numPoints, aabb, spacing, scale, outputFormat);
-	//PotreeWriterLBL writer(this->workDir, aabb, spacing, maxDepth, outputFormat);
+	PotreeWriter *writer = NULL;
+	if(algorithm == SelectionAlgorithm::NICE){
+		writer = new PotreeWriterDartThrowing(this->workDir, aabb, spacing, maxDepth, scale, outputFormat);
+	}else if(algorithm == SelectionAlgorithm::FAST){
+		writer = new PotreeWriterRandom(this->workDir, numPoints, aabb, spacing, scale, outputFormat);
+	}
 
-	long readTime = 0;
+	long long readTime = 0;
 	long long pointsProcessed = 0;
 	for(int i = 0; i < sources.size(); i++){
 		string source = sources[i];
-		cout << "reading " << source << endl;
+		cout << "OPEN:        " << source << endl;
 
 		bool morePoints = true;
 		PointReader *reader = createPointReader(source);
@@ -189,9 +189,9 @@ void PotreeConverter::convert(){
 			auto startRead = high_resolution_clock::now();
 			morePoints = reader->readNextPoint();
 			{
-			auto endRead = high_resolution_clock::now();
-			milliseconds duration = duration_cast<milliseconds>(endRead-startRead);
-			readTime += duration.count();
+				auto endRead = high_resolution_clock::now();
+				milliseconds duration = duration_cast<milliseconds>(endRead-startRead);
+				readTime += duration.count();
 			}
 			
 
@@ -202,41 +202,40 @@ void PotreeConverter::convert(){
 			pointsProcessed++;
 
 			Point p = reader->getPoint();
-			
-			
 
-			writer.add(p);
+			writer->add(p);
 
-			if((pointsProcessed % (10*1000*1000)) == 0){
-				cout << "indexing" << endl;
-				writer.flush();
-			}
+			//if((pointsProcessed % (10*1000*1000)) == 0){
+			//	writer->flush();
+			//}
 
 			if((pointsProcessed % (1*1000*1000)) == 0){
-				//cout << "readTime: " << (readTime / 1000.0f) << "s" << endl;
-				//readTime = 0;
-				//
-				//writer.flush();
-
-
-				cout << pointsProcessed << " points read";
 				auto end = high_resolution_clock::now();
-				long duration = duration_cast<milliseconds>(end-start).count();
-				cout << ", duration: " << (duration / 1000.0f) << "s" << endl;
+				long duration = (long)duration_cast<milliseconds>(end-start).count();
+				float seconds = duration / 1000.0f;
+
+				stringstream ssMessage;
+				ssMessage.imbue(std::locale(""));
+				ssMessage << "INDEXING:    ";
+				ssMessage << pointsProcessed << " read; ";
+				ssMessage << writer->numPointsWritten() << " written; ";
+				ssMessage << std::fixed << std::setprecision(1) << seconds << " seconds passed";
+
+				cout << ssMessage.str() << endl;
 			}
 		}
 		
 		reader->close();
 		delete reader;
 	}
-	writer.flush();
+	writer->flush();
 
-	cout << writer.numAccepted << " points written" << endl;
+	cout << writer->numPointsWritten() << " points written" << endl;
 
 	auto end = high_resolution_clock::now();
-	long duration = duration_cast<milliseconds>(end-start).count();
+	long duration = (long)duration_cast<milliseconds>(end-start).count();
 	cout << "duration: " << (duration / 1000.0f) << "s" << endl;
 	
 	cout << "closing writer" << endl;
-	writer.close();
+	writer->close();
 }

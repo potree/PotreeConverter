@@ -8,4 +8,9 @@ enum class OutputFormat{
 	LAZ
 };
 
+enum class SelectionAlgorithm{
+	NICE,
+	FAST
+};
+
 #endif
