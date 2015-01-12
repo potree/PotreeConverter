@@ -1,5 +1,7 @@
 #include <fstream>
 #include <sstream>
+#include <boost/lexical_cast.hpp>
+#include <boost/algorithm/string/split.hpp>
 
 #include "PTXPointReader.h"
 
@@ -8,28 +10,38 @@ using std::endl;
 using std::vector;
 using std::ios;
 using std::string;
+using namespace boost::algorithm;
 
 static const int INVALID_INTENSITY = 32767;
 
-void split(const string &s, vector<double> &v) {
-    if (s.length() > 200) return;
+char str[512];
+vector<std::pair<string::const_iterator, string::const_iterator> > sp;
 
-    std::stringstream in(s);
-    v = vector<double>((std::istream_iterator<double>(in)), std::istream_iterator<double>());
+inline void split(vector<double> &v) {
+    if (strlen(str) > 200) return;
+
+    string strstr(str);
+    split(sp, strstr, is_space(), token_compress_on);
+    for (auto beg = sp.begin(); beg != sp.end(); ++beg){
+        string token(beg->first, beg->second);
+        if(!token.empty()) {
+            v.push_back(atof(token.c_str()));
+        }
+    }
 }
 
-void getlined(fstream &stream, vector<double> &result) {
+inline void getlined(fstream &stream, vector<double> &result) {
+    result.clear();
+    stream.getline(str, 512);
+    split(result);
+}
+
+inline void skipline(fstream &stream) {
     string str;
     getline(stream, str);
-    split(str, result);
 }
 
-void skipline(fstream &stream) {
-    string str;
-    getline(stream, str);
-}
-
-bool assertd(fstream &stream, int i) {
+inline bool assertd(fstream &stream, int i) {
     vector<double> tokens;
     getlined(stream, tokens);
     bool result = i == tokens.size();
