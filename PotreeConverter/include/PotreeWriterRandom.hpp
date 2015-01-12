@@ -18,6 +18,8 @@
 #include "AABB.h"
 #include "LASPointWriter.hpp"
 #include "LASPointReader.h"
+#include "BINPointWriter.hpp"
+#include "BINPointReader.hpp"
 #include "SparseGrid.h"
 #include "stuff.h"
 #include "CloudJS.hpp"
@@ -92,6 +94,7 @@ public:
 	int mortonDepth;
 	unsigned long long mortonExtent;
 	double scale;
+	OutputFormat outputFormat;
 
 	std::default_random_engine generator;
 	std::uniform_real_distribution<double> distribution;
@@ -106,6 +109,7 @@ public:
 		this->spacing = spacing;
 		this->numPoints = numPoints;
 		this->scale = scale;
+		this->outputFormat = outputFormat;
 
 		int target = 20*1000;
 		double ratio = 4.0;
@@ -187,7 +191,7 @@ public:
 
 		cloudjs.boundingBox = aabb;
 		cloudjs.tightBoundingBox = tightAABB;
-		cloudjs.outputFormat = OutputFormat::LAS;
+		cloudjs.outputFormat = outputFormat;
 		cloudjs.spacing = spacing;
 		cloudjs.scale = scale;
 
@@ -243,7 +247,7 @@ public:
 
 		unsigned long long prevMc = -1;
 		int prevLevel = -1;
-		LASPointWriter *writer = NULL;
+		PointWriter *writer = NULL;
 		Node *currentNode = NULL;
 		for(int i = 0; i < cache.size(); i++){
 			MortonPoint &mp = cache[i];
@@ -279,9 +283,10 @@ public:
 					currentNode = currentNode->children[index];	
 				}
 				stringstream ssFile;
-				ssFile << path << "/data/" << ssName.str() << ".las";
+				ssFile << path << "/data/" << ssName.str();
 			
-				writer = new LASPointWriter(ssFile.str(), currentNode->aabb, scale);
+				//writer = new LASPointWriter(ssFile.str(), currentNode->aabb, scale);
+				writer = createWriter(ssFile.str(), scale, currentNode->aabb);
 			}
 
 			currentNode->numPoints++;
@@ -323,9 +328,10 @@ public:
 			cloudjs.hierarchy.push_back(CloudJS::Node(current->name, current->numPoints));
 
 			stringstream filename;
-			filename << path << "/data/" << current->name << ".las";
+			filename << path << "/data/" << current->name;
 			if(!fs::exists(fs::path(filename.str()))){
-				LASPointWriter *writer = new LASPointWriter(filename.str(), current->aabb, scale);
+				//LASPointWriter *writer = new LASPointWriter(filename.str(), current->aabb, scale);
+				PointWriter *writer = createWriter(filename.str(), scale, current->aabb);
 				writer->close();
 				delete writer;
 			}
@@ -349,7 +355,35 @@ public:
 		return numWritten;
 	}
 
+	
+	private:
+	PointReader *createReader(string path, AABB aabb){
+		PointReader *reader = NULL;
+		if(outputFormat == OutputFormat::LAS){
+			reader = new LASPointReader(path + ".las");
+		}else if(outputFormat == OutputFormat::LAZ){
+			reader = new LASPointReader(path + ".laz");
+		}else if(outputFormat == OutputFormat::BINARY){
+			reader = new BINPointReader(path + ".bin", aabb, scale);
+		}
 
+		return reader;
+	}
+
+	PointWriter *createWriter(string path, double scale, AABB aabb){
+		PointWriter *writer = NULL;
+		if(outputFormat == OutputFormat::LAS){
+			writer = new LASPointWriter(path + ".las", aabb, scale);
+		}else if(outputFormat == OutputFormat::LAZ){
+			writer = new LASPointWriter(path + ".laz", aabb, scale);
+		}else if(outputFormat == OutputFormat::BINARY){
+			writer = new BINPointWriter(path + ".bin", aabb, scale);
+		}
+
+		return writer;
+
+	
+	}
 
 
 };

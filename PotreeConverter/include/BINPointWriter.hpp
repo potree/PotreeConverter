@@ -1,4 +1,3 @@
-
 #ifndef BINPOINTWRITER_H
 #define BINPOINTWRITER_H
 
@@ -28,24 +27,9 @@ public:
 	AABB aabb;
 	double scale;
 
-	BINPointWriter(string file, AABB aabb, double scale) {
-		this->file = file;
-		this->aabb = aabb;
-		this->scale = scale;
-		numPoints = 0;
-		attributes.add(PointAttribute::POSITION_CARTESIAN);
-		attributes.add(PointAttribute::COLOR_PACKED);
+	BINPointWriter(string file, AABB aabb, double scale);
 
-		writer = new ofstream(file, ios::out | ios::binary);
-	}
-
-	BINPointWriter(string file, PointAttributes attributes) {
-		this->file = file;
-		numPoints = 0;
-		this->attributes = attributes;
-
-		writer = new ofstream(file, ios::out | ios::binary);
-	}
+	BINPointWriter(string file, PointAttributes attributes);
 
 	~BINPointWriter(){
 		close();
@@ -80,6 +64,5 @@ public:
 
 };
 
+
 #endif
-
-

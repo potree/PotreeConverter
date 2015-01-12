@@ -19,6 +19,8 @@ public:
 
 	virtual void close() = 0;
 
+protected:
+
 };
 
 #endif
