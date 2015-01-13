@@ -16,15 +16,16 @@ static const int INVALID_INTENSITY = 32767;
 
 char str[512];
 vector<std::pair<string::const_iterator, string::const_iterator> > sp;
+std::map<string, AABB> PTXPointReader::aabbs = std::map<string, AABB>();
 
 inline void split(vector<double> &v) {
     if (strlen(str) > 200) return;
 
     string strstr(str);
     split(sp, strstr, is_space(), token_compress_on);
-    for (auto beg = sp.begin(); beg != sp.end(); ++beg){
+    for (auto beg = sp.begin(); beg != sp.end(); ++beg) {
         string token(beg->first, beg->second);
-        if(!token.empty()) {
+        if (!token.empty()) {
             v.push_back(atof(token.c_str()));
         }
     }
@@ -41,7 +42,7 @@ inline void skipline(fstream &stream) {
     getline(stream, str);
 }
 
-inline bool assertd(fstream &stream, int i) {
+bool assertd(fstream &stream, int i) {
     vector<double> tokens;
     getlined(stream, tokens);
     bool result = i == tokens.size();
@@ -78,37 +79,42 @@ PTXPointReader::PTXPointReader(string path) {
 
     // open first file
     this->currentFile = files.begin();
-    stream = fstream(*(this->currentFile), ios::in);
+    this->stream = fstream(*(this->currentFile), ios::in);
     this->currentChunk = 0;
-    skipline(stream);
-    loadChunk();
+    skipline(this->stream);
+    loadChunk(this->stream, this->currentChunk, this->tr);
 }
 
-void PTXPointReader::scanForAABB() {
+AABB PTXPointReader::scanForAABB() {
     // read bounding box
-    double x, y, z, dummy, minx, miny, minz, maxx, maxy, maxz, intensity;
+    double x, y, z, minx, miny, minz, maxx, maxy, maxz, intensity;
     bool firstPoint = true;
     bool pleaseStop = false;
-    this->count = 0;
+    long currentChunk = 0;
+    long count = 0;
+    double tr[16];
+    vector<double> split;
     cout << "PTXPointReader: scanning points for AABB." << endl;
     for (int i = 0; i < files.size(); i++) {
-        this->stream = fstream(files[i], ios::in);
-        this->currentChunk = 0;
-        vector<double> split;
+        fstream stream = fstream(files[i], ios::in);
+        currentChunk = 0;
+        getlined(stream, split);
         while (!pleaseStop) {
             cout << "PTXPointReader: scanning " << files[i] << " chunk " << currentChunk << endl;
-            getlined(stream, split);
-            if (1 == split.size() && !loadChunk()) {
-                break;
+            if (1 == split.size()) {
+                if (!loadChunk(stream, currentChunk, tr)) {
+                    break;
+                }
             }
             while (true) {
-                if (4 == split.size()) {
+                getlined(stream, split);
+                if (4 == split.size() || 7 == split.size()) {
                     x = split[0];
                     y = split[1];
                     z = split[2];
                     intensity = split[3];
                     if (0.5 != intensity) {
-                        Point p = transform(x, y, z);
+                        Point p = transform(tr, x, y, z);
                         if (firstPoint) {
                             maxx = minx = p.x;
                             maxy = miny = p.y;
@@ -122,39 +128,35 @@ void PTXPointReader::scanForAABB() {
                             minz = p.z < minz ? p.z : minz;
                             maxz = p.z > maxz ? p.z : maxz;
                         }
-                        this->count++;
-                        if (0 == this->count % 1000000)
+                        count++;
+                        if (0 == count % 1000000)
                             cout << "PTXPointReader: scanned " << count / 1000000 << "m points.\n";
                     }
                 } else {
                     break;
                 }
-                getlined(stream, split);
             }
-            if (this->stream.eof()) {
+            if (stream.eof()) {
                 pleaseStop = true;
                 break;
             }
-            this->currentChunk++;
+            currentChunk++;
         }
-        this->stream.close();
+        stream.close();
     }
 
     cout << "PTXPointReader: scanning points for AABB done." << endl;
 
     AABB lAABB(Vector3<double>(minx, miny, minz), Vector3<double>(maxx, maxy, maxz));
-    aabb.update(lAABB.min);
-    aabb.update(lAABB.max);
+    return lAABB;
 }
 
-bool PTXPointReader::loadChunk() {
-    cout << "Loading a new PTX chunk: " << this->currentChunk << endl;
+bool PTXPointReader::loadChunk(fstream &stream, long currentChunk, double tr[16]) {
+    cout << "Loading a new PTX chunk: " << currentChunk << endl;
 
-    if (!assertd(stream, 1))return false;
-    if (!assertd(stream, 3))return false;
-    if (!assertd(stream, 3))return false;
-    if (!assertd(stream, 3))return false;
-    if (!assertd(stream, 3))return false;
+    // The first 5 lines should have respectively 1, 3, 3, 3, 3 numbers each.
+    if (!assertd(stream, 1) || !assertd(stream, 3) || !assertd(stream, 3) || !assertd(stream, 3) || !assertd(stream, 3))
+        return false;
 
     vector<double> split;
     getlined(stream, split);
@@ -216,7 +218,7 @@ bool PTXPointReader::doReadNextPoint() {
             this->stream = fstream(*(this->currentFile), ios::in);
             this->currentChunk = 0;
             skipline(stream);
-            loadChunk();
+            loadChunk(stream, currentChunk, tr);
         } else {
             return false;
         }
@@ -225,12 +227,12 @@ bool PTXPointReader::doReadNextPoint() {
     getlined(stream, split);
     if (1 == split.size()) {
         this->currentChunk++;
-        loadChunk();
+        loadChunk(stream, currentChunk, tr);
         getlined(stream, split);
     }
     unsigned long size1 = split.size();
     if (size1 > 3) {
-        this->p = transform(split[0], split[1], split[2]);
+        this->p = transform(tr, split[0], split[1], split[2]);
         double sqrtIntensity = sqrt(split[3]);
         this->p.intensity = 65535.0 * sqrtIntensity;
         this->p.a = 0;

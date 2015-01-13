@@ -1,6 +1,7 @@
 #ifndef PTXPOINTREADER_H
 #define PTXPOINTREADER_H
 
+#include <map>
 #include "PointReader.h"
 
 using std::string;
@@ -18,9 +19,9 @@ private:
     long count;
     Point p;
     long currentChunk;
-    bool hasAABB = false;
+    static std::map<string, AABB> aabbs;
 
-    inline Point transform(double x, double y, double z) const {
+    inline Point transform(double tr[16], double x, double y, double z) const {
         Point p(tr[0] * x + tr[4] * y + tr[8] * z + tr[12],
                 tr[1] * x + tr[5] * y + tr[9] * z + tr[13],
                 tr[2] * x + tr[6] * y + tr[10] * z + tr[14]);
@@ -28,7 +29,6 @@ private:
     }
 
     fstream stream;
-    AABB aabb;
     string path;
     vector<string> files;
     vector<string>::iterator currentFile;
@@ -36,9 +36,9 @@ private:
     /**
     * Returns false if there is neo next chunk.
     */
-    bool loadChunk();
+    bool loadChunk(fstream &stream, long currentChunk, double tr[16]);
 
-    void scanForAABB();
+    AABB scanForAABB();
 
     bool doReadNextPoint();
 
@@ -57,11 +57,12 @@ public:
     }
 
     inline AABB getAABB() {
-        if(!hasAABB) {
-            scanForAABB();
-            hasAABB = true;
+        if (PTXPointReader::aabbs.find(path) == aabbs.end()) {
+            AABB aabb = scanForAABB();
+            PTXPointReader::aabbs[path] = aabb;
+            return aabb;
         }
-        return aabb;
+        return PTXPointReader::aabbs[path];
     }
 
     inline long numPoints() {
