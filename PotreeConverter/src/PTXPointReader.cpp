@@ -94,13 +94,11 @@ AABB PTXPointReader::scanForAABB() {
     long count = 0;
     double tr[16];
     vector<double> split;
-    cout << "PTXPointReader: scanning points for AABB." << endl;
     for (int i = 0; i < files.size(); i++) {
         fstream stream = fstream(files[i], ios::in);
         currentChunk = 0;
         getlined(stream, split);
         while (!pleaseStop) {
-            cout << "PTXPointReader: scanning " << files[i] << " chunk " << currentChunk << endl;
             if (1 == split.size()) {
                 if (!loadChunk(stream, currentChunk, tr)) {
                     break;
@@ -130,7 +128,7 @@ AABB PTXPointReader::scanForAABB() {
                         }
                         count++;
                         if (0 == count % 1000000)
-                            cout << "PTXPointReader: scanned " << count / 1000000 << "m points.\n";
+                            cout << "AABB-SCANNING: " << count << " points; " << currentChunk << " chunks" << endl;
                     }
                 } else {
                     break;
@@ -145,15 +143,11 @@ AABB PTXPointReader::scanForAABB() {
         stream.close();
     }
 
-    cout << "PTXPointReader: scanning points for AABB done." << endl;
-
     AABB lAABB(Vector3<double>(minx, miny, minz), Vector3<double>(maxx, maxy, maxz));
     return lAABB;
 }
 
 bool PTXPointReader::loadChunk(fstream &stream, long currentChunk, double tr[16]) {
-    cout << "Loading a new PTX chunk: " << currentChunk << endl;
-
     // The first 5 lines should have respectively 1, 3, 3, 3, 3 numbers each.
     if (!assertd(stream, 1) || !assertd(stream, 3) || !assertd(stream, 3) || !assertd(stream, 3) || !assertd(stream, 3))
         return false;
