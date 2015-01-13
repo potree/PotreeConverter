@@ -77,7 +77,7 @@ int main(int argc, char **argv){
 			("spacing-by-diagonal-fraction,d", po::value<int>(&diagonalFraction), "Maximum number of points on the diagonal in the first level (sets spacing). spacing = diagonal / value")
 			("levels,l",			po::value<int>(&levels),					"Number of levels that will be generated. 0: only root, 1: root and its children, ...")
 			("input-format,f",		po::value<string>(&format),					"Input format. xyz: cartesian coordinates as floats, rgb: colors as numbers, i: intensity as number")
-			("range,r",				po::value<float>(&range),					"Range of rgb or intensity. ")
+			("range,r",				po::value<float>(&range),					"Range of rgb. If this is not specified, the converter will try to find the range automatically.")
 			("output-format",		po::value<string>(&outFormatString),		"Output format can be BINARY, LAS or LAZ. Default is BINARY")
 			("scale",				po::value<double>(&scale),					"Scale of the X, Y, Z coordinate in LAS and LAZ files.")
 			("selection-algorithm,a",	po::value<string>(&selectionModeString),"NICE: uniform point sampling according to spacing; FAST: random point sampling")
@@ -109,7 +109,7 @@ int main(int argc, char **argv){
 			if(!vm.count("spacing-by-diagonal-fraction")) diagonalFraction = 0;
 			if(!vm.count("levels")) levels = 3;
 			if(!vm.count("input-format")) format = "xyzrgb";
-			if(!vm.count("range")) range = 255;
+			if(!vm.count("range")) range = 0.0f;
 			if(!vm.count("scale")) scale = 0.01;
 			if(!vm.count("output-format")) outFormatString = "BINARY";
 

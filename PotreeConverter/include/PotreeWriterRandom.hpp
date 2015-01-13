@@ -12,6 +12,7 @@
 #include <vector>
 #include <bitset>
 #include <random>
+#include <math.h>
 
 #include "boost/filesystem.hpp"
 
@@ -116,9 +117,11 @@ public:
 
 		numWritten = 0;
 
-		mortonDepth = (int)ceil((-log(ratio) + log((target - numPoints + numPoints * ratio) / target)) / log(ratio)) + 1;
+
+		maxLevel = (int)(0.5f + (-log(ratio) + log((target - numPoints + numPoints * ratio) / target)) / log(ratio));
+		mortonDepth = maxLevel + 1;
 		mortonExtent = (unsigned long long)pow(2, mortonDepth) ;
-		maxLevel = mortonDepth - 1;
+		
 
 		cout << "morton depth: " << mortonDepth << endl;
 
@@ -127,15 +130,7 @@ public:
 
 		root = new Node();
 		root->name = "r";
-		root->aabb = aabb;
-
-
-
-		fs::remove_all(path + "/data");
-		fs::remove_all(path + "/temp");
-		fs::create_directories(path + "/data");
-		fs::create_directories(path + "/temp");
-		
+		root->aabb = aabb;		
 
 		cloudjs.outputFormat = outputFormat;
 		cloudjs.boundingBox = aabb;
@@ -194,12 +189,6 @@ public:
 		cloudjs.outputFormat = outputFormat;
 		cloudjs.spacing = spacing;
 		cloudjs.scale = scale;
-
-		//sort(cache.begin(), cache.end(), mortonOrder);
-
-		static int c = 0;
-
-		map<unsigned long long, LASPointWriter*> writers;
 
 		auto startSort = high_resolution_clock::now();
 		double gs = ( 1.0 - pow(4.0, (double)maxLevel + 1.0) ) / (1.0 - 4.0);
@@ -306,10 +295,7 @@ public:
 		duration = duration_cast<milliseconds>(endWrite-startWrite);
 		//cout << "write: " << (duration.count()/1000.0f) << "s" << endl;
 
-
 		cache.clear();
-		c++;
-
 
 		cloudjs.hierarchy.clear();
 

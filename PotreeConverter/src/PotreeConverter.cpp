@@ -12,6 +12,7 @@
 #include "LASPointReader.h"
 #include "LASPointWriter.hpp"
 #include "PlyPointReader.h"
+#include "XYZPointReader.hpp"
 
 #include <chrono>
 #include <sstream>
@@ -37,6 +38,8 @@ using boost::filesystem::directory_iterator;
 using boost::filesystem::is_regular_file;
 using boost::filesystem::path;
 
+namespace fs = boost::filesystem;
+
 struct Task{
 	string source;
 	string target;
@@ -49,12 +52,14 @@ struct Task{
 	}
 };
 
-PointReader *createPointReader(string path){
+PointReader *createPointReader(string path, string format, float range){
 	PointReader *reader = NULL;
 	if(boost::iends_with(path, ".las") || boost::iends_with(path, ".laz")){
 		reader = new LASPointReader(path);
 	}else if(boost::iends_with(path, ".ply")){
 		reader = new PlyPointReader(path);
+	}else if(boost::iends_with(path, ".xyz") || boost::iends_with(path, ".pts")){
+		reader = new XYZPointReader(path, format, range);
 	}
 
 	return reader;
@@ -72,7 +77,11 @@ PotreeConverter::PotreeConverter(vector<string> sources, string workDir, float s
 				path pDirectoryEntry = it->path();
 				if(boost::filesystem::is_regular_file(pDirectoryEntry)){
 					string filepath = pDirectoryEntry.string();
-					if(boost::iends_with(filepath, ".las") || boost::iends_with(filepath, ".laz") || boost::iends_with(filepath, ".ply")){
+					if(boost::iends_with(filepath, ".las") 
+						|| boost::iends_with(filepath, ".laz") 
+						|| boost::iends_with(filepath, ".xyz") 
+						|| boost::iends_with(filepath, ".pts") 
+						|| boost::iends_with(filepath, ".ply")){
 						sourceFiles.push_back(filepath);
 					}
 				}
@@ -94,8 +103,11 @@ PotreeConverter::PotreeConverter(vector<string> sources, string workDir, float s
 	this->diagonalFraction = diagonalFraction;
 	this->algorithm = selectionAlgorithm;
 
+	
 	boost::filesystem::path dataDir(workDir + "/data");
 	boost::filesystem::path tempDir(workDir + "/temp");
+	fs::remove_all(dataDir);
+	fs::remove_all(tempDir);
 	boost::filesystem::create_directories(dataDir);
 	boost::filesystem::create_directories(tempDir);
 
@@ -104,35 +116,49 @@ PotreeConverter::PotreeConverter(vector<string> sources, string workDir, float s
 	cloudjs.outputFormat = OutputFormat::LAS;
 }
 
+void PotreeConverter::convert(){
 
-AABB calculateAABB(vector<string> sources){
-	AABB aabb;
-
+	// convert XYZ sources to las sources
 	for(int i = 0; i < sources.size(); i++){
 		string source = sources[i];
 
-		PointReader *reader = createPointReader(source);
-		AABB lAABB = reader->getAABB();
-		 
+		if(boost::iends_with(source, ".xyz") || boost::iends_with(source, ".pts")){
+			string dest = workDir + "/temp/" + fs::path(source).stem().string() + ".las";
 
-		aabb.update(lAABB.min);
-		aabb.update(lAABB.max);
+			PointReader *reader = createPointReader(source, format, range);
+			LASPointWriter *writer = new LASPointWriter(dest, aabb, scale);
+			AABB aabb;
 
-		reader->close();
-		delete reader;
+			while(reader->readNextPoint()){
+				Point p = reader->getPoint();
+				writer->write(p);
+
+				Vector3<double> pos = p.position();
+				aabb.update(pos);
+			}
+			writer->header->SetMax(aabb.max.x, aabb.max.y, aabb.max.z);
+			writer->header->SetMin(aabb.min.x, aabb.min.y, aabb.min.z);
+			writer->writer->SetHeader(*writer->header);
+			writer->writer->WriteHeader();
+
+			reader->close();
+			writer->close();
+
+			delete reader;
+			delete writer;
+
+			sources[i] = dest;
+		}
+
 	}
 
-	return aabb;
-}
 
-void PotreeConverter::convert(){
+	// calculate AABB and total number of points
 	AABB aabb;
 	long long numPoints = 0;
+	for(string source : sources){
 
-	for(int i = 0; i < sources.size(); i++){
-		string source = sources[i];
-
-		PointReader *reader = createPointReader(source);
+		PointReader *reader = createPointReader(source, format, range);
 		AABB lAABB = reader->getAABB();
 		 
 
@@ -143,11 +169,8 @@ void PotreeConverter::convert(){
 
 		reader->close();
 		delete reader;
+
 	}
-
-
-
-
 
 
 
@@ -176,6 +199,7 @@ void PotreeConverter::convert(){
 		writer = new PotreeWriterRandom(this->workDir, numPoints, aabb, spacing, scale, outputFormat);
 	}
 
+	// convert input
 	long long readTime = 0;
 	long long pointsProcessed = 0;
 	for(int i = 0; i < sources.size(); i++){
@@ -183,7 +207,7 @@ void PotreeConverter::convert(){
 		cout << "OPEN:        " << source << endl;
 
 		bool morePoints = true;
-		PointReader *reader = createPointReader(source);
+		PointReader *reader = createPointReader(source, format, range);
 		while(morePoints){
 
 			auto startRead = high_resolution_clock::now();
@@ -204,10 +228,6 @@ void PotreeConverter::convert(){
 			Point p = reader->getPoint();
 
 			writer->add(p);
-
-			//if((pointsProcessed % (10*1000*1000)) == 0){
-			//	writer->flush();
-			//}
 
 			if((pointsProcessed % (1*1000*1000)) == 0){
 				auto end = high_resolution_clock::now();
