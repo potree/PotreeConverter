@@ -17,6 +17,7 @@ static const int INVALID_INTENSITY = 32767;
 char str[512];
 vector<std::pair<string::const_iterator, string::const_iterator> > sp;
 std::map<string, AABB> PTXPointReader::aabbs = std::map<string, AABB>();
+std::map<string, long> PTXPointReader::counts = std::map<string, long>();
 
 inline void split(vector<double> &v) {
     if (strlen(str) > 200) return;
@@ -85,7 +86,7 @@ PTXPointReader::PTXPointReader(string path) {
     loadChunk(this->stream, this->currentChunk, this->tr);
 }
 
-AABB PTXPointReader::scanForAABB() {
+void PTXPointReader::scanForAABB() {
     // read bounding box
     double x, y, z, minx, miny, minz, maxx, maxy, maxz, intensity;
     bool firstPoint = true;
@@ -143,8 +144,9 @@ AABB PTXPointReader::scanForAABB() {
         stream.close();
     }
 
+    counts[path] = count;
     AABB lAABB(Vector3<double>(minx, miny, minz), Vector3<double>(maxx, maxy, maxz));
-    return lAABB;
+    PTXPointReader::aabbs[path] = lAABB;
 }
 
 bool PTXPointReader::loadChunk(fstream &stream, long currentChunk, double tr[16]) {

@@ -16,10 +16,10 @@ using std::vector;
 class PTXPointReader : public PointReader {
 private:
     double tr[16];
-    long count;
     Point p;
     long currentChunk;
     static std::map<string, AABB> aabbs;
+    static std::map<string, long> counts;
 
     inline Point transform(double tr[16], double x, double y, double z) const {
         Point p(tr[0] * x + tr[4] * y + tr[8] * z + tr[12],
@@ -38,7 +38,7 @@ private:
     */
     bool loadChunk(fstream &stream, long currentChunk, double tr[16]);
 
-    AABB scanForAABB();
+    void scanForAABB();
 
     bool doReadNextPoint();
 
@@ -58,15 +58,16 @@ public:
 
     inline AABB getAABB() {
         if (PTXPointReader::aabbs.find(path) == aabbs.end()) {
-            AABB aabb = scanForAABB();
-            PTXPointReader::aabbs[path] = aabb;
-            return aabb;
+            scanForAABB();
         }
         return PTXPointReader::aabbs[path];
     }
 
     inline long numPoints() {
-        return count;
+        if (PTXPointReader::counts.find(path) == counts.end()) {
+            scanForAABB();
+        }
+        return PTXPointReader::counts[path];
     }
 
     inline void close() {
