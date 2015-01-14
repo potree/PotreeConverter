@@ -12,9 +12,9 @@ SparseGrid::SparseGrid(AABB aabb, float spacing){
 	count++;
 
 	this->aabb = aabb;
-	this->width = aabb.size.x / spacing;
-	this->height = aabb.size.y / spacing;
-	this->depth = aabb.size.z / spacing;
+	this->width = (int)(aabb.size.x / spacing);
+	this->height = (int)(aabb.size.y / spacing);
+	this->depth = (int)(aabb.size.z / spacing);
 	this->spacing = spacing;
 	numAccepted = 0;
 }

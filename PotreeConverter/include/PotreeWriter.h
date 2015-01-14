@@ -106,8 +106,6 @@ public:
 		pointsInMemory = 0;
 		pointsInMemoryLimit = 1*1000*1000;
 
-		fs::remove_all(path + "/data");
-		fs::remove_all(path + "/temp");
 		fs::create_directories(path + "/data");
 		fs::create_directories(path + "/temp");
 		
