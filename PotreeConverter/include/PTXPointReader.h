@@ -32,6 +32,7 @@ private:
     string path;
     vector<string> files;
     vector<string>::iterator currentFile;
+    Vector3<double> origin;
 
     /**
     * Returns false if there is neo next chunk.
@@ -54,6 +55,10 @@ public:
 
     inline Point getPoint() {
         return p;
+    }
+
+    inline Vector3<double> getOrigin() {
+        return origin;
     }
 
     inline AABB getAABB() {

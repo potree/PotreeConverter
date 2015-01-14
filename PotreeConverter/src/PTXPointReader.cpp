@@ -150,11 +150,12 @@ void PTXPointReader::scanForAABB() {
 }
 
 bool PTXPointReader::loadChunk(fstream &stream, long currentChunk, double tr[16]) {
+    vector<double> split;
+
     // The first 5 lines should have respectively 1, 3, 3, 3, 3 numbers each.
     if (!assertd(stream, 1) || !assertd(stream, 3) || !assertd(stream, 3) || !assertd(stream, 3) || !assertd(stream, 3))
         return false;
 
-    vector<double> split;
     getlined(stream, split);
     if (4 != split.size()) {
         return false;
@@ -190,6 +191,7 @@ bool PTXPointReader::loadChunk(fstream &stream, long currentChunk, double tr[16]
     tr[13] = split[1];
     tr[14] = split[2];
     tr[15] = split[3];
+    origin = Vector3<double>(split[0], split[1], split[2]);
 
     return true;
 }
