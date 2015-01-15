@@ -121,8 +121,11 @@ void PotreeConverter::convert(){
 		string source = sources[i];
 
 		if(boost::iends_with(source, ".xyz") || boost::iends_with(source, ".pts")){
-			string dest = workDir + "/temp/" + fs::path(source).stem().string() + ".las";
+			boost::filesystem::path lasDir(workDir + "/las");
+			boost::filesystem::create_directories(lasDir);
+			string dest = workDir + "/las/" + fs::path(source).stem().string() + ".las";
 
+			if (!boost::filesystem::exists(dest)){
 			PointReader *reader = createPointReader(source, format, range);
 			LASPointWriter *writer = new LASPointWriter(dest, aabb, scale);
 			AABB aabb;
@@ -143,7 +146,6 @@ void PotreeConverter::convert(){
 					ssMessage.imbue(std::locale(""));
 					ssMessage << "CONVERT-LAS: ";
 					ssMessage << pointsProcessed << " points processed; ";
-					ssMessage << writer->numPoints << " points written; ";
 					ssMessage << seconds << " seconds passed";
 
 					cout << ssMessage.str() << endl;
@@ -159,10 +161,11 @@ void PotreeConverter::convert(){
 
 			delete reader;
 			delete writer;
+			}
 
 			sources[i] = dest;
 		}
-
+		cout << endl;
 	}
 
 
