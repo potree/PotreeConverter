@@ -113,7 +113,9 @@ PotreeConverter::PotreeConverter(vector<string> sources, string workDir, float s
 
 
 void PotreeConverter::convert(){
-	
+	long long pointsProcessed = 0;
+	auto start = high_resolution_clock::now();
+
 	// convert XYZ sources to las sources
 	for(int i = 0; i < sources.size(); i++){
 		string source = sources[i];
@@ -131,6 +133,21 @@ void PotreeConverter::convert(){
 
 				Vector3<double> pos = p.position();
 				aabb.update(pos);
+				pointsProcessed++;
+
+				if (0 == pointsProcessed  % 1000000) {
+					auto end = high_resolution_clock::now();
+					long long duration = duration_cast<milliseconds>(end - start).count();
+					float seconds = duration / 1000.0f;
+					stringstream ssMessage;
+					ssMessage.imbue(std::locale(""));
+					ssMessage << "CONVERT-LAS: ";
+					ssMessage << pointsProcessed << " points processed; ";
+					ssMessage << writer->numPoints << " points written; ";
+					ssMessage << seconds << " seconds passed";
+
+					cout << ssMessage.str() << endl;
+				}
 			}
 			writer->header->SetMax(aabb.max.x, aabb.max.y, aabb.max.z);
 			writer->header->SetMin(aabb.min.x, aabb.min.y, aabb.min.z);
@@ -184,12 +201,12 @@ void PotreeConverter::convert(){
 
 	cloudjs.boundingBox = aabb;
 
-	auto start = high_resolution_clock::now();
+	start = high_resolution_clock::now();
 
 	PotreeWriter writer(this->workDir, aabb, spacing, maxDepth, scale, outputFormat);
 	//PotreeWriterLBL writer(this->workDir, aabb, spacing, maxDepth, outputFormat);
 
-	long long pointsProcessed = 0;
+	pointsProcessed = 0;
 	for(int i = 0; i < sources.size(); i++){
 		string source = sources[i];
 		cout << "reading " << source << endl;
