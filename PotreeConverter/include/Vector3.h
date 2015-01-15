@@ -6,7 +6,9 @@
 #include <iostream>
 
 using std::ostream;
+#ifndef _MSC_VER
 using std::max;
+#endif
 
 template<class T>
 class Vector3{
