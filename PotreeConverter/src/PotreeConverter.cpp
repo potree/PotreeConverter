@@ -168,8 +168,9 @@ void PotreeConverter::convert(){
 
 			sources[i] = dest;
 		}
-		cout << endl;
+		
 	}
+	cout << endl;
 
 
 	// calculate AABB and total number of points
