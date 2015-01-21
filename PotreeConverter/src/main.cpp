@@ -30,6 +30,7 @@ using std::min;
 using std::max;
 using std::ostream;
 using std::cout;
+using std::cerr;
 using std::cin;
 using std::endl;
 using std::vector;
@@ -105,11 +106,12 @@ int main(int argc, char **argv){
 	float spacing;
 	int levels;
 	string format;
-	float range;
 	string outFormatString;
 	double scale;
 	int diagonalFraction;
 	OutputFormat outFormat;
+	vector<double> colorRange;
+	vector<double> intensityRange;
 
 	cout.imbue(std::locale(""));
 
@@ -123,7 +125,8 @@ int main(int argc, char **argv){
 			("spacing-by-diagonal-fraction,d", po::value<int>(&diagonalFraction), "Maximum number of points on the diagonal in the first level (sets spacing). spacing = diagonal / value")
 			("levels,l", po::value<int>(&levels), "Number of levels that will be generated. 0: only root, 1: root and its children, ...")
 			("input-format,f", po::value<string>(&format), "Input format. xyz: cartesian coordinates as floats, rgb: colors as numbers, i: intensity as number")
-			("range,r", po::value<float>(&range), "Range of rgb or intensity. ")
+			("color-range", po::value<std::vector<double> >()->multitoken(), "")
+			("intensity-range", po::value<std::vector<double> >()->multitoken(), "")
 			("output-format", po::value<string>(&outFormatString), "Output format can be BINARY, LAS or LAZ. Default is BINARY")
 			("scale", po::value<double>(&scale), "Scale of the X, Y, Z coordinate in LAS and LAZ files.")
 			("source", po::value<std::vector<std::string> >(), "Source file. Can be LAS, LAZ, PTX or PLY");
@@ -143,8 +146,26 @@ int main(int argc, char **argv){
 		if(vm.count("source")){
 			source = vm["source"].as<std::vector<std::string> >();
 		}else{
-			cout << "source file parameter is missing" << endl;
+			cerr << "source file parameter is missing" << endl;
 			return 1;
+		}
+
+		if(vm.count("color-range")){
+				colorRange = vm["color-range"].as< vector<double> >();
+
+				if(colorRange.size() > 2){
+						cerr << "color-range only takes 0 - 2 arguments" << endl;
+						return 1;
+				}
+		}
+
+		if(vm.count("intensity-range")){
+				intensityRange = vm["intensity-range"].as< vector<double> >();
+
+				if(intensityRange.size() > 2){
+						cerr << "intensity-range only takes 0 - 2 arguments" << endl;
+						return 1;
+				}
 		}
 
 		// set default parameters 
@@ -153,8 +174,7 @@ int main(int argc, char **argv){
 		if(!vm.count("spacing")) spacing = 0;
 		if(!vm.count("spacing-by-diagonal-fraction")) diagonalFraction = 0;
 		if(!vm.count("levels")) levels = 3;
-		if(!vm.count("input-format")) format = "xyzrgb";
-		if(!vm.count("range")) range = 255;
+		if(!vm.count("input-format")) format = "";
 		if(!vm.count("scale")) scale = 0.01;
 		if(!vm.count("output-format")) outFormatString = "BINARY";
 		if(outFormatString == "BINARY"){
@@ -179,7 +199,6 @@ int main(int argc, char **argv){
 		cout << "diagonal-fraction: \t" << diagonalFraction << endl;
 		cout << "levels:            \t" << levels << endl;
 		cout << "format:            \t" << format << endl;
-		cout << "range:             \t" << range << endl;
 		cout << "scale:             \t" << scale << endl;
 		cout << "output-format:     \t" << outFormatString << endl;
 		cout << endl;
@@ -192,7 +211,7 @@ int main(int argc, char **argv){
 	auto start = high_resolution_clock::now();
 	
 	try{
-		PotreeConverter pc(source, outdir, spacing, diagonalFraction, levels, format, range, scale, outFormat);
+		PotreeConverter pc(source, outdir, spacing, diagonalFraction, levels, format, colorRange, intensityRange, scale, outFormat);
 		pc.convert();
 	}catch(exception &e){
 		cout << "ERROR: " << e.what() << endl;

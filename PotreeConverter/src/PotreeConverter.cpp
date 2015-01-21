@@ -48,7 +48,7 @@ struct Task{
 	}
 };
 
-PointReader *createPointReader(string path, string format, float range){
+PointReader *PotreeConverter::createPointReader(string path){
 	PointReader *reader = NULL;
 	if(boost::iends_with(path, ".las") || boost::iends_with(path, ".laz")){
 		reader = new LASPointReader(path);
@@ -56,14 +56,23 @@ PointReader *createPointReader(string path, string format, float range){
 		reader = new PTXPointReader(path);
 	}else if(boost::iends_with(path, ".ply")){
 		reader = new PlyPointReader(path);
-	}else if(boost::iends_with(path, ".xyz") || boost::iends_with(path, ".pts")){
-		reader = new XYZPointReader(path, format, range);
+	}else if(boost::iends_with(path, ".xyz")){
+		reader = new XYZPointReader(path, format, colorRange, intensityRange);
+	}else if(boost::iends_with(path, ".pts")){
+		vector<double> intensityRange;
+
+		if(this->intensityRange.size() == 0){
+				intensityRange.push_back(-2048);
+				intensityRange.push_back(+2047);
+		}
+
+		reader = new XYZPointReader(path, format, colorRange, intensityRange);
  	}
 
 	return reader;
 }
 
-PotreeConverter::PotreeConverter(vector<string> sources, string workDir, float spacing, int diagonalFraction, int maxDepth, string format, float range, double scale, OutputFormat outFormat){
+PotreeConverter::PotreeConverter(vector<string> sources, string workDir, float spacing, int diagonalFraction, int maxDepth, string format, vector<double> colorRange, vector<double> intensityRange, double scale, OutputFormat outFormat){
 
 	// if sources contains directories, use files inside the directory instead
 	vector<string> sourceFiles;
@@ -97,7 +106,8 @@ PotreeConverter::PotreeConverter(vector<string> sources, string workDir, float s
 	this->spacing = spacing;
 	this->maxDepth = maxDepth;
 	this->format = format;
-	this->range = range;
+	this->colorRange = colorRange;
+	this->intensityRange = intensityRange;
 	this->scale = scale;
 	this->outputFormat = outFormat;
 	this->diagonalFraction = diagonalFraction;
@@ -129,7 +139,7 @@ void PotreeConverter::convert(){
 			string dest = workDir + "/las/" + fs::path(source).stem().string() + ".las";
 
 			if (!boost::filesystem::exists(dest)){
-			PointReader *reader = createPointReader(source, format, range);
+			PointReader *reader = createPointReader(source);
 			LASPointWriter *writer = new LASPointWriter(dest, aabb, scale);
 			AABB aabb;
 
@@ -178,7 +188,7 @@ void PotreeConverter::convert(){
 	long long numPoints = 0;
 	for(string source : sources){
 
-		PointReader *reader = createPointReader(source, format, range);
+		PointReader *reader = createPointReader(source);
 		AABB lAABB = reader->getAABB();
 		 
 
@@ -218,7 +228,7 @@ void PotreeConverter::convert(){
 		string source = sources[i];
 		cout << "reading " << source << endl;
 
-		PointReader *reader = createPointReader(source, format, range);
+		PointReader *reader = createPointReader(source);
 		while(reader->readNextPoint()){
 			pointsProcessed++;
 			//if((pointsProcessed%50) != 0){

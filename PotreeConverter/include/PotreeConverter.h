@@ -47,19 +47,19 @@ private:
 	int maxDepth;
 	string format;
 	OutputFormat outputFormat;
-
-	float range;
+	vector<double> colorRange;
+	vector<double> intensityRange;
 	double scale;
 	int diagonalFraction;
 
+	PointReader *createPointReader(string source);
+
 public:
 
-	PotreeConverter(vector<string> fData, string workDir, float spacing, int diagonalFraction, int maxDepth, string format, float range, double scale, OutputFormat outFormat);
+	PotreeConverter(vector<string> fData, string workDir, float spacing, int diagonalFraction, int maxDepth, string format, vector<double> colorRange, vector<double> intensityRange, double scale, OutputFormat outFormat);
 
 	void convert();
 
 };
-
-PointReader *createPointReader(string path, string format = "xyzi", float range = 255.0);
 
 #endif

@@ -39,20 +39,42 @@ private:
 	int pointByteSize;
 	Point point;
 	string format;
-	float range;
+
+	float colorOffset;
+	float colorScale;
+
+	float intensityOffset;
+	float intensityScale;
+
 	int linesSkipped;
 
 public:
-	XYZPointReader(string file, string format, float range)
+	XYZPointReader(string file, string format, vector<double> colorRange, vector<double> intensityRange)
 	: stream(file, std::ios::in | std::ios::binary)
 	{
 		this->format = format;
-		this->range = range;
 		pointsRead = 0;
 		linesSkipped = 0;
-		
 
-		if(range == 0.0f){
+		if(intensityRange.size() == 2){
+			intensityOffset = intensityRange[0];
+			intensityScale = intensityRange[1];
+		}else if(intensityRange.size() == 1){
+			intensityOffset = 0.0f;
+			intensityScale = intensityRange[0];
+		}else{
+			intensityOffset = 0.0f;
+			intensityScale = 1.0f;
+		}
+
+		if(colorRange.size() == 2){
+			colorOffset = colorRange[0];
+			colorScale = colorRange[1];
+		}else if(colorRange.size() == 1){
+			colorOffset = 0.0f;
+			colorScale = colorRange[0];
+		}else if(colorRange.size() == 0){
+			colorOffset = 0.0f;
 
 			// try to find color range by evaluating the first x points.
 			float max;
@@ -62,13 +84,26 @@ public:
 				trim(line);
 				vector<string> tokens;
 				split(tokens, line, is_any_of("\t ,"), token_compress_on); 
-				if(tokens.size() < format.size()){
+
+				if(this->format == "" && tokens.size() >= 3){
+					string f(tokens.size(), 's');
+					f.replace(0, 3, "xyz");
+
+					if(tokens.size() >= 6){
+						f.replace(tokens.size() - 3, 3, "rgb");
+					}
+
+					this->format = f;
+					cout << "using format: '" << this->format << "'" << endl;
+				}
+
+				if(tokens.size() < this->format.size()){
 					continue;
 				}
 
-				for(int i = 0; i < format.size(); i++){
+				for(int i = 0; i < this->format.size(); i++){
 					string token = tokens[i];
-					auto f = format[i];
+					auto f = this->format[i];
 					if(f == 'r'){
 						max = std::max(max, stof(token));
 					}else if(f == 'g'){
@@ -81,15 +116,14 @@ public:
 				j++;
 			}
 
-
 			if(max <= 1.0f){
-				range = 1.0f;
+				colorScale = 1.0f;
 			} else if(max <= 255){
-				this->range = 255.0f;
+				colorScale = 255.0f;
 			}else if(max <= pow(2, 16) - 1){
-				this->range = (float)pow(2, 16) - 1;
+				colorScale =(float)pow(2, 16) - 1;
 			}else{
-				this->range = (float)max;
+				colorScale = (float)max;
 			}
 
 			stream.seekg(0, stream.beg);
@@ -130,13 +164,13 @@ public:
 				}else if(f == 'z'){
 					z = stod(token);
 				}else if(f == 'r'){
-					r = (unsigned char)(255.0f * stof(token) / range); 
+					r = (unsigned char)(255.0f * (stof(token) - colorOffset) / colorScale); 
 				}else if(f == 'g'){
-					g = (unsigned char)(255.0f * stof(token) / range); 
+					g = (unsigned char)(255.0f * (stof(token) - colorOffset) / colorScale); 
 				}else if(f == 'b'){
-					b = (unsigned char)(255.0f * stof(token) / range); 
+					b = (unsigned char)(255.0f * (stof(token) - colorOffset) / colorScale); 
 				}else if(f == 'i'){
-					intensity = (unsigned short)stof(token);
+					intensity = (unsigned short)( 65535 * (stof(token) - intensityOffset) / intensityScale);
 				}else if(f == 's'){
 					// skip
 				}
