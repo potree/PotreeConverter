@@ -118,8 +118,9 @@ int main(int argc, char **argv){
 		po::options_description desc("Options"); 
 		desc.add_options() 
 			("help,h", "prints usage")
-			("outdir,o", po::value<string>(&outdir), "output directory") 
-			("spacing,s", po::value<float>(&spacing), "Distance between points at root level. Distance halves each level.") 
+			("outdir,o", po::value<string>(&outdir), "output directory")
+            ("delete,D", "Deletes output directory")
+			("spacing,s", po::value<float>(&spacing), "Distance between points at root level. Distance halves each level.")
 			("spacing-by-diagonal-fraction,d", po::value<int>(&diagonalFraction), "Maximum number of points on the diagonal in the first level (sets spacing). spacing = diagonal / value")
 			("levels,l", po::value<int>(&levels), "Number of levels that will be generated. 0: only root, 1: root and its children, ...")
 			("input-format,f", po::value<string>(&format), "Input format. xyz: cartesian coordinates as floats, rgb: colors as numbers, i: intensity as number")
@@ -183,7 +184,16 @@ int main(int argc, char **argv){
 		cout << "scale:             \t" << scale << endl;
 		cout << "output-format:     \t" << outFormatString << endl;
 		cout << endl;
-	}catch(exception &e){
+    
+        if (vm.count("delete")) {
+            try {
+                fs::remove_all(outdir);
+                cout << "Deleted the output directory: " << outdir << endl;
+            }
+            catch (...){
+            }
+        }
+    }catch(exception &e){
 		cout << "ERROR: " << e.what() << endl;
 
 		return 1;
