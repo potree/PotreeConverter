@@ -14,12 +14,11 @@ using namespace boost::algorithm;
 
 static const int INVALID_INTENSITY = 32767;
 
-char str[512];
-vector<std::pair<string::const_iterator, string::const_iterator> > sp;
 std::map<string, AABB> PTXPointReader::aabbs = std::map<string, AABB>();
 std::map<string, long> PTXPointReader::counts = std::map<string, long>();
 
-inline void split(vector<double> &v) {
+inline void split(vector<double> &v, char (&str)[512]) {
+    vector<std::pair<string::const_iterator, string::const_iterator> > sp;
     if (strlen(str) > 200) return;
 
     string strstr(str);
@@ -33,9 +32,10 @@ inline void split(vector<double> &v) {
 }
 
 inline void getlined(fstream &stream, vector<double> &result) {
+    char str[512];
     result.clear();
     stream.getline(str, 512);
-    split(result);
+    split(result, str);
 }
 
 inline void skipline(fstream &stream) {
