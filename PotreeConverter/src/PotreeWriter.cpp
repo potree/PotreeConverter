@@ -192,3 +192,28 @@ void PotreeWriterNode::flush(){
 		}
 	}
 }
+
+vector<PotreeWriterNode*> PotreeWriterNode::getHierarchy(int levels){
+
+	vector<PotreeWriterNode*> hierarchy;
+	
+	list<PotreeWriterNode*> stack;
+	stack.push_back(this);
+	while(!stack.empty()){
+		PotreeWriterNode *node = stack.front();
+		stack.pop_front();
+
+		if(node->level >= this->level + levels){
+			break;
+		}
+		hierarchy.push_back(node);
+
+		for(int i = 0; i < 8; i++){
+			if(node->children[i] != NULL){
+				stack.push_back(node->children[i]);
+			}
+		}
+	}
+
+	return hierarchy;
+}

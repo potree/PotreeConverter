@@ -68,6 +68,8 @@ public:
 
 	void flush();
 
+	vector<PotreeWriterNode*> getHierarchy(int levels);
+
 private:
 
 	PointReader *createReader(string path);
@@ -106,8 +108,11 @@ public:
 		pointsInMemory = 0;
 		pointsInMemoryLimit = 1*1000*1000;
 
+		//fs::remove_all(path + "/hierarchy");
+
 		fs::create_directories(path + "/data");
 		fs::create_directories(path + "/temp");
+		//fs::create_directories(path + "/hierarchy");
 		
 
 		cloudjs.outputFormat = outputFormat;
@@ -157,32 +162,60 @@ public:
 
 
 
-		// update cloud.js
-		
-		
-		long long numPointsInMemory = 0;
-		long long numPointsInHierarchy = 0;
-		cloudjs.hierarchy = vector<CloudJS::Node>();
-		cloudjs.tightBoundingBox = tightAABB;
-		list<PotreeWriterNode*> stack;
-		stack.push_back(root);
-		while(!stack.empty()){
-			PotreeWriterNode *node = stack.front();
-			stack.pop_front();
-			cloudjs.hierarchy.push_back(CloudJS::Node(node->name, node->numAccepted));
-			numPointsInHierarchy += node->numAccepted;
-			numPointsInMemory += node->grid->numAccepted;
+		{// update cloud.js
+			long long numPointsInMemory = 0;
+			long long numPointsInHierarchy = 0;
+			cloudjs.hierarchy = vector<CloudJS::Node>();
+			cloudjs.tightBoundingBox = tightAABB;
+			list<PotreeWriterNode*> stack;
+			stack.push_back(root);
+			while(!stack.empty()){
+				PotreeWriterNode *node = stack.front();
+				stack.pop_front();
+				cloudjs.hierarchy.push_back(CloudJS::Node(node->name, node->numAccepted));
+				numPointsInHierarchy += node->numAccepted;
+				numPointsInMemory += node->grid->numAccepted;
 
-			for(int i = 0; i < 8; i++){
-				if(node->children[i] != NULL){
-					stack.push_back(node->children[i]);
+				for(int i = 0; i < 8; i++){
+					if(node->children[i] != NULL){
+						stack.push_back(node->children[i]);
+					}
 				}
 			}
+
+			ofstream cloudOut(path + "/cloud.js", ios::out);
+			cloudOut << cloudjs.getString();
+			cloudOut.close();
 		}
 
-		ofstream cloudOut(path + "/cloud.js", ios::out);
-		cloudOut << cloudjs.getString();
-		cloudOut.close();
+		//{// write hierarchy
+		//	
+		//	list<PotreeWriterNode*> stack;
+		//	stack.push_back(root);
+		//	while(!stack.empty()){
+		//		PotreeWriterNode *node = stack.front();
+		//		stack.pop_front();
+		//
+		//		string dest = path + "/hierarchy/" + node->name + ".hrc";
+		//		ofstream fout;
+		//		fout.open(dest, ios::out | ios::binary);
+		//		vector<PotreeWriterNode*> hierarchy = node->getHierarchy(7);
+		//		for(int i = 0; i <  hierarchy.size(); i++){
+		//			if(hierarchy[i]->level == node->level + 5){
+		//				stack.push_back(hierarchy[i]);
+		//			}
+		//
+		//			fout.write("a", 1);
+		//			fout.write("1234", 4);
+		//
+		//		}
+		//		fout.close();
+		//
+		//	}
+		//
+		//
+		//
+		//}
 	}
 
 	void close(){
