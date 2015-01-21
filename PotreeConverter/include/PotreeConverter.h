@@ -8,6 +8,7 @@
 #include "AABB.h"
 #include "CloudJS.hpp"
 #include "definitions.hpp"
+#include "PointReader.h"
 
 #include <string>
 #include <vector>
@@ -59,5 +60,6 @@ public:
 
 };
 
+PointReader *createPointReader(string path, string format = "xyzi", float range = 255.0);
 
 #endif
