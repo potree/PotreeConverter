@@ -231,7 +231,7 @@ bool PTXPointReader::doReadNextPoint() {
     unsigned long size1 = split.size();
     if (size1 > 3) {
         this->p = transform(tr, split[0], split[1], split[2]);
-        double sqrtIntensity = sqrt(split[3]);
+        double sqrtIntensity = log(split[3] * 1.71828182846 + 1);
         this->p.intensity = 65535.0 * sqrtIntensity;
         this->p.a = 0;
         if (4 == size1) {
