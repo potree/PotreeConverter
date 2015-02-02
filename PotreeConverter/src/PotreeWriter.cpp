@@ -45,6 +45,11 @@ PointReader *PotreeWriterNode::createReader(string path){
 }
 
 PointWriter *PotreeWriterNode::createWriter(string path, double scale){
+    int find = path.find_last_of("/");
+    string dir = path.substr(0, find);
+    if (!fs::exists(dir)) {
+        fs::create_directories(dir);
+    }
 	PointWriter *writer = NULL;
 	OutputFormat outputFormat = this->potreeWriter->outputFormat;
 	if(outputFormat == OutputFormat::LAS || outputFormat == OutputFormat::LAZ){
@@ -96,7 +101,11 @@ PotreeWriterNode *PotreeWriterNode::add(Point &point, int minLevel){
 
 PotreeWriterNode *PotreeWriterNode::createChild(int childIndex ){
 	stringstream childName;
-	childName << name << childIndex;
+    if (name.length() == 4 || name.length() == 8) {
+        childName << name << "/" << childIndex;
+    } else {
+        childName << name << childIndex;
+    }
 	AABB cAABB = childAABB(aabb, childIndex);
 	PotreeWriterNode *child = new PotreeWriterNode(potreeWriter, childName.str(), path, cAABB, spacing / 2.0f, level+1, maxLevel, scale);
 	children[childIndex] = child;
