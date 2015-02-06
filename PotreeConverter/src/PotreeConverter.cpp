@@ -124,64 +124,84 @@ PotreeConverter::PotreeConverter(vector<string> sources, string workDir, float s
 	cloudjs.outputFormat = OutputFormat::LAS;
 }
 
+void PotreeConverter::lasThread(list<string> &sources, list<int> &indexes, atomic<long long> &pointsProcessed) {
+    auto start = high_resolution_clock::now();
+    while (true) {
+        popLasMutex.lock();
+        if (sources.empty()) {
+            popLasMutex.unlock();
+            return;
+        }
+        string source = sources.back();
+        int index = indexes.back();
+        sources.pop_back();
+        indexes.pop_back();
+        popLasMutex.unlock();
+        if (boost::iends_with(source, ".xyz") || boost::iends_with(source, ".pts") || boost::iends_with(source, ".ptx")) {
+            boost::filesystem::path lasDir(workDir + "/las");
+            boost::filesystem::create_directories(lasDir);
+            string dest = workDir + "/las/" + fs::path(source).stem().string() + ".las";
+            if (!boost::filesystem::exists(dest)) {
+                PointReader *reader = createPointReader(source);
+                LASPointWriter *writer = new LASPointWriter(dest, aabb, scale);
+                AABB aabb;
+                
+                while (reader->readNextPoint()) {
+                    Point p = reader->getPoint();
+                    writer->write(p);
+                    
+                    Vector3<double> pos = p.position();
+                    aabb.update(pos);
+                    pointsProcessed.fetch_add(1);
+                    
+                    if (0 == pointsProcessed.storage() % FLUSH_INTERVAL) {
+                        auto end = high_resolution_clock::now();
+                        long long duration = duration_cast<milliseconds>(end - start).count();
+                        float seconds = duration / 1000.0f;
+                        stringstream ssMessage;
+                        ssMessage.imbue(std::locale(""));
+                        ssMessage << "CONVERT-LAS: ";
+                        ssMessage << pointsProcessed.storage() << " points processed; ";
+                        ssMessage << seconds << " seconds passed";
+                        coutMutex.lock();
+                        cout << ssMessage.str() << endl;
+                        coutMutex.unlock();
+                    } // if pointsProcessed
+                } // while reader->readNextPoint()
+                writer->header->SetMax(aabb.max.x, aabb.max.y, aabb.max.z);
+                writer->header->SetMin(aabb.min.x, aabb.min.y, aabb.min.z);
+                writer->writer->SetHeader(*writer->header);
+                writer->writer->WriteHeader();
+                
+                reader->close();
+                writer->close();
+                
+                delete reader;
+                delete writer;
+            } // if !exists
+            
+            this->sources[index] = dest;
+        } // if extension
+    }
+}
 
 void PotreeConverter::convert(){
-	long long pointsProcessed = 0;
+	atomic<long long> pointsProcessed(0);
 	auto start = high_resolution_clock::now();
 
-	// convert XYZ sources to las sources
-	for(int i = 0; i < sources.size(); i++){
-		string source = sources[i];
-
-		if(boost::iends_with(source, ".xyz") || boost::iends_with(source, ".pts") || boost::iends_with(source, ".ptx")){
-			boost::filesystem::path lasDir(workDir + "/las");
-			boost::filesystem::create_directories(lasDir);
-			string dest = workDir + "/las/" + fs::path(source).stem().string() + ".las";
-
-			if (!boost::filesystem::exists(dest)){
-			PointReader *reader = createPointReader(source);
-			LASPointWriter *writer = new LASPointWriter(dest, aabb, scale);
-			AABB aabb;
-
-			while(reader->readNextPoint()){
-				Point p = reader->getPoint();
-				writer->write(p);
-
-				Vector3<double> pos = p.position();
-				aabb.update(pos);
-				pointsProcessed++;
-
-				if (0 == pointsProcessed  % 1000000) {
-					auto end = high_resolution_clock::now();
-					long long duration = duration_cast<milliseconds>(end - start).count();
-					float seconds = duration / 1000.0f;
-					stringstream ssMessage;
-					ssMessage.imbue(std::locale(""));
-					ssMessage << "CONVERT-LAS: ";
-					ssMessage << pointsProcessed << " points processed; ";
-					ssMessage << seconds << " seconds passed";
-
-					cout << ssMessage.str() << endl;
-				}
-			}
-			writer->header->SetMax(aabb.max.x, aabb.max.y, aabb.max.z);
-			writer->header->SetMin(aabb.min.x, aabb.min.y, aabb.min.z);
-			writer->writer->SetHeader(*writer->header);
-			writer->writer->WriteHeader();
-
-			reader->close();
-			writer->close();
-
-			delete reader;
-			delete writer;
-			}
-
-			sources[i] = dest;
-		}
-		
-	}
-	cout << endl;
-
+    // convert XYZ sources to las sources
+    list<string> sourcesList;
+    list<int> indexList;
+    for (int i = 0; i < sources.size(); i++) {
+        sourcesList.push_back(sources[i]);
+        indexList.push_back(i);
+    }
+    boost::thread_group group;
+    for (int j = 0; j < THREADS_LAS; j++) {
+        group.create_thread(boost::bind(&PotreeConverter::lasThread, this, boost::ref(sourcesList),
+                                        boost::ref(indexList), boost::ref(pointsProcessed)));
+    }
+    group.join_all();
 
 	// calculate AABB and total number of points
 	AABB aabb;
@@ -223,14 +243,14 @@ void PotreeConverter::convert(){
 	PotreeWriter writer(this->workDir, aabb, spacing, maxDepth, scale, outputFormat);
 	//PotreeWriterLBL writer(this->workDir, aabb, spacing, maxDepth, outputFormat);
 
-	pointsProcessed = 0;
+    pointsProcessed.store(0);
 	for(int i = 0; i < sources.size(); i++){
 		string source = sources[i];
 		cout << "reading " << source << endl;
 
 		PointReader *reader = createPointReader(source);
 		while(reader->readNextPoint()){
-			pointsProcessed++;
+			pointsProcessed.fetch_add(1);
 			//if((pointsProcessed%50) != 0){
 			//	continue;
 			//}
@@ -244,7 +264,7 @@ void PotreeConverter::convert(){
 			//	writer.flush();
 			//}
 
-			if((pointsProcessed % (1000*1000)) == 0){
+			if((pointsProcessed.storage() % (1000*1000)) == 0){
 				writer.flush();
 
 				auto end = high_resolution_clock::now();
@@ -255,7 +275,7 @@ void PotreeConverter::convert(){
 
 				ssMessage.imbue(std::locale(""));
 				ssMessage << "INDEXING: ";
-				ssMessage << pointsProcessed << " points processed; ";
+				ssMessage << pointsProcessed.storage() << " points processed; ";
 				ssMessage << writer.numAccepted << " points written; ";
 				ssMessage << seconds << " seconds passed";
 
@@ -269,11 +289,8 @@ void PotreeConverter::convert(){
 		reader->close();
 		delete reader;
 	}
-	
-	cout << "closing writer" << endl;
-	writer.close();
 
-	float percent = (float)writer.numAccepted / (float)pointsProcessed;
+	float percent = (float)writer.numAccepted / (float)pointsProcessed.storage();
 	percent = percent * 100;
 
 	auto end = high_resolution_clock::now();
@@ -282,7 +299,7 @@ void PotreeConverter::convert(){
 	
 	cout << endl;
 	cout << "conversion finished" << endl;
-	cout << pointsProcessed << " points were processed and " << writer.numAccepted << " points ( " << percent << "% ) were written to the output. " << endl;
+	cout << pointsProcessed.storage() << " points were processed and " << writer.numAccepted << " points ( " << percent << "% ) were written to the output. " << endl;
 
 	cout << "duration: " << (duration / 1000.0f) << "s" << endl;
 }

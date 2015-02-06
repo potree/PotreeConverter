@@ -15,6 +15,8 @@
 #include <sstream>
 #include <map>
 #include <cstdint>
+#include <boost/thread.hpp>
+#include <boost/atomic.hpp>
 
 class SparseGrid;
 
@@ -23,6 +25,8 @@ using std::vector;
 using std::string;
 using std::stringstream;
 using std::map;
+using boost::atomic;
+using boost::mutex;
 
 struct ProcessResult{
 	vector<int> indices;
@@ -53,6 +57,8 @@ private:
 	int diagonalFraction;
 
 	PointReader *createPointReader(string source);
+    mutex popLasMutex;
+    void lasThread(list<string> &sources, list<int> &indexes, atomic<long long> &pointsProcessed);
 
 public:
 

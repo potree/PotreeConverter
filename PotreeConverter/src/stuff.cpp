@@ -9,6 +9,7 @@
 //#include <unistd.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <boost/thread.hpp>
 
 #include "Vector3.h"
 #include "AABB.h"
@@ -31,6 +32,7 @@ using std::vector;
 using std::binary_function;
 using std::map;
 
+boost::mutex coutMutex;
 
 /**
  *   y 

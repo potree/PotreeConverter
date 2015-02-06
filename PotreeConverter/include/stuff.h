@@ -12,6 +12,7 @@
 //#include <unistd.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <boost/thread.hpp>
 
 #include "Vector3.h"
 #include "AABB.h"
@@ -19,6 +20,9 @@
 #include "GridIndex.h"
 #include "SparseGrid.h"
 #include "GridCell.h"
+
+#define FLUSH_INTERVAL 1000000
+#define THREADS_LAS 8
 
 using std::ifstream;
 using std::ofstream;
@@ -33,6 +37,8 @@ using std::endl;
 using std::vector;
 using std::binary_function;
 using std::map;
+
+extern boost::mutex coutMutex;
 
 AABB readAABB(string fIn, int numPoints);
 
