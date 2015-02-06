@@ -49,7 +49,7 @@ struct MortonPoint{
 	}
 };
 
-bool mortonOrder(MortonPoint a, MortonPoint b){ 
+bool mortonOrder(MortonPoint &a, MortonPoint &b){
 	if(a.level == b.level){
 		return a.code < b.code; 
 	}else{
@@ -143,7 +143,7 @@ public:
 
 	}
 
-	unsigned long long mortonCode(Point p){
+	unsigned long long mortonCode(Point &p){
 
 		unsigned long long mx = (unsigned long long)(mortonExtent * (p.x - aabb.min.x) / (aabb.max.x - aabb.min.x));
 		unsigned long long my = (unsigned long long)(mortonExtent * (p.y - aabb.min.y) / (aabb.max.y - aabb.min.y));
