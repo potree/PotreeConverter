@@ -289,8 +289,11 @@ void PotreeConverter::convert(){
 		reader->close();
 		delete reader;
 	}
-
-	float percent = (float)writer.numAccepted / (float)pointsProcessed.storage();
+    
+    cout << "closing writer" << endl;
+    writer.close();
+	
+    float percent = (float)writer.numAccepted / (float)pointsProcessed.storage();
 	percent = percent * 100;
 
 	auto end = high_resolution_clock::now();
