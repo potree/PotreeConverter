@@ -84,6 +84,7 @@ bool BINPointReader::readNextPoint(){
 		reader->read(buffer, attributes.byteSize);
 
 		if(!reader->good()){
+            delete [] buffer;
 			return false;
 		}
 		
