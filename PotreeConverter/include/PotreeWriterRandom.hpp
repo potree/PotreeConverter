@@ -176,13 +176,28 @@ public:
 		tightAABB.update(position);
 
 		if(cache.size() >= 10*1000*1000){
-			flush();
+			flush(false);
 		}
 	}
+    
+    string getExtension(){
+        if(outputFormat == OutputFormat::LAS){
+            return ".las";
+        }else if(outputFormat == OutputFormat::LAZ){
+            return ".laz";
+        }else if(outputFormat == OutputFormat::BINARY){
+            return ".bin";
+        }
+        
+        return "";
+    }
 
+    void flush() {
+        flush(false);
+    }
 	
 
-	void flush(){
+	void flush(bool createEmptyFiles){
 
 		cloudjs.boundingBox = aabb;
 		cloudjs.tightBoundingBox = tightAABB;
@@ -315,7 +330,7 @@ public:
 
 			stringstream filename;
 			filename << path << "/data/" << current->name;
-			if(!fs::exists(fs::path(filename.str()))){
+			if(createEmptyFiles && !fs::exists(fs::path(filename.str() + getExtension()))){
 				//LASPointWriter *writer = new LASPointWriter(filename.str(), current->aabb, scale);
 				PointWriter *writer = createWriter(filename.str(), scale, current->aabb);
 				writer->close();
@@ -326,15 +341,16 @@ public:
 			pos++;
 		}
 
+        if (createEmptyFiles) {
 		ofstream cloudOut(path + "/cloud.js", ios::out);
 		cloudOut << cloudjs.getString();
 		cloudOut.close();
-		
+        }
 
 	}
 
 	void close(){
-		flush();
+		flush(true);
 	}
 
 	long long numPointsWritten(){
