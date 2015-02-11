@@ -35,7 +35,7 @@ public:
 	int level;
 	int maxLevel;
 	SparseGrid *grid;
-	int numAccepted;
+	unsigned int numAccepted;
 	PotreeWriterNode *children[8];
 	long long lastAccepted;
 	bool addCalledSinceLastFlush;
@@ -108,11 +108,11 @@ public:
 		pointsInMemory = 0;
 		pointsInMemoryLimit = 1*1000*1000;
 
-		//fs::remove_all(path + "/hierarchy");
+		fs::remove_all(path + "/hierarchy");
 
 		fs::create_directories(path + "/data");
 		fs::create_directories(path + "/temp");
-		//fs::create_directories(path + "/hierarchy");
+		fs::create_directories(path + "/hierarchy");
 		
 
 		cloudjs.outputFormat = outputFormat;
@@ -188,34 +188,44 @@ public:
 			cloudOut.close();
 		}
 
-		//{// write hierarchy
-		//	
-		//	list<PotreeWriterNode*> stack;
-		//	stack.push_back(root);
-		//	while(!stack.empty()){
-		//		PotreeWriterNode *node = stack.front();
-		//		stack.pop_front();
-		//
-		//		string dest = path + "/hierarchy/" + node->name + ".hrc";
-		//		ofstream fout;
-		//		fout.open(dest, ios::out | ios::binary);
-		//		vector<PotreeWriterNode*> hierarchy = node->getHierarchy(7);
-		//		for(int i = 0; i <  hierarchy.size(); i++){
-		//			if(hierarchy[i]->level == node->level + 5){
-		//				stack.push_back(hierarchy[i]);
-		//			}
-		//
-		//			fout.write("a", 1);
-		//			fout.write("1234", 4);
-		//
-		//		}
-		//		fout.close();
-		//
-		//	}
-		//
-		//
-		//
-		//}
+		{// write hierarchy
+			list<PotreeWriterNode*> stack;
+			stack.push_back(root);
+			while(!stack.empty()){
+				PotreeWriterNode *node = stack.front();
+				stack.pop_front();
+		
+				string dest = path + "/hierarchy/" + node->name + ".hrc";
+				ofstream fout;
+				fout.open(dest, ios::out | ios::binary);
+				vector<PotreeWriterNode*> hierarchy = node->getHierarchy(7);
+				for(int i = 0; i <  hierarchy.size(); i++){
+					PotreeWriterNode *descendant = hierarchy[i];
+					if(descendant->level == node->level + 5 && (node->level + 5) < maxLevel ){
+						stack.push_back(descendant);
+					}
+		
+					char children = 0;
+					for(int j = 0; j < 8; j++){
+						if(descendant->children[j] != NULL){
+							children = children | (1 << j);
+						}
+					}
+					//
+					//
+					//
+					fout.write(reinterpret_cast<const char*>(&children), 1);
+					fout.write(reinterpret_cast<const char*>(&(descendant->numAccepted)), 4);
+					//fout.write("bla", 4);
+		
+				}
+				fout.close();
+		
+			}
+		
+		
+		
+		}
 	}
 
 	void close(){
