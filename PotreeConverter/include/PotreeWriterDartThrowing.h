@@ -6,8 +6,10 @@
 #include <string>
 #include <sstream>
 #include <list>
+#include <algorithm>
 
 #include "boost/filesystem.hpp"
+#include <boost/thread.hpp>
 
 #include "AABB.h"
 #include "LASPointWriter.hpp"
@@ -159,26 +161,27 @@ public:
 		}
 	}
     
-    void flushThread() {
-        
-    }
+    boost::mutex flushMutex;
     
-    void addToFlushList(PotreeWriterNode *node, list<PotreeWriterNode*> &list) {
-        if (node->cache.size() > 0) {
-            list.push_back(node);
+    void flushThread(list<PotreeWriterNode*> &list) {
+        while (true) {
+            flushMutex.lock();
+            if (list.empty()) {
+                flushMutex.unlock();
+                return;
+            }
+            PotreeWriterNode* node = list.back();
+            list.pop_back();
+            flushMutex.unlock();
+            
+            node->flush();
         }
     }
 
-	void flush(){
-		root->flush();
+    int nthreads = boost::thread::hardware_concurrency();
 
-
-
-
-
+    void flush(){
 		// update cloud.js
-		
-		
 		long long numPointsInMemory = 0;
 		long long numPointsInHierarchy = 0;
 		cloudjs.hierarchy = vector<CloudJS::Node>();
@@ -186,7 +189,7 @@ public:
 		list<PotreeWriterNode*> stack;
         list<PotreeWriterNode*> toBeFlushed;
 		stack.push_back(root);
-        addToFlushList(root, toBeFlushed);
+        toBeFlushed.push_back(root);
 		while(!stack.empty()){
 			PotreeWriterNode *node = stack.front();
 			stack.pop_front();
@@ -197,7 +200,7 @@ public:
 			for(int i = 0; i < 8; i++){
 				if(node->children[i] != NULL){
 					stack.push_back(node->children[i]);
-                    addToFlushList(node->children[i], toBeFlushed);
+                    toBeFlushed.push_back(node->children[i]);
 				}
 			}
 		}
@@ -207,6 +210,11 @@ public:
 		cloudOut.close();
 
 		addedSinceLastFlush = 0;
+        boost::thread_group group;
+        for (int j = 0; j < std::max(1, nthreads / 2); j++) {
+            group.create_thread(boost::bind(&PotreeWriterDartThrowing::flushThread, this, boost::ref(toBeFlushed)));
+        }
+        group.join_all();
 	}
 
 	void close(){
