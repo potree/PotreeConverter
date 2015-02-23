@@ -158,6 +158,16 @@ public:
 			flush();
 		}
 	}
+    
+    void flushThread() {
+        
+    }
+    
+    void addToFlushList(PotreeWriterNode *node, list<PotreeWriterNode*> &list) {
+        if (node->cache.size() > 0) {
+            list.push_back(node);
+        }
+    }
 
 	void flush(){
 		root->flush();
@@ -174,7 +184,9 @@ public:
 		cloudjs.hierarchy = vector<CloudJS::Node>();
 		cloudjs.tightBoundingBox = tightAABB;
 		list<PotreeWriterNode*> stack;
+        list<PotreeWriterNode*> toBeFlushed;
 		stack.push_back(root);
+        addToFlushList(root, toBeFlushed);
 		while(!stack.empty()){
 			PotreeWriterNode *node = stack.front();
 			stack.pop_front();
@@ -185,6 +197,7 @@ public:
 			for(int i = 0; i < 8; i++){
 				if(node->children[i] != NULL){
 					stack.push_back(node->children[i]);
+                    addToFlushList(node->children[i], toBeFlushed);
 				}
 			}
 		}

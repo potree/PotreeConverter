@@ -186,10 +186,4 @@ void PotreeWriterNode::flush(){
 	}
 	
 	addCalledSinceLastFlush = false;
-
-	for(int i = 0; i < 8; i++){
-		if(children[i] != NULL){
-			children[i]->flush();
-		}
-	}
 }
