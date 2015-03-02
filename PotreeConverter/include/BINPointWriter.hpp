@@ -62,8 +62,14 @@ public:
 				int pos[3] = {x, y, z};
 				writer->write((const char*)pos, 3*sizeof(int));
 			}else if(attribute == PointAttribute::COLOR_PACKED){
+                if (point.r == 0 && point.g == 0 && point.b == 0 && point.intensity != 0) {
+                    unsigned char i = point.intensity >> 8;
+                    unsigned char rgba[4] = {i, i, i, 255};
+                    writer->write((const char*)rgba, 4*sizeof(unsigned char));
+                } else {
 				unsigned char rgba[4] = {point.r, point.g, point.b, 255};
 				writer->write((const char*)rgba, 4*sizeof(unsigned char));
+                }
 			}
 		}
 
