@@ -147,9 +147,13 @@ public:
 			trim(line);
 			vector<string> tokens;
 			split(tokens, line, is_any_of("\t ,"), token_compress_on); 
-			if(tokens.size() < format.size() && linesSkipped == 0){
+			if(tokens.size() != format.size()){
 				//throw PotreeException("Not enough tokens for the given format");
-				cout << "some lines may be skipped because they do not match the given format: '" << format << "'" << endl;
+
+				if(linesSkipped == 0){
+					cout << "some lines may be skipped because they do not match the given format: '" << format << "'" << endl;
+				}
+
 				linesSkipped++;
 				continue;
 			}
