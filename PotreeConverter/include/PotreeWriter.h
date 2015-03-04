@@ -28,7 +28,6 @@ class PotreeWriterNode{
 
 public:
 	string name;
-	string path;
 	AABB aabb;
 	AABB acceptedAABB;
 	float spacing;
@@ -43,7 +42,7 @@ public:
 	vector<Point> cache;
 	double scale;
 
-	PotreeWriterNode(PotreeWriter* potreeWriter, string name, string path, AABB aabb, float spacing, int level, int maxLevel, double scale);
+	PotreeWriterNode(PotreeWriter* potreeWriter, string name, AABB aabb, float spacing, int level, int maxLevel, double scale);
 
 	~PotreeWriterNode(){
 		for(int i = 0; i < 8; i++){
@@ -66,6 +65,12 @@ public:
 
 	PotreeWriterNode *createChild(int childIndex);
 
+	string workDir();
+
+	string hierarchyPath();
+
+	string path();
+
 	void flush();
 
 	vector<PotreeWriterNode*> getHierarchy(int levels);
@@ -85,21 +90,22 @@ public:
 
 	AABB aabb;
 	AABB tightAABB;
-	string path;
+	string workDir;
 	float spacing;
 	int maxLevel;
 	PotreeWriterNode *root;
 	long long numAccepted;
 	CloudJS cloudjs;
 	OutputFormat outputFormat;
+	int hierarchyStepSize;
 
 	int pointsInMemory;
 	int pointsInMemoryLimit;
 
 
 
-	PotreeWriter(string path, AABB aabb, float spacing, int maxLevel, double scale, OutputFormat outputFormat){
-		this->path = path;
+	PotreeWriter(string workDir, AABB aabb, float spacing, int maxLevel, double scale, OutputFormat outputFormat){
+		this->workDir = workDir;
 		this->aabb = aabb;
 		this->spacing = spacing;
 		this->maxLevel = maxLevel;
@@ -107,22 +113,23 @@ public:
 		numAccepted = 0;
 		pointsInMemory = 0;
 		pointsInMemoryLimit = 1*1000*1000;
+		hierarchyStepSize = 5;
 
-		fs::remove_all(path + "/hierarchy");
+		fs::remove_all(workDir + "/hierarchy");
 
-		fs::create_directories(path + "/data");
-		fs::create_directories(path + "/temp");
-		fs::create_directories(path + "/hierarchy");
+		fs::create_directories(workDir + "/data");
+		fs::create_directories(workDir + "/temp");
+		fs::create_directories(workDir + "/hierarchy");
 		
 
 		cloudjs.outputFormat = outputFormat;
 		cloudjs.boundingBox = aabb;
 		cloudjs.octreeDir = "data";
 		cloudjs.spacing = spacing;
-		cloudjs.version = "1.4";
+		cloudjs.version = "1.5";
 		cloudjs.scale = scale;
 
-		root = new PotreeWriterNode(this, "r", path, aabb, spacing, 0, maxLevel, scale);
+		root = new PotreeWriterNode(this, "r", aabb, spacing, 0, maxLevel, scale);
 	}
 
 	~PotreeWriter(){
@@ -166,24 +173,28 @@ public:
 			long long numPointsInMemory = 0;
 			long long numPointsInHierarchy = 0;
 			cloudjs.hierarchy = vector<CloudJS::Node>();
+			cloudjs.hierarchyStepSize = hierarchyStepSize;
 			cloudjs.tightBoundingBox = tightAABB;
-			list<PotreeWriterNode*> stack;
-			stack.push_back(root);
-			while(!stack.empty()){
-				PotreeWriterNode *node = stack.front();
-				stack.pop_front();
-				cloudjs.hierarchy.push_back(CloudJS::Node(node->name, node->numAccepted));
-				numPointsInHierarchy += node->numAccepted;
-				numPointsInMemory += node->grid->numAccepted;
 
-				for(int i = 0; i < 8; i++){
-					if(node->children[i] != NULL){
-						stack.push_back(node->children[i]);
-					}
-				}
-			}
+			cloudjs.hierarchy.push_back(CloudJS::Node(root->name, root->numAccepted));
 
-			ofstream cloudOut(path + "/cloud.js", ios::out);
+			//list<PotreeWriterNode*> stack;
+			//stack.push_back(root);
+			//while(!stack.empty()){
+			//	PotreeWriterNode *node = stack.front();
+			//	stack.pop_front();
+			//	cloudjs.hierarchy.push_back(CloudJS::Node(node->name, node->numAccepted));
+			//	numPointsInHierarchy += node->numAccepted;
+			//	numPointsInMemory += node->grid->numAccepted;
+			//
+			//	for(int i = 0; i < 8; i++){
+			//		if(node->children[i] != NULL){
+			//			stack.push_back(node->children[i]);
+			//		}
+			//	}
+			//}
+
+			ofstream cloudOut(workDir + "/cloud.js", ios::out);
 			cloudOut << cloudjs.getString();
 			cloudOut.close();
 		}
@@ -195,13 +206,14 @@ public:
 				PotreeWriterNode *node = stack.front();
 				stack.pop_front();
 		
-				string dest = path + "/hierarchy/" + node->name + ".hrc";
+				//string dest = workDir + "/hierarchy/" + node->name + ".hrc";
+				string dest = workDir + "/data/" + node->hierarchyPath() + "/" + node->name + ".hrc";
 				ofstream fout;
 				fout.open(dest, ios::out | ios::binary);
-				vector<PotreeWriterNode*> hierarchy = node->getHierarchy(7);
+				vector<PotreeWriterNode*> hierarchy = node->getHierarchy(hierarchyStepSize + 1);
 				for(int i = 0; i <  hierarchy.size(); i++){
 					PotreeWriterNode *descendant = hierarchy[i];
-					if(descendant->level == node->level + 5 && (node->level + 5) < maxLevel ){
+					if(descendant->level == node->level + hierarchyStepSize && (node->level + hierarchyStepSize) < maxLevel ){
 						stack.push_back(descendant);
 					}
 		

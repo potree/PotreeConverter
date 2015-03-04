@@ -39,9 +39,11 @@ public:
 	double spacing;
 	vector<Node> hierarchy;
 	double scale;
+	int hierarchyStepSize;
 
 	CloudJS(){
-		version = "1.4";
+		version = "0.0";
+		hierarchyStepSize = -1;
 	}
 
 	string getString(){
@@ -79,6 +81,9 @@ public:
 		}
 		cloudJs << "\t" << "\"spacing\": " << spacing << "," << endl;
 		cloudJs << "\t" << "\"scale\": " << scale << "," << endl;
+		if(hierarchyStepSize >= 0){
+			cloudJs << "\t" << "\"hierarchyStepSize\": " << hierarchyStepSize << "," << endl;
+		}
 		cloudJs << "\t" << "\"hierarchy\": [" << endl;
 
 		for(int i = 0; i < hierarchy.size(); i++){
