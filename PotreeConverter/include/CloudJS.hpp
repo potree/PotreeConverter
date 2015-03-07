@@ -10,6 +10,7 @@
 
 #include "AABB.h"
 #include "definitions.hpp"
+#include "PointAttributes.hpp"
 
 using std::string;
 using std::vector;
@@ -36,6 +37,7 @@ public:
 	AABB boundingBox;
 	AABB tightBoundingBox;
 	OutputFormat outputFormat;
+	PointAttributes pointAttributes;
 	double spacing;
 	vector<Node> hierarchy;
 	double scale;
@@ -71,8 +73,18 @@ public:
 		cloudJs << "\t" << "}," << endl;
 		if(outputFormat == OutputFormat::BINARY){
 			cloudJs << "\t" << "\"pointAttributes\": [" << endl;
-			cloudJs << "\t\t" << "\"POSITION_CARTESIAN\"," << endl;
-			cloudJs << "\t\t" << "\"COLOR_PACKED\"" << endl;
+
+			for(int i = 0; i < pointAttributes.size(); i++){
+				PointAttribute attribute = pointAttributes[i];
+
+				cloudJs << "\t\t" << "\"" << attribute.name << "\"";
+
+				if(i+1 < pointAttributes.size()){
+					cloudJs << ",";
+				}
+				cloudJs << endl;
+			}
+
 			cloudJs << "\t" << "]," << endl;
 		}else if(outputFormat == OutputFormat::LAS){
 			cloudJs << "\t" << "\"pointAttributes\": \"LAS\"," << endl;

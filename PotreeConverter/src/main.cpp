@@ -112,6 +112,8 @@ int main(int argc, char **argv){
 	OutputFormat outFormat;
 	vector<double> colorRange;
 	vector<double> intensityRange;
+	vector<string> outputAttributes;
+
 
 	cout.imbue(std::locale(""));
 
@@ -128,6 +130,7 @@ int main(int argc, char **argv){
 			("color-range", po::value<std::vector<double> >()->multitoken(), "")
 			("intensity-range", po::value<std::vector<double> >()->multitoken(), "")
 			("output-format", po::value<string>(&outFormatString), "Output format can be BINARY, LAS or LAZ. Default is BINARY")
+			("output-attributes", po::value<std::vector<std::string> >()->multitoken(), "can be any combination of RGB, INTENSITY. Default is RGB.")
 			("scale", po::value<double>(&scale), "Scale of the X, Y, Z coordinate in LAS and LAZ files.")
 			("source", po::value<std::vector<std::string> >(), "Source file. Can be LAS, LAZ, PTX or PLY");
 		po::positional_options_description p; 
@@ -151,21 +154,27 @@ int main(int argc, char **argv){
 		}
 
 		if(vm.count("color-range")){
-				colorRange = vm["color-range"].as< vector<double> >();
+			colorRange = vm["color-range"].as< vector<double> >();
 
-				if(colorRange.size() > 2){
-						cerr << "color-range only takes 0 - 2 arguments" << endl;
-						return 1;
-				}
+			if(colorRange.size() > 2){
+				cerr << "color-range only takes 0 - 2 arguments" << endl;
+				return 1;
+			}
 		}
 
 		if(vm.count("intensity-range")){
-				intensityRange = vm["intensity-range"].as< vector<double> >();
+			intensityRange = vm["intensity-range"].as< vector<double> >();
 
-				if(intensityRange.size() > 2){
-						cerr << "intensity-range only takes 0 - 2 arguments" << endl;
-						return 1;
-				}
+			if(intensityRange.size() > 2){
+				cerr << "intensity-range only takes 0 - 2 arguments" << endl;
+				return 1;
+			}
+		}
+
+		if(vm.count("output-attributes")){
+			outputAttributes = vm["output-attributes"].as< vector<string> >();
+		}else{
+			outputAttributes.push_back("RGB");
 		}
 
 		// set default parameters 
@@ -211,7 +220,7 @@ int main(int argc, char **argv){
 	auto start = high_resolution_clock::now();
 	
 	try{
-		PotreeConverter pc(source, outdir, spacing, diagonalFraction, levels, format, colorRange, intensityRange, scale, outFormat);
+		PotreeConverter pc(source, outdir, spacing, diagonalFraction, levels, format, colorRange, intensityRange, scale, outFormat, outputAttributes);
 		pc.convert();
 	}catch(exception &e){
 		cout << "ERROR: " << e.what() << endl;

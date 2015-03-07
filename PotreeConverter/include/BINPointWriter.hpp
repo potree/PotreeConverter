@@ -28,13 +28,13 @@ public:
 	AABB aabb;
 	double scale;
 
-	BINPointWriter(string file, AABB aabb, double scale) {
+	BINPointWriter(string file, AABB aabb, double scale, PointAttributes pointAttributes) {
 		this->file = file;
 		this->aabb = aabb;
 		this->scale = scale;
 		numPoints = 0;
-		attributes.add(PointAttribute::POSITION_CARTESIAN);
-		attributes.add(PointAttribute::COLOR_PACKED);
+
+		attributes = pointAttributes;
 
 		writer = new ofstream(file, ios::out | ios::binary);
 	}
@@ -64,6 +64,10 @@ public:
 			}else if(attribute == PointAttribute::COLOR_PACKED){
 				unsigned char rgba[4] = {point.r, point.g, point.b, 255};
 				writer->write((const char*)rgba, 4*sizeof(unsigned char));
+			}else if(attribute == PointAttribute::INTENSITY){
+				writer->write((const char*)&point.intensity, sizeof(unsigned short));
+			}else if(attribute == PointAttribute::CLASSIFICATION){
+				writer->write((const char*)&point.classification, sizeof(unsigned char));
 			}
 		}
 

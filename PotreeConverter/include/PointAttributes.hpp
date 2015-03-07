@@ -13,6 +13,8 @@ class PointAttribute{
 public:
 	static const PointAttribute POSITION_CARTESIAN;
 	static const PointAttribute COLOR_PACKED;
+	static const PointAttribute INTENSITY;
+	static const PointAttribute CLASSIFICATION;
 
 	int ordinal;
 	string name;

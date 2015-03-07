@@ -31,7 +31,7 @@ private:
 
 public:
 
-	BINPointReader(string path, AABB aabb, double scale);
+	BINPointReader(string path, AABB aabb, double scale, PointAttributes pointAttributes);
 
 	~BINPointReader();
 

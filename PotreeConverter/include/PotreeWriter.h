@@ -16,6 +16,7 @@
 #include "CloudJS.hpp"
 #include "PointReader.h"
 #include "PointWriter.hpp"
+#include "PointAttributes.hpp"
 
 using std::string;
 using std::stringstream;
@@ -97,6 +98,7 @@ public:
 	long long numAccepted;
 	CloudJS cloudjs;
 	OutputFormat outputFormat;
+	PointAttributes pointAttributes;
 	int hierarchyStepSize;
 
 	int pointsInMemory;
@@ -104,7 +106,7 @@ public:
 
 
 
-	PotreeWriter(string workDir, AABB aabb, float spacing, int maxLevel, double scale, OutputFormat outputFormat){
+	PotreeWriter(string workDir, AABB aabb, float spacing, int maxLevel, double scale, OutputFormat outputFormat, vector<string> outputAttributes){
 		this->workDir = workDir;
 		this->aabb = aabb;
 		this->spacing = spacing;
@@ -120,7 +122,20 @@ public:
 		fs::create_directories(workDir + "/data");
 		fs::create_directories(workDir + "/temp");
 		fs::create_directories(workDir + "/hierarchy");
-		
+
+		pointAttributes.add(PointAttribute::POSITION_CARTESIAN);
+
+		for(int i = 0; i < outputAttributes.size(); i++){
+			string attribute = outputAttributes[i];
+
+			if(attribute == "RGB"){
+				pointAttributes.add(PointAttribute::COLOR_PACKED);
+			}else if(attribute == "INTENSITY"){
+				pointAttributes.add(PointAttribute::INTENSITY);
+			}else if(attribute == "CLASSIFICATION"){
+				pointAttributes.add(PointAttribute::CLASSIFICATION);
+			}
+		}
 
 		cloudjs.outputFormat = outputFormat;
 		cloudjs.boundingBox = aabb;
@@ -128,6 +143,7 @@ public:
 		cloudjs.spacing = spacing;
 		cloudjs.version = "1.5";
 		cloudjs.scale = scale;
+		cloudjs.pointAttributes = pointAttributes;
 
 		root = new PotreeWriterNode(this, "r", aabb, spacing, 0, maxLevel, scale);
 	}

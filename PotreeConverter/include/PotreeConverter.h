@@ -47,6 +47,7 @@ private:
 	int maxDepth;
 	string format;
 	OutputFormat outputFormat;
+	vector<string> outputAttributes;
 	vector<double> colorRange;
 	vector<double> intensityRange;
 	double scale;
@@ -56,7 +57,18 @@ private:
 
 public:
 
-	PotreeConverter(vector<string> fData, string workDir, float spacing, int diagonalFraction, int maxDepth, string format, vector<double> colorRange, vector<double> intensityRange, double scale, OutputFormat outFormat);
+	PotreeConverter(
+		vector<string> fData, 
+		string workDir, 
+		float spacing, 
+		int diagonalFraction, 
+		int maxDepth, 
+		string format, 
+		vector<double> colorRange, 
+		vector<double> intensityRange, 
+		double scale, 
+		OutputFormat outFormat,
+		vector<string> outputAttributes);
 
 	void convert();
 

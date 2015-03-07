@@ -19,10 +19,11 @@ using boost::iequals;
 using std::ios;
 
 
-BINPointReader::BINPointReader(string path,  AABB aabb, double scale){
+BINPointReader::BINPointReader(string path,  AABB aabb, double scale, PointAttributes pointAttributes){
 	this->path = path;
 	this->aabb = aabb;
 	this->scale = scale;
+	this->attributes = pointAttributes;
 	
 	if(fs::is_directory(path)){
 		// if directory is specified, find all las and laz files inside directory
@@ -39,9 +40,6 @@ BINPointReader::BINPointReader(string path,  AABB aabb, double scale){
 
 	currentFile = files.begin();
 	reader = new ifstream(*currentFile, ios::in | ios::binary);
-
-	attributes.add(PointAttribute::POSITION_CARTESIAN);
-	attributes.add(PointAttribute::COLOR_PACKED);
 }
 
 BINPointReader::~BINPointReader(){
@@ -102,6 +100,12 @@ bool BINPointReader::readNextPoint(){
 				point.g = ucBuffer[1];
 				point.b = ucBuffer[2];
 				point.a = 255;
+			}else if(attribute == PointAttribute::INTENSITY){
+				unsigned short* usBuffer = reinterpret_cast<unsigned short*>(buffer+offset);
+				point.intensity = usBuffer[0];
+			}else if(attribute == PointAttribute::INTENSITY){
+				unsigned char* ucBuffer = reinterpret_cast<unsigned char*>(buffer+offset);
+				point.classification = ucBuffer[0];
 			}
 			offset += attribute.byteSize;
 		}
