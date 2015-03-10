@@ -64,24 +64,28 @@ public:
             }
         }
 
-		// read first 1000 points to find if color is 1 or 2 bytes
-		int i = 0; 
-		colorScale = 1;
-		while(reader.ReadNextPoint() && i < 1000){
-			liblas::Point const lp = reader.GetPoint();
+		{// read first 1000 points to find if color is 1 or 2 bytes
+			ifstream stream(path, std::ios::in | std::ios::binary);
+			liblas::Reader reader(liblas::ReaderFactory().CreateWithStream(stream));
+
+			int i = 0; 
+			colorScale = 1;
+			while(reader.ReadNextPoint() && i < 1000){
+				liblas::Point const lp = reader.GetPoint();
 		
-			liblas::Color::value_type r = lp.GetColor().GetRed() / 256;
-			liblas::Color::value_type g = lp.GetColor().GetGreen() / 256;
-			liblas::Color::value_type b = lp.GetColor().GetBlue() / 256;
+				liblas::Color::value_type r = lp.GetColor().GetRed() / 256;
+				liblas::Color::value_type g = lp.GetColor().GetGreen() / 256;
+				liblas::Color::value_type b = lp.GetColor().GetBlue() / 256;
 		
-			if(r > 255 || g > 255 || b > 255){
-				colorScale = 256;
-				break;
+				if(r > 255 || g > 255 || b > 255){
+					colorScale = 256;
+					break;
+				}
+		
+				i++;
 			}
-		
-			i++;
+			stream.close();
 		}
-		reader.Seek(0);
     }
 
 	~LIBLASReader(){
