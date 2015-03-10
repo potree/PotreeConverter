@@ -214,6 +214,18 @@ void PotreeConverter::convert(){
 
 	}
 
+	if(scale == 0){
+		if(aabb.size.length() > 1000*1000){
+			scale = 0.1;
+		}else if(aabb.size.length() > 1000){
+			scale = 0.01;
+		}else if(aabb.size.length() > 1){
+			scale = 0.001;
+		}else{
+			scale = 0.0001;
+		}
+	}
+
 
 	if (diagonalFraction != 0) {
 		spacing = (float)(aabb.size.length() / diagonalFraction);
