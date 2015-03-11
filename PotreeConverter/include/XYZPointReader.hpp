@@ -57,22 +57,22 @@ public:
 		linesSkipped = 0;
 
 		if(intensityRange.size() == 2){
-			intensityOffset = intensityRange[0];
-			intensityScale = intensityRange[1];
+			intensityOffset = (float)intensityRange[0];
+			intensityScale = (float)intensityRange[1];
 		}else if(intensityRange.size() == 1){
 			intensityOffset = 0.0f;
-			intensityScale = intensityRange[0];
+			intensityScale = (float)intensityRange[0];
 		}else{
 			intensityOffset = 0.0f;
 			intensityScale = 1.0f;
 		}
 
 		if(colorRange.size() == 2){
-			colorOffset = colorRange[0];
-			colorScale = colorRange[1];
+			colorOffset = (float)colorRange[0];
+			colorScale = (float)colorRange[1];
 		}else if(colorRange.size() == 1){
 			colorOffset = 0.0f;
-			colorScale = colorRange[0];
+			colorScale = (float)colorRange[0];
 		}else if(colorRange.size() == 0){
 			colorOffset = 0.0f;
 

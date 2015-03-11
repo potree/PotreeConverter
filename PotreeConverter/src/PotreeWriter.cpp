@@ -44,7 +44,7 @@ string PotreeWriterNode::hierarchyPath(){
 	if(indices.size() == 0){
 		numParts = 0;
 	}else{
-		numParts = ceil((float)indices.size() / (float)hierachyStepSize);
+		numParts = (int)ceil((float)indices.size() / (float)hierachyStepSize);
 	}
 
 	if(numParts == 0){
