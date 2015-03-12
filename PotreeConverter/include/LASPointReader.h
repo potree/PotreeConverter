@@ -73,9 +73,9 @@ public:
 			while(reader.ReadNextPoint() && i < 1000){
 				liblas::Point const lp = reader.GetPoint();
 		
-				liblas::Color::value_type r = lp.GetColor().GetRed() / 256;
-				liblas::Color::value_type g = lp.GetColor().GetGreen() / 256;
-				liblas::Color::value_type b = lp.GetColor().GetBlue() / 256;
+				liblas::Color::value_type r = lp.GetColor().GetRed();
+				liblas::Color::value_type g = lp.GetColor().GetGreen();
+				liblas::Color::value_type b = lp.GetColor().GetBlue();
 		
 				if(r > 255 || g > 255 || b > 255){
 					colorScale = 256;
