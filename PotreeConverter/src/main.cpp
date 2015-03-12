@@ -84,7 +84,7 @@ int main(int argc, char **argv){
 			("color-range", po::value<std::vector<double> >()->multitoken(), "")
 			("intensity-range", po::value<std::vector<double> >()->multitoken(), "")
 			("output-format", po::value<string>(&outFormatString), "Output format can be BINARY, LAS or LAZ. Default is BINARY")
-			("output-attributes", po::value<std::vector<std::string> >()->multitoken(), "can be any combination of RGB, INTENSITY. Default is RGB.")
+			("output-attributes,a", po::value<std::vector<std::string> >()->multitoken(), "can be any combination of RGB, INTENSITY and CLASSIFICATION. Default is RGB.")
 			("scale", po::value<double>(&scale), "Scale of the X, Y, Z coordinate in LAS and LAZ files.")
 			("source", po::value<std::vector<std::string> >(), "Source file. Can be LAS, LAZ, PTX or PLY");
 		po::positional_options_description p; 

@@ -1,10 +1,11 @@
 # Potree Converter
 
-Builds a potree octree from las, laz or binary ply files.
+Builds a potree octree from las, laz, binary ply, xyz or ptx files.
 
 ## Downloads
 
-* [Windows 64bit binary 2014.12.30 (newest)](http://potree.org/downloads/PotreeConverter/PotreeConverter_2014.12.30.zip)
+* [Windows 64bit binary 2015.03.XX (newest)]() __TODO__
+* [Windows 64bit binary 2014.12.30](http://potree.org/downloads/PotreeConverter/PotreeConverter_2014.12.30.zip)
 * [Windows 64bit binary 2014.12.17](http://potree.org/downloads/PotreeConverter/PotreeConverter_2014.12.17.zip)
 * [Windows 64bit binary 2014.11.30](http://potree.org/downloads/PotreeConverter/PotreeConverter_2014.11.30.zip)
 * [Windows 64bit binary 2014.11.18](http://potree.org/downloads/PotreeConverter/PotreeConverter_2014.11.18.zip)
@@ -28,6 +29,8 @@ Linux/MacOSX:
     cmake ../
     make
 
+    # copy ./PotreeConverter/resources/page_template to your binary working directory.
+
 Ubuntu:
 
     sudo apt-get install libboost-system-dev libboost-thread-dev
@@ -41,6 +44,8 @@ Ubuntu:
     mkdir build && cd build
     cmake ../
     make
+
+    # copy ./PotreeConverter/resources/page_template to your binary working directory.
 
 Windows / Microsoft Visual Studio 2012:
 
@@ -59,6 +64,8 @@ Windows / Microsoft Visual Studio 2012:
     # or 64bit project
     cmake -G "Visual Studio 11 Win64" -T "v110" -DBoost_USE_STATIC_LIBS=ON -DBOOST_ROOT=%BOOST_ROOT% -DBOOST_LIBRARYDIR=%BOOST_LIBRARYDIR% -DLIBLAS_INCLUDE_DIR=%LIBLAS_INCLUDE_DIR% -DLIBLAS_LIBRARY=%LIBLAS_LIBRARY_DIR%/liblas.lib  ..\
 
+    # copy ./PotreeConverter/resources/page_template to your binary working directory.
+
 ## PotreeConverter Usage
 
 Converts las files to the potree file format.
@@ -69,38 +76,32 @@ Options:
 
 
 ```
-  -h [ --help ]                         prints usage
-  -o [ --outdir ] arg                   output directory
-  -s [ --spacing ] arg                  Distance between points at root level.
-                                        Distance halves each level.
-  -d [ --spacing-by-diagonal-fraction ] arg
-                                        Maximum number of points on the
-                                        diagonal in the first level (sets
-                                        spacing). spacing = diagonal / value
-  -l [ --levels ] arg                   Number of levels that will be
-                                        generated. 0: only root, 1: root and
-                                        its children, ...
-  -f [ --input-format ] arg             Input format. xyz: cartesian
-                                        coordinates as floats, rgb: colors as
-                                        numbers, i: intensity as number
-  -r [ --range ] arg                    Range of rgb or intensity.
-  --output-format arg                   Output format can be BINARY, LAS or
-                                        LAZ. Default is BINARY
-  --scale arg                           Scale of the X, Y, Z coordinate in LAS
-                                        and LAZ files.
-  --source arg                          Source file. Can be LAS, LAZ or PLY
+-h [ --help ]                         prints usage
+-p [ --generate-page ]                Generates a ready to use web page alongwith the model.
+-o [ --outdir ] arg                   output directory
+-s [ --spacing ] arg                  Distance between points at root level. Distance halves each level.
+-d [ --spacing-by-diagonal-fraction ] arg Maximum number of points on the diagonal in the first level (sets spacing). spacing = diagonal / value
+-l [ --levels ] arg                   Number of levels that will be generated. 0: only root, 1: root and its children, ...
+-f [ --input-format ] arg             Input format. xyz: cartesian coordinates as floats, rgb: colors as numbers, i: intensity as number
+--color-range arg
+--intensity-range arg
+--output-format arg                   Output format can be BINARY, LAS or
+                                      LAZ. Default is BINARY
+-a [ --output-attributes ] arg        Can be any combination of RGB, INTENSITY and CLASSIFICATION. Default is RGB.
+--scale arg                           Scale of the X, Y, Z coordinate in LAS and LAZ files.
+--source arg                          Source file. Can be LAS, LAZ, PTX or
 ```
 
 Examples:
 
-    # convert data.las with automatically calulated spacing and a depth of 4
-    ./PotreeConverter.exe C:/data.las -l 4 -o C:/potree_converted
+    # convert data.las and generate web page.
+    ./PotreeConverter.exe C:/data.las -o C:/potree_converted -p
 
-    # convert data.las with a spacing of 0.5 and a depth of 4
-    ./PotreeConverter.exe C:/data.las -s 0.5 -l 4 -o C:/potree_converted
+    # convert with an octree depth of 5 (-l); generate web page (-p); write RGB, INTENSITY and CLASSIFICATION attributes (-a)
+    ./PotreeConverter.exe data.las -o C:/potree_converted -p -l 5 -a RGB INTENSITY CLASSIFICATION
 
-    # same as before but output is LAZ compressed
-    ./PotreeConverter.exe C:/data.las -s 0.5 -l 4 -o C:/potree_converted --output-format LAZ
+    # generate compressed LAZ files instead of the default BIN format.
+    ./PotreeConverter.exe C:/data.las -l 4 -o C:/potree_converted --output-format LAZ
 
     # convert data1.las and data2.las with a spacing of 0.5 and a depth of 4
     ./PotreeConverter.exe C:/data1.las C:/data1.las C:/data2.las -s 0.5 -l 4 -o C:/potree_converted
