@@ -181,10 +181,6 @@ public:
 	void flush(){
 		root->flush();
 
-
-
-
-
 		{// update cloud.js
 			long long numPointsInMemory = 0;
 			long long numPointsInHierarchy = 0;
@@ -192,28 +188,11 @@ public:
 			cloudjs.hierarchyStepSize = hierarchyStepSize;
 			cloudjs.tightBoundingBox = tightAABB;
 
-			cloudjs.hierarchy.push_back(CloudJS::Node(root->name, root->numAccepted));
-
-			//list<PotreeWriterNode*> stack;
-			//stack.push_back(root);
-			//while(!stack.empty()){
-			//	PotreeWriterNode *node = stack.front();
-			//	stack.pop_front();
-			//	cloudjs.hierarchy.push_back(CloudJS::Node(node->name, node->numAccepted));
-			//	numPointsInHierarchy += node->numAccepted;
-			//	numPointsInMemory += node->grid->numAccepted;
-			//
-			//	for(int i = 0; i < 8; i++){
-			//		if(node->children[i] != NULL){
-			//			stack.push_back(node->children[i]);
-			//		}
-			//	}
-			//}
-
 			ofstream cloudOut(workDir + "/cloud.js", ios::out);
 			cloudOut << cloudjs.getString();
 			cloudOut.close();
 		}
+			
 
 		{// write hierarchy
 			list<PotreeWriterNode*> stack;

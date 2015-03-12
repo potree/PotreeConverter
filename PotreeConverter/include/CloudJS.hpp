@@ -94,20 +94,20 @@ public:
 		cloudJs << "\t" << "\"spacing\": " << spacing << "," << endl;
 		cloudJs << "\t" << "\"scale\": " << scale << "," << endl;
 		if(hierarchyStepSize >= 0){
-			cloudJs << "\t" << "\"hierarchyStepSize\": " << hierarchyStepSize << "," << endl;
+			cloudJs << "\t" << "\"hierarchyStepSize\": " << hierarchyStepSize << endl;
 		}
-		cloudJs << "\t" << "\"hierarchy\": [" << endl;
-
-		for(int i = 0; i < hierarchy.size(); i++){
-			Node node = hierarchy[i];
-			cloudJs << "\t\t[\"" << node.name << "\", " << node.pointCount << "]";
-
-			if(i < hierarchy.size()-1){
-				cloudJs << ",";
-			}
-			cloudJs << endl;
-		}
-		cloudJs << "\t]" << endl;
+		//cloudJs << "\t" << "\"hierarchy\": [" << endl;
+		//
+		//for(int i = 0; i < hierarchy.size(); i++){
+		//	Node node = hierarchy[i];
+		//	cloudJs << "\t\t[\"" << node.name << "\", " << node.pointCount << "]";
+		//
+		//	if(i < hierarchy.size()-1){
+		//		cloudJs << ",";
+		//	}
+		//	cloudJs << endl;
+		//}
+		//cloudJs << "\t]" << endl;
 		cloudJs << "}" << endl;
 
 		return cloudJs.str();
