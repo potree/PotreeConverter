@@ -36,24 +36,14 @@ string PotreeWriterNode::workDir(){
 }
 
 string PotreeWriterNode::hierarchyPath(){
-	string path = "";
+	string path = "r/";
 
-	int hierachyStepSize = potreeWriter->hierarchyStepSize;
+	int hierarchyStepSize = potreeWriter->hierarchyStepSize;
 	string indices = name.substr(1);
-	int numParts;
-	if(indices.size() == 0){
-		numParts = 0;
-	}else{
-		numParts = (int)ceil((float)indices.size() / (float)hierachyStepSize);
-	}
 
-	if(numParts == 0){
-		path = "";
-	}else{
-		path = "";
-		for(int i = 0; i < numParts; i++){
-			path += "r" + indices.substr(0, i*hierachyStepSize) + "/";
-		}
+	int numParts = (int)floor((float)indices.size() / (float)hierarchyStepSize);
+	for(int i = 0; i < numParts; i++){
+		path += indices.substr(i * hierarchyStepSize, hierarchyStepSize) + "/";
 	}
 
 	return path;

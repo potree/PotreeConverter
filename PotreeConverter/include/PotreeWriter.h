@@ -115,13 +115,40 @@ public:
 		numAccepted = 0;
 		pointsInMemory = 0;
 		pointsInMemoryLimit = 1*1000*1000;
-		hierarchyStepSize = 5;
 
-		fs::remove_all(workDir + "/hierarchy");
+
+		// TODO calculate step size instead
+		if(maxLevel <= 5){
+			hierarchyStepSize = 6;
+		}else if(maxLevel <= 7){
+			hierarchyStepSize = 4;
+		}else if(maxLevel <= 9){
+			hierarchyStepSize = 5;
+		}else if(maxLevel <= 11){
+			hierarchyStepSize = 4;
+		}else if(maxLevel <= 14){
+			hierarchyStepSize = 5;
+		}else if(maxLevel <= 17){
+			hierarchyStepSize = 6;
+		}else if(maxLevel <= 19){
+			hierarchyStepSize = 5;
+		}else if(maxLevel <= 23){
+			hierarchyStepSize = 6;
+		}else if(maxLevel <= 24){
+			hierarchyStepSize = 5;
+		}else if(maxLevel <= 27){
+			hierarchyStepSize = 4;
+		}else if(maxLevel <= 29){
+			hierarchyStepSize = 5;
+		}else if(maxLevel <= 31){
+			hierarchyStepSize = 4;
+		}else{
+			// I don't think this will happen anytime soon. This level would provide insane precision.
+			hierarchyStepSize = 5;
+		}
 
 		fs::create_directories(workDir + "/data");
 		fs::create_directories(workDir + "/temp");
-		fs::create_directories(workDir + "/hierarchy");
 
 		pointAttributes.add(PointAttribute::POSITION_CARTESIAN);
 
