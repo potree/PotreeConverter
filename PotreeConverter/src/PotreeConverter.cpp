@@ -56,7 +56,7 @@ PointReader *PotreeConverter::createPointReader(string path){
 		reader = new PTXPointReader(path);
 	}else if(boost::iends_with(path, ".ply")){
 		reader = new PlyPointReader(path);
-	}else if(boost::iends_with(path, ".xyz")){
+	}else if(boost::iends_with(path, ".xyz") || boost::iends_with(path, ".txt")){
 		reader = new XYZPointReader(path, format, colorRange, intensityRange);
 	}else if(boost::iends_with(path, ".pts")){
 		vector<double> intensityRange;
@@ -145,14 +145,13 @@ void PotreeConverter::convert(){
 	for(int i = 0; i < sources.size(); i++){
 		string source = sources[i];
 
-		if(boost::iends_with(source, ".xyz") || boost::iends_with(source, ".pts") || boost::iends_with(source, ".ptx")){
+		if(boost::iends_with(source, ".txt") || boost::iends_with(source, ".xyz") || boost::iends_with(source, ".pts") || boost::iends_with(source, ".ptx")){
 			boost::filesystem::path lasDir(workDir + "/las");
 			boost::filesystem::create_directories(lasDir);
 			string dest = workDir + "/las/" + fs::path(source).stem().string() + ".las";
 
-			if (!boost::filesystem::exists(dest)){
 			PointReader *reader = createPointReader(source);
-			LASPointWriter *writer = new LASPointWriter(dest, aabb, scale);
+			LASPointWriter *writer = new LASPointWriter(dest, aabb, 0.001);
 			AABB aabb;
 
 			while(reader->readNextPoint()){
@@ -186,7 +185,6 @@ void PotreeConverter::convert(){
 
 			delete reader;
 			delete writer;
-			}
 
 			sources[i] = dest;
 		}

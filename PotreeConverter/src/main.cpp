@@ -175,7 +175,8 @@ int main(int argc, char **argv){
 	auto start = high_resolution_clock::now();
 
 	if(generatePage){
-		string pointCloudName = fs::path(source[0]).stem().string();
+		//string pointCloudName = fs::path(source[0]).stem().string();
+		string pointCloudName = fs::path(source[0]).filename().string();
 		string pagedir = outdir;
 		outdir += "/resources/pointclouds/" + pointCloudName;
 		//string templateSourcePath = pagedir + "/examples/viewer_template.html";
