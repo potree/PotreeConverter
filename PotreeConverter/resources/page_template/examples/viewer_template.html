@@ -8,6 +8,17 @@
 
 	<style type="text/css">
 	
+	<!-- this is for testing non-fullscreen render areas -->
+	#renderArea{
+		position: absolute;
+		width: 90%;
+		height: 80%;
+		top: 100px;
+		left: 100px;
+		rigt: 100px;
+		bottom: 100px;
+	}
+	
 	#renderArea{
 		width: 100%;
 		height: 100%;
@@ -66,9 +77,21 @@ void main() {
 	<script src="../libs/other/dat.gui.min.js"></script>
 	
 	<script src="../build/js/potree.js"></script>
+	<!--<script src="../src/materials/PointCloudMaterial.js"></script>
+	<script src="../src/PointCloudOctree.js"></script>
+	<script src="../src/PointCloudOctreeGeometry.js"></script>
+	<script src="../src/utils/AngleTool.js"></script>
+	<script src="../src/utils/MeasuringTool.js"></script>
+	<script src="../src/utils/AreaTool.js"></script>
+	<script src="../src/utils/ProfileTool.js"></script>
+	<script src="../src/utils/VolumeTool.js"></script>
+	<script src="../src/TextSprite.js"></script>
+	<script src="../src/EarthControls.js"></script>
+	<script src="../src/loader/POCLoader.js"></script>
+	<script src="../src/loader/BinaryLoader.js"></script>-->
 	<script src="./js/ProgressBar.js"></script>
 	
-<!-- INCLUDE SETTINGS HERE -->
+	<!-- INCLUDE SETTINGS HERE -->
 	
 	<!-- INFOS / STATS -->
 	<div id="lblNumVisibleNodes" class="info" style="position: absolute; left: 10px; top: 80px; width: 400px; color:white"></div>
@@ -76,21 +99,25 @@ void main() {
 	<div id="lblMessage" class="info" style="position: absolute; left: 10px; bottom: 0px; width: 400px; color:white"></div>
 	
 	<!-- TOOLS -->
-	<div id="tools" style="position: fixed; width: 340px; bottom: 10px; right: 10px">
+	<div id="tools" style="position: fixed; width: 380px; bottom: 10px; right: 10px">
+		<img src="../resources/icons/earth_controls_1.png" onclick="useEarthControls()"title="Earth Controls"/>
 		<img src="../resources/icons/fps_controls.png" onclick="useFPSControls()"title="Fly Camera"/>
 		<img src="../resources/icons/orbit_controls.png" onclick="useOrbitControls()" title="Orbit Controls"/>
 		<img src="../resources/icons/focus.png" onclick="camera.zoomTo(pointcloud)" title="focus on pointcloud"/>
 		<img src="../resources/icons/flip_y_z.png" onclick="flipYZ()" title="flip y and z coordinates"/>
+		<img src="../resources/icons/angle.png" onclick="angleTool.setEnabled(true)" title="angle measurements"/>
 		<img src="../resources/icons/distance.png" onclick="measuringTool.setEnabled(true)" title="distance measurements"/>
 		<img src="../resources/icons/area.png" onclick="areaTool.setEnabled(true)" title="area measurements"/>
 		<img src="../resources/icons/volume.png" onclick="volumeTool.startInsertion()" title="volume measurements"/>
 		<img src="../resources/icons/profile.png" onclick="profileTool.startInsertion({width: pointcloud.boundingSphere.radius / 100})" title="height profiles"/>
 		<img src="../resources/icons/clip_volume.png" onclick="volumeTool.startInsertion({clip: true})" title="clipping volumes"/>
+		
 	</div>
 	
 	<!-- HEADING -->
 	<div class="info" style="position: absolute; left: 300px; right: 300px; top: 10px; text-align: center;">
-		<a href="http://potree.org" target="_blank">potree.org</a>
+		<a href="http://potree.org" target="_blank">potree.org</a><br>
+		Point cloud courtesy of <a href="http://www.sigeom.ch/" target="_blank">sigeom sa</a><br>
 	</div>
 	
 	<div id="renderArea"></div>
@@ -111,18 +138,10 @@ void main() {
 		
 		var fpControls;
 		var orbitControls;
+		var earthControls;
 		var controls;
 		
 		var progressBar = new ProgressBar();
-
-		
-		var pointcloudPath = "../../../../pointclouds/mschuetz/lion_takanawa_oriented.las_converted/cloud.js";
-		var pointcloudPath = "../../../../pointclouds/mschuetz/engel/agisoft/cloud.js";
-		var pointcloudPath = "../../../../pointclouds/pix4d/eclepens.laz_converted/cloud.js";
-		var pointcloudPath = "../resources/pointclouds/vol_total/cloud.js";
-		var pointcloudPath = "../../../../pointclouds/opentopography/lake_tahoe_basin/data_converted/cloud.js";
-		var pointcloudPath = "../../../../deploy/point_clouds_2014.12.29/matterhorn/cloud.js";
-		var pointcloudPath = "../../../../pointclouds/pix4d/lausanne_1.5/cloud.js";
 		
 		var pointcloudPath = pointCloudInfo.path;
 		
@@ -140,6 +159,7 @@ void main() {
 		var clock = new THREE.Clock();
 		var showSkybox = false;
 		var measuringTool;
+		var angleTool;
 		var areaTool;
 		var volumeTool;
 		var transformationTool;
@@ -249,8 +269,8 @@ void main() {
 			var qualityOptions = ["Squares", "Circles"];
 			if(Potree.Features.SHADER_INTERPOLATION.isSupported()){
 				qualityOptions.push("Interpolation");
-				params.quality = "Interpolation";
-				quality = params.quality;
+				//params.quality = "Interpolation";
+				//quality = params.quality;
 			}
 			if(Potree.Features.SHADER_SPLATS.isSupported()){
 				qualityOptions.push("Splats");
@@ -346,11 +366,15 @@ void main() {
 				referenceFrame.position.copy(sg.center).multiplyScalar(-1);
 				referenceFrame.updateMatrixWorld(true);
 				
-				camera.zoomTo(pointcloud, 1);
 				
 				flipYZ();
+				camera.zoomTo(pointcloud, 1);
 				
-				initGUI();				
+				initGUI();	
+
+				earthControls.pointclouds.push(pointcloud);	
+				useEarthControls();
+				//useOrbitControls();
 			});
 			
 			var grid = Potree.utils.createGrid(5, 5, 2);
@@ -358,6 +382,7 @@ void main() {
 			
 			measuringTool = new Potree.MeasuringTool(scenePointCloud, camera, renderer);
 			profileTool = new Potree.ProfileTool(scenePointCloud, camera, renderer);
+			angleTool = new Potree.AngleTool(scenePointCloud, camera, renderer);
 			areaTool = new Potree.AreaTool(scenePointCloud, camera, renderer);
 			volumeTool = new Potree.VolumeTool(scenePointCloud, camera, renderer);
 			transformationTool = new Potree.TransformationTool(scenePointCloud, camera, renderer);
@@ -380,6 +405,8 @@ void main() {
 			bg.material.depthTest = false;
 			bg.material.depthWrite = false;
 			sceneBG.add(bg);
+			
+			earthControls = new THREE.EarthControls(camera, renderer, scenePointCloud);
 			
 			
 			window.addEventListener( 'keydown', onKeyDown, false );
@@ -514,13 +541,6 @@ void main() {
 			
 			var clipBoxes = [];
 			
-			//var profiles = [];
-			//for(var i = 0; i < profileTool.profiles.length; i++){
-			//	profiles.push(profileTool.profiles[i]);
-			//}
-			//if(profileTool.activeProfile){
-			//	profiles.push(profileTool.activeProfile);
-			//}
 			for(var i = 0; i < profileTool.profiles.length; i++){
 				var profile = profileTool.profiles[i];
 				
@@ -531,8 +551,6 @@ void main() {
 					clipBoxes.push(boxInverse);
 				}
 			}
-			
-
 			
 			for(var i = 0; i < volumeTool.volumes.length; i++){
 				var volume = volumeTool.volumes[i];
@@ -549,6 +567,17 @@ void main() {
 				pointcloud.material.setClipBoxes(clipBoxes);
 			}
 			
+		}
+		
+		function useEarthControls(){
+			if(controls){
+				controls.enabled = false;
+			}
+	
+			controls = earthControls;
+			controls.enabled = true;
+			
+			controls.moveSpeed = pointcloud.boundingSphere.radius / 2;
 		}
 		
 		function useFPSControls(){
@@ -627,6 +656,7 @@ void main() {
 			
 			renderer.clearDepth();
 			measuringTool.render();
+			angleTool.render();
 			areaTool.render();
 			transformationTool.render();
 		}
@@ -675,10 +705,33 @@ void main() {
 				quad.material.depthWrite = true;
 				quad.material.transparent = true;
 				sceneNormalize.add(quad);
-				
+				sceneNormalize.screenQuad = quad;
 			}
 			
 			// resize
+			if(rtDepth){
+				if(rtDepth.width != elRenderArea.clientWidth || rtDepth.height != elRenderArea.clientHeight){
+					rtDepth.dispose();
+					rtNormalize.dispose();
+					
+					rtDepth = new THREE.WebGLRenderTarget( 1024, 1024, { 
+						minFilter: THREE.NearestFilter, 
+						magFilter: THREE.NearestFilter, 
+						format: THREE.RGBAFormat, 
+						type: THREE.FloatType
+					} );
+					rtNormalize = new THREE.WebGLRenderTarget( 1024, 1024, { 
+						minFilter: THREE.LinearFilter, 
+						magFilter: THREE.NearestFilter, 
+						format: THREE.RGBAFormat, 
+						type: THREE.FloatType
+					} );
+					
+					sceneNormalize.screenQuad.material.uniforms.depthMap.value = rtDepth;
+					sceneNormalize.screenQuad.material.uniforms.texture.value = rtNormalize;
+				}
+			}
+			
 			var width = elRenderArea.clientWidth;
 			var height = elRenderArea.clientHeight;
 			var aspect = width / height;
@@ -762,6 +815,7 @@ void main() {
 				
 				renderer.clearDepth();
 				measuringTool.render();
+				angleTool.render();
 				areaTool.render();
 				transformationTool.render();
 					
