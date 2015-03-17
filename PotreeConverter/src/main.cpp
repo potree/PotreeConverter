@@ -218,12 +218,13 @@ int main(int argc, char **argv){
 
 			ssSettings << "var sceneProperties = {" << endl;
 			ssSettings << "\tpath: \"" << "../resources/pointclouds/" << pointCloudName << "/cloud.js\"," << endl;
-			ssSettings << "\tcameraPosition: null, 	// other options: cameraPosition: [10,10,10]," << endl;
-			ssSettings << "\tcameraTarget: null, 	// other options: cameraTarget: [0,0,0]," << endl;
-			ssSettings << "\tsizeType: \"Adaptive\", 	// other options: \"Fixed\", \"Attenuated\"" << endl;
-			ssSettings << "\tquality: \"Squares\", 	// other options: \"Circles\", \"Interpolation\", \"Splats\"" << endl;
-			ssSettings << "\tmaterial: \"RGB\", 	// other options: \"Height\", \"Intensity\", \"Classification\"" << endl;
-			ssSettings << "\tpointLimit: 1			// max number of points in millions" << endl;
+			ssSettings << "\tcameraPosition: null, 		// other options: cameraPosition: [10,10,10]," << endl;
+			ssSettings << "\tcameraTarget: null, 		// other options: cameraTarget: [0,0,0]," << endl;
+			ssSettings << "\tsizeType: \"Adaptive\",	// other options: \"Fixed\", \"Attenuated\"" << endl;
+			ssSettings << "\tquality: \"Squares\", 		// other options: \"Circles\", \"Interpolation\", \"Splats\"" << endl;
+			ssSettings << "\tmaterial: \"RGB\", 		// other options: \"Height\", \"Intensity\", \"Classification\"" << endl;
+			ssSettings << "\tpointLimit: 1,				// max number of points in millions" << endl;
+			ssSettings << "\tnavigation: \"Earth\",		// other options: \"Orbit\", \"Flight\"" << endl;
 			ssSettings << "};" << endl;
 
 		
