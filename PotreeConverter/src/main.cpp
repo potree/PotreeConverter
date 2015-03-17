@@ -196,6 +196,12 @@ int main(int argc, char **argv){
 			while(getline(in, line)){
 				if(line.find("<!-- INCLUDE SETTINGS HERE -->") != string::npos){
 					out << "\t<script src=\"./" << pointCloudName << ".js\"></script>" << endl;
+				}else if((outFormat == OutputFormat::LAS || outFormat == OutputFormat::LAZ) && 
+					line.find("<!-- INCLUDE ADDITIONAL DEPENDENCIES HERE -->") != string::npos){
+
+					out << "\t<script src=\"../libs/plasio/js/laslaz.js\"></script>" << endl;
+					out << "\t<script src=\"../libs/plasio/vendor/bluebird.js\"></script>" << endl;
+					out << "\t<script src=\"../build/js/laslaz.js\"></script>" << endl;
 				}else{
 					out << line << endl;
 				}
@@ -210,9 +216,15 @@ int main(int argc, char **argv){
 		{ // write settings
 			stringstream ssSettings;
 
-			ssSettings << "var pointCloudInfo = {" << endl;
-			ssSettings << "\tpath: \"" << "../resources/pointclouds/" << pointCloudName << "/cloud.js\"" << endl;
-			ssSettings << "}" << endl;
+			ssSettings << "var sceneProperties = {" << endl;
+			ssSettings << "\tpath: \"" << "../resources/pointclouds/" << pointCloudName << "/cloud.js\"," << endl;
+			ssSettings << "\tcameraPosition: null, 	// other options: cameraPosition: [10,10,10]," << endl;
+			ssSettings << "\tcameraTarget: null, 	// other options: cameraTarget: [0,0,0]," << endl;
+			ssSettings << "\tsizeType: \"Adaptive\", 	// other options: \"Fixed\", \"Attenuated\"" << endl;
+			ssSettings << "\tquality: \"Squares\", 	// other options: \"Circles\", \"Interpolation\", \"Splats\"" << endl;
+			ssSettings << "\tmaterial: \"RGB\", 	// other options: \"Height\", \"Intensity\", \"Classification\"" << endl;
+			ssSettings << "\tpointLimit: 1			// max number of points in millions" << endl;
+			ssSettings << "};" << endl;
 
 		
 			ofstream fSettings;

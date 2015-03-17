@@ -77,18 +77,6 @@ void main() {
 	<script src="../libs/other/dat.gui.min.js"></script>
 	
 	<script src="../build/js/potree.js"></script>
-	<!--<script src="../src/materials/PointCloudMaterial.js"></script>
-	<script src="../src/PointCloudOctree.js"></script>
-	<script src="../src/PointCloudOctreeGeometry.js"></script>
-	<script src="../src/utils/AngleTool.js"></script>
-	<script src="../src/utils/MeasuringTool.js"></script>
-	<script src="../src/utils/AreaTool.js"></script>
-	<script src="../src/utils/ProfileTool.js"></script>
-	<script src="../src/utils/VolumeTool.js"></script>
-	<script src="../src/TextSprite.js"></script>
-	<script src="../src/EarthControls.js"></script>
-	<script src="../src/loader/POCLoader.js"></script>
-	<script src="../src/loader/BinaryLoader.js"></script>-->
 	<script src="./js/ProgressBar.js"></script>
 	
 	<!-- INCLUDE SETTINGS HERE -->
@@ -124,13 +112,13 @@ void main() {
 	
 	<script>
 		var pointSize = 1.0 ;
-		var pointCountTarget = 1;
+		var pointCountTarget = sceneProperties.pointLimit;
 		var opacity = 1;
-		var pointSizeType = Potree.PointSizeType.ADAPTIVE;
-		var pointColorType = Potree.PointColorType.RGB;
+		var pointSizeType = null;
+		var pointColorType = null;
 		var pointShape = Potree.PointShape.SQUARE;
 		var clipMode = Potree.ClipMode.HIGHLIGHT_INSIDE;
-		var quality = "Normal";
+		var quality = null;
 		var isFlipYZ = false;
 		
 		var showStats = false;
@@ -143,7 +131,7 @@ void main() {
 		
 		var progressBar = new ProgressBar();
 		
-		var pointcloudPath = pointCloudInfo.path;
+		var pointcloudPath = sceneProperties.path;
 		
 		var elRenderArea = document.getElementById("renderArea");
 	
@@ -165,7 +153,49 @@ void main() {
 		var transformationTool;
 		var referenceFrame;
 		
+		function setPointSizeType(value){
+			if(value === "Fixed"){
+				pointSizeType = Potree.PointSizeType.FIXED;
+			}else if(value === "Attenuated"){
+				pointSizeType = Potree.PointSizeType.ATTENUATED;
+			}else if(value === "Adaptive"){
+				pointSizeType = Potree.PointSizeType.ADAPTIVE;
+			}
+		};
+		
+		function setQuality(value){
+			quality = value;
+		};
+		
+		function setMaterial(value){
+			if(value === "RGB"){
+				pointColorType = Potree.PointColorType.RGB;
+			}else if(value === "Color"){
+				pointColorType = Potree.PointColorType.COLOR;
+			}else if(value === "Height"){
+				pointColorType = Potree.PointColorType.HEIGHT;
+			}else if(value === "Intensity"){
+				pointColorType = Potree.PointColorType.INTENSITY;
+			}else if(value === "Intensity Gradient"){
+				pointColorType = Potree.PointColorType.INTENSITY_GRADIENT;
+			}else if(value === "Classification"){
+				pointColorType = Potree.PointColorType.CLASSIFICATION;
+			}else if(value === "Return Number"){
+				pointColorType = Potree.PointColorType.RETURN_NUMBER;
+			}else if(value === "Source"){
+				pointColorType = Potree.PointColorType.SOURCE;
+			}else if(value === "Octree Depth"){
+				pointColorType = Potree.PointColorType.OCTREE_DEPTH;
+			}else if(value === "Point Index"){
+				pointColorType = Potree.PointColorType.POINT_INDEX;
+			}
+		};
+		
 		function initGUI(){
+		
+			setPointSizeType(sceneProperties.sizeType);
+			setQuality(sceneProperties.quality);
+			setMaterial(sceneProperties.material);
 		
 			// dat.gui
 			gui = new dat.GUI({
@@ -176,17 +206,17 @@ void main() {
 				"points(m)": pointCountTarget,
 				PointSize: pointSize,
 				"opacity": opacity,
-				"SizeType" : "Adaptive",
+				"SizeType" : sceneProperties.sizeType,
 				"show octree" : false,
-				"Materials" : "RGB",
+				"Materials" : sceneProperties.material,
 				"Clip Mode": "Highlight Inside",
-				"quality": "Normal",
+				"quality": sceneProperties.quality,
 				"skybox": false,
 				"stats": showStats,
 				"BoundingBox": showBoundingBox
 			};
 			
-			var pPoints = gui.add(params, 'points(m)', 0.02, 2);
+			var pPoints = gui.add(params, 'points(m)', 0, 2);
 			pPoints.onChange(function(value){
 				pointCountTarget = value ;
 			});
@@ -203,38 +233,8 @@ void main() {
 			
 			var pSizeType = gui.add(params, 'SizeType', [ "Fixed", "Attenuated", "Adaptive"]);
 			pSizeType.onChange(function(value){
-				if(value === "Fixed"){
-					pointSizeType = Potree.PointSizeType.FIXED;
-				}else if(value === "Attenuated"){
-					pointSizeType = Potree.PointSizeType.ATTENUATED;
-				}else if(value === "Adaptive"){
-					pointSizeType = Potree.PointSizeType.ADAPTIVE;
-				}
+				setPointSizeType(value);
 			});
-			
-			var setMaterial = function(value){
-				if(value === "RGB"){
-					pointColorType = Potree.PointColorType.RGB;
-				}else if(value === "Color"){
-					pointColorType = Potree.PointColorType.COLOR;
-				}else if(value === "Height"){
-					pointColorType = Potree.PointColorType.HEIGHT;
-				}else if(value === "Intensity"){
-					pointColorType = Potree.PointColorType.INTENSITY;
-				}else if(value === "Intensity Gradient"){
-					pointColorType = Potree.PointColorType.INTENSITY_GRADIENT;
-				}else if(value === "Classification"){
-					pointColorType = Potree.PointColorType.CLASSIFICATION;
-				}else if(value === "Return Number"){
-					pointColorType = Potree.PointColorType.RETURN_NUMBER;
-				}else if(value === "Source"){
-					pointColorType = Potree.PointColorType.SOURCE;
-				}else if(value === "Octree Depth"){
-					pointColorType = Potree.PointColorType.OCTREE_DEPTH;
-				}else if(value === "Point Index"){
-					pointColorType = Potree.PointColorType.POINT_INDEX;
-				}
-			};
 			
 			var options = [];
 			var attributes = pointcloud.pcoGeometry.pointAttributes
@@ -258,8 +258,14 @@ void main() {
 				}
 				options.push("Height");
 			}
-			params["Materials"] = options[0];
-			setMaterial(options[0]);
+			
+			// default material is not available. set material to Height
+			if(options.indexOf(params.Materials) < 0){
+				console.error("Default Material '" + params.Material + "' is not available. Using Height instead");
+				setMaterial("Height");
+				params.Materials = "Height";
+			}
+			
 			
 			pMaterial = gui.add(params, 'Materials',options);
 			pMaterial.onChange(function(value){
@@ -269,8 +275,6 @@ void main() {
 			var qualityOptions = ["Squares", "Circles"];
 			if(Potree.Features.SHADER_INTERPOLATION.isSupported()){
 				qualityOptions.push("Interpolation");
-				//params.quality = "Interpolation";
-				//quality = params.quality;
 			}
 			if(Potree.Features.SHADER_SPLATS.isSupported()){
 				qualityOptions.push("Splats");
@@ -375,6 +379,13 @@ void main() {
 				earthControls.pointclouds.push(pointcloud);	
 				useEarthControls();
 				//useOrbitControls();
+				
+				if(sceneProperties.cameraPosition){
+					camera.position.set(sceneProperties.cameraPosition[0], sceneProperties.cameraPosition[1], sceneProperties.cameraPosition[2]);
+				}
+				if(sceneProperties.cameraTarget){
+					camera.lookAt(new THREE.Vector3(sceneProperties.cameraTarget[0], sceneProperties.cameraTarget[1], sceneProperties.cameraTarget[2]));
+				}
 			});
 			
 			var grid = Potree.utils.createGrid(5, 5, 2);
