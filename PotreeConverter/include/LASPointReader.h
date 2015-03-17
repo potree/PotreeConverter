@@ -41,6 +41,7 @@ public:
 
 	ifstream stream;
 	liblas::Reader reader;
+	int colorScale;
 
     LIBLASReader(string path)
             : stream(path, std::ios::in | std::ios::binary),
@@ -62,6 +63,29 @@ public:
 //                cout << "Found a PTX transformation matrix.\n";
             }
         }
+
+		{// read first 1000 points to find if color is 1 or 2 bytes
+			ifstream stream(path, std::ios::in | std::ios::binary);
+			liblas::Reader reader(liblas::ReaderFactory().CreateWithStream(stream));
+
+			int i = 0; 
+			colorScale = 1;
+			while(reader.ReadNextPoint() && i < 1000){
+				liblas::Point const lp = reader.GetPoint();
+		
+				liblas::Color::value_type r = lp.GetColor().GetRed();
+				liblas::Color::value_type g = lp.GetColor().GetGreen();
+				liblas::Color::value_type b = lp.GetColor().GetBlue();
+		
+				if(r > 255 || g > 255 || b > 255){
+					colorScale = 256;
+					break;
+				}
+		
+				i++;
+			}
+			stream.close();
+		}
     }
 
 	~LIBLASReader(){
@@ -76,12 +100,12 @@ public:
         p.intensity = lp.GetIntensity();
         p.classification = lp.GetClassification().GetClass();
 
-        p.r = lp.GetColor().GetRed() / 256;
-        p.g = lp.GetColor().GetGreen() / 256;
-        p.b = lp.GetColor().GetBlue() / 256;
+        p.r = lp.GetColor().GetRed() / colorScale;
+        p.g = lp.GetColor().GetGreen() / colorScale;
+        p.b = lp.GetColor().GetBlue() / colorScale;
 
-		p.returnNumber = lp.GetReturnNumber();
-		p.numberOfReturns = lp.GetNumberOfReturns();
+		p.returnNumber = (unsigned char)lp.GetReturnNumber();
+		p.numberOfReturns = (unsigned char)lp.GetNumberOfReturns();
 		p.pointSourceID = lp.GetPointSourceID();
 
         return p;

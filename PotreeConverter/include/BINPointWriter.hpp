@@ -28,13 +28,13 @@ public:
 	AABB aabb;
 	double scale;
 
-	BINPointWriter(string file, AABB aabb, double scale) {
+	BINPointWriter(string file, AABB aabb, double scale, PointAttributes pointAttributes) {
 		this->file = file;
 		this->aabb = aabb;
 		this->scale = scale;
 		numPoints = 0;
-		attributes.add(PointAttribute::POSITION_CARTESIAN);
-		attributes.add(PointAttribute::COLOR_PACKED);
+
+		attributes = pointAttributes;
 
 		writer = new ofstream(file, ios::out | ios::binary);
 	}
@@ -56,14 +56,18 @@ public:
 			PointAttribute attribute = attributes[i];
 			if(attribute == PointAttribute::POSITION_CARTESIAN){
 				//float pos[3] = {(float) point.x,(float)  point.y,(float)  point.z};
-				int x = (point.x - aabb.min.x) / scale;
-				int y = (point.y - aabb.min.y) / scale;
-				int z = (point.z - aabb.min.z) / scale;
+				int x = (int)((point.x - aabb.min.x) / scale);
+				int y = (int)((point.y - aabb.min.y) / scale);
+				int z = (int)((point.z - aabb.min.z) / scale);
 				int pos[3] = {x, y, z};
 				writer->write((const char*)pos, 3*sizeof(int));
 			}else if(attribute == PointAttribute::COLOR_PACKED){
 				unsigned char rgba[4] = {point.r, point.g, point.b, 255};
 				writer->write((const char*)rgba, 4*sizeof(unsigned char));
+			}else if(attribute == PointAttribute::INTENSITY){
+				writer->write((const char*)&point.intensity, sizeof(unsigned short));
+			}else if(attribute == PointAttribute::CLASSIFICATION){
+				writer->write((const char*)&point.classification, sizeof(unsigned char));
 			}
 		}
 

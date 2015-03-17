@@ -13,6 +13,8 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
+#include "boost/filesystem.hpp"
+
 #include "Vector3.h"
 #include "AABB.h"
 #include "Point.h"
@@ -33,6 +35,8 @@ using std::endl;
 using std::vector;
 using std::binary_function;
 using std::map;
+
+namespace fs = boost::filesystem;
 
 AABB readAABB(string fIn, int numPoints);
 
@@ -87,5 +91,11 @@ bool endsWith (std::string const &fullString, std::string const &ending);
  * see http://stackoverflow.com/questions/735204/convert-a-string-in-c-to-upper-case
  */
 string toUpper(string str);
+
+bool copyDir(fs::path source, fs::path destination);
+
+
+
+
 
 #endif

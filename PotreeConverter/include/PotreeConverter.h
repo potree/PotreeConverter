@@ -8,6 +8,7 @@
 #include "AABB.h"
 #include "CloudJS.hpp"
 #include "definitions.hpp"
+#include "PointReader.h"
 
 #include <string>
 #include <vector>
@@ -46,18 +47,31 @@ private:
 	int maxDepth;
 	string format;
 	OutputFormat outputFormat;
-
-	float range;
+	vector<string> outputAttributes;
+	vector<double> colorRange;
+	vector<double> intensityRange;
 	double scale;
 	int diagonalFraction;
 
+	PointReader *createPointReader(string source);
+
 public:
 
-	PotreeConverter(vector<string> fData, string workDir, float spacing, int diagonalFraction, int maxDepth, string format, float range, double scale, OutputFormat outFormat);
+	PotreeConverter(
+		vector<string> fData, 
+		string workDir, 
+		float spacing, 
+		int diagonalFraction, 
+		int maxDepth, 
+		string format, 
+		vector<double> colorRange, 
+		vector<double> intensityRange, 
+		double scale, 
+		OutputFormat outFormat,
+		vector<string> outputAttributes);
 
 	void convert();
 
 };
-
 
 #endif

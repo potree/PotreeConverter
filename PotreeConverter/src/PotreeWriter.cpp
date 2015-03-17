@@ -13,9 +13,8 @@
 namespace fs = boost::filesystem;
 
 
-PotreeWriterNode::PotreeWriterNode(PotreeWriter* potreeWriter, string name, string path, AABB aabb, float spacing, int level, int maxLevel, double scale){
+PotreeWriterNode::PotreeWriterNode(PotreeWriter* potreeWriter, string name, AABB aabb, float spacing, int level, int maxLevel, double scale){
 	this->name = name;
-	this->path = path;
 	this->aabb = aabb;
 	this->spacing = spacing;
 	this->level = level;
@@ -32,13 +31,36 @@ PotreeWriterNode::PotreeWriterNode(PotreeWriter* potreeWriter, string name, stri
 	}
 }
 
+string PotreeWriterNode::workDir(){
+	return potreeWriter->workDir;
+}
+
+string PotreeWriterNode::hierarchyPath(){
+	string path = "r/";
+
+	int hierarchyStepSize = potreeWriter->hierarchyStepSize;
+	string indices = name.substr(1);
+
+	int numParts = (int)floor((float)indices.size() / (float)hierarchyStepSize);
+	for(int i = 0; i < numParts; i++){
+		path += indices.substr(i * hierarchyStepSize, hierarchyStepSize) + "/";
+	}
+
+	return path;
+}
+
+string PotreeWriterNode::path(){
+	string path = hierarchyPath() + "/" + name + potreeWriter->getExtension();
+	return path;
+}
+
 PointReader *PotreeWriterNode::createReader(string path){
 	PointReader *reader = NULL;
 	OutputFormat outputFormat = this->potreeWriter->outputFormat;
 	if(outputFormat == OutputFormat::LAS || outputFormat == OutputFormat::LAZ){
 		reader = new LASPointReader(path);
 	}else if(outputFormat == OutputFormat::BINARY){
-		reader = new BINPointReader(path, aabb, scale);
+		reader = new BINPointReader(path, aabb, scale, this->potreeWriter->pointAttributes);
 	}
 
 	return reader;
@@ -50,7 +72,7 @@ PointWriter *PotreeWriterNode::createWriter(string path, double scale){
 	if(outputFormat == OutputFormat::LAS || outputFormat == OutputFormat::LAZ){
 		writer = new LASPointWriter(path, aabb, scale);
 	}else if(outputFormat == OutputFormat::BINARY){
-		writer = new BINPointWriter(path, aabb, scale);
+		writer = new BINPointWriter(path, aabb, scale, this->potreeWriter->pointAttributes);
 	}
 
 	return writer;
@@ -59,7 +81,7 @@ PointWriter *PotreeWriterNode::createWriter(string path, double scale){
 }
 
 void PotreeWriterNode::loadFromDisk(){
-	PointReader *reader = createReader(path + "/data/" + name + potreeWriter->getExtension());
+	PointReader *reader = createReader(workDir() + "/data/" + path());
 	while(reader->readNextPoint()){
 		Point p = reader->getPoint();
 		Vector3<double> position = Vector3<double>(p.x, p.y, p.z);
@@ -98,7 +120,7 @@ PotreeWriterNode *PotreeWriterNode::createChild(int childIndex ){
 	stringstream childName;
 	childName << name << childIndex;
 	AABB cAABB = childAABB(aabb, childIndex);
-	PotreeWriterNode *child = new PotreeWriterNode(potreeWriter, childName.str(), path, cAABB, spacing / 2.0f, level+1, maxLevel, scale);
+	PotreeWriterNode *child = new PotreeWriterNode(potreeWriter, childName.str(), cAABB, spacing / 2.0f, level+1, maxLevel, scale);
 	children[childIndex] = child;
 
 	return child;
@@ -126,7 +148,6 @@ PotreeWriterNode *PotreeWriterNode::add(Point &point){
 		cache.push_back(point);
 		Vector3<double> position(point.x, point.y, point.z);
 		acceptedAABB.update(position);
-		potreeWriter->numAccepted++;
 		numAccepted++;
 
 		return this;
@@ -155,14 +176,19 @@ void PotreeWriterNode::flush(){
 
 	if(cache.size() > 0){
 		 // move data file aside to temporary directory for reading
-		string filepath = path + "/data/" + name + potreeWriter->getExtension();
-		string temppath = path +"/temp/prepend" + potreeWriter->getExtension();
+		string filepath = workDir() + "/data/" + path();
+		string temppath = workDir() + "/temp/prepend" + potreeWriter->getExtension();
 		if(fs::exists(filepath)){
 			fs::rename(fs::path(filepath), fs::path(temppath));
 		}
+
+		if(!fs::exists(workDir() + "/data/" + hierarchyPath())){
+			fs::create_directories(workDir() + "/data/" + hierarchyPath());
+		}
 		
 
-		PointWriter *writer = createWriter(path + "/data/" + name + potreeWriter->getExtension(), scale);
+
+		PointWriter *writer = createWriter(filepath, scale);
 		if(fs::exists(temppath)){
 			PointReader *reader = createReader(temppath);
 			while(reader->readNextPoint()){
@@ -192,4 +218,29 @@ void PotreeWriterNode::flush(){
 			children[i]->flush();
 		}
 	}
+}
+
+vector<PotreeWriterNode*> PotreeWriterNode::getHierarchy(int levels){
+
+	vector<PotreeWriterNode*> hierarchy;
+	
+	list<PotreeWriterNode*> stack;
+	stack.push_back(this);
+	while(!stack.empty()){
+		PotreeWriterNode *node = stack.front();
+		stack.pop_front();
+
+		if(node->level >= this->level + levels){
+			break;
+		}
+		hierarchy.push_back(node);
+
+		for(int i = 0; i < 8; i++){
+			if(node->children[i] != NULL){
+				stack.push_back(node->children[i]);
+			}
+		}
+	}
+
+	return hierarchy;
 }

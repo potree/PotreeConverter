@@ -6,5 +6,7 @@ PotreeConverter/obj
 Potree.opensdf
 bin/
 obj
-build/
+build*/
 .idea
+*.orig
+test/converted

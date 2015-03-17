@@ -16,6 +16,7 @@
 #include "CloudJS.hpp"
 #include "PointReader.h"
 #include "PointWriter.hpp"
+#include "PointAttributes.hpp"
 
 using std::string;
 using std::stringstream;
@@ -28,14 +29,13 @@ class PotreeWriterNode{
 
 public:
 	string name;
-	string path;
 	AABB aabb;
 	AABB acceptedAABB;
 	float spacing;
 	int level;
 	int maxLevel;
 	SparseGrid *grid;
-	int numAccepted;
+	unsigned int numAccepted;
 	PotreeWriterNode *children[8];
 	long long lastAccepted;
 	bool addCalledSinceLastFlush;
@@ -43,7 +43,7 @@ public:
 	vector<Point> cache;
 	double scale;
 
-	PotreeWriterNode(PotreeWriter* potreeWriter, string name, string path, AABB aabb, float spacing, int level, int maxLevel, double scale);
+	PotreeWriterNode(PotreeWriter* potreeWriter, string name, AABB aabb, float spacing, int level, int maxLevel, double scale);
 
 	~PotreeWriterNode(){
 		for(int i = 0; i < 8; i++){
@@ -66,7 +66,15 @@ public:
 
 	PotreeWriterNode *createChild(int childIndex);
 
+	string workDir();
+
+	string hierarchyPath();
+
+	string path();
+
 	void flush();
+
+	vector<PotreeWriterNode*> getHierarchy(int levels);
 
 private:
 
@@ -83,21 +91,23 @@ public:
 
 	AABB aabb;
 	AABB tightAABB;
-	string path;
+	string workDir;
 	float spacing;
 	int maxLevel;
 	PotreeWriterNode *root;
 	long long numAccepted;
 	CloudJS cloudjs;
 	OutputFormat outputFormat;
+	PointAttributes pointAttributes;
+	int hierarchyStepSize;
 
 	int pointsInMemory;
 	int pointsInMemoryLimit;
 
 
 
-	PotreeWriter(string path, AABB aabb, float spacing, int maxLevel, double scale, OutputFormat outputFormat){
-		this->path = path;
+	PotreeWriter(string workDir, AABB aabb, float spacing, int maxLevel, double scale, OutputFormat outputFormat, vector<string> outputAttributes){
+		this->workDir = workDir;
 		this->aabb = aabb;
 		this->spacing = spacing;
 		this->maxLevel = maxLevel;
@@ -106,20 +116,63 @@ public:
 		pointsInMemory = 0;
 		pointsInMemoryLimit = 1*1000*1000;
 
-		fs::remove_all(path + "/data");
-		fs::remove_all(path + "/temp");
-		fs::create_directories(path + "/data");
-		fs::create_directories(path + "/temp");
-		
+
+		// TODO calculate step size instead
+		if(maxLevel <= 5){
+			hierarchyStepSize = 6;
+		}else if(maxLevel <= 7){
+			hierarchyStepSize = 4;
+		}else if(maxLevel <= 9){
+			hierarchyStepSize = 5;
+		}else if(maxLevel <= 11){
+			hierarchyStepSize = 4;
+		}else if(maxLevel <= 14){
+			hierarchyStepSize = 5;
+		}else if(maxLevel <= 17){
+			hierarchyStepSize = 6;
+		}else if(maxLevel <= 19){
+			hierarchyStepSize = 5;
+		}else if(maxLevel <= 23){
+			hierarchyStepSize = 6;
+		}else if(maxLevel <= 24){
+			hierarchyStepSize = 5;
+		}else if(maxLevel <= 27){
+			hierarchyStepSize = 4;
+		}else if(maxLevel <= 29){
+			hierarchyStepSize = 5;
+		}else if(maxLevel <= 31){
+			hierarchyStepSize = 4;
+		}else{
+			// I don't think this will happen anytime soon. This level would provide insane precision.
+			hierarchyStepSize = 5;
+		}
+
+		fs::create_directories(workDir + "/data");
+		fs::create_directories(workDir + "/temp");
+
+		pointAttributes.add(PointAttribute::POSITION_CARTESIAN);
+
+		for(int i = 0; i < outputAttributes.size(); i++){
+			string attribute = outputAttributes[i];
+
+			if(attribute == "RGB"){
+				pointAttributes.add(PointAttribute::COLOR_PACKED);
+			}else if(attribute == "INTENSITY"){
+				pointAttributes.add(PointAttribute::INTENSITY);
+			}else if(attribute == "CLASSIFICATION"){
+				pointAttributes.add(PointAttribute::CLASSIFICATION);
+			}
+		}
 
 		cloudjs.outputFormat = outputFormat;
 		cloudjs.boundingBox = aabb;
 		cloudjs.octreeDir = "data";
 		cloudjs.spacing = spacing;
-		cloudjs.version = "1.4";
+		cloudjs.version = "1.6";
 		cloudjs.scale = scale;
+		cloudjs.pointAttributes = pointAttributes;
 
-		root = new PotreeWriterNode(this, "r", path, aabb, spacing, 0, maxLevel, scale);
+		root = new PotreeWriterNode(this, "r", aabb, spacing, 0, maxLevel, scale);
 	}
 
 	~PotreeWriter(){
@@ -155,36 +208,58 @@ public:
 	void flush(){
 		root->flush();
 
+		{// update cloud.js
+			long long numPointsInMemory = 0;
+			long long numPointsInHierarchy = 0;
+			cloudjs.hierarchy = vector<CloudJS::Node>();
+			cloudjs.hierarchyStepSize = hierarchyStepSize;
+			cloudjs.tightBoundingBox = tightAABB;
 
-
-
-
-		// update cloud.js
-		
-		
-		long long numPointsInMemory = 0;
-		long long numPointsInHierarchy = 0;
-		cloudjs.hierarchy = vector<CloudJS::Node>();
-		cloudjs.tightBoundingBox = tightAABB;
-		list<PotreeWriterNode*> stack;
-		stack.push_back(root);
-		while(!stack.empty()){
-			PotreeWriterNode *node = stack.front();
-			stack.pop_front();
-			cloudjs.hierarchy.push_back(CloudJS::Node(node->name, node->numAccepted));
-			numPointsInHierarchy += node->numAccepted;
-			numPointsInMemory += node->grid->numAccepted;
-
-			for(int i = 0; i < 8; i++){
-				if(node->children[i] != NULL){
-					stack.push_back(node->children[i]);
-				}
-			}
+			ofstream cloudOut(workDir + "/cloud.js", ios::out);
+			cloudOut << cloudjs.getString();
+			cloudOut.close();
 		}
+			
 
-		ofstream cloudOut(path + "/cloud.js", ios::out);
-		cloudOut << cloudjs.getString();
-		cloudOut.close();
+		{// write hierarchy
+			list<PotreeWriterNode*> stack;
+			stack.push_back(root);
+			while(!stack.empty()){
+				PotreeWriterNode *node = stack.front();
+				stack.pop_front();
+		
+				//string dest = workDir + "/hierarchy/" + node->name + ".hrc";
+				string dest = workDir + "/data/" + node->hierarchyPath() + "/" + node->name + ".hrc";
+				ofstream fout;
+				fout.open(dest, ios::out | ios::binary);
+				vector<PotreeWriterNode*> hierarchy = node->getHierarchy(hierarchyStepSize + 1);
+				for(int i = 0; i <  hierarchy.size(); i++){
+					PotreeWriterNode *descendant = hierarchy[i];
+					if(descendant->level == node->level + hierarchyStepSize && (node->level + hierarchyStepSize) < maxLevel ){
+						stack.push_back(descendant);
+					}
+		
+					char children = 0;
+					for(int j = 0; j < 8; j++){
+						if(descendant->children[j] != NULL){
+							children = children | (1 << j);
+						}
+					}
+					//
+					//
+					//
+					fout.write(reinterpret_cast<const char*>(&children), 1);
+					fout.write(reinterpret_cast<const char*>(&(descendant->numAccepted)), 4);
+					//fout.write("bla", 4);
+		
+				}
+				fout.close();
+		
+			}
+		
+		
+		
+		}
 	}
 
 	void close(){

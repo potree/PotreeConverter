@@ -10,6 +10,7 @@
 
 #include "AABB.h"
 #include "definitions.hpp"
+#include "PointAttributes.hpp"
 
 using std::string;
 using std::vector;
@@ -36,12 +37,15 @@ public:
 	AABB boundingBox;
 	AABB tightBoundingBox;
 	OutputFormat outputFormat;
+	PointAttributes pointAttributes;
 	double spacing;
 	vector<Node> hierarchy;
 	double scale;
+	int hierarchyStepSize;
 
 	CloudJS(){
-		version = "1.4";
+		version = "0.0";
+		hierarchyStepSize = -1;
 	}
 
 	string getString(){
@@ -69,8 +73,18 @@ public:
 		cloudJs << "\t" << "}," << endl;
 		if(outputFormat == OutputFormat::BINARY){
 			cloudJs << "\t" << "\"pointAttributes\": [" << endl;
-			cloudJs << "\t\t" << "\"POSITION_CARTESIAN\"," << endl;
-			cloudJs << "\t\t" << "\"COLOR_PACKED\"" << endl;
+
+			for(int i = 0; i < pointAttributes.size(); i++){
+				PointAttribute attribute = pointAttributes[i];
+
+				cloudJs << "\t\t" << "\"" << attribute.name << "\"";
+
+				if(i+1 < pointAttributes.size()){
+					cloudJs << ",";
+				}
+				cloudJs << endl;
+			}
+
 			cloudJs << "\t" << "]," << endl;
 		}else if(outputFormat == OutputFormat::LAS){
 			cloudJs << "\t" << "\"pointAttributes\": \"LAS\"," << endl;
@@ -79,18 +93,21 @@ public:
 		}
 		cloudJs << "\t" << "\"spacing\": " << spacing << "," << endl;
 		cloudJs << "\t" << "\"scale\": " << scale << "," << endl;
-		cloudJs << "\t" << "\"hierarchy\": [" << endl;
-
-		for(int i = 0; i < hierarchy.size(); i++){
-			Node node = hierarchy[i];
-			cloudJs << "\t\t[\"" << node.name << "\", " << node.pointCount << "]";
-
-			if(i < hierarchy.size()-1){
-				cloudJs << ",";
-			}
-			cloudJs << endl;
+		if(hierarchyStepSize >= 0){
+			cloudJs << "\t" << "\"hierarchyStepSize\": " << hierarchyStepSize << endl;
 		}
-		cloudJs << "\t]" << endl;
+		//cloudJs << "\t" << "\"hierarchy\": [" << endl;
+		//
+		//for(int i = 0; i < hierarchy.size(); i++){
+		//	Node node = hierarchy[i];
+		//	cloudJs << "\t\t[\"" << node.name << "\", " << node.pointCount << "]";
+		//
+		//	if(i < hierarchy.size()-1){
+		//		cloudJs << ",";
+		//	}
+		//	cloudJs << endl;
+		//}
+		//cloudJs << "\t]" << endl;
 		cloudJs << "}" << endl;
 
 		return cloudJs.str();
