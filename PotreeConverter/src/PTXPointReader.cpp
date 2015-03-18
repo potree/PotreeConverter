@@ -96,7 +96,7 @@ void PTXPointReader::scanForAABB() {
     double tr[16];
     vector<double> split;
     for (int i = 0; i < files.size(); i++) {
-        fstream stream = fstream(files[i], ios::in);
+        fstream stream(files[i], ios::in);
         currentChunk = 0;
         getlined(stream, split);
         while (!pleaseStop) {
@@ -147,6 +147,7 @@ void PTXPointReader::scanForAABB() {
     counts[path] = count;
     AABB lAABB(Vector3<double>(minx, miny, minz), Vector3<double>(maxx, maxy, maxz));
     PTXPointReader::aabbs[path] = lAABB;
+   
 }
 
 bool PTXPointReader::loadChunk(fstream *stream, long currentChunk, double tr[16]) {
