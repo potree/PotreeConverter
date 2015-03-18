@@ -28,7 +28,7 @@ private:
         return p;
     }
 
-    fstream stream;
+    fstream *stream;
     string path;
     vector<string> files;
     vector<string>::iterator currentFile;
@@ -37,7 +37,7 @@ private:
     /**
     * Returns false if there is neo next chunk.
     */
-    bool loadChunk(fstream &stream, long currentChunk, double tr[16]);
+    bool loadChunk(fstream *stream, long currentChunk, double tr[16]);
 
     void scanForAABB();
 
@@ -76,7 +76,7 @@ public:
     }
 
     inline void close() {
-        stream.close();
+        stream->close();
     }
 };
 
