@@ -2,8 +2,6 @@
 #ifndef STUFF_H
 #define STUFF_H
 
-#define BOOST_NO_CXX11_SCOPED_ENUMS
-
 #include <vector>
 #include <map>
 #include <iostream>
