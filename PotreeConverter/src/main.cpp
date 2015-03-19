@@ -66,7 +66,10 @@ int main(int argc, char **argv){
 	vector<double> intensityRange;
 	vector<string> outputAttributes;
 	bool generatePage;
-
+	bool tileOnly = false;
+    double maxDistance = 0;
+    int flushPeriod = 1000;
+    int maxPoints = 0;
 
 	cout.imbue(std::locale(""));
 
@@ -86,6 +89,8 @@ int main(int argc, char **argv){
 			("output-format", po::value<string>(&outFormatString), "Output format can be BINARY, LAS or LAZ. Default is BINARY")
 			("output-attributes,a", po::value<std::vector<std::string> >()->multitoken(), "can be any combination of RGB, INTENSITY and CLASSIFICATION. Default is RGB.")
 			("scale", po::value<double>(&scale), "Scale of the X, Y, Z coordinate in LAS and LAZ files.")
+            ("flush-interval,i", po::value<int>(&flushPeriod), "Flush period in kpoints.")
+            ("max-points,x", po::value<int>(&maxPoints), "Target points in RAM, in Mpoints (overrides flush-interval).")
 			("source", po::value<std::vector<std::string> >(), "Source file. Can be LAS, LAZ, PTX or PLY");
 		po::positional_options_description p; 
 		p.add("source", -1); 
@@ -236,7 +241,7 @@ int main(int argc, char **argv){
 	}
 	
 	try{
-		PotreeConverter pc(source, outdir, spacing, diagonalFraction, levels, format, colorRange, intensityRange, scale, outFormat, outputAttributes);
+		PotreeConverter pc(source, outdir, spacing, diagonalFraction, levels, format, colorRange, intensityRange, scale, outFormat, outputAttributes, flushPeriod, maxPoints);
 		pc.convert();
 	}catch(exception &e){
 		cout << "ERROR: " << e.what() << endl;

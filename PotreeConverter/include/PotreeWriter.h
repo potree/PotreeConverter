@@ -205,12 +205,12 @@ public:
 		}
 	}
 
-	void flush(){
+	long long flush(){
+        long long numPointsInMemory = 0;
+        long long numPointsInHierarchy = 0;
 		root->flush();
 
 		{// update cloud.js
-			long long numPointsInMemory = 0;
-			long long numPointsInHierarchy = 0;
 			cloudjs.hierarchy = vector<CloudJS::Node>();
 			cloudjs.hierarchyStepSize = hierarchyStepSize;
 			cloudjs.tightBoundingBox = tightAABB;
@@ -224,6 +224,7 @@ public:
 		{// write hierarchy
 			list<PotreeWriterNode*> stack;
 			stack.push_back(root);
+            numPointsInMemory = root->numAccepted;
 			while(!stack.empty()){
 				PotreeWriterNode *node = stack.front();
 				stack.pop_front();
@@ -243,6 +244,7 @@ public:
 					for(int j = 0; j < 8; j++){
 						if(descendant->children[j] != NULL){
 							children = children | (1 << j);
+                            numPointsInMemory += descendant->children[j]->numAccepted;
 						}
 					}
 					//
@@ -260,6 +262,7 @@ public:
 		
 		
 		}
+        return numPointsInMemory;
 	}
 
 	void close(){

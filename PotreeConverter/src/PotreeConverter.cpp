@@ -83,7 +83,9 @@ PotreeConverter::PotreeConverter(
 	vector<double> intensityRange, 
 	double scale, 
 	OutputFormat outFormat,
-	vector<string> outputAttributes){
+	vector<string> outputAttributes,
+    int flushPeriod,
+    int maxPoints){
 
 	// if sources contains directories, use files inside the directory instead
 	vector<string> sourceFiles;
@@ -123,6 +125,8 @@ PotreeConverter::PotreeConverter(
 	this->outputFormat = outFormat;
 	this->outputAttributes = outputAttributes;
 	this->diagonalFraction = diagonalFraction;
+    this->flushPeriod = flushPeriod * 1000;
+    this->maxPoints = maxPoints * 1000000;
 
 	boost::filesystem::path dataDir(workDir + "/data");
 	boost::filesystem::path tempDir(workDir + "/temp");
@@ -251,6 +255,7 @@ void PotreeConverter::convert(){
 		cout << "reading " << source << endl;
 
 		PointReader *reader = createPointReader(source);
+        long long lastFlush = 0;
 		while(reader->readNextPoint()){
 			pointsProcessed++;
 			//if((pointsProcessed%50) != 0){
@@ -266,8 +271,17 @@ void PotreeConverter::convert(){
 			//	writer.flush();
 			//}
 
-			if((pointsProcessed % (1000*1000)) == 0){
-				writer.flush();
+            if(pointsProcessed >= lastFlush + flushPeriod){
+				long long numPointsInMemory = writer.flush();
+                if (maxPoints > 0) {
+                    if (numPointsInMemory > maxPoints) {
+                        flushPeriod *= 0.4;
+                    } else {
+                        flushPeriod *= 1.5;
+                    }
+                    flushPeriod = MIN(MAX(flushPeriod, 250000), 2000000 );
+                }
+                lastFlush = pointsProcessed;
 
 				auto end = high_resolution_clock::now();
 				long long duration = duration_cast<milliseconds>(end-start).count();
@@ -279,8 +293,11 @@ void PotreeConverter::convert(){
 				ssMessage << "INDEXING: ";
 				ssMessage << pointsProcessed << " points processed; ";
 				ssMessage << writer.numAccepted << " points written; ";
-				ssMessage << seconds << " seconds passed";
-
+				ssMessage << seconds << " seconds passed; ";
+                if (maxPoints > 0) {
+                    ssMessage << numPointsInMemory << " points in mem; ";
+                    ssMessage << flushPeriod << " next period; ";
+                }
 				cout << ssMessage.str() << endl;
 
 				//cout << (pointsProcessed / (1000*1000)) << "m points processed" << endl;
