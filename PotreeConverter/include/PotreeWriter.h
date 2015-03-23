@@ -244,7 +244,7 @@ public:
 					for(int j = 0; j < 8; j++){
 						if(descendant->children[j] != NULL){
 							children = children | (1 << j);
-                            numPointsInMemory += descendant->children[j]->numAccepted;
+                            numPointsInMemory += descendant->children[j]->grid->numAccepted;
 						}
 					}
 					//
