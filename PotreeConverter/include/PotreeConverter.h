@@ -52,6 +52,8 @@ private:
 	vector<double> intensityRange;
 	double scale;
 	int diagonalFraction;
+    int flushPeriod;
+    int maxPoints;
 
 	PointReader *createPointReader(string source);
 
@@ -68,7 +70,9 @@ public:
 		vector<double> intensityRange, 
 		double scale, 
 		OutputFormat outFormat,
-		vector<string> outputAttributes);
+		vector<string> outputAttributes,
+        int flushPeriod,
+        int maxPoints);
 
 	void convert();
 
