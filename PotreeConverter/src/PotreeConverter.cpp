@@ -275,11 +275,11 @@ void PotreeConverter::convert(){
 				long long numPointsInMemory = writer.flush();
                 if (maxPoints > 0) {
                     if (numPointsInMemory > maxPoints) {
-                        flushPeriod *= 0.4;
+                        flushPeriod *= FLUSH_FALL;
                     } else {
-                        flushPeriod *= 1.5;
+                        flushPeriod *= FLUSH_RAISE;
                     }
-                    flushPeriod = MIN(MAX(flushPeriod, 250000), 2000000 );
+                    flushPeriod = MIN(MAX(flushPeriod, FLUSH_MIN), FLUSH_MAX );
                 }
                 lastFlush = pointsProcessed;
 

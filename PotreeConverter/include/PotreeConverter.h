@@ -16,6 +16,13 @@
 #include <map>
 #include <cstdint>
 
+// Minimum and maximum values for the automatic flush period
+#define FLUSH_MIN 100000
+#define FLUSH_MAX 2000000
+// Multiplier for the fall and raise of the automatic flush period
+#define FLUSH_FALL 0.4
+#define FLUSH_RAISE 1.5
+
 class SparseGrid;
 
 
