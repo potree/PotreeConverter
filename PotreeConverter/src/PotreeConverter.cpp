@@ -72,23 +72,12 @@ PointReader *PotreeConverter::createPointReader(string path){
 	return reader;
 }
 
-PotreeConverter::PotreeConverter(
-	vector<string> sources, 
-	string workDir, 
-	float spacing, 
-	int diagonalFraction,
-	int maxDepth, 
-	string format, 
-	vector<double> colorRange, 
-	vector<double> intensityRange, 
-	double scale, 
-	OutputFormat outFormat,
-	vector<string> outputAttributes){
+PotreeConverter::PotreeConverter(Options options){
 
 	// if sources contains directories, use files inside the directory instead
 	vector<string> sourceFiles;
-	for(int i = 0; i < sources.size(); i++){
-		string source = sources[i];
+	for(int i = 0; i < options.sources.size(); i++){
+		string source = options.sources[i];
 		path pSource(source);
 		if(boost::filesystem::is_directory(pSource)){
 			boost::filesystem::directory_iterator it(pSource);
@@ -113,16 +102,16 @@ PotreeConverter::PotreeConverter(
 	
 
 	this->sources = sourceFiles;
-	this->workDir = workDir;
-	this->spacing = spacing;
-	this->maxDepth = maxDepth;
-	this->format = format;
-	this->colorRange = colorRange;
-	this->intensityRange = intensityRange;
-	this->scale = scale;
-	this->outputFormat = outFormat;
-	this->outputAttributes = outputAttributes;
-	this->diagonalFraction = diagonalFraction;
+	this->workDir = options.workDir;
+	this->spacing = options.spacing;
+	this->maxDepth = options.maxDepth;
+	this->format = options.format;
+	this->colorRange = options.colorRange;
+	this->intensityRange = options.intensityRange;
+	this->scale = options.scale;
+	this->outputFormat = options.outFormat;
+	this->outputAttributes = options.outputAttributes;
+	this->diagonalFraction = options.diagonalFraction;
 
 	boost::filesystem::path dataDir(workDir + "/data");
 	boost::filesystem::path tempDir(workDir + "/temp");
