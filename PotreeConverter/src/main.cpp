@@ -240,10 +240,12 @@ int main(int argc, char **argv){
         outdir,
         spacing,
         diagonalFraction,
-        levels, format,
+        levels,
+        format,
         colorRange,
         intensityRange,
-        scale, outFormat,
+        scale,
+        outFormat,
         outputAttributes
     };
     
