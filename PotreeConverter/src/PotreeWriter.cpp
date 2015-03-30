@@ -25,6 +25,7 @@ PotreeWriterNode::PotreeWriterNode(PotreeWriter* potreeWriter, string name, AABB
 	numAccepted = 0;
 	lastAccepted = 0;
 	addCalledSinceLastFlush = false;
+    this->needsHrcFlush = false;
 
 	for(int i = 0; i < 8; i++){
 		children[i] = NULL;
@@ -92,29 +93,29 @@ void PotreeWriterNode::loadFromDisk(){
 	delete reader;
 }
 
-PotreeWriterNode *PotreeWriterNode::add(Point &point, int minLevel){
-	if(level > maxLevel){
-		return NULL;
-	}
-
-	if(level < minLevel){
-		// pass forth
-		int childIndex = nodeIndex(aabb, point);
-		if(childIndex >= 0){
-			PotreeWriterNode *child = children[childIndex];
-
-			if(child == NULL && level < maxLevel){
-				child = createChild(childIndex);
-			}
-
-			return child->add(point, minLevel);
-		}
-	}else{
-		return add(point);
-	}
-	
-	return NULL;
-}
+//PotreeWriterNode *PotreeWriterNode::add(Point &point, int minLevel){
+//	if(level > maxLevel){
+//		return NULL;
+//	}
+//
+//	if(level < minLevel){
+//		// pass forth
+//		int childIndex = nodeIndex(aabb, point);
+//		if(childIndex >= 0){
+//			PotreeWriterNode *child = children[childIndex];
+//
+//			if(child == NULL && level < maxLevel){
+//				child = createChild(childIndex);
+//			}
+//
+//			return child->add(point, minLevel);
+//		}
+//	}else{
+//		return add(point);
+//	}
+//	
+//	return NULL;
+//}
 
 PotreeWriterNode *PotreeWriterNode::createChild(int childIndex ){
 	stringstream childName;
@@ -212,7 +213,7 @@ void PotreeWriterNode::flush(){
 	}
 	
 	addCalledSinceLastFlush = false;
-
+    needsHrcFlush = false;
 	for(int i = 0; i < 8; i++){
 		if(children[i] != NULL){
 			children[i]->flush();
