@@ -17,6 +17,7 @@ GridCell::GridCell(){
 
 GridCell::GridCell(SparseGrid *grid, GridIndex &index){
 	this->grid = grid;
+    neighbours.reserve(26);
 
 	for(int i = max(index.i -1, 0); i <= min(grid->width-1, index.i + 1); i++){
 		for(int j = max(index.j -1, 0); j <= min(grid->height-1, index.j + 1); j++){

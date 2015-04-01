@@ -24,7 +24,6 @@ public:
 	int width;
 	int height;
 	int depth;
-	float spacing;
 	AABB aabb;
 	float squaredSpacing;
 	int numAccepted;
@@ -34,7 +33,7 @@ public:
 	SparseGrid(AABB aabb, float minGap);
 
 	SparseGrid(const SparseGrid &other)
-		: width(other.width), height(other.height), depth(other.depth), spacing(other.spacing), aabb(other.aabb), squaredSpacing(other.squaredSpacing), numAccepted(other.numAccepted)
+		: width(other.width), height(other.height), depth(other.depth), aabb(other.aabb), squaredSpacing(other.squaredSpacing), numAccepted(other.numAccepted)
 	{
 		count++;
 	}
@@ -44,10 +43,6 @@ public:
 	vector<GridCell*> targetArea(int x, int y, int z);
 
 	bool isDistant(const Vector3<double> &p, int i, int j, int k);
-
-	float minGap(const Vector3<double> &p, int i, int j, int k);
-
-	float minGap(const Vector3<double> &p);
 
 	bool add(Vector3<double> &p);
 
