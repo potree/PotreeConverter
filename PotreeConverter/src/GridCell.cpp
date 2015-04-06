@@ -22,13 +22,17 @@ GridCell::GridCell(SparseGrid *grid, GridIndex &index){
 	for(int i = max(index.i -1, 0); i <= min(grid->width-1, index.i + 1); i++){
 		for(int j = max(index.j -1, 0); j <= min(grid->height-1, index.j + 1); j++){
 			for(int k = max(index.k -1, 0); k <= min(grid->depth-1, index.k + 1); k++){
-				if(grid->find(GridIndex(i,j,k)) != grid->end()){
-					GridCell *neighbour = (*grid)[GridIndex(i,j,k)];
+
+				long long key = ((long long)k << 40) | ((long long)j << 20) | i;
+				SparseGrid::iterator it = grid->find(key);
+				if(it != grid->end()){
+					GridCell *neighbour = it->second;
 					if(neighbour != this){
 						neighbours.push_back(neighbour);
 						neighbour->neighbours.push_back(this);
 					}
 				}
+
 			}
 		}
 	}

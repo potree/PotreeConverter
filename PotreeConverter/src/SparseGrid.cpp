@@ -29,28 +29,7 @@ SparseGrid::~SparseGrid(){
 }
 
 
-/**
- * returns target and neighbour cells
- */
-vector<GridCell*> SparseGrid::targetArea(int x, int y, int z){
-	vector<GridCell*> cells;
-
-	for(int i = x - 1; i <= x + 1; i++){
-		for(int j = y - 1; j <= y + 1; j++){
-			for(int k = z - 1; k <= z + 1; k++){
-				GridIndex index(i,j,k);
-				if(find(index) != end()){
-					cells.push_back(this->operator[](index));
-				}
-			}
-		}
-	}
-
-	return cells;
-}
-
-bool SparseGrid::isDistant(const Vector3<double> &p, int i, int j, int k){
-	GridCell *cell = this->operator[](GridIndex(i,j,k));
+bool SparseGrid::isDistant(const Vector3<double> &p, GridCell *cell){
 	if(cell->squaredMinGap(p) < squaredSpacing){
 		return false;
 	}
@@ -75,25 +54,20 @@ bool SparseGrid::add(Vector3<double> &p){
 	int k = min(nz, depth-1);
 
 	GridIndex index(i,j,k);
-	if(find(index) == end()){
-		this->operator[](index) = new GridCell(this, index);
+	long long key = ((long long)k << 40) | ((long long)j << 20) | (long long)i;
+	SparseGrid::iterator it = find(key);
+	if(it == end()){
+		this->operator[](key) = new GridCell(this, index);
+		it = find(key);
 	}
 
-	if(isDistant(p, i, j, k)){
-		this->operator[](index)->add(p);
+	if(isDistant(p, it->second)){
+		this->operator[](key)->add(p);
 		numAccepted++;
 		return true;
 	}else{
 		return false;
 	}
-
-	//float gap = minGap(p, i, j, k);
-	//if(gap > spacing){
-	//	this->operator[](index)->add(p);
-	//	numAccepted++;
-	//}
-	//
-	//return gap;
 }
 
 void SparseGrid::addWithoutCheck(Vector3<double> &p){
@@ -106,9 +80,11 @@ void SparseGrid::addWithoutCheck(Vector3<double> &p){
 	int k = min(nz, depth-1);
 
 	GridIndex index(i,j,k);
-	if(find(index) == end()){
-		this->operator[](index) = new GridCell(this, index);
+	long long key = ((long long)k << 40) | ((long long)j << 20) | (long long)i;
+	SparseGrid::iterator it = find(key);
+	if(it == end()){
+		this->operator[](key) = new GridCell(this, index);
 	}
 
-	this->operator[](index)->add(p);
+	this->operator[](key)->add(p);
 }
