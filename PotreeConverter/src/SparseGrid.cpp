@@ -57,8 +57,7 @@ bool SparseGrid::add(Vector3<double> &p){
 	long long key = ((long long)k << 40) | ((long long)j << 20) | (long long)i;
 	SparseGrid::iterator it = find(key);
 	if(it == end()){
-		this->operator[](key) = new GridCell(this, index);
-		it = find(key);
+		it = this->insert(value_type(key, new GridCell(this, index))).first;
 	}
 
 	if(isDistant(p, it->second)){
@@ -83,8 +82,8 @@ void SparseGrid::addWithoutCheck(Vector3<double> &p){
 	long long key = ((long long)k << 40) | ((long long)j << 20) | (long long)i;
 	SparseGrid::iterator it = find(key);
 	if(it == end()){
-		this->operator[](key) = new GridCell(this, index);
+		it = this->insert(value_type(key, new GridCell(this, index))).first;
 	}
 
-	this->operator[](key)->add(p);
+	it->second->add(p);
 }
