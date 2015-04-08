@@ -95,37 +95,16 @@ AABB childAABB(const AABB &aabb, const int &index){
  *
  */
 int nodeIndex(const AABB &aabb, const Point &point){
-
 	int mx = 2.0 * (point.x - aabb.min.x) / aabb.size.x;
 	int my = 2.0 * (point.y - aabb.min.y) / aabb.size.y;
 	int mz = 2.0 * (point.z - aabb.min.z) / aabb.size.z;
 
+	mx = min(mx, 1);
+	my = min(my, 1);
+	mz = min(mz, 1);
+
 	return (mx << 2) | (my << 1) | mz;
-
-	//for(int i = 0; i < 8; i++){
-	//	if(childAABB(aabb, i).isInside(point)){
-	//		return i;
-	//	}
-	//}
-	//
-	//return -1;
 }
-
-
-//int nodeIndex(const AABB &aabb, const Point &point){
-//
-//	for(int i = 0; i < 8; i++){
-//		if(childAABB(aabb, i).isInside(point)){
-//			//return i;
-//
-//			// FIXME - for quadtree
-//			return i - (i%2);
-//		}
-//	}
-//	
-//	return -1;
-//}
-
 
 
 /**

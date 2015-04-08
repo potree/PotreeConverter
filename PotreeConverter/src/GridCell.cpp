@@ -74,3 +74,22 @@ float GridCell::minGapAtArea(const Vector3<double> &p){
 void GridCell::add(Vector3<double> p){
 	points.push_back(p);
 }
+
+bool GridCell::isDistant(const Vector3<double> &p, double squaredSpacing){
+	//for(int i = 0; i < points.size(); i++){
+	int numPoints = points.size();
+	for(int i = 0; i < numPoints; i++){
+		Vector3<double> &point = points[i];
+		double dx = p.x - point.x;
+		double dy = p.y - point.y;
+		double dz = p.z - point.z;
+		double squaredDistance = dx * dx + dy * dy + dz * dz;
+
+		if(squaredDistance < squaredSpacing){
+			return false;
+		}
+
+	}
+
+	return true;
+}

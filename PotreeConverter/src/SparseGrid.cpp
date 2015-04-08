@@ -30,18 +30,32 @@ SparseGrid::~SparseGrid(){
 
 
 bool SparseGrid::isDistant(const Vector3<double> &p, GridCell *cell){
-	if(cell->squaredMinGap(p) < squaredSpacing){
+	if(!cell->isDistant(p, squaredSpacing)){
 		return false;
 	}
+
 	for(int a = 0; a < cell->neighbours.size(); a++){
 		GridCell *neighbour = cell->neighbours[a];
-		float gap = neighbour->squaredMinGap(p);
-		if(gap < squaredSpacing){
+		if(!neighbour->isDistant(p, squaredSpacing)){
 			return false;
 		}
 	}
 
 	return true;
+
+
+	//if(cell->squaredMinGap(p) < squaredSpacing){
+	//	return false;
+	//}
+	//for(int a = 0; a < cell->neighbours.size(); a++){
+	//	GridCell *neighbour = cell->neighbours[a];
+	//	float gap = neighbour->squaredMinGap(p);
+	//	if(gap < squaredSpacing){
+	//		return false;
+	//	}
+	//}
+	//
+	//return true;
 }
 
 bool SparseGrid::add(Vector3<double> &p){
