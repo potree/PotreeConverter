@@ -103,7 +103,7 @@ bool BINPointReader::readNextPoint(){
 			}else if(attribute == PointAttribute::INTENSITY){
 				unsigned short* usBuffer = reinterpret_cast<unsigned short*>(buffer+offset);
 				point.intensity = usBuffer[0];
-			}else if(attribute == PointAttribute::INTENSITY){
+			}else if(attribute == PointAttribute::CLASSIFICATION){
 				unsigned char* ucBuffer = reinterpret_cast<unsigned char*>(buffer+offset);
 				point.classification = ucBuffer[0];
 			}
