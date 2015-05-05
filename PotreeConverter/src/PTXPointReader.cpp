@@ -31,19 +31,19 @@ inline void split(vector<double> &v, char (&str)[512]) {
     }
 }
 
-inline void getlined(fstream &stream, vector<double> &result) {
+inline void getlined(fstream *stream, vector<double> &result) {
     char str[512];
     result.clear();
-    stream.getline(str, 512);
+    stream->getline(str, 512);
     split(result, str);
 }
 
-inline void skipline(fstream &stream) {
+inline void skipline(fstream *stream) {
     string str;
-    getline(stream, str);
+    getline(*stream, str);
 }
 
-bool assertd(fstream &stream, int i) {
+bool assertd(fstream *stream, int i) {
     vector<double> tokens;
     getlined(stream, tokens);
     bool result = i == tokens.size();
@@ -80,7 +80,7 @@ PTXPointReader::PTXPointReader(string path) {
 
     // open first file
     this->currentFile = files.begin();
-    this->stream = fstream(*(this->currentFile), ios::in);
+    this->stream = new fstream(*(this->currentFile), ios::in);
     this->currentChunk = 0;
     skipline(this->stream);
     loadChunk(this->stream, this->currentChunk, this->tr);
@@ -96,7 +96,7 @@ void PTXPointReader::scanForAABB() {
     double tr[16];
     vector<double> split;
     for (int i = 0; i < files.size(); i++) {
-        fstream stream = fstream(files[i], ios::in);
+        fstream *stream=new fstream(files[i], ios::in);
         currentChunk = 0;
         getlined(stream, split);
         while (!pleaseStop) {
@@ -135,13 +135,13 @@ void PTXPointReader::scanForAABB() {
                     break;
                 }
             }
-            if (stream.eof()) {
+            if (stream->eof()) {
                 pleaseStop = true;
                 break;
             }
             currentChunk++;
         }
-        stream.close();
+        stream->close();
     }
 
     counts[path] = count;
@@ -149,7 +149,7 @@ void PTXPointReader::scanForAABB() {
     PTXPointReader::aabbs[path] = lAABB;
 }
 
-bool PTXPointReader::loadChunk(fstream &stream, long currentChunk, double tr[16]) {
+bool PTXPointReader::loadChunk(fstream *stream, long currentChunk, double tr[16]) {
     vector<double> split;
 
     // The first 5 lines should have respectively 1, 3, 3, 3, 3 numbers each.
@@ -208,12 +208,12 @@ bool PTXPointReader::readNextPoint() {
 }
 
 bool PTXPointReader::doReadNextPoint() {
-    if (this->stream.eof()) {
-        this->stream.close();
+    if (this->stream->eof()) {
+        this->stream->close();
         this->currentFile++;
 
         if (this->currentFile != files.end()) {
-            this->stream = fstream(*(this->currentFile), ios::in);
+            this->stream = new fstream(*(this->currentFile), ios::in);
             this->currentChunk = 0;
             skipline(stream);
             loadChunk(stream, currentChunk, tr);
