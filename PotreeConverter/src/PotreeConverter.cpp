@@ -10,6 +10,8 @@
 #include "PotreeException.h"
 #include "PotreeWriter.h"
 #include "LASPointWriter.hpp"
+#include "BINPointWriter.hpp"
+#include "BINPointReader.hpp"
 #include "PlyPointReader.h"
 #include "XYZPointReader.hpp"
 
@@ -48,7 +50,7 @@ struct Task{
 	}
 };
 
-PointReader *PotreeConverter::createPointReader(string path){
+PointReader *PotreeConverter::createPointReader(string path, PointAttributes pointAttributes){
 	PointReader *reader = NULL;
 	if(boost::iends_with(path, ".las") || boost::iends_with(path, ".laz")){
 		reader = new LASPointReader(path);
@@ -67,7 +69,9 @@ PointReader *PotreeConverter::createPointReader(string path){
 		}
 
 		reader = new XYZPointReader(path, format, colorRange, intensityRange);
- 	}
+ 	}else if(boost::iends_with(path, ".bin")){
+		reader = new BINPointReader(path, aabb, scale, pointAttributes);
+	}
 
 	return reader;
 }
@@ -141,56 +145,70 @@ void PotreeConverter::convert(){
 	long long pointsProcessed = 0;
 	auto start = high_resolution_clock::now();
 
-	// convert XYZ sources to las sources
-	for(int i = 0; i < sources.size(); i++){
-		string source = sources[i];
+	PointAttributes pointAttributes;
+	pointAttributes.add(PointAttribute::POSITION_CARTESIAN);
 
-		if(boost::iends_with(source, ".txt") || boost::iends_with(source, ".xyz") || boost::iends_with(source, ".pts") || boost::iends_with(source, ".ptx")){
-			boost::filesystem::path lasDir(workDir + "/las");
-			boost::filesystem::create_directories(lasDir);
-			string dest = workDir + "/las/" + fs::path(source).stem().string() + ".las";
+	for(int i = 0; i < outputAttributes.size(); i++){
+		string attribute = outputAttributes[i];
 
-			PointReader *reader = createPointReader(source);
-			LASPointWriter *writer = new LASPointWriter(dest, aabb, 0.001);
-			AABB aabb;
-
-			while(reader->readNextPoint()){
-				Point p = reader->getPoint();
-				writer->write(p);
-
-				Vector3<double> pos = p.position();
-				aabb.update(pos);
-				pointsProcessed++;
-
-				if (0 == pointsProcessed  % 1000000) {
-					auto end = high_resolution_clock::now();
-					long long duration = duration_cast<milliseconds>(end - start).count();
-					float seconds = duration / 1000.0f;
-					stringstream ssMessage;
-					ssMessage.imbue(std::locale(""));
-					ssMessage << "CONVERT-LAS: ";
-					ssMessage << pointsProcessed << " points processed; ";
-					ssMessage << seconds << " seconds passed";
-
-					cout << ssMessage.str() << endl;
-				}
-			}
-			writer->header->SetMax(aabb.max.x, aabb.max.y, aabb.max.z);
-			writer->header->SetMin(aabb.min.x, aabb.min.y, aabb.min.z);
-			writer->writer->SetHeader(*writer->header);
-			writer->writer->WriteHeader();
-
-			reader->close();
-			writer->close();
-
-			delete reader;
-			delete writer;
-
-			sources[i] = dest;
+		if(attribute == "RGB"){
+			pointAttributes.add(PointAttribute::COLOR_PACKED);
+		}else if(attribute == "INTENSITY"){
+			pointAttributes.add(PointAttribute::INTENSITY);
+		}else if(attribute == "CLASSIFICATION"){
+			pointAttributes.add(PointAttribute::CLASSIFICATION);
+		}else if(attribute == "NORMAL"){
+			pointAttributes.add(PointAttribute::NORMAL);
 		}
-		
 	}
-	cout << endl;
+
+	//// convert XYZ sources to BIN sources
+	//for(int i = 0; i < sources.size(); i++){
+	//	string source = sources[i];
+	//
+	//	if(boost::iends_with(source, ".txt") || boost::iends_with(source, ".xyz") || boost::iends_with(source, ".pts") || boost::iends_with(source, ".ptx")){
+	//		boost::filesystem::path lasDir(workDir + "/input");
+	//		boost::filesystem::create_directories(lasDir);
+	//		string dest = workDir + "/input/" + fs::path(source).stem().string() + ".bin";
+	//
+	//		PointReader *reader = createPointReader(source, pointAttributes);
+	//
+	//		BINPointWriter *writer = new BINPointWriter(dest, aabb, scale, pointAttributes);
+	//		AABB aabb;
+	//
+	//		while(reader->readNextPoint()){
+	//			Point p = reader->getPoint();
+	//			writer->write(p);
+	//
+	//			Vector3<double> pos = p.position();
+	//			aabb.update(pos);
+	//			pointsProcessed++;
+	//
+	//			if (0 == pointsProcessed  % 1000000) {
+	//				auto end = high_resolution_clock::now();
+	//				long long duration = duration_cast<milliseconds>(end - start).count();
+	//				float seconds = duration / 1000.0f;
+	//				stringstream ssMessage;
+	//				ssMessage.imbue(std::locale(""));
+	//				ssMessage << "CONVERT-BIN: ";
+	//				ssMessage << pointsProcessed << " points processed; ";
+	//				ssMessage << seconds << " seconds passed";
+	//
+	//				cout << ssMessage.str() << endl;
+	//			}
+	//		}
+	//
+	//		reader->close();
+	//		writer->close();
+	//
+	//		delete reader;
+	//		delete writer;
+	//
+	//		sources[i] = dest;
+	//	}
+	//	
+	//}
+	//cout << endl;
 
 
 	// calculate AABB and total number of points
@@ -198,7 +216,7 @@ void PotreeConverter::convert(){
 	long long numPoints = 0;
 	for(string source : sources){
 
-		PointReader *reader = createPointReader(source);
+		PointReader *reader = createPointReader(source, pointAttributes);
 		AABB lAABB = reader->getAABB();
 		 
 
@@ -242,7 +260,7 @@ void PotreeConverter::convert(){
 
 	start = high_resolution_clock::now();
 
-	PotreeWriter writer(this->workDir, aabb, spacing, maxDepth, scale, outputFormat, outputAttributes);
+	PotreeWriter writer(this->workDir, aabb, spacing, maxDepth, scale, outputFormat, pointAttributes);
 	//PotreeWriterLBL writer(this->workDir, aabb, spacing, maxDepth, outputFormat);
 
 	pointsProcessed = 0;
@@ -250,7 +268,7 @@ void PotreeConverter::convert(){
 		string source = sources[i];
 		cout << "reading " << source << endl;
 
-		PointReader *reader = createPointReader(source);
+		PointReader *reader = createPointReader(source, pointAttributes);
 		while(reader->readNextPoint()){
 			pointsProcessed++;
 			//if((pointsProcessed%50) != 0){

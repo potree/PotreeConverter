@@ -35,6 +35,7 @@ private:
 	AABB aabb;
 	ifstream stream;
 	long pointsRead;
+	long pointCount;
 	char *buffer;
 	int pointByteSize;
 	Point point;
@@ -55,6 +56,8 @@ public:
 		this->format = format;
 		pointsRead = 0;
 		linesSkipped = 0;
+		pointCount = 0;
+		colorScale = -1;
 
 		if(intensityRange.size() == 2){
 			intensityOffset = (float)intensityRange[0];
@@ -77,7 +80,7 @@ public:
 			colorOffset = 0.0f;
 
 			// try to find color range by evaluating the first x points.
-			float max;
+			float max = 0;
 			int j = 0; 
 			string line;
 			while(getline(stream, line) && j < 1000){
@@ -113,6 +116,8 @@ public:
 					}
 				}
 
+				
+
 				j++;
 			}
 
@@ -126,16 +131,28 @@ public:
 				colorScale = (float)max;
 			}
 
+			stream.clear();
 			stream.seekg(0, stream.beg);
 
 		}
 
+		// read through once to calculate aabb and number of points
+		while(readNextPoint()){
+			Point p = getPoint();
+			aabb.update(p.position());
+			pointCount++;
+		}
+		stream.clear();
+		stream.seekg(0, stream.beg);
 	}
 
 	bool readNextPoint(){
 		double x;
 		double y;
 		double z;
+		double nx = 0;
+		double ny = 0;
+		double nz = 0;
 		unsigned char r;
 		unsigned char g;
 		unsigned char b;
@@ -177,10 +194,19 @@ public:
 					intensity = (unsigned short)( 65535 * (stof(token) - intensityOffset) / intensityScale);
 				}else if(f == 's'){
 					// skip
+				}else if(f == 'X'){
+					nx = stod(token);
+				}else if(f == 'Y'){
+					ny = stod(token);
+				}else if(f == 'Z'){
+					nz = stod(token);
 				}
 			}
 
 			point = Point(x,y,z,r,g,b);
+			point.nx = nx;
+			point.ny = ny;
+			point.nz = nz;
 			point.intensity = intensity;
 			pointsRead++;
 			return true;
@@ -194,11 +220,10 @@ public:
 	}
 
 	AABB getAABB(){
-		AABB aabb;
 		return aabb;
 	}
 	long numPoints(){
-		return -1;
+		return pointCount;
 	}
 	void close(){
 		stream.close();
