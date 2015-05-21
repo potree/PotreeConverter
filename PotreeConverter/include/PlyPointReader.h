@@ -173,6 +173,9 @@ public:
 		float x = 0;
 		float y = 0;
 		float z = 0;
+		float nx = 0;
+		float ny = 0;
+		float nz = 0;
 		unsigned char r = 0;
 		unsigned char g = 0;
 		unsigned char b = 0;
@@ -199,6 +202,12 @@ public:
 					g = (unsigned char)stof(token);
 				}else if(std::find(plyBlueNames.begin(), plyBlueNames.end(), prop.name) != plyBlueNames.end() && prop.type.name == plyPropertyTypes["uchar"].name){
 					b = (unsigned char)stof(token);
+				}else if(prop.name == "nx" && prop.type.name == plyPropertyTypes["float"].name){
+					nx = stof(token);
+				}else if(prop.name == "ny" && prop.type.name == plyPropertyTypes["float"].name){
+					ny = stof(token);
+				}else if(prop.name == "nz" && prop.type.name == plyPropertyTypes["float"].name){
+					nz = stof(token);
 				}
 			}
 		}else if(format == PLY_FILE_FORMAT_BINARY_LITTLE_ENDIAN){
@@ -219,6 +228,12 @@ public:
 					memcpy(&g, (buffer+offset), prop.type.size);
 				}else if(std::find(plyBlueNames.begin(), plyBlueNames.end(), prop.name) != plyBlueNames.end() && prop.type.name == plyPropertyTypes["uchar"].name){
 					memcpy(&b, (buffer+offset), prop.type.size);
+				}else if(prop.name == "nx" && prop.type.name == plyPropertyTypes["float"].name){
+					memcpy(&nx, (buffer+offset), prop.type.size);
+				}else if(prop.name == "ny" && prop.type.name == plyPropertyTypes["float"].name){
+					memcpy(&ny, (buffer+offset), prop.type.size);
+				}else if(prop.name == "nz" && prop.type.name == plyPropertyTypes["float"].name){
+					memcpy(&nz, (buffer+offset), prop.type.size);
 				}
 				
 
@@ -228,6 +243,9 @@ public:
 		}
 
 		point = Point(x,y,z,r,g,b);
+		point.nx = nx;
+		point.ny = ny;
+		point.nz = nz;
 		pointsRead++;
 		return true;
 	}
