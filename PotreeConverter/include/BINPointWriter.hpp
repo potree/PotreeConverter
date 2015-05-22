@@ -68,18 +68,18 @@ public:
 				writer->write((const char*)&point.intensity, sizeof(unsigned short));
 			}else if(attribute == PointAttribute::CLASSIFICATION){
 				writer->write((const char*)&point.classification, sizeof(unsigned char));
-			}else if(attribute == PointAttribute::NORMAL){
+			}else if(attribute == PointAttribute::NORMAL_SPHEREMAPPED){
 				// see http://aras-p.info/texts/CompactNormalStorage.html
 				float nx = point.nx;
 				float ny = point.ny;
 				float nz = point.nz;
 				float lengthxy = sqrt(nx * nx + ny * ny);
 
-				float ex = 0.5 * (nx / lengthxy) * sqrt(-nz*0.5 + 0.5) + 0.5;
-				float ey = 0.5 * (ny / lengthxy) * sqrt(-nz*0.5 + 0.5) + 0.5;
+				float ex = 0.5f * (nx / lengthxy) * sqrt(-nz * 0.5f + 0.5f) + 0.5f;
+				float ey = 0.5f * (ny / lengthxy) * sqrt(-nz * 0.5f + 0.5f) + 0.5f;
 
-				unsigned char bx = ex * 255;
-				unsigned char by = ey * 255;
+				unsigned char bx = (unsigned char)(ex * 255);
+				unsigned char by = (unsigned char)(ey * 255);
 
 				writer->write((const char*)&bx, 1);
 				writer->write((const char*)&by, 1);

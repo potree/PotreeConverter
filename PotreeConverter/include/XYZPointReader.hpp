@@ -150,9 +150,9 @@ public:
 		double x;
 		double y;
 		double z;
-		double nx = 0;
-		double ny = 0;
-		double nz = 0;
+		float nx = 0;
+		float ny = 0;
+		float nz = 0;
 		unsigned char r;
 		unsigned char g;
 		unsigned char b;
@@ -195,11 +195,11 @@ public:
 				}else if(f == 's'){
 					// skip
 				}else if(f == 'X'){
-					nx = stod(token);
+					nx = stof(token);
 				}else if(f == 'Y'){
-					ny = stod(token);
+					ny = stof(token);
 				}else if(f == 'Z'){
-					nz = stod(token);
+					nz = stof(token);
 				}
 			}
 

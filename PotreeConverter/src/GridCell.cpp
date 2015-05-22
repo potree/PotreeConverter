@@ -77,7 +77,7 @@ void GridCell::add(Vector3<double> p){
 
 bool GridCell::isDistant(const Vector3<double> &p, double squaredSpacing){
 	//for(int i = 0; i < points.size(); i++){
-	int numPoints = points.size();
+	int numPoints = (int)points.size();
 	for(int i = 0; i < numPoints; i++){
 		Vector3<double> &point = points[i];
 		double dx = p.x - point.x;

@@ -156,7 +156,7 @@ public:
 		cloudjs.boundingBox = aabb;
 		cloudjs.octreeDir = "data";
 		cloudjs.spacing = spacing;
-		cloudjs.version = "1.6";
+		cloudjs.version = "1.7";
 		cloudjs.scale = scale;
 		cloudjs.pointAttributes = pointAttributes;
 

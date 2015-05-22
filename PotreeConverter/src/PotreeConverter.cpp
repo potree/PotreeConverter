@@ -158,7 +158,7 @@ void PotreeConverter::convert(){
 		}else if(attribute == "CLASSIFICATION"){
 			pointAttributes.add(PointAttribute::CLASSIFICATION);
 		}else if(attribute == "NORMAL"){
-			pointAttributes.add(PointAttribute::NORMAL);
+			pointAttributes.add(PointAttribute::NORMAL_SPHEREMAPPED);
 		}
 	}
 
