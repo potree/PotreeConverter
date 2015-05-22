@@ -106,6 +106,33 @@ bool BINPointReader::readNextPoint(){
 			}else if(attribute == PointAttribute::CLASSIFICATION){
 				unsigned char* ucBuffer = reinterpret_cast<unsigned char*>(buffer+offset);
 				point.classification = ucBuffer[0];
+			}else if(attribute == PointAttribute::NORMAL_SPHEREMAPPED){
+				// see http://aras-p.info/texts/CompactNormalStorage.html
+				unsigned char* ucBuffer = reinterpret_cast<unsigned char*>(buffer+offset);
+				unsigned char bx = ucBuffer[0];
+				unsigned char by = ucBuffer[1];
+
+ 				float ex = (float)bx / 255.0f;
+				float ey = (float)by / 255.0f;
+
+				float nx = ex * 2 - 1;
+				float ny = ey * 2 - 1;
+				float nz = 1;
+				float nw = -1;
+
+				float l = (nx * (-nx) + ny * (-ny) + nz * (-nw));
+				nz = l;
+				nx = nx * sqrt(l);
+				ny = ny * sqrt(l);
+
+				nx = nx * 2;
+				ny = ny * 2;
+				nz = nz * 2 -1;
+
+				point.nx = nx;
+				point.ny = ny;
+				point.nz = nz;
+
 			}
 			offset += attribute.byteSize;
 		}

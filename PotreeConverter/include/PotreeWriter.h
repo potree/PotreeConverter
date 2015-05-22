@@ -106,7 +106,7 @@ public:
 
 
 
-	PotreeWriter(string workDir, AABB aabb, float spacing, int maxLevel, double scale, OutputFormat outputFormat, vector<string> outputAttributes){
+	PotreeWriter(string workDir, AABB aabb, float spacing, int maxLevel, double scale, OutputFormat outputFormat, PointAttributes pointAttributes){
 		this->workDir = workDir;
 		this->aabb = aabb;
 		this->spacing = spacing;
@@ -150,25 +150,13 @@ public:
 		fs::create_directories(workDir + "/data");
 		fs::create_directories(workDir + "/temp");
 
-		pointAttributes.add(PointAttribute::POSITION_CARTESIAN);
-
-		for(int i = 0; i < outputAttributes.size(); i++){
-			string attribute = outputAttributes[i];
-
-			if(attribute == "RGB"){
-				pointAttributes.add(PointAttribute::COLOR_PACKED);
-			}else if(attribute == "INTENSITY"){
-				pointAttributes.add(PointAttribute::INTENSITY);
-			}else if(attribute == "CLASSIFICATION"){
-				pointAttributes.add(PointAttribute::CLASSIFICATION);
-			}
-		}
+		this->pointAttributes = pointAttributes;
 
 		cloudjs.outputFormat = outputFormat;
 		cloudjs.boundingBox = aabb;
 		cloudjs.octreeDir = "data";
 		cloudjs.spacing = spacing;
-		cloudjs.version = "1.6";
+		cloudjs.version = "1.7";
 		cloudjs.scale = scale;
 		cloudjs.pointAttributes = pointAttributes;
 

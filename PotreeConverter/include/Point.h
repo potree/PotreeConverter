@@ -15,6 +15,9 @@ public:
 	double x;
 	double y;
 	double z;
+	float nx;
+	float ny;
+	float nz;
 	unsigned short intensity;
 	unsigned char classification;
 	unsigned char r;
@@ -29,6 +32,9 @@ public:
 		this->x = 0;
 		this->y = 0;
 		this->z = 0;
+		this->nx = 0;
+		this->ny = 0;
+		this->nz = 0;
 		this->intensity = 0;
 		this->classification = 0;
 		this->r = 0;
@@ -47,6 +53,9 @@ public:
 		this->x = x;
 		this->y = y;
 		this->z = z;
+		this->nx = 0;
+		this->ny = 0;
+		this->nz = 0;
 		this->intensity = 0;
 		this->classification = 0;
 		this->r = r;
@@ -64,6 +73,9 @@ public:
 		this->x = x;
 		this->y = y;
 		this->z = z;
+		this->nx = 0;
+		this->ny = 0;
+		this->nz = 0;
 		this->intensity = 0;
 		this->classification = 0;
 		this->r = 255;
@@ -82,7 +94,7 @@ public:
 		intensity(other.intensity), classification(other.classification), 
 		r(other.r), g(other.g), b(other.b), 
 		returnNumber(other.returnNumber), numberOfReturns(other.numberOfReturns), 
-		pointSourceID(other.pointSourceID)
+		pointSourceID(other.pointSourceID), nx(other.nx), ny(other.ny), nz(other.nz)
 	{
 		count++;
 	}
