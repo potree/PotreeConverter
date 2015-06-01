@@ -139,7 +139,8 @@ public:
 		// read through once to calculate aabb and number of points
 		while(readNextPoint()){
 			Point p = getPoint();
-			aabb.update(p.position());
+			Vector3<double> position = p.position();
+			aabb.update(position);
 			pointCount++;
 		}
 		stream.clear();
