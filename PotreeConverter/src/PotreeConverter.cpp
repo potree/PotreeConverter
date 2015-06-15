@@ -284,7 +284,7 @@ void PotreeConverter::convert(){
 			//	writer.flush();
 			//}
 
-			if((pointsProcessed % (1000*1000)) == 0){
+			if((pointsProcessed % (5*1000*1000)) == 0){
 				writer.flush();
 
 				auto end = high_resolution_clock::now();
