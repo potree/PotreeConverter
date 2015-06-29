@@ -80,7 +80,7 @@ PTXPointReader::PTXPointReader(string path) {
 
     // open first file
     this->currentFile = files.begin();
-    this->stream = fstream(*(this->currentFile), ios::in);
+    this->stream.open(*(this->currentFile), ios::in);
     this->currentChunk = 0;
     skipline(this->stream);
     loadChunk(this->stream, this->currentChunk, this->tr);
@@ -96,7 +96,7 @@ void PTXPointReader::scanForAABB() {
     double tr[16];
     vector<double> split;
     for (int i = 0; i < files.size(); i++) {
-        fstream stream = fstream(files[i], ios::in);
+        fstream stream(files[i], ios::in);
         currentChunk = 0;
         getlined(stream, split);
         while (!pleaseStop) {
@@ -213,7 +213,7 @@ bool PTXPointReader::doReadNextPoint() {
         this->currentFile++;
 
         if (this->currentFile != files.end()) {
-            this->stream = fstream(*(this->currentFile), ios::in);
+            this->stream.open(*(this->currentFile), ios::in);
             this->currentChunk = 0;
             skipline(stream);
             loadChunk(stream, currentChunk, tr);
