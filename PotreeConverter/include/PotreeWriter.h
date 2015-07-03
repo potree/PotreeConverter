@@ -6,6 +6,8 @@
 #include <string>
 #include <sstream>
 #include <list>
+#include <thread>
+#include <mutex>
 
 #include "boost/filesystem.hpp"
 
@@ -20,6 +22,9 @@
 
 using std::string;
 using std::stringstream;
+using std::thread;
+using std::mutex;
+using std::lock_guard;
 
 namespace fs = boost::filesystem;
 
@@ -100,6 +105,8 @@ public:
 	OutputFormat outputFormat;
 	PointAttributes pointAttributes;
 	int hierarchyStepSize;
+	vector<Point> store;
+	thread storeThread;
 
 	int pointsInMemory;
 	int pointsInMemoryLimit;
@@ -181,19 +188,44 @@ public:
 		return "";
 	}
 
+	void processStore(){
+
+		vector<Point> st = store;
+		store = vector<Point>();
+
+		if(storeThread.joinable()){
+			storeThread.join();
+		}
+
+		storeThread = thread([this, st]{
+			for(Point p : st){
+				PotreeWriterNode *acceptedBy = root->add(p);
+				if(acceptedBy != NULL){
+					pointsInMemory++;
+					numAccepted++;
+
+					Vector3<double> position = p.position();
+					tightAABB.update(position);
+				}
+			}
+		});
+	}
+
 	void add(Point &p){
-		PotreeWriterNode *acceptedBy = root->add(p);
+		store.push_back(p);
 
-		if(acceptedBy != NULL){
-			pointsInMemory++;
-			numAccepted++;
-
-			Vector3<double> position = p.position();
-			tightAABB.update(position);
+		if(store.size() > 10*1000){
+			processStore();
 		}
 	}
 
 	void flush(){
+		processStore();
+
+		if(storeThread.joinable()){
+			storeThread.join();
+		}
+
 		root->flush();
 
 		{// update cloud.js
