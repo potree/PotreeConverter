@@ -33,7 +33,7 @@ public:
 
 	float minGapAtArea(const Vector3<double> &p);
 
-	bool isDistant(const Vector3<double> &p, double squaredSpacing);
+	bool isDistant(const Vector3<double> &p, const double squaredSpacing) const;
 };
 
 #endif
