@@ -6,6 +6,7 @@
 
 #include "boost/filesystem.hpp"
 #include <boost/algorithm/string.hpp>
+#include <boost/math/special_functions/math_fwd.hpp>
 
 #include "BINPointReader.hpp"
 
@@ -17,6 +18,7 @@ using std::endl;
 using std::vector;
 using boost::iequals;
 using std::ios;
+using boost::math::sign;
 
 
 BINPointReader::BINPointReader(string path,  AABB aabb, double scale, PointAttributes pointAttributes){
@@ -133,7 +135,41 @@ bool BINPointReader::readNextPoint(){
 				point.ny = ny;
 				point.nz = nz;
 
+			}else if(attribute == PointAttribute::NORMAL_OCT16){
+				unsigned char* ucBuffer = reinterpret_cast<unsigned char*>(buffer+offset);
+				unsigned char bx = ucBuffer[0];
+				unsigned char by = ucBuffer[1];
+
+				float u = (bx / 255.0) * 2.0 - 1.0;
+				float v = (by / 255.0) * 2.0 - 1.0;
+
+				float x = 0.0;
+				float y = 0.0;
+				float z = 1.0 - abs(u) - abs(v);
+
+				if(z >= 0){
+					x = u;
+					y = v;
+				}else{
+					x = -( v / sign(v) - 1.0 ) / sign(u);
+					y = -( u / sign(u) - 1.0 ) / sign(v);
+				}
+
+				float length = sqrt(x*x + y*y + z*z);
+				x = x / length;
+				y = y / length;
+				z = z / length;
+
+				point.nx = x;
+				point.ny = y;
+				point.nz = z;
+			}else if(attribute == PointAttribute::NORMAL){
+				float* fBuffer = reinterpret_cast<float*>(buffer+offset);
+				point.nx = fBuffer[0];
+				point.ny = fBuffer[1];
+				point.nz = fBuffer[2];
 			}
+
 			offset += attribute.byteSize;
 		}
 		

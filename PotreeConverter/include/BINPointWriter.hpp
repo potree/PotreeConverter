@@ -7,14 +7,18 @@
 #include <iostream>
 #include <fstream>
 
+#include <boost/math/special_functions/math_fwd.hpp>
+
 #include "AABB.h"
 #include "PointAttributes.hpp"
 #include "PointWriter.hpp"
+
 
 using std::string;
 using std::vector;
 using std::ofstream;
 using std::ios;
+using boost::math::sign;
 
 
 
@@ -83,6 +87,39 @@ public:
 
 				writer->write((const char*)&bx, 1);
 				writer->write((const char*)&by, 1);
+			}else if(attribute == PointAttribute::NORMAL_OCT16){
+				// see http://lgdv.cs.fau.de/get/1602
+
+				float nx = point.nx;
+				float ny = point.ny;
+				float nz = point.nz;
+				
+				float norm1 = abs(nx) + abs(ny) + abs(nz);
+
+				nx = nx / norm1;
+				ny = ny / norm1;
+				nz = nz / norm1;
+
+				float u = 0;
+				float v = 0;
+
+				if(nz >= 0){
+					u = nx;
+					v = ny;
+				}else{
+					u = sign(nx)*(1-sign(ny)*ny);
+					v = sign(ny)*(1-sign(nx)*nx);
+				}
+
+				unsigned char bx = (unsigned char)(min((u + 1) * 128, 255.0f));
+				unsigned char by = (unsigned char)(min((v + 1) * 128, 255.0f));
+
+				writer->write((const char*)&bx, 1);
+				writer->write((const char*)&by, 1);
+			}else if(attribute == PointAttribute::NORMAL){
+				writer->write((const char*)&point.nx, sizeof(float));
+				writer->write((const char*)&point.ny, sizeof(float));
+				writer->write((const char*)&point.nz, sizeof(float));
 			}
 		}
 

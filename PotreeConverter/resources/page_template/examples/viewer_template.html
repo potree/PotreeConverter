@@ -79,6 +79,29 @@ void main() {
 	<script src="../build/js/potree.js"></script>
 	<script src="./js/ProgressBar.js"></script>
 	
+	<!-- uncomment this to debug changes to the individual js files -->
+	<!--
+	<script src="../src/PointCloudOctree.js"></script>
+	<script src="../src/PointCloudOctreeGeometry.js"></script>
+	<script src="../src/loader/POCLoader.js"></script>
+	<script src="../src/loader/BinaryLoader.js"></script>
+	<script src="../src/materials/PointCloudMaterial.js"></script>
+	<script src="../src/EarthControls.js"></script>
+	<script src="../src/OrbitControls.js"></script>
+	<script src="../src/FirstPersonControls.js"></script>
+	<script src="../src/utils/ProfileTool.js"></script>
+	<script src="../src/utils/MeasuringTool.js"></script>
+	<script src="../src/utils/VolumeTool.js"></script>
+	<script src="../src/utils.js"></script>
+	<script src="../src/LRU.js"></script>
+	<script src="../src/TextSprite.js"></script>
+	<script src="../src/Features.js"></script>
+	<script src="../src/arena4d/PointCloudArena4D.js"></script>
+	<script src="../src/arena4d/PointCloudArena4DGeometry.js"></script>
+	-->
+	
+	
+	
 	<!-- INCLUDE ADDITIONAL DEPENDENCIES HERE -->
 	<!-- INCLUDE SETTINGS HERE -->
 	
@@ -111,6 +134,11 @@ void main() {
 	<div id="renderArea"></div>
 	
 	<script>
+		
+		if( /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ) {
+			sceneProperties.navigation = "Orbit";
+		}
+
 	
 		var fov = sceneProperties.fov;
 		var pointSize = sceneProperties.pointSize;
@@ -124,6 +152,7 @@ void main() {
 		var isFlipYZ = false;
 		var useDEMCollisions = false;
 		var minNodeSize = 150;
+		var directionalLight;
 		
 		var showStats = false;
 		var showBoundingBox = false;
@@ -166,7 +195,13 @@ void main() {
 		};
 		
 		function setQuality(value){
-			quality = value;
+			if(value == "Interpolation" && !Potree.Features.SHADER_INTERPOLATION.isSupported()){
+				quality = "Squares";
+			}else if(value == "Splats" && !Potree.Features.SHADER_SPLATS.isSupported()){
+				quality = "Squares";
+			}else{
+				quality = value;
+			}
 		};
 		
 		function setMaterial(value){
@@ -186,8 +221,8 @@ void main() {
 				pointColorType = Potree.PointColorType.RETURN_NUMBER;
 			}else if(value === "Source"){
 				pointColorType = Potree.PointColorType.SOURCE;
-			}else if(value === "Octree Depth"){
-				pointColorType = Potree.PointColorType.OCTREE_DEPTH;
+			}else if(value === "Tree Depth"){
+				pointColorType = Potree.PointColorType.TREE_DEPTH;
 			}else if(value === "Point Index"){
 				pointColorType = Potree.PointColorType.POINT_INDEX;
 			}else if(value === "Normal"){
@@ -258,7 +293,7 @@ void main() {
 				options = [ 
 				"RGB", "Color", "Height", "Intensity", "Intensity Gradient", 
 				"Classification", "Return Number", "Source",
-				"Octree Depth"];
+				"Tree Depth"];
 			}else{
 				for(var i = 0; i < attributes.attributes.length; i++){
 					var attribute = attributes.attributes[i];
@@ -270,7 +305,7 @@ void main() {
 						options.push("Intensity Gradient");
 					}else if(attribute === PointAttribute.CLASSIFICATION){
 						options.push("Classification");
-					}else if(attribute === PointAttribute.NORMAL_SPHEREMAPPED){
+					}else if(attribute === PointAttribute.NORMAL_SPHEREMAPPED || attribute === PointAttribute.NORMAL_OCT16){
 						options.push("Phong");
 						options.push("Normal");
 					}
@@ -520,13 +555,12 @@ void main() {
 			
 			window.addEventListener( 'keydown', onKeyDown, false );
 			
-			
-			var directionalLight = new THREE.DirectionalLight( 0xffffff, 0.5 );
+			directionalLight = new THREE.DirectionalLight( 0xffffff, 0.5 );
 			directionalLight.position.set( 10, 10, 10 );
 			directionalLight.lookAt( new THREE.Vector3(0, 0, 0));
 			scenePointCloud.add( directionalLight );
 			
-			var light = new THREE.AmbientLight( 0x707070 ); // soft white light
+			var light = new THREE.AmbientLight( 0x555555 ); // soft white light
 			scenePointCloud.add( light );
 			
 		}
@@ -584,6 +618,9 @@ void main() {
 		
 		function update(){
 			Potree.pointLoadLimit = pointCountTarget * 2 * 1000 * 1000;
+			
+			directionalLight.position.copy(camera.position);
+			directionalLight.lookAt(new THREE.Vector3().addVectors(camera.position, camera.getWorldDirection()));
 			
 			if(pointcloud){
 			
@@ -978,11 +1015,11 @@ void main() {
 				
 			
 			    volumeTool.render();
-				profileTool.render();
 				renderer.render(sceneNormalize, cameraBG);
 				
 				
 				renderer.clearDepth();
+				profileTool.render();
 				measuringTool.render();
 				transformationTool.render();
 					
