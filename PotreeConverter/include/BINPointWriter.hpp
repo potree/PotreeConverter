@@ -7,19 +7,16 @@
 #include <iostream>
 #include <fstream>
 
-#include <boost/math/special_functions/math_fwd.hpp>
-
 #include "AABB.h"
 #include "PointAttributes.hpp"
 #include "PointWriter.hpp"
+#include "stuff.h"
 
 
 using std::string;
 using std::vector;
 using std::ofstream;
 using std::ios;
-using boost::math::sign;
-
 
 
 class BINPointWriter : public PointWriter{
@@ -107,8 +104,8 @@ public:
 					u = nx;
 					v = ny;
 				}else{
-					u = sign(nx)*(1-sign(ny)*ny);
-					v = sign(ny)*(1-sign(nx)*nx);
+					u = psign(nx)*(1-psign(ny)*ny);
+					v = psign(ny)*(1-psign(nx)*nx);
 				}
 
 				unsigned char bx = (unsigned char)(min((u + 1) * 128, 255.0f));

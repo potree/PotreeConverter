@@ -102,7 +102,7 @@ string toUpper(string str);
 
 bool copyDir(fs::path source, fs::path destination);
 
-
+int psign(float value);
 
 
 

@@ -6,9 +6,9 @@
 
 #include "boost/filesystem.hpp"
 #include <boost/algorithm/string.hpp>
-#include <boost/math/special_functions/math_fwd.hpp>
 
 #include "BINPointReader.hpp"
+#include "stuff.h"
 
 namespace fs = boost::filesystem;
 
@@ -18,7 +18,6 @@ using std::endl;
 using std::vector;
 using boost::iequals;
 using std::ios;
-using boost::math::sign;
 
 
 BINPointReader::BINPointReader(string path,  AABB aabb, double scale, PointAttributes pointAttributes){
@@ -151,8 +150,8 @@ bool BINPointReader::readNextPoint(){
 					x = u;
 					y = v;
 				}else{
-					x = -( v / sign(v) - 1.0 ) / sign(u);
-					y = -( u / sign(u) - 1.0 ) / sign(v);
+					x = -( v / psign(v) - 1.0 ) / psign(u);
+					y = -( u / psign(u) - 1.0 ) / psign(v);
 				}
 
 				float length = sqrt(x*x + y*y + z*z);
