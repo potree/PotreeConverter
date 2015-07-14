@@ -26,6 +26,13 @@ Linux/MacOSX:
     make
 
     # copy ./PotreeConverter/resources/page_template to your binary working directory.
+	
+Linux with custom builds of liblas and laszip
+
+```
+mkdir build && cd build
+cmake -DCMAKE_BUILD_TYPE=Release -DLIBLAS_INCLUDE_DIR=/opt/source/libLAS-1.8.0/build/include/ -DLIBLAS_LIBRARY=/opt/source/libLAS-1.8.0/build/lib/liblas.so -DLASZIP_INCLUDE_DIR=/opt/source/laszip-2.1.0/build/include -DLASZIP_LIBRARY=/opt/source/laszip-2.1.0/build/lib/liblaszip.so ..
+```
 
 Ubuntu:
 
