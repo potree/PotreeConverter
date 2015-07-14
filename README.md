@@ -90,7 +90,7 @@ Options:
 --intensity-range arg
 --output-format arg                   Output format can be BINARY, LAS or
                                       LAZ. Default is BINARY
--a [ --output-attributes ] arg        Can be any combination of RGB, INTENSITY and CLASSIFICATION. Default is RGB.
+-a [ --output-attributes ] arg        Can be any combination of RGB, INTENSITY, CLASSIFICATION and NORMAL. Default is RGB.
 --scale arg                           Scale of the X, Y, Z coordinate in LAS and LAZ files.
 --source arg                          Source file. Can be LAS, LAZ, PTX or
 ```
