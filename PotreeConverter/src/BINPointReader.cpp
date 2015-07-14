@@ -8,6 +8,7 @@
 #include <boost/algorithm/string.hpp>
 
 #include "BINPointReader.hpp"
+#include "stuff.h"
 
 namespace fs = boost::filesystem;
 
@@ -103,10 +104,71 @@ bool BINPointReader::readNextPoint(){
 			}else if(attribute == PointAttribute::INTENSITY){
 				unsigned short* usBuffer = reinterpret_cast<unsigned short*>(buffer+offset);
 				point.intensity = usBuffer[0];
-			}else if(attribute == PointAttribute::INTENSITY){
+			}else if(attribute == PointAttribute::CLASSIFICATION){
 				unsigned char* ucBuffer = reinterpret_cast<unsigned char*>(buffer+offset);
 				point.classification = ucBuffer[0];
+			}else if(attribute == PointAttribute::NORMAL_SPHEREMAPPED){
+				// see http://aras-p.info/texts/CompactNormalStorage.html
+				unsigned char* ucBuffer = reinterpret_cast<unsigned char*>(buffer+offset);
+				unsigned char bx = ucBuffer[0];
+				unsigned char by = ucBuffer[1];
+
+ 				float ex = (float)bx / 255.0f;
+				float ey = (float)by / 255.0f;
+
+				float nx = ex * 2 - 1;
+				float ny = ey * 2 - 1;
+				float nz = 1;
+				float nw = -1;
+
+				float l = (nx * (-nx) + ny * (-ny) + nz * (-nw));
+				nz = l;
+				nx = nx * sqrt(l);
+				ny = ny * sqrt(l);
+
+				nx = nx * 2;
+				ny = ny * 2;
+				nz = nz * 2 -1;
+
+				point.nx = nx;
+				point.ny = ny;
+				point.nz = nz;
+
+			}else if(attribute == PointAttribute::NORMAL_OCT16){
+				unsigned char* ucBuffer = reinterpret_cast<unsigned char*>(buffer+offset);
+				unsigned char bx = ucBuffer[0];
+				unsigned char by = ucBuffer[1];
+
+				float u = (bx / 255.0) * 2.0 - 1.0;
+				float v = (by / 255.0) * 2.0 - 1.0;
+
+				float x = 0.0;
+				float y = 0.0;
+				float z = 1.0 - abs(u) - abs(v);
+
+				if(z >= 0){
+					x = u;
+					y = v;
+				}else{
+					x = -( v / psign(v) - 1.0 ) / psign(u);
+					y = -( u / psign(u) - 1.0 ) / psign(v);
+				}
+
+				float length = sqrt(x*x + y*y + z*z);
+				x = x / length;
+				y = y / length;
+				z = z / length;
+
+				point.nx = x;
+				point.ny = y;
+				point.nz = z;
+			}else if(attribute == PointAttribute::NORMAL){
+				float* fBuffer = reinterpret_cast<float*>(buffer+offset);
+				point.nx = fBuffer[0];
+				point.ny = fBuffer[1];
+				point.nz = fBuffer[2];
 			}
+
 			offset += attribute.byteSize;
 		}
 		

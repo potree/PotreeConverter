@@ -53,7 +53,7 @@ private:
 	double scale;
 	int diagonalFraction;
 
-	PointReader *createPointReader(string source);
+	PointReader *createPointReader(string source, PointAttributes pointAttributes);
 
 public:
 

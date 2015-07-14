@@ -2,6 +2,14 @@
 #ifndef STUFF_H
 #define STUFF_H
 
+// BOOST_VERSION % 100 is the patch level
+// BOOST_VERSION / 100 % 1000 is the minor version
+// BOOST_VERSION / 100000 is the major version/
+
+#if (BOOST_VERSION < 105700)
+#define BOOST_NO_CXX11_SCOPED_ENUMS
+#endif
+
 #include <vector>
 #include <map>
 #include <iostream>
@@ -94,7 +102,7 @@ string toUpper(string str);
 
 bool copyDir(fs::path source, fs::path destination);
 
-
+int psign(float value);
 
 
 

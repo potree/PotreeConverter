@@ -15,6 +15,9 @@ public:
 	static const PointAttribute COLOR_PACKED;
 	static const PointAttribute INTENSITY;
 	static const PointAttribute CLASSIFICATION;
+	static const PointAttribute NORMAL_SPHEREMAPPED;
+	static const PointAttribute NORMAL_OCT16;
+	static const PointAttribute NORMAL;
 
 	int ordinal;
 	string name;

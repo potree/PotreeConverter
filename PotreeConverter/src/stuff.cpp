@@ -36,6 +36,8 @@ using std::map;
 
 
 
+
+
 /**
  *   y 
  *   |-z
@@ -51,89 +53,31 @@ using std::map;
  *
  */
 AABB childAABB(const AABB &aabb, const int &index){
-	Vector3<double> min, max;
-	Vector3<double> halfSize = aabb.size / 2.0f;
 
-	min = aabb.min;
-	max = aabb.min + halfSize;
+	Vector3<double> min = aabb.min;
+	Vector3<double> max = aabb.max;
 
-	if(index == 0){
-		
-	}else if(index == 1){
-		min = min + Vector3<double>(0,0,halfSize.z);
-		max = max + Vector3<double>(0,0,halfSize.z);
-	}else if(index == 2){
-		min = min + Vector3<double>(0, halfSize.y, 0);
-		max.y = aabb.max.y;
-	}else if(index == 3){
-		min = min + Vector3<double>(0, halfSize.y, halfSize.z);
-		max.y = aabb.max.y;
-		max.z = aabb.max.z;
-	}else if(index == 4){
-		min = min + Vector3<double>(halfSize.x, 0, 0);
-		max = max + Vector3<double>(halfSize.x, 0, 0);
-	}else if(index == 5){
-		min = min + Vector3<double>(halfSize.x, 0, halfSize.z);
-		//max = max + Vector3<double>(halfSize.x, 0, halfSize.z);
-		max.x = aabb.max.x;
-		max.z = aabb.max.z;
-	}else if(index == 6){
-		min = min + Vector3<double>(halfSize.x, halfSize.y, 0);
-		//max = max + Vector3<double>(halfSize.x, halfSize.y, 0);
-		max.x = aabb.max.x;
-		max.y = aabb.max.y;
-	}else if(index == 7){
-		min = min + halfSize;
-		//max = max + halfSize;
-		max = aabb.max;
+	if((index & 1) > 0){
+		min.z += aabb.size.z / 2;
+	}else{
+		max.z -= aabb.size.z / 2;
+	}
+
+	if((index & 2) > 0){
+		min.y += aabb.size.y / 2;
+	}else{
+		max.y -= aabb.size.y / 2;
+	}
+
+	if((index & 4) > 0){
+		min.x += aabb.size.x / 2;
+	}else{
+		max.x -= aabb.size.x / 2;
 	}
 
 	return AABB(min, max);
 }
 
-//AABB childAABB(const AABB &aabb, const int &index){
-//	Vector3<double> min, max;
-//	Vector3<double> halfSize = aabb.size / 2.0f;
-//
-//	min = aabb.min;
-//	max = aabb.min + halfSize;
-//
-//	// FIXME - for quadtree
-//	if(index == 0){
-//		
-//	}else if(index == 1){
-//		min = min + Vector3<double>(0,0,halfSize.z);
-//		max = max + Vector3<double>(0,0,halfSize.z);
-//	}else if(index == 2){
-//		min = min + Vector3<double>(0, halfSize.y, 0);
-//		max.y = aabb.max.y;
-//	}else if(index == 3){
-//		min = min + Vector3<double>(0, halfSize.y, halfSize.z);
-//		max.y = aabb.max.y;
-//		max.z = aabb.max.z;
-//	}else if(index == 4){
-//		min = min + Vector3<double>(halfSize.x, 0, 0);
-//		max = max + Vector3<double>(halfSize.x, 0, 0);
-//	}else if(index == 5){
-//		min = min + Vector3<double>(halfSize.x, 0, halfSize.z);
-//		//max = max + Vector3<double>(halfSize.x, 0, halfSize.z);
-//		max.x = aabb.max.x;
-//		max.z = aabb.max.z;
-//	}else if(index == 6){
-//		min = min + Vector3<double>(halfSize.x, halfSize.y, 0);
-//		//max = max + Vector3<double>(halfSize.x, halfSize.y, 0);
-//		max.x = aabb.max.x;
-//		max.y = aabb.max.y;
-//	}else if(index == 7){
-//		min = min + halfSize;
-//		//max = max + halfSize;
-//		max = aabb.max;
-//	}
-//	min.z = aabb.min.z;
-//	max.z = aabb.max.z;
-//
-//	return AABB(min, max);
-//}
 
 
 /**
@@ -151,31 +95,16 @@ AABB childAABB(const AABB &aabb, const int &index){
  *
  */
 int nodeIndex(const AABB &aabb, const Point &point){
+	int mx = (int)(2.0 * (point.x - aabb.min.x) / aabb.size.x);
+	int my = (int)(2.0 * (point.y - aabb.min.y) / aabb.size.y);
+	int mz = (int)(2.0 * (point.z - aabb.min.z) / aabb.size.z);
 
-	for(int i = 0; i < 8; i++){
-		if(childAABB(aabb, i).isInside(point)){
-			return i;
-		}
-	}
-	
-	return -1;
+	mx = min(mx, 1);
+	my = min(my, 1);
+	mz = min(mz, 1);
+
+	return (mx << 2) | (my << 1) | mz;
 }
-
-
-//int nodeIndex(const AABB &aabb, const Point &point){
-//
-//	for(int i = 0; i < 8; i++){
-//		if(childAABB(aabb, i).isInside(point)){
-//			//return i;
-//
-//			// FIXME - for quadtree
-//			return i - (i%2);
-//		}
-//	}
-//	
-//	return -1;
-//}
-
 
 
 /**
@@ -256,3 +185,12 @@ bool copyDir(fs::path source, fs::path destination){
 }
 
 
+int psign(float value){
+	if(value == 0.0){
+		return 0.0;
+	}else if(value < 0.0){
+		return -1.0;
+	}else{
+		return 1.0;
+	}
+}

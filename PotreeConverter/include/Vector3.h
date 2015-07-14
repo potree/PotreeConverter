@@ -63,7 +63,7 @@ public:
 		return ((*this) - p).length();
 	}
 
-	T squaredDistanceTo(Vector3<T> p){
+	T squaredDistanceTo(const Vector3<T> &p){
 		return ((*this) - p).squaredLength();
 	}
 

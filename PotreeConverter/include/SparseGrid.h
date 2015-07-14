@@ -9,17 +9,19 @@
 #include "GridCell.h"
 
 #include <map>
+#include <unordered_map>
 #include <vector>
 #include <math.h>
 
 using std::vector;
 using std::map;
+using std::unordered_map;
 using std::min;
 using std::max;
 
 #define MAX_FLOAT std::numeric_limits<float>::max()
 
-class SparseGrid : public map<GridIndex, GridCell*>{
+class SparseGrid : public unordered_map<long long, GridCell*>{
 public:
 	int width;
 	int height;
@@ -40,9 +42,7 @@ public:
 
 	~SparseGrid();
 
-	vector<GridCell*> targetArea(int x, int y, int z);
-
-	bool isDistant(const Vector3<double> &p, int i, int j, int k);
+	bool isDistant(const Vector3<double> &p, GridCell *cell);
 
 	bool add(Vector3<double> &p);
 

@@ -10,12 +10,13 @@
 #include "AABB.h"
 #include "PointAttributes.hpp"
 #include "PointWriter.hpp"
+#include "stuff.h"
+
 
 using std::string;
 using std::vector;
 using std::ofstream;
 using std::ios;
-
 
 
 class BINPointWriter : public PointWriter{
@@ -68,6 +69,54 @@ public:
 				writer->write((const char*)&point.intensity, sizeof(unsigned short));
 			}else if(attribute == PointAttribute::CLASSIFICATION){
 				writer->write((const char*)&point.classification, sizeof(unsigned char));
+			}else if(attribute == PointAttribute::NORMAL_SPHEREMAPPED){
+				// see http://aras-p.info/texts/CompactNormalStorage.html
+				float nx = point.nx;
+				float ny = point.ny;
+				float nz = point.nz;
+				float lengthxy = sqrt(nx * nx + ny * ny);
+
+				float ex = 0.5f * (nx / lengthxy) * sqrt(-nz * 0.5f + 0.5f) + 0.5f;
+				float ey = 0.5f * (ny / lengthxy) * sqrt(-nz * 0.5f + 0.5f) + 0.5f;
+
+				unsigned char bx = (unsigned char)(ex * 255);
+				unsigned char by = (unsigned char)(ey * 255);
+
+				writer->write((const char*)&bx, 1);
+				writer->write((const char*)&by, 1);
+			}else if(attribute == PointAttribute::NORMAL_OCT16){
+				// see http://lgdv.cs.fau.de/get/1602
+
+				float nx = point.nx;
+				float ny = point.ny;
+				float nz = point.nz;
+				
+				float norm1 = abs(nx) + abs(ny) + abs(nz);
+
+				nx = nx / norm1;
+				ny = ny / norm1;
+				nz = nz / norm1;
+
+				float u = 0;
+				float v = 0;
+
+				if(nz >= 0){
+					u = nx;
+					v = ny;
+				}else{
+					u = psign(nx)*(1-psign(ny)*ny);
+					v = psign(ny)*(1-psign(nx)*nx);
+				}
+
+				unsigned char bx = (unsigned char)(min((u + 1) * 128, 255.0f));
+				unsigned char by = (unsigned char)(min((v + 1) * 128, 255.0f));
+
+				writer->write((const char*)&bx, 1);
+				writer->write((const char*)&by, 1);
+			}else if(attribute == PointAttribute::NORMAL){
+				writer->write((const char*)&point.nx, sizeof(float));
+				writer->write((const char*)&point.ny, sizeof(float));
+				writer->write((const char*)&point.nz, sizeof(float));
 			}
 		}
 
