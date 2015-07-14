@@ -4,6 +4,7 @@ Builds a potree octree from las, laz, binary ply, xyz or ptx files.
 
 ## Downloads
 
+* [PotreeConverter 1.2, windows 64bit](https://github.com/potree/PotreeConverter/releases/tag/1.2)
 * [PotreeConverter 1.1.1, windows 64bit](http://potree.org/downloads/PotreeConverter/PotreeConverter_1.1.1.zip)
 * [PotreeConverter 1.0, windows 64bit](http://potree.org/downloads/PotreeConverter/PotreeConverter_2014.12.30.zip)
 
