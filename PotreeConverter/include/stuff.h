@@ -26,9 +26,6 @@
 #include "Vector3.h"
 #include "AABB.h"
 #include "Point.h"
-#include "GridIndex.h"
-#include "SparseGrid.h"
-#include "GridCell.h"
 
 using std::ifstream;
 using std::ofstream;
