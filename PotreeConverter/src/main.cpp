@@ -38,24 +38,84 @@ using std::exception;
 using Potree::PotreeWriter;
 
 
+map<string, std::chrono::time_point<std::chrono::system_clock, std::chrono::system_clock::duration > > times;
+
+void startTime(string key){
+	times[key] = high_resolution_clock::now();
+}
+
+void stopTime(string key){
+	auto start = times[key];
+	auto end = high_resolution_clock::now();
+	long long duration = duration_cast<milliseconds>(end - start).count();
+	float seconds = duration / 1000.0f;
+	cout << key << ": " << seconds << "s" << endl;
+}
+
 int main(int argc, char **argv){
-	cout << "start" << endl;
+	
+	//string fIn = "D:\\temp\\test\\lion.las";
+	//string fIn = "D:\\temp\\perf\\ring.las";
+	//string fIn = "D:\\temp\\perf\\ripple.las";
+	string fIn = "D:\\temp\\test\\dechen_cave_upscaled.las";
+	string fOut = "D:\\temp\\perf\\out.las";
 
-	string path = "D:/temp/test";
-	PotreeWriter *writer = new PotreeWriter(path);
 
-	for(int x = -10; x <= 10; x++){
-		for(int y = -10; y <= 10; y++){
-			double z = pow(x * 0.1, 2.0) * pow(y * 0.1, 2.0);
-
-			writer->add(Point(x, y, z, 100, 100, 100));
-
-		}
-	}
-
-	writer->flush();
-	delete writer;
 	
 
-	cout << "end" << endl;
+	
+
+	// -----------------------
+	// READ
+	// -----------------------
+	startTime("read");
+	std::ifstream ifs;
+	ifs.open(fIn, std::ios::in | std::ios::binary);
+	liblas::ReaderFactory f;
+	liblas::Reader reader = f.CreateWithStream(ifs);
+	liblas::Header const& header = reader.GetHeader();
+
+	std::cout << "Compressed: " << (header.Compressed() == true) ? "true":"false";
+	std::cout << "Signature: " << header.GetFileSignature() << '\n';
+	std::cout << "Points count: " << header.GetPointRecordsCount() << '\n';
+
+	double minX = header.GetMinX();
+	double minY = header.GetMinY();
+	double minZ = header.GetMinZ();
+	double maxX = header.GetMaxX();
+	double maxY = header.GetMaxY();
+	double maxZ = header.GetMaxZ();
+	double sizeX = maxX - minX;
+	double sizeY = maxY - minY;
+	double sizeZ = maxZ - minZ;
+	double scaleX = header.GetScaleX();
+	double scaleY = header.GetScaleY();
+	double scaleZ = header.GetScaleZ();
+
+	PotreeWriter *writer = new PotreeWriter();
+
+	vector<Point> points;
+	int i = 0;
+	while (reader.ReadNextPoint()){
+		liblas::Point const& p = reader.GetPoint();
+		liblas::Color color = p.GetColor();
+
+		unsigned char r = color.GetRed() / 256;
+		unsigned char g = color.GetGreen() / 256;
+		unsigned char b = color.GetBlue() / 256;
+
+		writer->add(Point(p.GetX(), p.GetY(), p.GetZ(), r, g, b));
+
+		if((writer->numPoints % 100000) == 0){
+			cout << writer->numPoints << " written" << endl;
+		}
+
+		i++;
+	} 
+
+	stopTime("read");
+
+	startTime("flush");
+	//writer->flush();
+	stopTime("flush");
 }

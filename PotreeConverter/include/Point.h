@@ -27,6 +27,7 @@ public:
 	unsigned char returnNumber;
 	unsigned char numberOfReturns;
 	unsigned short pointSourceID;
+	float distance;
 
 	Point(){
 		this->x = 0;
@@ -44,7 +45,7 @@ public:
 		this->returnNumber = 0;
 		this->numberOfReturns = 0;
 		this->pointSourceID = 0;
-		
+		this->distance = 0;
 
 		count++;
 	}
@@ -65,6 +66,7 @@ public:
 		this->returnNumber = 0;
 		this->numberOfReturns = 0;
 		this->pointSourceID = 0;
+		this->distance = 0;
 
 		count++;
 	}
@@ -85,6 +87,7 @@ public:
 		this->returnNumber = 0;
 		this->numberOfReturns = 0;
 		this->pointSourceID = 0;
+		this->distance = 0;
 
 		count++;
 	}
