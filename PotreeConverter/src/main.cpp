@@ -237,8 +237,22 @@ int main(int argc, char **argv){
 		}
 	}
 	
+    Options options = {
+        source,
+        outdir,
+        spacing,
+        diagonalFraction,
+        levels,
+        format,
+        colorRange,
+        intensityRange,
+        scale,
+        outFormat,
+        outputAttributes
+    };
+    
 	try{
-		PotreeConverter pc(source, outdir, spacing, diagonalFraction, levels, format, colorRange, intensityRange, scale, outFormat, outputAttributes);
+		PotreeConverter pc(options);
 		pc.convert();
 	}catch(exception &e){
 		cout << "ERROR: " << e.what() << endl;
