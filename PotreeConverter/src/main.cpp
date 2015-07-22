@@ -66,7 +66,7 @@ int main(int argc, char **argv){
 	vector<double> intensityRange;
 	vector<string> outputAttributes;
 	bool generatePage;
-	string aabbValuesString
+	string aabbValuesString;
 	vector<double> aabbValues;
 
 	cout.imbue(std::locale(""));
@@ -135,7 +135,7 @@ int main(int argc, char **argv){
 
 
 		if(vm.count("aabb")){
-			char sep = ','; 
+			char sep = ' '; 
 			for(size_t p=0, q=0; p!=aabbValuesString.npos; p=q)
     			aabbValues.push_back(atof(aabbValuesString.substr(p+(p!=0), (q=aabbValuesString.find(sep, p+1))-p-(p!=0)).c_str())); 
 

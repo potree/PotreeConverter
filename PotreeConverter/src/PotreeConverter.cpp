@@ -87,7 +87,7 @@ PotreeConverter::PotreeConverter(
 	vector<double> intensityRange, 
 	double scale, 
 	OutputFormat outFormat,
-	vector<string> outputAttributes),
+	vector<string> outputAttributes,
 	vector<double> aabbValues){
 	
 	// if sources contains directories, use files inside the directory instead
