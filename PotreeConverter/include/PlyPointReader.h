@@ -170,9 +170,10 @@ public:
 			return false;
 		}
 		
-		float x = 0;
-		float y = 0;
-		float z = 0;
+		double x = 0;
+		double y = 0;
+		double z = 0;
+		float dummy;
 		float nx = 0;
 		float ny = 0;
 		float nz = 0;
@@ -196,6 +197,12 @@ public:
 					y = stof(token);
 				}else if(prop.name == "z" && prop.type.name == plyPropertyTypes["float"].name){
 					z = stof(token);
+				}else if(prop.name == "x" && prop.type.name == plyPropertyTypes["double"].name){
+					x = stod(token);
+				}else if(prop.name == "y" && prop.type.name == plyPropertyTypes["double"].name){
+					y = stod(token);
+				}else if(prop.name == "z" && prop.type.name == plyPropertyTypes["double"].name){
+					z = stod(token);
 				}else if(std::find(plyRedNames.begin(), plyRedNames.end(), prop.name) != plyRedNames.end() && prop.type.name == plyPropertyTypes["uchar"].name){
 					r = (unsigned char)stof(token);
 				}else if(std::find(plyGreenNames.begin(), plyGreenNames.end(), prop.name) != plyGreenNames.end() && prop.type.name == plyPropertyTypes["uchar"].name){
@@ -217,10 +224,19 @@ public:
 			for(int i = 0; i < vertexElement.properties.size(); i++){
 				PlyProperty prop = vertexElement.properties[i];
 				if(prop.name == "x" && prop.type.name == plyPropertyTypes["float"].name){
-					memcpy(&x, (buffer+offset), prop.type.size);
+					memcpy(&dummy, (buffer+offset), prop.type.size);
+					x=dummy;
 				}else if(prop.name == "y" && prop.type.name == plyPropertyTypes["float"].name){
-					memcpy(&y, (buffer+offset), prop.type.size);
+					memcpy(&dummy, (buffer+offset), prop.type.size);
+					y=dummy;
 				}else if(prop.name == "z" && prop.type.name == plyPropertyTypes["float"].name){
+					memcpy(&dummy, (buffer+offset), prop.type.size);
+					z=dummy;
+				}else if(prop.name == "x" && prop.type.name == plyPropertyTypes["double"].name){
+					memcpy(&x, (buffer+offset), prop.type.size);
+				}else if(prop.name == "y" && prop.type.name == plyPropertyTypes["double"].name){
+					memcpy(&y, (buffer+offset), prop.type.size);
+				}else if(prop.name == "z" && prop.type.name == plyPropertyTypes["double"].name){
 					memcpy(&z, (buffer+offset), prop.type.size);
 				}else if(std::find(plyRedNames.begin(), plyRedNames.end(), prop.name) != plyRedNames.end() && prop.type.name == plyPropertyTypes["uchar"].name){
 					memcpy(&r, (buffer+offset), prop.type.size);
