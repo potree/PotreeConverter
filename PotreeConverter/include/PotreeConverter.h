@@ -52,6 +52,7 @@ private:
 	vector<double> intensityRange;
 	double scale;
 	int diagonalFraction;
+	vector<double> aabbValues;
 
 	PointReader *createPointReader(string source, PointAttributes pointAttributes);
 
@@ -68,8 +69,9 @@ public:
 		vector<double> intensityRange, 
 		double scale, 
 		OutputFormat outFormat,
-		vector<string> outputAttributes);
-
+		vector<string> outputAttributes,
+		vector<double> aabbValues);
+		
 	void convert();
 
 };
