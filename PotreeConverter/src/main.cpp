@@ -222,11 +222,12 @@ int main(int argc, char **argv){
 			ssSettings << "\tcameraTarget: null, 		// other options: cameraTarget: [0,0,0]," << endl;
 			ssSettings << "\tfov: 60, 					// field of view in degrees," << endl;
 			ssSettings << "\tsizeType: \"Adaptive\",	// other options: \"Fixed\", \"Attenuated\"" << endl;
-			ssSettings << "\tquality: null, 		// other options: \"Circles\", \"Interpolation\", \"Splats\"" << endl;
+			ssSettings << "\tquality: null, 			// other options: \"Circles\", \"Interpolation\", \"Splats\"" << endl;
 			ssSettings << "\tmaterial: \"RGB\", 		// other options: \"Height\", \"Intensity\", \"Classification\"" << endl;
 			ssSettings << "\tpointLimit: 1,				// max number of points in millions" << endl;
 			ssSettings << "\tpointSize: 1,				// " << endl;
 			ssSettings << "\tnavigation: \"Orbit\",		// other options: \"Orbit\", \"Flight\"" << endl;
+			ssSettings << "\tuseEDL: false,				" << endl;
 			ssSettings << "};" << endl;
 
 		
