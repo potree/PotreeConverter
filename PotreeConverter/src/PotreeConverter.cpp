@@ -87,8 +87,9 @@ PotreeConverter::PotreeConverter(
 	vector<double> intensityRange, 
 	double scale, 
 	OutputFormat outFormat,
-	vector<string> outputAttributes){
-
+	vector<string> outputAttributes,
+	vector<double> aabbValues){
+	
 	// if sources contains directories, use files inside the directory instead
 	vector<string> sourceFiles;
 	for(int i = 0; i < sources.size(); i++){
@@ -127,6 +128,7 @@ PotreeConverter::PotreeConverter(
 	this->outputFormat = outFormat;
 	this->outputAttributes = outputAttributes;
 	this->diagonalFraction = diagonalFraction;
+	this->aabbValues = aabbValues;
 
 	boost::filesystem::path dataDir(workDir + "/data");
 	boost::filesystem::path tempDir(workDir + "/temp");
@@ -213,16 +215,23 @@ void PotreeConverter::convert(){
 
 	// calculate AABB and total number of points
 	AABB aabb;
+	// if aabbValues is given by the user we set the the variable aabb with them
+	if(aabbValues.size() == 6){
+		Vector3<double> userMin(aabbValues[0],aabbValues[1],aabbValues[2]);
+		Vector3<double> userMax(aabbValues[3],aabbValues[4],aabbValues[5]);
+		aabb = AABB(userMin, userMax);
+	}
+
 	long long numPoints = 0;
 	for(string source : sources){
 
 		PointReader *reader = createPointReader(source, pointAttributes);
-		AABB lAABB = reader->getAABB();
-		 
-
-		aabb.update(lAABB.min);
-		aabb.update(lAABB.max);
-
+		// we update the AABB only if it was not provided by the user
+		if (aabbValues.size() == 0){	
+			AABB lAABB = reader->getAABB();
+			aabb.update(lAABB.min);
+			aabb.update(lAABB.max);
+		}
 		numPoints += reader->numPoints();
 
 		reader->close();
