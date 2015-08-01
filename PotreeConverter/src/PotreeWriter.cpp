@@ -199,8 +199,8 @@ void PotreeWriterNode::flush(){
 			fs::remove(temppath);
 		}
 
-		for(int i = 0; i < cache.size(); i++){
-			writer->write(cache[i]);
+		for(const auto &e_c : cache){
+			writer->write(e_c);
 		}
 		writer->close();
 		delete writer;

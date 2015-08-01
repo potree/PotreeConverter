@@ -57,9 +57,7 @@ LASPointReader::LASPointReader(string path){
 	
 
 	// read bounding box
-	for(int i = 0; i < files.size(); i++){
-		string file = files[i];
-
+	for (const auto &file : files) {
 		LIBLASReader aabbReader(file);
 		AABB lAABB = aabbReader.getAABB();
 		

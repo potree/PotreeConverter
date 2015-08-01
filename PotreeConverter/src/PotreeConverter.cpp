@@ -92,8 +92,7 @@ PotreeConverter::PotreeConverter(
 	
 	// if sources contains directories, use files inside the directory instead
 	vector<string> sourceFiles;
-	for(int i = 0; i < sources.size(); i++){
-		string source = sources[i];
+	for (const auto &source : sources) {
 		path pSource(source);
 		if(boost::filesystem::is_directory(pSource)){
 			boost::filesystem::directory_iterator it(pSource);
@@ -150,9 +149,7 @@ void PotreeConverter::convert(){
 	PointAttributes pointAttributes;
 	pointAttributes.add(PointAttribute::POSITION_CARTESIAN);
 
-	for(int i = 0; i < outputAttributes.size(); i++){
-		string attribute = outputAttributes[i];
-
+	for(const auto &attribute : outputAttributes){
 		if(attribute == "RGB"){
 			pointAttributes.add(PointAttribute::COLOR_PACKED);
 		}else if(attribute == "INTENSITY"){
@@ -273,8 +270,7 @@ void PotreeConverter::convert(){
 	//PotreeWriterLBL writer(this->workDir, aabb, spacing, maxDepth, outputFormat);
 
 	pointsProcessed = 0;
-	for(int i = 0; i < sources.size(); i++){
-		string source = sources[i];
+	for (const auto &source : sources) {
 		cout << "reading " << source << endl;
 
 		PointReader *reader = createPointReader(source, pointAttributes);
