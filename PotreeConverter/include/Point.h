@@ -10,7 +10,6 @@ using std::ostream;
 
 class Point{
 public:
-	static long long count;
 
 	double x;
 	double y;
@@ -28,73 +27,75 @@ public:
 	unsigned char numberOfReturns;
 	unsigned short pointSourceID;
 
-	Point(){
-		this->x = 0;
-		this->y = 0;
-		this->z = 0;
-		this->nx = 0;
-		this->ny = 0;
-		this->nz = 0;
-		this->intensity = 0;
-		this->classification = 0;
-		this->r = 0;
-		this->g = 0;
-		this->b = 0;
-		this->a = 255;
-		this->returnNumber = 0;
-		this->numberOfReturns = 0;
-		this->pointSourceID = 0;
-		
+	static long long count;
+
+	Point() :
+		x( 0 ),
+		y( 0 ),
+		z( 0 ),
+		nx( 0 ),
+		ny( 0 ),
+		nz( 0 ),
+		intensity( 0 ),
+		classification( 0 ),
+		r( 0 ),
+		g( 0 ),
+		b( 0 ),
+		a( 255 ),
+		returnNumber( 0 ),
+		numberOfReturns( 0 ),
+		pointSourceID( 0 ) {
 
 		count++;
 	}
 
-	Point(double x, double y, double z, unsigned char r, unsigned char g, unsigned char b){
-		this->x = x;
-		this->y = y;
-		this->z = z;
-		this->nx = 0;
-		this->ny = 0;
-		this->nz = 0;
-		this->intensity = 0;
-		this->classification = 0;
-		this->r = r;
-		this->g = g;
-		this->b = b;
-		this->a = 255;
-		this->returnNumber = 0;
-		this->numberOfReturns = 0;
-		this->pointSourceID = 0;
+	Point(double p_x, double p_y, double p_z, unsigned char p_r, unsigned char p_g, unsigned char p_b) :
+		x( p_x ),
+		y( p_y ),
+		z( p_z ),
+		nx( 0 ),
+		ny( 0 ),
+		nz( 0 ),
+		intensity( 0 ),
+		classification( 0 ),
+		r( p_r ),
+		g( p_g ),
+		b( p_b ),
+		a( 255 ),
+		returnNumber( 0 ),
+		numberOfReturns( 0 ),
+		pointSourceID( 0 ) {
 
 		count++;
 	}
 
-	Point(double x, double y, double z){
-		this->x = x;
-		this->y = y;
-		this->z = z;
-		this->nx = 0;
-		this->ny = 0;
-		this->nz = 0;
-		this->intensity = 0;
-		this->classification = 0;
-		this->r = 255;
-		this->g = 255;
-		this->b = 255;
-		this->a = 255;
-		this->returnNumber = 0;
-		this->numberOfReturns = 0;
-		this->pointSourceID = 0;
+	Point(double p_x, double p_y, double p_z) :
+		x( p_x ),
+		y( p_y ),
+		z( p_z ),
+		nx( 0 ),
+		ny( 0 ),
+		nz( 0 ),
+		intensity( 0 ),
+		classification( 0 ),
+		r( 255 ),
+		g( 255 ),
+		b( 255 ),
+		a( 255 ),
+		returnNumber( 0 ),
+		numberOfReturns( 0 ),
+		pointSourceID( 0 ) {
 
 		count++;
 	}
 
 	Point(const Point &other)
 		: x(other.x), y(other.y), z(other.z), 
+		nx(other.nx), ny(other.ny), nz(other.nz),
 		intensity(other.intensity), classification(other.classification), 
 		r(other.r), g(other.g), b(other.b), 
 		returnNumber(other.returnNumber), numberOfReturns(other.numberOfReturns), 
-		pointSourceID(other.pointSourceID), nx(other.nx), ny(other.ny), nz(other.nz)
+		pointSourceID(other.pointSourceID)
 	{
 		count++;
 	}
