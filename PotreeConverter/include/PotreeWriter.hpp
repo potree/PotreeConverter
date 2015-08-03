@@ -101,9 +101,6 @@ public:
 		double cdz = cells / aabb.size.z;
 
 		for(Point &point : store){
-			//double ifx = cells * (point.x - aabb.min.x) / aabb.size.x;
-			//double ify = cells * (point.y - aabb.min.y) / aabb.size.y;
-			//double ifz = cells * (point.z - aabb.min.z) / aabb.size.z;
 
 			double ifx = cdx * (point.x - aabb.min.x);
 			double ify = cdy * (point.y - aabb.min.y);
@@ -113,7 +110,7 @@ public:
 			//int iy = min(lastCellIndex, (int)ify);		// 3.6%
 			//int iz = min(lastCellIndex, (int)ifz);		// 2.2%
 
-			// equivalent to previous commented lines but 2xfaster according to VS2015 profiler
+			// equivalent to previous commented lines but 2x faster according to VS2015 profiler
 			int ix = ifx >= cells ? lastCellIndex : int(ifx);		// 1.7%
 			int iy = ify >= cells ? lastCellIndex : int(ify);		// 1.4%
 			int iz = ifz >= cells ? lastCellIndex : int(ifz);		// 1.4%
@@ -137,15 +134,24 @@ public:
 				grid[index] = (int)selected.size() - 1;
 				numPoints++;
 			}else{
-
-				Point further = point;
-
-				// replace point in grid
-				if(accepted && point.distance < selected[selectedIndex].distance){
-					further = selected[selectedIndex];
+			
+				//Point further = point;
+				//
+				//// replace point in grid
+				//if(accepted && point.distance < selected[selectedIndex].distance){
+				//	further = selected[selectedIndex];
+				//	selected[selectedIndex] = point;
+				//}
+			
+				Point *further;
+				if(accepted && point.distance < selected[selectedIndex].distance) {
+					further = &selected[selectedIndex];
 					selected[selectedIndex] = point;
+				}else{
+					further = &point;
 				}
-
+			
+			
 				// pass down to next level
 				//int cix = int(0.5 + (further.x - aabb.min.x) / aabb.size.x);
 				//int ciy = int(0.5 + (further.y - aabb.min.y) / aabb.size.y);
@@ -154,17 +160,17 @@ public:
 				int ciy = iy / cellsHalf;
 				int ciz = iz / cellsHalf;
 				int ci = cix << 2 | ciy << 1 | ciz;
-
-
-
+			
+			
+			
 				Node *childNode = children[ci];
 				if(childNode == NULL){
 					AABB cAABB = childAABB(aabb, ci);
 					childNode = new Node(this, cAABB, ci);
 					children[ci] = childNode;
 				}
-
-				childNode->add(further);
+			
+				childNode->add(*further);
 			}
 		}
 
