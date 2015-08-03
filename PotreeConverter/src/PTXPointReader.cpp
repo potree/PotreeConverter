@@ -87,7 +87,15 @@ PTXPointReader::PTXPointReader(string path) {
 
 void PTXPointReader::scanForAABB() {
     // read bounding box
-    double x, y, z, minx, miny, minz, maxx, maxy, maxz, intensity;
+    double x(0), y(0), z(0);
+    // TODO: verify that this initial values are ok 
+    double minx = std::numeric_limits<float>::max();
+    double miny = std::numeric_limits<float>::max();
+    double minz = std::numeric_limits<float>::max();
+    double maxx = -std::numeric_limits<float>::max();
+    double maxy = -std::numeric_limits<float>::max();
+    double maxz = -std::numeric_limits<float>::max();
+    double intensity(0);
     bool firstPoint = true;
     bool pleaseStop = false;
     long currentChunk = 0;
