@@ -28,7 +28,7 @@ public:
 	int depth;
 	AABB aabb;
 	float squaredSpacing;
-	int numAccepted;
+	unsigned int numAccepted;
 
 	static long long count;
 

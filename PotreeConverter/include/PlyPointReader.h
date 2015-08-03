@@ -188,9 +188,9 @@ public:
 
 			vector<string> tokens;
 			split(tokens, line, is_any_of("\t "));
-			for(int i = 0; i < vertexElement.properties.size(); i++){
-				string token = tokens[i];
-				PlyProperty prop = vertexElement.properties[i];
+			int i = 0;
+			for(const auto &prop : vertexElement.properties){
+				string token = tokens[i++];
 				if(prop.name == "x" && prop.type.name == plyPropertyTypes["float"].name){
 					x = stof(token);
 				}else if(prop.name == "y" && prop.type.name == plyPropertyTypes["float"].name){

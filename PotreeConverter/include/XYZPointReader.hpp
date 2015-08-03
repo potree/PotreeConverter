@@ -104,9 +104,9 @@ public:
 					continue;
 				}
 
-				for(int i = 0; i < this->format.size(); i++){
-					string token = tokens[i];
-					auto f = this->format[i];
+				int i = 0;
+				for(const auto &f : format) {
+					string token = tokens[i++];
 					if(f == 'r'){
 						max = std::max(max, stof(token));
 					}else if(f == 'g'){
@@ -176,9 +176,9 @@ public:
 				continue;
 			}
 
-			for(int i = 0; i < format.size(); i++){
-				string token = tokens[i];
-				auto f = format[i];
+			int i = 0;
+			for(const auto &f : format) {
+				string token = tokens[i++];
 				if(f == 'x'){
 					x = stod(token);
 				}else if(f == 'y'){
