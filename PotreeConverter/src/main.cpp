@@ -169,8 +169,10 @@ int main(int argc, char **argv){
 		}
 
 		cout << "== params ==" << endl;
-		for(int i = 0; i < source.size(); i++){
+		int i = 0;
+		for(const auto &s : source) {
 			cout << "source[" << i << "]:         \t" << source[i] << endl;
+			++i;
 		}
 		cout << "outdir:            \t" << outdir << endl;
 		cout << "spacing:           \t" << spacing << endl;

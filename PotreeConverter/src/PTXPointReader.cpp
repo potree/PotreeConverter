@@ -43,11 +43,10 @@ inline void skipline(fstream &stream) {
     getline(stream, str);
 }
 
-bool assertd(fstream &stream, int i) {
+bool assertd(fstream &stream, size_t i) {
     vector<double> tokens;
     getlined(stream, tokens);
-    bool result = i == tokens.size();
-    return result;
+    return  i == tokens.size();
 }
 
 /**
@@ -95,8 +94,8 @@ void PTXPointReader::scanForAABB() {
     long count = 0;
     double tr[16];
     vector<double> split;
-    for (int i = 0; i < files.size(); i++) {
-        fstream stream(files[i], ios::in);
+    for (const auto &file : files) {
+        fstream stream(file, ios::in);
         currentChunk = 0;
         getlined(stream, split);
         while (!pleaseStop) {

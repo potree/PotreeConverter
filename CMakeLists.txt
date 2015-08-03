@@ -9,7 +9,7 @@ find_package(Boost COMPONENTS system thread filesystem program_options regex REQ
 
 if(UNIX)
 #  if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wsign-compare -std=c++0x -pthread -lstdc++ -lm")
 #  endif()
 endif()
 

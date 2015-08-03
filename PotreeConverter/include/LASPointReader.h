@@ -51,8 +51,7 @@ public:
 		hasTransform = false;
 
 //      cout << "There are " << vlrs.size() << " VLRs." << endl;
-        for (int i = 0; i < vlrs.size(); ++i) {
-            liblas::VariableRecord vlr = vlrs[i];
+	for (const auto &vlr : vlrs) {
             if (vlr.GetRecordId() == 2001) {
                 const uint8_t *data = vlr.GetData().data();
                 for (int k = 0; k < 16; ++k) {

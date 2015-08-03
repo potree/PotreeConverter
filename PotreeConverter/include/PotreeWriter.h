@@ -253,8 +253,7 @@ public:
 				ofstream fout;
 				fout.open(dest, ios::out | ios::binary);
 				vector<PotreeWriterNode*> hierarchy = node->getHierarchy(hierarchyStepSize + 1);
-				for(int i = 0; i <  hierarchy.size(); i++){
-					PotreeWriterNode *descendant = hierarchy[i];
+				for(const auto &descendant : hierarchy){
 					if(descendant->level == node->level + hierarchyStepSize && (node->level + hierarchyStepSize) < maxLevel ){
 						stack.push_back(descendant);
 					}

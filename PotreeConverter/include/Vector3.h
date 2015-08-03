@@ -59,11 +59,11 @@ public:
 		return x*x + y*y + z*z;
 	}
 
-	T distanceTo(Vector3<T> p){
+	T distanceTo(Vector3<T> p) const{
 		return ((*this) - p).length();
 	}
 
-	T squaredDistanceTo(const Vector3<T> &p){
+	T squaredDistanceTo(const Vector3<T> &p) const{
 		return ((*this) - p).squaredLength();
 	}
 

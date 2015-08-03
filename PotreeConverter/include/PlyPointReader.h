@@ -221,8 +221,7 @@ public:
 			stream.read(buffer, pointByteSize);
 
 			int offset = 0;
-			for(int i = 0; i < vertexElement.properties.size(); i++){
-				PlyProperty prop = vertexElement.properties[i];
+			for(const auto &prop : vertexElement.properties){
 				if(prop.name == "x" && prop.type.name == plyPropertyTypes["float"].name){
 					memcpy(&dummy, (buffer+offset), prop.type.size);
 					x=dummy;
