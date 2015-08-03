@@ -14,28 +14,21 @@ template<class T>
 class Vector3{
 
 public:
-	T x,y,z;
-	static long long count;
+	T x = 0.0;
+	T y = 0.0;
+	T z = 0.0;
 
-	Vector3(){
-		count++;
+	Vector3() = default;
 
-		x = 0;
-		y = 0;
-		z = 0;
-	}
+	~Vector3() = default;
 
 	Vector3(T x, T y, T z){
-		count++;
-
 		this->x = x;
 		this->y = y;
 		this->z = z;
 	}
 
 	Vector3(T value){
-		count++;
-
 		this->x = value;
 		this->y = value;
 		this->z = value;
@@ -44,11 +37,7 @@ public:
 	Vector3(const Vector3<T> &other)
 		:x(other.x), y(other.y), z(other.z)
 	{
-		count++;
-	}
 
-	~Vector3(){
-		count--;
 	}
 
 	T length(){

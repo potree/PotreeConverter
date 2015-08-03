@@ -38,7 +38,7 @@ using std::exception;
 using Potree::PotreeWriter;
 
 
-map<string, std::chrono::time_point<std::chrono::system_clock, std::chrono::system_clock::duration > > times;
+map<string, std::chrono::time_point<std::chrono::steady_clock> > times;
 
 void startTime(string key){
 	times[key] = high_resolution_clock::now();
@@ -53,12 +53,13 @@ void stopTime(string key){
 }
 
 int main(int argc, char **argv){
+
 	
 	//string fIn = "D:\\temp\\test\\lion.las";
 	//string fIn = "D:\\temp\\perf\\ring.las";
 	//string fIn = "D:\\temp\\perf\\ripple.las";
-	string fIn = "D:\\temp\\test\\dechen_cave_upscaled.las";
-	string fOut = "D:\\temp\\perf\\out.las";
+	string fIn = "C:\\temp\\test\\dechen_cave_upscaled.las";
+	string fOut = "C:\\temp\\perf\\out.las";
 
 
 	

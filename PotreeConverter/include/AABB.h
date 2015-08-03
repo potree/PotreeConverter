@@ -16,20 +16,16 @@ using std::endl;
 class AABB{
 
 public:
-	Vector3<double> min;
-	Vector3<double> max;
-	Vector3<double> size;
+	Vector3<double> min = Vector3<double>(std::numeric_limits<float>::max());;
+	Vector3<double> max = Vector3<double>(-std::numeric_limits<float>::max());
+	Vector3<double> size = Vector3<double>(std::numeric_limits<float>::max());
 
-	AABB(){
-		min = Vector3<double>(std::numeric_limits<float>::max());
-		max = Vector3<double>(-std::numeric_limits<float>::max());
-		size = Vector3<double>(std::numeric_limits<float>::max());
-	}
+	AABB() = default;
 
 	AABB(Vector3<double> min, Vector3<double> max){
 		this->min = min;
 		this->max = max;
-		size = max-min;
+		this->size = max-min;
 	}
 
 	bool isInside(const Point &p){

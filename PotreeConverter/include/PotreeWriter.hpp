@@ -109,9 +109,15 @@ public:
 			double ify = cdy * (point.y - aabb.min.y);
 			double ifz = cdz * (point.z - aabb.min.z);
 
-			int ix = min(lastCellIndex, (int)ifx);
-			int iy = min(lastCellIndex, (int)ify);
-			int iz = min(lastCellIndex, (int)ifz);
+			//int ix = min(lastCellIndex, (int)ifx);		// 3.1%
+			//int iy = min(lastCellIndex, (int)ify);		// 3.6%
+			//int iz = min(lastCellIndex, (int)ifz);		// 2.2%
+
+			// equivalent to previous commented lines but 2xfaster according to VS2015 profiler
+			int ix = ifx >= cells ? lastCellIndex : int(ifx);		// 1.7%
+			int iy = ify >= cells ? lastCellIndex : int(ify);		// 1.4%
+			int iz = ifz >= cells ? lastCellIndex : int(ifz);		// 1.4%
+			
 
 			int index = ix + iy * cells + iz * cells * cells;
 
@@ -119,7 +125,7 @@ public:
 			double dy = ify - (iy + 0.5);
 			double dz = ifz - (iz + 0.5);
 
-			double distance = dx + dy + dz;
+			float distance = (float)(dx + dy + dz);
 			point.distance = distance;
 			bool accepted = distance < 0.2;
 			accepted = true;
@@ -128,7 +134,7 @@ public:
 			if(accepted && selectedIndex == -1){
 				// add new point to grid
 				selected.push_back(point);
-				grid[index] = selected.size() - 1;
+				grid[index] = (int)selected.size() - 1;
 				numPoints++;
 			}else{
 
@@ -239,7 +245,7 @@ public:
 		delete header;
 	
 		// update point count
-		int numPoints = this->selected.size();
+		int numPoints = (int)this->selected.size();
 		std::fstream *stream = new std::fstream(file, ios::out | ios::binary | ios::in );
 		stream->seekp(107);
 		stream->write(reinterpret_cast<const char*>(&numPoints), 4);

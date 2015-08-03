@@ -16,7 +16,7 @@ See [docs/changelog.md](./docs/changelog.md) for a list of new features, bugfixe
 
 * [libLAS](https://github.com/libLAS/libLAS)
 * [LASzip](https://github.com/LASzip/LASzip)
-* [boost](http://www.boost.org/)
+* [boost 1.58](http://www.boost.org/)
 
 ## Build
 
@@ -51,24 +51,29 @@ Ubuntu:
 
     # copy ./PotreeConverter/resources/page_template to your binary working directory.
 
-Windows / Microsoft Visual Studio 2012:
+Windows / Microsoft Visual Studio 2015:
 
-    # make sure you've got these environment variables set with your directory structure
-    set BOOST_ROOT=D:\dev\lib\boost_1_56_0
-    set BOOST_LIBRARYDIR=D:\dev\lib\boost\x64
-    set LIBLAS_INCLUDE_DIR=D:\dev\lib\libLAS\include
-    set LIBLAS_LIBRARY_DIR=D:\dev\lib\libLAS\build\bin\Release
+```
+# make sure you've got these environment variables set with your directory structure
+set BOOST_ROOT=D:\dev\lib\boost_1_58_0
+set BOOST_LIBRARYDIR=D:\dev\lib\boost\1.58_x64_msvc2015
+set LIBLAS_INCLUDE_DIR=D:\dev\lib\libLAS\include
+set LIBLAS_LIBRARY_DIR=D:\dev\lib\libLAS\build\bin\Release
 
-    mkdir build
-    cd build
+# compile boost
+b2 toolset=msvc-14.0 address-model=64 link=static link=shared threading=multi --build-type=complete stage --width-system --with-thread --with-filesystem --with-program_options --with-regex
 
-    # 32bit project
-    cmake -G "Visual Studio 11" -T "v110" -DBoost_USE_STATIC_LIBS=ON -DBOOST_ROOT=%BOOST_ROOT% -DBOOST_LIBRARYDIR=%BOOST_LIBRARYDIR% -DLIBLAS_INCLUDE_DIR=%LIBLAS_INCLUDE_DIR% -DLIBLAS_LIBRARY=%LIBLAS_LIBRARY_DIR%/liblas.lib  ..\
+mkdir build
+cd build
 
-    # or 64bit project
-    cmake -G "Visual Studio 11 Win64" -T "v110" -DBoost_USE_STATIC_LIBS=ON -DBOOST_ROOT=%BOOST_ROOT% -DBOOST_LIBRARYDIR=%BOOST_LIBRARYDIR% -DLIBLAS_INCLUDE_DIR=%LIBLAS_INCLUDE_DIR% -DLIBLAS_LIBRARY=%LIBLAS_LIBRARY_DIR%/liblas.lib  ..\
+# 32bit project
+cmake -G "Visual Studio 14 2015" -DBoost_USE_STATIC_LIBS=ON -DBOOST_ROOT=%BOOST_ROOT% -DBOOST_LIBRARYDIR=%BOOST_LIBRARYDIR% -DLIBLAS_INCLUDE_DIR=%LIBLAS_INCLUDE_DIR% -DLIBLAS_LIBRARY=%LIBLAS_LIBRARY_DIR%/liblas.lib  ..\
 
-    # copy ./PotreeConverter/resources/page_template to your binary working directory.
+# or 64bit project
+cmake -G "Visual Studio 14 2015 Win64" -DBoost_USE_STATIC_LIBS=ON -DBOOST_ROOT=%BOOST_ROOT% -DBOOST_LIBRARYDIR=%BOOST_LIBRARYDIR% -DLIBLAS_INCLUDE_DIR=%LIBLAS_INCLUDE_DIR% -DLIBLAS_LIBRARY=%LIBLAS_LIBRARY_DIR%/liblas.lib  ..\
+
+# copy ./PotreeConverter/resources/page_template to your binary working directory.
+```
 
 ## PotreeConverter Usage
 
