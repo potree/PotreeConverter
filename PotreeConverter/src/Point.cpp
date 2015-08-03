@@ -4,6 +4,3 @@
 
 
 
-
-
-long long Point::count = 0;

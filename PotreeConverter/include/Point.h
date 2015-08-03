@@ -27,7 +27,6 @@ public:
 	unsigned char numberOfReturns;
 	unsigned short pointSourceID;
 
-	static long long count;
 
 	Point() :
 		x( 0 ),
@@ -46,7 +45,6 @@ public:
 		numberOfReturns( 0 ),
 		pointSourceID( 0 ) {
 
-		count++;
 	}
 
 	Point(double p_x, double p_y, double p_z, unsigned char p_r, unsigned char p_g, unsigned char p_b) :
@@ -66,7 +64,6 @@ public:
 		numberOfReturns( 0 ),
 		pointSourceID( 0 ) {
 
-		count++;
 	}
 
 	Point(double p_x, double p_y, double p_z) :
@@ -86,7 +83,6 @@ public:
 		numberOfReturns( 0 ),
 		pointSourceID( 0 ) {
 
-		count++;
 	}
 
 	Point(const Point &other)
@@ -97,12 +93,9 @@ public:
 		returnNumber(other.returnNumber), numberOfReturns(other.numberOfReturns), 
 		pointSourceID(other.pointSourceID)
 	{
-		count++;
 	}
 
-	~Point(){
-		count--;
-	}
+	~Point() = default;
 
 	double distanceTo(const Point &point) {
 		return Vector3<double>(point.x - x, point.y - y, point.z - z).length();
