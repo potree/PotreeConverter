@@ -68,6 +68,14 @@ public:
 		return Vector3<T>(x + right.x, y + right.y, z + right.z);
 	}
 
+	Vector3<T> operator+(const double& right) const {
+		return Vector3<double>(x + right, y + right, z + right);
+	}
+
+	Vector3<T> operator*(const Vector3<T>& right) const {
+		return Vector3<T>(x * right.x, y * right.y, z * right.z);
+	}
+
 	Vector3<T> operator/(const T &a) const{
 		return Vector3<T>(x / a, y / a, z / a);
 	}
