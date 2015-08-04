@@ -9,6 +9,7 @@
 #include <iostream>
 #include <sstream>
 #include <map>
+#include <unordered_map>
 #include <queue>
 #include <thread>
 #include <mutex>              
@@ -29,6 +30,8 @@ using std::vector;
 using std::ios;
 using std::stringstream;
 using std::map;
+using std::unordered_map;
+using std::isunordered;
 using std::queue;
 using std::mutex;
 using std::condition_variable;
@@ -39,7 +42,7 @@ namespace Potree{
 
 static const int NODE_STORE_LIMIT = 10*1000;
 static const int WRITER_STORE_LIMIT = 100*1000;
-static const int cells = 64;
+static const int cells = 128;
 static const int lastCellIndex = cells - 1;
 static const int cellsHalf = cells / 2;
 
@@ -52,7 +55,9 @@ public:
 
 	vector<Point> store;
 	vector<Point> selected;
-	vector<int> grid;
+	//vector<int> grid;
+	unordered_map<int, int> grid; 
+	
 	unsigned int storeLimit;
 	AABB aabb;
 	int index;
@@ -92,8 +97,12 @@ public:
 			return;
 		}
 
+		//if(grid.size() == 0){
+		//	grid.resize(cells*cells*cells, -1);
+		//}
+
 		if(grid.size() == 0){
-			grid.resize(cells*cells*cells, -1);
+			grid.reserve(20'000);
 		}
 
 		double cdx = cells / aabb.size.x;
@@ -102,9 +111,9 @@ public:
 
 		for(Point &point : store){
 
-			double ifx = cdx * (point.x - aabb.min.x);
-			double ify = cdy * (point.y - aabb.min.y);
-			double ifz = cdz * (point.z - aabb.min.z);
+			double ifx = cdx * (point.position.x - aabb.min.x);
+			double ify = cdy * (point.position.y - aabb.min.y);
+			double ifz = cdz * (point.position.z - aabb.min.z);
 
 			//int ix = min(lastCellIndex, (int)ifx);		// 3.1%
 			//int iy = min(lastCellIndex, (int)ify);		// 3.6%
@@ -127,22 +136,15 @@ public:
 			bool accepted = distance < 0.2;
 			accepted = true;
 
-			int selectedIndex = grid[index];
-			if(accepted && selectedIndex == -1){
-				// add new point to grid
+			auto it = grid.find(index);
+			if(accepted && it == grid.end()){
 				selected.push_back(point);
-				grid[index] = (int)selected.size() - 1;
+				grid.insert({index, (int)selected.size() - 1});
 				numPoints++;
 			}else{
-			
-				//Point further = point;
-				//
-				//// replace point in grid
-				//if(accepted && point.distance < selected[selectedIndex].distance){
-				//	further = selected[selectedIndex];
-				//	selected[selectedIndex] = point;
-				//}
-			
+
+				int selectedIndex = it->second;
+
 				Point *further;
 				if(accepted && point.distance < selected[selectedIndex].distance) {
 					further = &selected[selectedIndex];
@@ -150,12 +152,7 @@ public:
 				}else{
 					further = &point;
 				}
-			
-			
-				// pass down to next level
-				//int cix = int(0.5 + (further.x - aabb.min.x) / aabb.size.x);
-				//int ciy = int(0.5 + (further.y - aabb.min.y) / aabb.size.y);
-				//int ciz = int(0.5 + (further.z - aabb.min.z) / aabb.size.z);
+
 				int cix = ix / cellsHalf;
 				int ciy = iy / cellsHalf;
 				int ciz = iz / cellsHalf;
@@ -171,7 +168,51 @@ public:
 				}
 			
 				childNode->add(*further);
+
 			}
+
+
+
+
+
+
+			//int selectedIndex = grid[index];
+			//if(accepted && selectedIndex == -1){
+			//	// add new point to grid
+			//	selected.push_back(point);
+			//	grid[index] = (int)selected.size() - 1;
+			//	numPoints++;
+			//}else{
+			//
+			//	Point *further;
+			//	if(accepted && point.distance < selected[selectedIndex].distance) {
+			//		further = &selected[selectedIndex];
+			//		selected[selectedIndex] = point;
+			//	}else{
+			//		further = &point;
+			//	}
+			//
+			//
+			//	// pass down to next level
+			//	//int cix = int(0.5 + (further.x - aabb.min.x) / aabb.size.x);
+			//	//int ciy = int(0.5 + (further.y - aabb.min.y) / aabb.size.y);
+			//	//int ciz = int(0.5 + (further.z - aabb.min.z) / aabb.size.z);
+			//	int cix = ix / cellsHalf;
+			//	int ciy = iy / cellsHalf;
+			//	int ciz = iz / cellsHalf;
+			//	int ci = cix << 2 | ciy << 1 | ciz;
+			//
+			//
+			//
+			//	Node *childNode = children[ci];
+			//	if(childNode == NULL){
+			//		AABB cAABB = childAABB(aabb, ci);
+			//		childNode = new Node(this, cAABB, ci);
+			//		children[ci] = childNode;
+			//	}
+			//
+			//	childNode->add(*further);
+			//}
 		}
 
 		store.clear();
@@ -230,9 +271,9 @@ public:
 		for(int i = 0; i < this->selected.size(); i++){
 			Point &point = this->selected[i];
 	
-			p.SetX(point.x);
-			p.SetY(point.y);
-			p.SetZ(point.z);
+			p.SetX(point.position.x);
+			p.SetY(point.position.y);
+			p.SetZ(point.position.z);
 	
 			vector<uint8_t> &data = p.GetData();
 	
@@ -294,9 +335,9 @@ public:
 			double octreeWidth = root->aabb.size.x;
 
 			// point not inside octree bounds. increase bounds
-			double dx = point.x - root->aabb.min.x;
-			double dy = point.y - root->aabb.min.y;
-			double dz = point.z - root->aabb.min.z;
+			double dx = point.position.x - root->aabb.min.x;
+			double dy = point.position.y - root->aabb.min.y;
+			double dz = point.position.z - root->aabb.min.z;
 
 			AABB newRootAABB(root->aabb);
 			int oldRootIndex = 0;
@@ -369,7 +410,7 @@ public:
 
 	void add(Point &p){
 		store.push_back(p);
-		aabb.update(p.position());
+		aabb.update(p.position);
 		numPoints++;
 
 		if(store.size() > storeLimit){

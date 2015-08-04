@@ -28,7 +28,10 @@ public:
 		this->size = max-min;
 	}
 
-	bool isInside(const Point &p){
+	bool isInside(const Point &point){
+
+		const Vector3<double> &p = point.position;
+
 		if(min.x <= p.x && p.x <= max.x){
 			if(min.y <= p.y && p.y <= max.y){
 				if(min.z <= p.z && p.z <= max.z){

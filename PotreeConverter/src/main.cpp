@@ -117,6 +117,160 @@ int main(int argc, char **argv){
 	stopTime("read");
 
 	startTime("flush");
-	//writer->flush();
+	writer->flush();
 	stopTime("flush");
 }
+
+//
+//
+//#include <unordered_map>
+//#include <random>
+//#include <chrono>
+//#include <iostream>
+//#include <math.h>
+//#include <algorithm>
+//#include <string>
+//
+//using std::cout;
+//using std::endl;
+//using std::chrono::high_resolution_clock;
+//using std::chrono::milliseconds;
+//using std::chrono::duration_cast;
+//using std::unordered_map;
+//
+//int num_elements = 5'000'000;
+//
+//void findThenInsert(){
+//	cout << endl << "find and emplace" << endl;
+//
+//	auto start = high_resolution_clock::now();
+//
+//	std::mt19937 gen(123);
+//	std::uniform_real_distribution<> dis(0, 128);
+//
+//	unordered_map<int, int> grid;
+//	int count = 0;
+//	for(int i = 0; i < num_elements; i++){
+//		float x = dis(gen);
+//		float y = dis(gen);
+//		float z = (cos(x*0.1) * sin(x*0.1) + 1.0) * 64.0;
+//
+//		int index = int(x) + int(y) * 128 + int(z) * 128 * 128;
+//		auto it = grid.find(index);
+//		if(it == grid.end()){
+//			grid.emplace(index, count);
+//			count++;
+//		}
+//	}
+//
+//	cout << "elements: " << count << endl;
+//	cout << "load factor: " << grid.load_factor() << endl;
+//
+//	auto end = high_resolution_clock::now();
+//	long long duration = duration_cast<milliseconds>(end - start).count();
+//	float seconds = duration / 1000.0f;
+//	cout << seconds << "s" << endl;
+//}
+//
+//void insertThenCheckForSuccess(){
+//	cout << endl << "emplace and check success" << endl;
+//
+//	auto start = high_resolution_clock::now();
+//
+//	std::mt19937 gen(123);
+//	std::uniform_real_distribution<> dis(0, 128);
+//
+//	unordered_map<int, int> grid;
+//	int count = 0;
+//	for(int i = 0; i < num_elements; i++){
+//		float x = dis(gen);
+//		float y = dis(gen);
+//		float z = (cos(x*0.1) * sin(x*0.1) + 1.0) * 64.0;
+//
+//		int index = int(x) + int(y) * 128 + int(z) * 128 * 128;
+//		auto it = grid.emplace(index, count);
+//		if(it.second){
+//			count++;
+//		}
+//	}
+//
+//	cout << "elements: " << count << endl;
+//	cout << "load factor: " << grid.load_factor() << endl;
+//
+//	auto end = high_resolution_clock::now();
+//	long long duration = duration_cast<milliseconds>(end - start).count();
+//	float seconds = duration / 1000.0f;
+//	cout << seconds << "s" << endl;
+//}
+//
+//void test3(){
+//	cout << endl << "test3" << endl;
+//
+//	auto start = high_resolution_clock::now();
+//
+//	std::mt19937 gen(123);
+//	std::uniform_real_distribution<> dis(0, 128);
+//
+//	unordered_map<int, int> grid;
+//	int count = 0;
+//	for(int i = 0; i < num_elements; i++){
+//		float x = dis(gen);
+//		float y = dis(gen);
+//		float z = (cos(x*0.1) * sin(x*0.1) + 1.0) * 64.0;
+//
+//		int index = int(x) + int(y) * 128 + int(z) * 128 * 128;
+//		auto it = grid.find(index);
+//		if(it == grid.end()){
+//			grid.insert({index, count});
+//			count++;
+//		}
+//	}
+//
+//	cout << "elements: " << count << endl;
+//	cout << "load factor: " << grid.load_factor() << endl;
+//
+//	auto end = high_resolution_clock::now();
+//	long long duration = duration_cast<milliseconds>(end - start).count();
+//	float seconds = duration / 1000.0f;
+//	cout << seconds << "s" << endl;
+//}
+//
+//void test4(){
+//	cout << endl << "emplace and check success" << endl;
+//
+//	auto start = high_resolution_clock::now();
+//
+//	std::mt19937 gen(123);
+//	std::uniform_real_distribution<> dis(0, 128);
+//
+//	unordered_map<int, int> grid;
+//	int count = 0;
+//	for(int i = 0; i < num_elements; i++){
+//		float x = dis(gen);
+//		float y = dis(gen);
+//		float z = (cos(x*0.1) * sin(x*0.1) + 1.0) * 64.0;
+//
+//		int index = int(x) + int(y) * 128 + int(z) * 128 * 128;
+//		auto it = grid.insert({index, count});
+//		if(it.second){
+//			count++;
+//		}
+//	}
+//
+//	cout << "elements: " << count << endl;
+//	cout << "load factor: " << grid.load_factor() << endl;
+//
+//	auto end = high_resolution_clock::now();
+//	long long duration = duration_cast<milliseconds>(end - start).count();
+//	float seconds = duration / 1000.0f;
+//	cout << seconds << "s" << endl;
+//}
+//
+//int main(){
+//
+//	findThenInsert();
+//	insertThenCheckForSuccess();
+//	test3();
+//	test4();
+//	
+//}

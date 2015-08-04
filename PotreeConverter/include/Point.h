@@ -10,12 +10,8 @@ using std::ostream;
 
 class Point{
 public:
-	double x = 0.0;
-	double y = 0.0;
-	double z = 0.0;
-	float nx = 0.0;
-	float ny = 0.0;
-	float nz = 0.0;
+	Vector3<double> position{0.0};
+	Vector3<float> normal{0.0};
 	unsigned short intensity = 0;
 	unsigned char classification = 0;
 	unsigned char r = 255;
@@ -29,50 +25,35 @@ public:
 
 	Point() = default;
 
+	Point(const Point &other) = default;
+
 	~Point() = default;
 
 	Point(double x, double y, double z, unsigned char r, unsigned char g, unsigned char b){
-		this->x = x;
-		this->y = y;
-		this->z = z;
+		position.x = x;
+		position.y = y;
+		position.z = z;
 		this->r = r;
 		this->g = g;
 		this->b = b;
 	}
 
 	Point(double x, double y, double z){
-		this->x = x;
-		this->y = y;
-		this->z = z;
-	}
-
-	Point(const Point &other)
-		: x(other.x), y(other.y), z(other.z), 
-		r(other.r), g(other.g), b(other.b),
-		nx(other.nx), ny(other.ny), nz(other.nz),
-		intensity(other.intensity), 
-		classification(other.classification), 
-		returnNumber(other.returnNumber), 
-		numberOfReturns(other.numberOfReturns), 
-		pointSourceID(other.pointSourceID)		
-	{
-
+		position.x = x;
+		position.y = y;
+		position.z = z;
 	}
 
 	double distanceTo(const Point &point) {
-		return Vector3<double>(point.x - x, point.y - y, point.z - z).length();
+		return Vector3<double>(point.position.x - position.x, point.position.y - position.y, point.position.z - position.z).length();
 	}
 
 	double squaredDistanceTo(const Point &point) {
-		return Vector3<double>(point.x - x, point.y - y, point.z - z).squaredLength();
-	}
-
-	Vector3<double> position(){
-		return Vector3<double>(x, y, z);
+		return Vector3<double>(point.position.x - position.x, point.position.y - position.y, point.position.z - position.z).squaredLength();
 	}
 
 	friend ostream &operator<<( ostream &output,  const Point &value ){ 
-		output << "[" << value.x << ", " << value.y << ", " << value.z << "]" ;
+		output << "[" << value.position.x << ", " << value.position.y << ", " << value.position.z << "]" ;
 		return output;            
 	}
 
