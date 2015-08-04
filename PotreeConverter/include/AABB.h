@@ -61,25 +61,6 @@ public:
 		max.y = min.y + maxlength;
 		max.z = min.z + maxlength;
 		size = max - min;
-
-
-		//if(abs(min.x) > max.x){
-		//	min.x = max.x - maxlength;
-		//}else{
-		//	max.x = min.x + maxlength;
-		//}
-		//
-		//if(abs(min.y) > max.y){
-		//	min.y = max.y - maxlength;
-		//}else{
-		//	max.y = min.y + maxlength;
-		//}
-		//
-		//if(abs(min.z) > max.z){
-		//	min.z = max.z - maxlength;
-		//}else{
-		//	max.z = min.z + maxlength;
-		//}
 	}
 
 	friend ostream &operator<<( ostream &output,  const AABB &value ){ 

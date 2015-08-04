@@ -54,19 +54,19 @@ AABB childAABB(const AABB &aabb, const int &index){
 	Vector3<double> min = aabb.min;
 	Vector3<double> max = aabb.max;
 
-	if((index & 1) > 0){
+	if((index & 0b0001) > 0){
 		min.z += aabb.size.z / 2;
 	}else{
 		max.z -= aabb.size.z / 2;
 	}
 
-	if((index & 2) > 0){
+	if((index & 0b0010) > 0){
 		min.y += aabb.size.y / 2;
 	}else{
 		max.y -= aabb.size.y / 2;
 	}
 
-	if((index & 4) > 0){
+	if((index & 0b0100) > 0){
 		min.x += aabb.size.x / 2;
 	}else{
 		max.x -= aabb.size.x / 2;

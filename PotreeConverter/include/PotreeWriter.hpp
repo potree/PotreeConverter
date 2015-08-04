@@ -40,14 +40,13 @@ using std::thread;
 
 namespace Potree{
 
-static const int NODE_STORE_LIMIT = 10*1000;
-static const int WRITER_STORE_LIMIT = 100*1000;
+static const int NODE_STORE_LIMIT = 10'000;
+static const int WRITER_STORE_LIMIT = 100'000;
 static const int cells = 128;
 static const int lastCellIndex = cells - 1;
 static const int cellsHalf = cells / 2;
 
 string outDir = "D:/temp/test/out";
-
 
 class Node{
 
@@ -55,33 +54,24 @@ public:
 
 	vector<Point> store;
 	vector<Point> selected;
-	//vector<int> grid;
 	unordered_map<int, int> grid; 
 	
-	unsigned int storeLimit;
+	unsigned int storeLimit = 20'000;
 	AABB aabb;
-	int index;
-	Node *parent;
-	vector<Node*> children;
-	unsigned int numPoints;
+	int index = -1;
+	Node *parent = NULL;
+	vector<Node*> children{8, NULL};
+	unsigned int numPoints = 0;
 	
 
 	Node(AABB aabb){
 		this->aabb = aabb;
-		index = -1;
-		storeLimit = 2*1000;
-		children.resize(8, NULL);
-		parent = NULL;
-		numPoints = 0;
 	}
 
 	Node(Node *parent, AABB aabb, int index){
 		this->aabb = aabb;
 		this->index = index;
 		this->parent = parent;
-		storeLimit = 10*1000;
-		children.resize(8, NULL);
-		numPoints = 0;
 	}
 
 	string name(){
@@ -97,10 +87,6 @@ public:
 			return;
 		}
 
-		//if(grid.size() == 0){
-		//	grid.resize(cells*cells*cells, -1);
-		//}
-
 		if(grid.size() == 0){
 			grid.reserve(20'000);
 		}
@@ -111,30 +97,26 @@ public:
 
 		for(Point &point : store){
 
+			// transform coordinates to range [0, cells]
 			double ifx = cdx * (point.position.x - aabb.min.x);
 			double ify = cdy * (point.position.y - aabb.min.y);
 			double ifz = cdz * (point.position.z - aabb.min.z);
 
-			//int ix = min(lastCellIndex, (int)ifx);		// 3.1%
-			//int iy = min(lastCellIndex, (int)ify);		// 3.6%
-			//int iz = min(lastCellIndex, (int)ifz);		// 2.2%
-
-			// equivalent to previous commented lines but 2x faster according to VS2015 profiler
-			int ix = ifx >= cells ? lastCellIndex : int(ifx);		// 1.7%
-			int iy = ify >= cells ? lastCellIndex : int(ify);		// 1.4%
-			int iz = ifz >= cells ? lastCellIndex : int(ifz);		// 1.4%
+			// clamp to [0, cells - 1]; faster than using std::min 
+			int ix = ifx >= cells ? lastCellIndex : int(ifx);
+			int iy = ify >= cells ? lastCellIndex : int(ify);
+			int iz = ifz >= cells ? lastCellIndex : int(ifz);
 			
-
+			// 3d indices to 1d index
 			int index = ix + iy * cells + iz * cells * cells;
 
+			// distance to center
 			double dx = ifx - (ix + 0.5);
 			double dy = ify - (iy + 0.5);
 			double dz = ifz - (iz + 0.5);
-
 			float distance = (float)(dx + dy + dz);
 			point.distance = distance;
 			bool accepted = distance < 0.2;
-			accepted = true;
 
 			auto it = grid.find(index);
 			if(accepted && it == grid.end()){
@@ -170,49 +152,6 @@ public:
 				childNode->add(*further);
 
 			}
-
-
-
-
-
-
-			//int selectedIndex = grid[index];
-			//if(accepted && selectedIndex == -1){
-			//	// add new point to grid
-			//	selected.push_back(point);
-			//	grid[index] = (int)selected.size() - 1;
-			//	numPoints++;
-			//}else{
-			//
-			//	Point *further;
-			//	if(accepted && point.distance < selected[selectedIndex].distance) {
-			//		further = &selected[selectedIndex];
-			//		selected[selectedIndex] = point;
-			//	}else{
-			//		further = &point;
-			//	}
-			//
-			//
-			//	// pass down to next level
-			//	//int cix = int(0.5 + (further.x - aabb.min.x) / aabb.size.x);
-			//	//int ciy = int(0.5 + (further.y - aabb.min.y) / aabb.size.y);
-			//	//int ciz = int(0.5 + (further.z - aabb.min.z) / aabb.size.z);
-			//	int cix = ix / cellsHalf;
-			//	int ciy = iy / cellsHalf;
-			//	int ciz = iz / cellsHalf;
-			//	int ci = cix << 2 | ciy << 1 | ciz;
-			//
-			//
-			//
-			//	Node *childNode = children[ci];
-			//	if(childNode == NULL){
-			//		AABB cAABB = childAABB(aabb, ci);
-			//		childNode = new Node(this, cAABB, ci);
-			//		children[ci] = childNode;
-			//	}
-			//
-			//	childNode->add(*further);
-			//}
 		}
 
 		store.clear();
@@ -246,15 +185,9 @@ public:
 			return;
 		}
 
-		//if(!isLeaf()){
-		//	processStore();
-		//}else{
-			selected.insert(selected.end(), store.begin(), store.end());
-		//}
+		selected.insert(selected.end(), store.begin(), store.end());
 
 		string file = outDir + "/" + name() + ".las";
-
-		//cout << "flushing " << file << " points: " << this->selected.size() << endl;
 
 		liblas::Header *header = new liblas::Header();
 		header->SetDataFormatId(liblas::ePointFormat2);
@@ -311,16 +244,12 @@ class PotreeWriter{
 
 public:
 	vector<Point> store;
-	unsigned int storeLimit;
-	Node *root;
+	unsigned int storeLimit = 100'1000;
+	Node *root = NULL;
 	AABB aabb;
-	long long numPoints;
+	long long numPoints = 0;
 
-	PotreeWriter(){
-		root = NULL;
-		storeLimit = 100*1000;
-		numPoints = 0;
-	}
+	PotreeWriter() = default;
 
 	/**
 	 * double octree size(and create new levels on top) until the given point fits
@@ -470,14 +399,6 @@ public:
 		for(int i = 0; i < threads.size(); i++){
 			threads[i].join();
 		}
-
-		//for(thread &tr : threads){
-		//	tr.join();
-		//}
-
-		//or(Node *node : nodesToFlush){
-		//	node->flush();
-		//
 	}
 
 };
