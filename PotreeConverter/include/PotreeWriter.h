@@ -229,8 +229,8 @@ public:
 		root->flush();
 
 		{// update cloud.js
-			long long numPointsInMemory = 0;
-			long long numPointsInHierarchy = 0;
+			// long long numPointsInMemory = 0;  // unused variable
+			// long long numPointsInHierarchy = 0  // unused variable;
 			cloudjs.hierarchy = vector<CloudJS::Node>();
 			cloudjs.hierarchyStepSize = hierarchyStepSize;
 			cloudjs.tightBoundingBox = tightAABB;

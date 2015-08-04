@@ -148,16 +148,16 @@ public:
 	}
 
 	bool readNextPoint(){
-		double x;
-		double y;
-		double z;
+		double x = 0;
+		double y = 0;
+		double z = 0;
 		float nx = 0;
 		float ny = 0;
 		float nz = 0;
-		unsigned char r;
-		unsigned char g;
-		unsigned char b;
-		unsigned char a = 255;
+		unsigned char r = 255;
+		unsigned char g = 255;
+		unsigned char b = 255;
+		// unsigned char a = 255;  // unused variable
 		unsigned short intensity = 0;
 
 		string line;
