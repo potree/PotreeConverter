@@ -48,6 +48,7 @@ static const int cellsHalf = cells / 2;
 
 string outDir = "D:/temp/test/out";
 
+
 class Node{
 
 public:
@@ -244,7 +245,7 @@ class PotreeWriter{
 
 public:
 	vector<Point> store;
-	unsigned int storeLimit = 100'1000;
+	unsigned int storeLimit = 100'000;
 	Node *root = NULL;
 	AABB aabb;
 	long long numPoints = 0;
@@ -371,7 +372,6 @@ public:
 		}
 
 		cout << "nodes to flush: " << nodesToFlush.size() << endl;
-
 
 		int offset = 0;
 		int numFlushThreads = 5;

@@ -17,7 +17,6 @@ public:
 	unsigned char r = 255;
 	unsigned char g = 255;
 	unsigned char b = 255;
-	unsigned char a = 255;
 	unsigned char returnNumber = 0;
 	unsigned char numberOfReturns = 0;
 	unsigned short pointSourceID = 0;

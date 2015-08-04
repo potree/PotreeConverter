@@ -55,10 +55,10 @@ void stopTime(string key){
 int main(int argc, char **argv){
 
 	
-	string fIn = "D:\\temp\\test\\lion.las";
+	//string fIn = "D:\\temp\\test\\lion.las";
 	//string fIn = "D:\\temp\\perf\\ring.las";
 	//string fIn = "D:\\temp\\perf\\ripple.las";
-	//string fIn = "C:\\temp\\test\\dechen_cave_upscaled.las";
+	string fIn = "C:\\temp\\test\\dechen_cave_upscaled.las";
 	string fOut = "C:\\temp\\perf\\out.las";
 
 
@@ -107,16 +107,17 @@ int main(int argc, char **argv){
 
 		writer->add(Point(p.GetX(), p.GetY(), p.GetZ(), r, g, b));
 
-		if((writer->numPoints % 100000) == 0){
+		if((writer->numPoints % 100'000) == 0){
 			cout << writer->numPoints << " written" << endl;
 		}
 
 		i++;
 	} 
+	writer->processStore();
 
 	stopTime("read");
 
 	startTime("flush");
-	writer->flush();
+	//writer->flush();
 	stopTime("flush");
 }
