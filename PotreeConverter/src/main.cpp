@@ -56,6 +56,7 @@ int main(int argc, char **argv){
 
 	
 	//string fIn = "D:\\temp\\test\\lion.las";
+	//string fIn = "D:\\temp\\test\\test.las";
 	//string fIn = "D:\\temp\\perf\\ring.las";
 	//string fIn = "D:\\temp\\perf\\ripple.las";
 	string fIn = "C:\\temp\\test\\dechen_cave_upscaled.las";
@@ -111,6 +112,10 @@ int main(int argc, char **argv){
 			cout << writer->numPoints << " written" << endl;
 		}
 
+		if((writer->numPoints % 5'000'000) == 0){
+			writer->flush();
+		}
+
 		i++;
 	} 
 	writer->processStore();
@@ -118,6 +123,6 @@ int main(int argc, char **argv){
 	stopTime("read");
 
 	startTime("flush");
-	//writer->flush();
+	writer->flush();
 	stopTime("flush");
 }

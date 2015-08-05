@@ -33,7 +33,7 @@ using std::map;
 
 
 
-
+namespace Potree{
 
 /**
  *   y 
@@ -136,6 +136,51 @@ string toUpper(string str){
 	return tmp;
 }
 
+// http://stackoverflow.com/questions/8593608/how-can-i-copy-a-directory-using-boost-filesystem
+bool copyDir(fs::path source, fs::path destination){
+	
+    try{
+        // Check whether the function call is valid
+        if(!fs::exists(source) || !fs::is_directory(source) ) {
+            std::cerr << "Source directory " << source.string() << " does not exist or is not a directory." << '\n';
+            return false;
+        }
+        //if(fs::exists(destination)){
+        //    std::cerr << "Destination directory " << destination.string()
+        //        << " already exists." << '\n';
+        //    return false;
+        //}
+        // Create the destination directory
+		if(!fs::exists(destination)){
+			if(!fs::create_directory(destination)){
+				std::cerr << "Unable to create destination directory" << destination.string() << '\n';
+				return false;
+			}
+		}
+    }catch(fs::filesystem_error const & e){
+        std::cerr << e.what() << '\n';
+        return false;
+    }
+    // Iterate through the source directory
+    for( fs::directory_iterator file(source); file != fs::directory_iterator(); ++file){
+        try{
+            fs::path current(file->path());
+            if(fs::is_directory(current)) {
+                // Found directory: Recursion
+                if(!copyDir(current, destination / current.filename())){
+                    return false;
+                }
+            }else{
+                // Found file: Copy
+                fs::copy_file(current,destination / current.filename(), fs::copy_option::overwrite_if_exists);
+            }
+        }catch(fs::filesystem_error const & e){
+            std:: cerr << e.what() << '\n';
+        }
+    }
+    return true;
+}
+
 
 int psign(float value){
 	if(value == 0.0){
@@ -145,4 +190,6 @@ int psign(float value){
 	}else{
 		return 1;
 	}
+}
+
 }

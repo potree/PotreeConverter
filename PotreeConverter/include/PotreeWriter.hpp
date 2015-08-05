@@ -21,6 +21,7 @@
 #include "Point.h"
 #include "AABB.h"
 #include "Vector3.h"
+#include "stuff.h"
 
 namespace fs = boost::filesystem;
 
@@ -40,8 +41,6 @@ using std::thread;
 
 namespace Potree{
 
-static const int NODE_STORE_LIMIT = 10'000;
-static const int WRITER_STORE_LIMIT = 100'000;
 static const int cells = 128;
 static const int lastCellIndex = cells - 1;
 static const int cellsHalf = cells / 2;
@@ -57,12 +56,15 @@ public:
 	vector<Point> selected;
 	unordered_map<int, int> grid; 
 	
-	unsigned int storeLimit = 20'000;
+	unsigned int storeLimit = 5'000;
 	AABB aabb;
 	int index = -1;
 	Node *parent = NULL;
 	vector<Node*> children{8, NULL};
 	unsigned int numPoints = 0;
+	bool needsFlush = false;
+	string file = "";
+	bool isInMemory = true;
 	
 
 	Node(AABB aabb){
@@ -75,12 +77,52 @@ public:
 		this->parent = parent;
 	}
 
-	string name(){
+	string name() const {
 		if(parent == NULL){
 			return "r";
 		}else{
 			return parent->name() + std::to_string(index);
 		}
+	}
+
+	string filename() const {
+		return  outDir + "/" + name() + ".las";
+	}
+
+	void updateFilename(){
+		if(!file.empty() && file != filename()){
+			fs::rename(file, filename());
+			file = filename();
+		}
+	}
+
+	void loadFromDisk(){
+		std::ifstream ifs;
+		ifs.open(filename(), std::ios::in | std::ios::binary);
+		liblas::ReaderFactory f;
+		liblas::Reader reader = f.CreateWithStream(ifs);
+		liblas::Header const& header = reader.GetHeader();
+
+		while(reader.ReadNextPoint()){
+			liblas::Point const& p = reader.GetPoint();
+			liblas::Color color = p.GetColor();
+
+			unsigned char r = color.GetRed();
+			unsigned char g = color.GetGreen();
+			unsigned char b = color.GetBlue();
+
+			Point point(p.GetX(), p.GetY(), p.GetZ(), r, g, b);
+			selected.push_back(point);
+		}
+
+		isInMemory = true;
+	}
+
+	void unload(){
+		selected.clear();
+		store.clear();
+		// TODO: grid.clear();
+		isInMemory = false;
 	}
 
 	void processStore(){
@@ -91,6 +133,11 @@ public:
 		if(grid.size() == 0){
 			grid.reserve(20'000);
 		}
+
+		if(!isInMemory){
+			loadFromDisk();
+		}
+
 
 		double cdx = cells / aabb.size.x;
 		double cdy = cells / aabb.size.y;
@@ -117,41 +164,43 @@ public:
 			double dz = ifz - (iz + 0.5);
 			float distance = (float)(dx + dy + dz);
 			point.distance = distance;
-			bool accepted = distance < 0.2;
+			bool withinRange = distance < 0.3;
+			withinRange = true;
 
 			auto it = grid.find(index);
-			if(accepted && it == grid.end()){
+
+			bool cellIsEmpty = it == grid.end();
+			if(withinRange && cellIsEmpty){
+				// in range and cell is empty -> add to cell
 				selected.push_back(point);
 				grid.insert({index, (int)selected.size() - 1});
 				numPoints++;
 			}else{
-
-				int selectedIndex = it->second;
-
-				Point *further;
-				if(accepted && point.distance < selected[selectedIndex].distance) {
-					further = &selected[selectedIndex];
-					selected[selectedIndex] = point;
-				}else{
-					further = &point;
-				}
-
+				// create a child node at index ci
 				int cix = ix / cellsHalf;
 				int ciy = iy / cellsHalf;
 				int ciz = iz / cellsHalf;
 				int ci = cix << 2 | ciy << 1 | ciz;
-			
-			
-			
+				
 				Node *childNode = children[ci];
 				if(childNode == NULL){
 					AABB cAABB = childAABB(aabb, ci);
 					childNode = new Node(this, cAABB, ci);
 					children[ci] = childNode;
 				}
-			
-				childNode->add(*further);
 
+				if(withinRange && !cellIsEmpty && point.distance < selected[it->second].distance){
+					// in range and cell is not empty but new point is closer than existing point
+					// -> replace existing and pass existing down to next level
+					Point *further = &selected[it->second];
+					selected[it->second] = point;
+
+					childNode->add(*further);
+				}else{
+					// not in range or point is farther away than existing point -> pass down to next level
+
+					childNode->add(point);
+				}
 			}
 		}
 
@@ -160,14 +209,11 @@ public:
 
 	void add(Point &p){
 		store.push_back(p);
+		needsFlush = true;
 
 		if(store.size() > storeLimit){
 			processStore();
 		}
-	}
-
-	bool needsFlush(){
-		return selected.size() > 0 || store.size() > 0;
 	}
 
 	bool isLeaf(){
@@ -181,8 +227,7 @@ public:
 	}
 
 	void flush(){
-
-		if(!needsFlush()){
+		if(!needsFlush){
 			return;
 		}
 
@@ -234,9 +279,11 @@ public:
 		delete stream;
 		stream = NULL;
 
-		selected.clear();
-		grid.clear();
+		//clear();
 		store.clear();
+
+		this->file = file;
+		needsFlush = false;
 	}
 
 };
@@ -258,6 +305,8 @@ public:
 	 */
 	void expandOctree(Point& point){
 
+
+		// expand tree
 		while(!root->aabb.isInside(point)){
 			cout << endl;
 			cout << "== increasing octree size == " << endl;
@@ -314,6 +363,29 @@ public:
 			cout << "== end ==" << endl << endl;
 		}
 
+		// rename files
+		vector<Node*> nodesToRename;
+		queue<Node*> nodes;
+		nodes.push(root);
+		while(!nodes.empty()){
+			Node* node = nodes.front();
+			nodes.pop();
+
+			nodesToRename.push_back(node);
+
+			for(Node *child : node->children){
+				if(child != NULL){
+					nodes.push(child);
+				}
+			}
+		}
+		std::sort(nodesToRename.begin(), nodesToRename.end(), [](const Node *a, const Node *b){
+			return a->name().size() > b->name().size();
+		});
+		for(Node *node : nodesToRename){
+			node->updateFilename();
+		}
+
 	}
 
 	void processStore(){
@@ -351,54 +423,76 @@ public:
 	void flush(){
 		processStore();
 
+
+		// traverse tree
 		vector<Node*> nodesToFlush;
-		queue<Node*> st;
-		st.push(root);
-		while(!st.empty()){
-			Node *node = st.front();
-			st.pop();
+		vector<Node*> nodesToUnload;
+		{
+			queue<Node*> st;
+			st.push(root);
+			while(!st.empty()){
+				Node *node = st.front();
+				st.pop();
 
-			nodesToFlush.push_back(node);
+				if(!node->isLeaf()){
+					node->processStore();
+				}
 
-			if(!node->isLeaf()){
-				node->processStore();
-			}
+				if(node->needsFlush){
+					nodesToFlush.push_back(node);
+				}
+				if(!node->needsFlush && node->isInMemory){
+					nodesToUnload.push_back(node);
+				}
 
-			for(Node *child : node->children){
-				if(child != NULL && child->needsFlush()){
-					st.push(child);
+				for(Node *child : node->children){
+					if(child != NULL && child->needsFlush){
+						st.push(child);
+					}
 				}
 			}
 		}
 
-		cout << "nodes to flush: " << nodesToFlush.size() << endl;
+		{ // unload nodes
+			for(Node *node : nodesToUnload){
+				node->unload();
+			}
+		}
 
-		int offset = 0;
-		int numFlushThreads = 5;
-		vector<thread> threads;
-		mutex mtxOffset;
-		for(int i = 0; i < numFlushThreads; i++){
-			threads.emplace_back([&mtxOffset, &nodesToFlush, &offset]{
+		{ // flush nodes
+			cout << "nodes to flush: " << nodesToFlush.size() << endl;
+			int offset = 0;
+			int numFlushThreads = 5;
+			vector<thread> threads;
+			mutex mtxOffset;
+			for(int i = 0; i < numFlushThreads; i++){
+				threads.emplace_back([&mtxOffset, &nodesToFlush, &offset]{
 
-					while(true){
-						std::unique_lock<mutex> lock(mtxOffset);
-						if(offset >= nodesToFlush.size()){
+						while(true){
+							std::unique_lock<mutex> lock(mtxOffset);
+							if(offset >= nodesToFlush.size()){
+								lock.unlock();
+								return;
+							}
+							Node *node = nodesToFlush[offset];
+							offset++;
 							lock.unlock();
-							return;
+
+							node->flush();
 						}
-						Node *node = nodesToFlush[offset];
-						offset++;
-						lock.unlock();
 
-						node->flush();
-					}
+				});
+			}
 
-			});
+			for(int i = 0; i < threads.size(); i++){
+				threads[i].join();
+			}
 		}
 
-		for(int i = 0; i < threads.size(); i++){
-			threads[i].join();
-		}
+		//static int flushCount = 0;
+		//string flushDir = outDir + "/../intermediate/" + std::to_string(flushCount);
+		//copyDir(fs::path(outDir), flushDir);
+		//flushCount++;
 	}
 
 };
