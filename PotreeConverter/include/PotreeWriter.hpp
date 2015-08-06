@@ -45,12 +45,15 @@ static const int cells = 128;
 static const int lastCellIndex = cells - 1;
 static const int cellsHalf = cells / 2;
 
-string outDir = "D:/temp/test/out";
+//string outDir = "D:/temp/test/out";
 
+class PotreeWriter;
 
 class Node{
 
 public:
+
+	PotreeWriter *writer = NULL;
 
 	vector<Point> store;
 	vector<Point> selected;
@@ -67,11 +70,13 @@ public:
 	bool isInMemory = true;
 	
 
-	Node(AABB aabb){
+	Node(PotreeWriter *writer, AABB aabb){
+		this->writer = writer;
 		this->aabb = aabb;
 	}
 
-	Node(Node *parent, AABB aabb, int index){
+	Node(PotreeWriter *writer, Node *parent, AABB aabb, int index){
+		this->writer = writer;
 		this->aabb = aabb;
 		this->index = index;
 		this->parent = parent;
@@ -85,9 +90,7 @@ public:
 		}
 	}
 
-	string filename() const {
-		return  outDir + "/" + name() + ".las";
-	}
+	string filename() const;
 
 	void updateFilename(){
 		if(!file.empty() && file != filename()){
@@ -97,22 +100,42 @@ public:
 	}
 
 	void loadFromDisk(){
+		cout << "loading from disk: " << filename() << endl;
+
 		std::ifstream ifs;
 		ifs.open(filename(), std::ios::in | std::ios::binary);
 		liblas::ReaderFactory f;
 		liblas::Reader reader = f.CreateWithStream(ifs);
 		liblas::Header const& header = reader.GetHeader();
 
+		double cdx = cells / aabb.size.x;
+		double cdy = cells / aabb.size.y;
+		double cdz = cells / aabb.size.z;
+
 		while(reader.ReadNextPoint()){
 			liblas::Point const& p = reader.GetPoint();
 			liblas::Color color = p.GetColor();
 
-			unsigned char r = color.GetRed();
-			unsigned char g = color.GetGreen();
-			unsigned char b = color.GetBlue();
+			unsigned char r = color.GetRed() / 256;
+			unsigned char g = color.GetGreen()  / 256;
+			unsigned char b = color.GetBlue()  / 256;
 
 			Point point(p.GetX(), p.GetY(), p.GetZ(), r, g, b);
 			selected.push_back(point);
+
+			// transform coordinates to range [0, cells]
+			double ifx = cdx * (point.position.x - aabb.min.x);
+			double ify = cdy * (point.position.y - aabb.min.y);
+			double ifz = cdz * (point.position.z - aabb.min.z);
+
+			// clamp to [0, cells - 1]; faster than using std::min 
+			int ix = ifx >= cells ? lastCellIndex : int(ifx);
+			int iy = ify >= cells ? lastCellIndex : int(ify);
+			int iz = ifz >= cells ? lastCellIndex : int(ifz);
+			
+			// 3d indices to 1d index
+			int index = ix + iy * cells + iz * cells * cells;
+			grid.insert({index, selected.size() - 1});
 		}
 
 		isInMemory = true;
@@ -121,7 +144,12 @@ public:
 	void unload(){
 		selected.clear();
 		store.clear();
-		// TODO: grid.clear();
+		grid.clear();
+
+		selected = vector<Point>();
+		store = vector<Point>();
+		grid = unordered_map<int, int>();
+
 		isInMemory = false;
 	}
 
@@ -137,7 +165,6 @@ public:
 		if(!isInMemory){
 			loadFromDisk();
 		}
-
 
 		double cdx = cells / aabb.size.x;
 		double cdy = cells / aabb.size.y;
@@ -185,7 +212,7 @@ public:
 				Node *childNode = children[ci];
 				if(childNode == NULL){
 					AABB cAABB = childAABB(aabb, ci);
-					childNode = new Node(this, cAABB, ci);
+					childNode = new Node(writer, this, cAABB, ci);
 					children[ci] = childNode;
 				}
 
@@ -226,65 +253,7 @@ public:
 		return true;
 	}
 
-	void flush(){
-		if(!needsFlush){
-			return;
-		}
-
-		selected.insert(selected.end(), store.begin(), store.end());
-
-		string file = outDir + "/" + name() + ".las";
-
-		liblas::Header *header = new liblas::Header();
-		header->SetDataFormatId(liblas::ePointFormat2);
-		header->SetMin(this->aabb.min.x, this->aabb.min.y, this->aabb.min.z);
-		header->SetMax(this->aabb.max.x, this->aabb.max.y, this->aabb.max.z);
-		header->SetScale(0.001, 0.001, 0.001);
-		header->SetPointRecordsCount(53);
-	
-		std::ofstream ofs;
-		ofs.open(file, ios::out | ios::binary);
-		liblas::Writer writer(ofs, *header);
-	
-		liblas::Point p(header);
-		for(int i = 0; i < this->selected.size(); i++){
-			Point &point = this->selected[i];
-	
-			p.SetX(point.position.x);
-			p.SetY(point.position.y);
-			p.SetZ(point.position.z);
-	
-			vector<uint8_t> &data = p.GetData();
-	
-			unsigned short pr = point.r * 256;
-			unsigned short pg = point.g * 256;
-			unsigned short pb = point.b * 256;
-	
-			liblas::Color color(int(point.r) * 256, int(point.g) * 256, int(point.b) * 256);
-			p.SetColor(color);
-	
-			writer.WritePoint(p);
-		} 
-	
-		ofs.close();
-	
-		delete header;
-	
-		// update point count
-		int numPoints = (int)this->selected.size();
-		std::fstream *stream = new std::fstream(file, ios::out | ios::binary | ios::in );
-		stream->seekp(107);
-		stream->write(reinterpret_cast<const char*>(&numPoints), 4);
-		stream->close();
-		delete stream;
-		stream = NULL;
-
-		//clear();
-		store.clear();
-
-		this->file = file;
-		needsFlush = false;
-	}
+	void flush();
 
 };
 
@@ -296,8 +265,14 @@ public:
 	Node *root = NULL;
 	AABB aabb;
 	long long numPoints = 0;
+	string targetDir = "";
 
-	PotreeWriter() = default;
+	PotreeWriter(string targetDir){
+		this->targetDir = targetDir;
+
+		fs::remove_all(targetDir + "/data");
+		fs::create_directories(targetDir + "/data");
+	}
 
 	/**
 	 * double octree size(and create new levels on top) until the given point fits
@@ -343,7 +318,7 @@ public:
 			}
 			newRootAABB.size = Vector3<double>(2*octreeWidth);
 
-			Node *newRoot = new Node(newRootAABB);
+			Node *newRoot = new Node(this, newRootAABB);
 			Node *oldRoot = this->root;
 
 			cout << "old: " << oldRoot->aabb << "; new: " << newRoot->aabb << "; newIndex: " << oldRootIndex << endl;
@@ -395,7 +370,7 @@ public:
 		if(root == NULL){
 			AABB rootAABB = aabb;
 			rootAABB.makeCubic();
-			root = new Node(rootAABB);
+			root = new Node(this, rootAABB);
 		}
 
 		for(Point &point : store){
@@ -446,48 +421,54 @@ public:
 				}
 
 				for(Node *child : node->children){
-					if(child != NULL && child->needsFlush){
+					if(child != NULL){
 						st.push(child);
 					}
 				}
 			}
 		}
 
-		{ // unload nodes
-			for(Node *node : nodesToUnload){
-				node->unload();
-			}
-		}
+		//{ // unload nodes
+		//	for(Node *node : nodesToUnload){
+		//		node->unload();
+		//	}
+		//}
 
 		{ // flush nodes
 			cout << "nodes to flush: " << nodesToFlush.size() << endl;
-			int offset = 0;
-			int numFlushThreads = 5;
-			vector<thread> threads;
-			mutex mtxOffset;
-			for(int i = 0; i < numFlushThreads; i++){
-				threads.emplace_back([&mtxOffset, &nodesToFlush, &offset]{
 
-						while(true){
-							std::unique_lock<mutex> lock(mtxOffset);
-							if(offset >= nodesToFlush.size()){
-								lock.unlock();
-								return;
-							}
-							Node *node = nodesToFlush[offset];
-							offset++;
-							lock.unlock();
-
-							node->flush();
-						}
-
-				});
+			for(Node *node : nodesToFlush){
+				node->flush();
 			}
 
-			for(int i = 0; i < threads.size(); i++){
-				threads[i].join();
-			}
+			//int offset = 0;
+			//int numFlushThreads = 5;
+			//vector<thread> threads;
+			//mutex mtxOffset;
+			//for(int i = 0; i < numFlushThreads; i++){
+			//	threads.emplace_back([&mtxOffset, &nodesToFlush, &offset]{
+
+			//			while(true){
+			//				std::unique_lock<mutex> lock(mtxOffset);
+			//				if(offset >= nodesToFlush.size()){
+			//					lock.unlock();
+			//					return;
+			//				}
+			//				Node *node = nodesToFlush[offset];
+			//				offset++;
+			//				lock.unlock();
+
+			//				node->flush();
+			//			}
+
+			//	});
+			//}
+
+			//for(int i = 0; i < threads.size(); i++){
+			//	threads[i].join();
+			//}
 		}
+
 
 		//static int flushCount = 0;
 		//string flushDir = outDir + "/../intermediate/" + std::to_string(flushCount);

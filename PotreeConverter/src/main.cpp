@@ -56,10 +56,12 @@ int main(int argc, char **argv){
 
 	
 	//string fIn = "D:\\temp\\test\\lion.las";
+	string fIn = "D:\\dev\\pointclouds\\pix4d\\matterhorn.las";
+	//string fIn = "D:\\dev\\pointclouds\\opentopography\\CA13_SAN_SIM\\CA13_data\\ot_35121F2416A_1.laz";
 	//string fIn = "D:\\temp\\test\\test.las";
 	//string fIn = "D:\\temp\\perf\\ring.las";
 	//string fIn = "D:\\temp\\perf\\ripple.las";
-	string fIn = "C:\\temp\\test\\dechen_cave_upscaled.las";
+	//string fIn = "C:\\temp\\test\\dechen_cave_upscaled.las";
 	string fOut = "C:\\temp\\perf\\out.las";
 
 
@@ -94,10 +96,11 @@ int main(int argc, char **argv){
 	double scaleY = header.GetScaleY();
 	double scaleZ = header.GetScaleZ();
 
-	PotreeWriter *writer = new PotreeWriter();
+	PotreeWriter *writer = new PotreeWriter("D:/temp/test/out");
 
 	vector<Point> points;
 	int i = 0;
+	startTime("flush");
 	while (reader.ReadNextPoint()){
 		liblas::Point const& p = reader.GetPoint();
 		liblas::Color color = p.GetColor();
@@ -113,7 +116,10 @@ int main(int argc, char **argv){
 		}
 
 		if((writer->numPoints % 5'000'000) == 0){
-			writer->flush();
+		
+			stopTime("flush");
+			//writer->flush();
+			startTime("flush");
 		}
 
 		i++;
@@ -122,7 +128,6 @@ int main(int argc, char **argv){
 
 	stopTime("read");
 
-	startTime("flush");
-	writer->flush();
-	stopTime("flush");
+	//writer->flush();
+	//stopTime("flush");
 }
