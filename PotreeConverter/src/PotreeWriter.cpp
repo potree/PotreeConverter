@@ -10,11 +10,6 @@ string Node::filename() const {
 }
 
 void Node::flush(){
-	if(!needsFlush){
-		return;
-	}
-
-	selected.insert(selected.end(), store.begin(), store.end());
 
 	string file = this->writer->targetDir + "/data/" + name() + ".las";
 
@@ -30,8 +25,8 @@ void Node::flush(){
 	liblas::Writer writer(ofs, *header);
 	liblas::Point p(header);
 
-	for(int i = 0; i < this->selected.size(); i++){
-		Point &point = this->selected[i];
+	for(int i = 0; i < this->store.size(); i++){
+		Point &point = this->store[i];
 
 		p.SetX(point.position.x);
 		p.SetY(point.position.y);
@@ -53,7 +48,7 @@ void Node::flush(){
 	delete header;
 
 	// update point count
-	int numPoints = (int)this->selected.size();
+	int numPoints = (int)this->store.size();
 	std::fstream stream(file, ios::out | ios::binary | ios::in );
 	stream.seekp(107);
 	stream.write(reinterpret_cast<const char*>(&numPoints), 4);
@@ -63,7 +58,6 @@ void Node::flush(){
 	store.clear();
 
 	this->file = file;
-	needsFlush = false;
 }
 
 

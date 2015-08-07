@@ -56,12 +56,12 @@ int main(int argc, char **argv){
 
 	
 	//string fIn = "D:\\temp\\test\\lion.las";
-	string fIn = "D:\\dev\\pointclouds\\pix4d\\matterhorn.las";
+	//string fIn = "D:\\dev\\pointclouds\\pix4d\\matterhorn.las";
 	//string fIn = "D:\\dev\\pointclouds\\opentopography\\CA13_SAN_SIM\\CA13_data\\ot_35121F2416A_1.laz";
 	//string fIn = "D:\\temp\\test\\test.las";
 	//string fIn = "D:\\temp\\perf\\ring.las";
 	//string fIn = "D:\\temp\\perf\\ripple.las";
-	//string fIn = "C:\\temp\\test\\dechen_cave_upscaled.las";
+	string fIn = "C:\\temp\\test\\dechen_cave_upscaled.las";
 	string fOut = "C:\\temp\\perf\\out.las";
 
 
@@ -128,6 +128,7 @@ int main(int argc, char **argv){
 
 	stopTime("read");
 
-	//writer->flush();
-	//stopTime("flush");
+	startTime("flush");
+	writer->flush();
+	stopTime("flush");
 }

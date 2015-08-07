@@ -56,19 +56,14 @@ public:
 	PotreeWriter *writer = NULL;
 
 	vector<Point> store;
-	vector<Point> selected;
-	unordered_map<int, int> grid; 
 	
-	unsigned int storeLimit = 5'000;
+	unsigned int storeLimit = 5'000'000;
 	AABB aabb;
 	int index = -1;
 	Node *parent = NULL;
-	vector<Node*> children{8, NULL};
+	vector<Node*> children;
 	unsigned int numPoints = 0;
-	bool needsFlush = false;
 	string file = "";
-	bool isInMemory = true;
-	
 
 	Node(PotreeWriter *writer, AABB aabb){
 		this->writer = writer;
@@ -80,6 +75,10 @@ public:
 		this->aabb = aabb;
 		this->index = index;
 		this->parent = parent;
+	}
+
+	bool isInnerNode(){
+		return children.size() > 0;
 	}
 
 	string name() const {
@@ -99,79 +98,30 @@ public:
 		}
 	}
 
-	void loadFromDisk(){
-		cout << "loading from disk: " << filename() << endl;
-
-		std::ifstream ifs;
-		ifs.open(filename(), std::ios::in | std::ios::binary);
-		liblas::ReaderFactory f;
-		liblas::Reader reader = f.CreateWithStream(ifs);
-		liblas::Header const& header = reader.GetHeader();
-
-		double cdx = cells / aabb.size.x;
-		double cdy = cells / aabb.size.y;
-		double cdz = cells / aabb.size.z;
-
-		while(reader.ReadNextPoint()){
-			liblas::Point const& p = reader.GetPoint();
-			liblas::Color color = p.GetColor();
-
-			unsigned char r = color.GetRed() / 256;
-			unsigned char g = color.GetGreen()  / 256;
-			unsigned char b = color.GetBlue()  / 256;
-
-			Point point(p.GetX(), p.GetY(), p.GetZ(), r, g, b);
-			selected.push_back(point);
-
-			// transform coordinates to range [0, cells]
-			double ifx = cdx * (point.position.x - aabb.min.x);
-			double ify = cdy * (point.position.y - aabb.min.y);
-			double ifz = cdz * (point.position.z - aabb.min.z);
-
-			// clamp to [0, cells - 1]; faster than using std::min 
-			int ix = ifx >= cells ? lastCellIndex : int(ifx);
-			int iy = ify >= cells ? lastCellIndex : int(ify);
-			int iz = ifz >= cells ? lastCellIndex : int(ifz);
-			
-			// 3d indices to 1d index
-			int index = ix + iy * cells + iz * cells * cells;
-			grid.insert({index, selected.size() - 1});
-		}
-
-		isInMemory = true;
-	}
-
-	void unload(){
-		selected.clear();
-		store.clear();
-		grid.clear();
-
-		selected = vector<Point>();
-		store = vector<Point>();
-		grid = unordered_map<int, int>();
-
-		isInMemory = false;
-	}
-
-	void processStore(){
-		if(store.size() == 0){
-			return;
-		}
-
-		if(grid.size() == 0){
-			grid.reserve(20'000);
-		}
-
-		if(!isInMemory){
-			loadFromDisk();
-		}
-
-		double cdx = cells / aabb.size.x;
-		double cdy = cells / aabb.size.y;
-		double cdz = cells / aabb.size.z;
-
+	void split(){
+		children = vector<Node*>{8, NULL};
+	
 		for(Point &point : store){
+			add(point);
+		}
+		
+		store.clear();
+		store = vector<Point>();
+	}
 
+	void add(Point &point){
+		if(!isInnerNode()){
+			store.push_back(point);
+
+			if(store.size() > storeLimit){
+				split();
+			}
+		}else{
+
+			double cdx = cells / aabb.size.x;
+			double cdy = cells / aabb.size.y;
+			double cdz = cells / aabb.size.z;
+		
 			// transform coordinates to range [0, cells]
 			double ifx = cdx * (point.position.x - aabb.min.x);
 			double ify = cdy * (point.position.y - aabb.min.y);
@@ -185,62 +135,23 @@ public:
 			// 3d indices to 1d index
 			int index = ix + iy * cells + iz * cells * cells;
 
-			// distance to center
-			double dx = ifx - (ix + 0.5);
-			double dy = ify - (iy + 0.5);
-			double dz = ifz - (iz + 0.5);
-			float distance = (float)(dx + dy + dz);
-			point.distance = distance;
-			bool withinRange = distance < 0.3;
-			withinRange = true;
-
-			auto it = grid.find(index);
-
-			bool cellIsEmpty = it == grid.end();
-			if(withinRange && cellIsEmpty){
-				// in range and cell is empty -> add to cell
-				selected.push_back(point);
-				grid.insert({index, (int)selected.size() - 1});
-				numPoints++;
-			}else{
+			int cix = ix / cellsHalf;
+			int ciy = iy / cellsHalf;
+			int ciz = iz / cellsHalf;
+			int ci = cix << 2 | ciy << 1 | ciz;
+			
+			Node *childNode = children[ci];
+			if(childNode == NULL){
 				// create a child node at index ci
-				int cix = ix / cellsHalf;
-				int ciy = iy / cellsHalf;
-				int ciz = iz / cellsHalf;
-				int ci = cix << 2 | ciy << 1 | ciz;
-				
-				Node *childNode = children[ci];
-				if(childNode == NULL){
-					AABB cAABB = childAABB(aabb, ci);
-					childNode = new Node(writer, this, cAABB, ci);
-					children[ci] = childNode;
-				}
-
-				if(withinRange && !cellIsEmpty && point.distance < selected[it->second].distance){
-					// in range and cell is not empty but new point is closer than existing point
-					// -> replace existing and pass existing down to next level
-					Point *further = &selected[it->second];
-					selected[it->second] = point;
-
-					childNode->add(*further);
-				}else{
-					// not in range or point is farther away than existing point -> pass down to next level
-
-					childNode->add(point);
-				}
+				AABB cAABB = childAABB(aabb, ci);
+				childNode = new Node(writer, this, cAABB, ci);
+				children[ci] = childNode;
 			}
+
+			childNode->add(point);
+
 		}
 
-		store.clear();
-	}
-
-	void add(Point &p){
-		store.push_back(p);
-		needsFlush = true;
-
-		if(store.size() > storeLimit){
-			processStore();
-		}
 	}
 
 	bool isLeaf(){
@@ -325,15 +236,9 @@ public:
 
 			oldRoot->index = oldRootIndex;
 			oldRoot->parent = newRoot;
+			newRoot->children = vector<Node*>{8, NULL};
 			newRoot->children[oldRootIndex] = oldRoot;
 			this->root = newRoot;
-
-			newRoot->store.insert(newRoot->store.begin(), oldRoot->selected.begin(), oldRoot->selected.end());
-			newRoot->store.insert(newRoot->store.begin(), oldRoot->store.begin(), oldRoot->store.end());
-			oldRoot->selected.clear();
-			oldRoot->store.clear();
-			oldRoot->grid.clear();
-			newRoot->processStore();
 
 			cout << "== end ==" << endl << endl;
 		}
@@ -409,16 +314,9 @@ public:
 				Node *node = st.front();
 				st.pop();
 
-				if(!node->isLeaf()){
-					node->processStore();
-				}
-
-				if(node->needsFlush){
+				//if(node->needsFlush){
 					nodesToFlush.push_back(node);
-				}
-				if(!node->needsFlush && node->isInMemory){
-					nodesToUnload.push_back(node);
-				}
+				//}
 
 				for(Node *child : node->children){
 					if(child != NULL){
@@ -427,12 +325,6 @@ public:
 				}
 			}
 		}
-
-		//{ // unload nodes
-		//	for(Node *node : nodesToUnload){
-		//		node->unload();
-		//	}
-		//}
 
 		{ // flush nodes
 			cout << "nodes to flush: " << nodesToFlush.size() << endl;
