@@ -7,6 +7,7 @@
 #include <string>
 #include <fstream>
 #include <exception>
+#include <sstream>
 
 #include "liblas/liblas.hpp"
 
@@ -18,6 +19,7 @@
 
 #include <boost/filesystem.hpp>
 
+using std::stringstream;
 using std::ifstream;
 using std::ofstream;
 using std::ios;
@@ -98,7 +100,7 @@ int main(int argc, char **argv){
 	double scaleY = header.GetScaleY();
 	double scaleZ = header.GetScaleZ();
 
-	PotreeWriter *writer = new PotreeWriter("D:/temp/test/out");
+	PotreeWriter *writer = new PotreeWriter("C:/temp/test/out");
 
 	vector<Point> points;
 	int i = 0;
@@ -113,14 +115,17 @@ int main(int argc, char **argv){
 
 		writer->add(Point(p.GetX(), p.GetY(), p.GetZ(), r, g, b));
 
-		if((writer->numPoints % 100'000) == 0){
-			cout << writer->numPoints << " written" << endl;
+		if((writer->numPoints % 1'000'000) == 0){
+			stringstream ssMessage;
+			ssMessage.imbue(std::locale(""));
+			ssMessage << writer->numPoints << " written";
+			cout << ssMessage.str() <<  endl;
 		}
 
 		if((writer->numPoints % 5'000'000) == 0){
 		
+			writer->flush();
 			stopTime("flush");
-			//writer->flush();
 			startTime("flush");
 		}
 

@@ -56,6 +56,10 @@ bool Node::isInnerNode(){
 	return children.size() > 0;
 }
 
+bool Node::isLeafNode(){
+	return children.size() == 0;
+}
+
 string Node::name() const {
 	if(parent == NULL){
 		return "r";
@@ -86,26 +90,42 @@ void Node::split(){
 	store = vector<Point>();
 }
 
-bool Node::isLeaf(){
-		if(children.size() == 0){
-			return true;
-		}
+void Node::loadFromDisk(){
 
-		for(Node *child : children){
-			if(child != NULL){
-				return false;
-			}
-		}
-
-		return true;
-	}
+	//cout << "loadFromDisk: " << filename() << endl;
+	//
+	//std::ifstream ifs;
+	//ifs.open(filename(), std::ios::in | std::ios::binary);
+	//liblas::ReaderFactory f;
+	//liblas::Reader reader = f.CreateWithStream(ifs);
+	//liblas::Header const& header = reader.GetHeader();
+	//
+	//while (reader.ReadNextPoint()){
+	//	liblas::Point const& p = reader.GetPoint();
+	//	liblas::Color color = p.GetColor();
+	//
+	//	unsigned char r = color.GetRed() / 256;
+	//	unsigned char g = color.GetGreen() / 256;
+	//	unsigned char b = color.GetBlue() / 256;
+	//
+	//	Point point(p.GetX(), p.GetY(), p.GetZ(), r, g, b);
+	//	store.push_back(point);
+	//}
+	//
+	//ifs.close();
+	inMemory = true;
+}
 
 void Node::add(Point &point){
 
-	needsFlush = true;
 
-	if(!isInnerNode()){
+	if(isLeafNode()){
+		if(!inMemory){
+			loadFromDisk();
+		}
+
 		store.push_back(point);
+		needsFlush = true;
 
 		if(store.size() > storeLimit){
 			split();
@@ -149,7 +169,11 @@ void Node::add(Point &point){
 }
 
 void Node::unload(){
-	// TODO
+	cout << "unload: " << name() << endl;
+
+	store = vector<Point>();
+
+	inMemory = false;
 }
 
 void Node::flush(){
@@ -197,10 +221,9 @@ void Node::flush(){
 	stream.write(reinterpret_cast<const char*>(&numPoints), 4);
 	stream.close();
 
-	//clear();
-	store.clear();
-
 	this->file = file;
+
+	needsFlush = false;
 }
 
 void Node::traverse(std::function<void(Node*)> callback){
@@ -313,6 +336,7 @@ void PotreeWriter::expandOctree(Point& point){
 			nodesToRename.push_back(node);
 		});
 
+		// rename from bottom to top to avoid overwriting nodes
 		std::sort(nodesToRename.begin(), nodesToRename.end(), [](const Node *a, const Node *b){
 			return a->name().size() > b->name().size();
 		});

@@ -28,14 +28,14 @@ public:
 
 	vector<Point> store;
 	
-	unsigned int storeLimit = 5'000'000;
+	unsigned int storeLimit = 50'000;
 	AABB aabb;
 	int index = -1;
 	Node *parent = NULL;
 	vector<Node*> children;
 	unsigned int numPoints = 0;
 	string file = "";
-	bool needsFlush = false;
+	bool needsFlush = true;
 	bool inMemory= true;
 
 	Node(PotreeWriter *writer, AABB aabb);
@@ -54,11 +54,13 @@ public:
 
 	void add(Point &point);
 
-	bool isLeaf();
+	bool isLeafNode();
 
 	void flush();
 
 	void unload();
+
+	void loadFromDisk();
 
 	void traverse(std::function<void(Node*)> callback);
 
