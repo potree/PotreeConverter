@@ -58,9 +58,7 @@ public:
 
 	void makeCubic(){
 		double maxlength = size.maxValue();
-		max.x = min.x + maxlength;
-		max.y = min.y + maxlength;
-		max.z = min.z + maxlength;
+		max = min + maxlength;
 		size = max - min;
 
 

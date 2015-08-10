@@ -27,11 +27,10 @@ AABB LIBLASReader::getAABB(){
     const liblas::Header &header = reader.GetHeader();
 
     Point minp = transform(header.GetMinX(), header.GetMinY(), header.GetMinZ());
-    Vector3<double> min = Vector3<double>(minp.position.x, minp.position.y, minp.position.z);
     Point maxp = transform(header.GetMaxX(), header.GetMaxY(), header.GetMaxZ());
-    Vector3<double> max = Vector3<double>(maxp.position.x, maxp.position.y, maxp.position.z);
-    aabb.update(min);
-    aabb.update(max);
+
+    aabb.update(minp.position);
+    aabb.update(maxp.position);
 
     return aabb;
 }
