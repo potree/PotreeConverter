@@ -32,10 +32,10 @@ public:
 		size = max-min;
 	}
 
-	bool isInside(const Point &p){
-		if(min.x <= p.x && p.x <= max.x){
-			if(min.y <= p.y && p.y <= max.y){
-				if(min.z <= p.z && p.z <= max.z){
+	bool isInside(const Point &p) const {
+		if(min.x <= p.position.x && p.position.x <= max.x){
+			if(min.y <= p.position.y && p.position.y <= max.y){
+				if(min.z <= p.position.z && p.position.z <= max.z){
 					return true;
 				}
 			}
@@ -58,9 +58,7 @@ public:
 
 	void makeCubic(){
 		double maxlength = size.maxValue();
-		max.x = min.x + maxlength;
-		max.y = min.y + maxlength;
-		max.z = min.z + maxlength;
+		max = min + maxlength;
 		size = max - min;
 
 

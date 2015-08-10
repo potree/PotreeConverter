@@ -27,13 +27,13 @@ private:
     Point transform(double x, double y, double z) const {
         Point p;
         if (hasTransform) {
-            p.x = tr[0] * x + tr[4] * y + tr[8] * z + tr[12];
-            p.y = tr[1] * x + tr[5] * y + tr[9] * z + tr[13];
-            p.z = tr[2] * x + tr[6] * y + tr[10] * z + tr[14];
+            p.position.x = tr[0] * x + tr[4] * y + tr[8] * z + tr[12];
+            p.position.y = tr[1] * x + tr[5] * y + tr[9] * z + tr[13];
+            p.position.z = tr[2] * x + tr[6] * y + tr[10] * z + tr[14];
         } else {
-            p.x = x;
-            p.y = y;
-            p.z = z;
+            p.position.x = x;
+            p.position.y = y;
+            p.position.z = z;
         }
         return p;
     }

@@ -92,9 +92,9 @@ bool BINPointReader::readNextPoint(){
 			const PointAttribute attribute = attributes[i];
 			if(attribute == PointAttribute::POSITION_CARTESIAN){
 				int* iBuffer = reinterpret_cast<int*>(buffer+offset);
-				point.x = (iBuffer[0] * scale) + aabb.min.x;
-				point.y = (iBuffer[1] * scale) + aabb.min.y;
-				point.z = (iBuffer[2] * scale) + aabb.min.z;
+				point.position.x = (iBuffer[0] * scale) + aabb.min.x;
+				point.position.y = (iBuffer[1] * scale) + aabb.min.y;
+				point.position.z = (iBuffer[2] * scale) + aabb.min.z;
 			}else if(attribute == PointAttribute::COLOR_PACKED){
 				unsigned char* ucBuffer = reinterpret_cast<unsigned char*>(buffer+offset);
 				point.r = ucBuffer[0];

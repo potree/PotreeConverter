@@ -11,9 +11,7 @@ using std::ostream;
 class Point{
 public:
 
-	double x;
-	double y;
-	double z;
+	Vector3<double> position;
 	float nx;
 	float ny;
 	float nz;
@@ -29,9 +27,7 @@ public:
 
 
 	Point() :
-		x( 0 ),
-		y( 0 ),
-		z( 0 ),
+		position( ),
 		nx( 0 ),
 		ny( 0 ),
 		nz( 0 ),
@@ -48,9 +44,7 @@ public:
 	}
 
 	Point(double p_x, double p_y, double p_z, unsigned char p_r, unsigned char p_g, unsigned char p_b) :
-		x( p_x ),
-		y( p_y ),
-		z( p_z ),
+		position( p_x, p_y, p_z ),
 		nx( 0 ),
 		ny( 0 ),
 		nz( 0 ),
@@ -67,9 +61,7 @@ public:
 	}
 
 	Point(double p_x, double p_y, double p_z) :
-		x( p_x ),
-		y( p_y ),
-		z( p_z ),
+		position( p_x, p_y, p_z ),
 		nx( 0 ),
 		ny( 0 ),
 		nz( 0 ),
@@ -86,7 +78,7 @@ public:
 	}
 
 	Point(const Point &other)
-		: x(other.x), y(other.y), z(other.z), 
+		: position(other.position),
 		nx(other.nx), ny(other.ny), nz(other.nz),
 		intensity(other.intensity), classification(other.classification), 
 		r(other.r), g(other.g), b(other.b), 
@@ -97,21 +89,15 @@ public:
 
 	~Point() = default;
 
-	double distanceTo(const Point &point) {
-		return Vector3<double>(point.x - x, point.y - y, point.z - z).length();
+	double distanceTo(const Point &point) const {
+		return position.distanceTo( point.position );
 	}
 
-	double squaredDistanceTo(const Point &point) {
-		return Vector3<double>(point.x - x, point.y - y, point.z - z).squaredLength();
+	double squaredDistanceTo(const Point &point) const{
+		return position.squaredDistanceTo( point.position );
 	}
-
-	Vector3<double> position(){
-		return Vector3<double>(x, y, z);
-	}
-
 	friend ostream &operator<<( ostream &output,  const Point &value ){ 
-		output << "[" << value.x << ", " << value.y << ", " << value.z << "]" ;
-		return output;            
+		return output << value.position;
 	}
 
 };
