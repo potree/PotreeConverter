@@ -122,17 +122,17 @@ void PTXPointReader::scanForAABB() {
                     if (0.5 != intensity) {
                         Point p = transform(tr, x, y, z);
                         if (firstPoint) {
-                            maxx = minx = p.x;
-                            maxy = miny = p.y;
-                            maxz = minz = p.z;
+                            maxx = minx = p.position.x;
+                            maxy = miny = p.position.y;
+                            maxz = minz = p.position.z;
                             firstPoint = false;
                         } else {
-                            minx = p.x < minx ? p.x : minx;
-                            maxx = p.x > maxx ? p.x : maxx;
-                            miny = p.y < miny ? p.y : miny;
-                            maxy = p.y > maxy ? p.y : maxy;
-                            minz = p.z < minz ? p.z : minz;
-                            maxz = p.z > maxz ? p.z : maxz;
+                            minx = p.position.x < minx ? p.position.x : minx;
+                            maxx = p.position.x > maxx ? p.position.x : maxx;
+                            miny = p.position.y < miny ? p.position.y : miny;
+                            maxy = p.position.y > maxy ? p.position.y : maxy;
+                            minz = p.position.z < minz ? p.position.z : minz;
+                            maxz = p.position.z > maxz ? p.position.z : maxz;
                         }
                         count++;
                         if (0 == count % 1000000)

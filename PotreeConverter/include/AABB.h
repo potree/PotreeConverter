@@ -33,9 +33,9 @@ public:
 	}
 
 	bool isInside(const Point &p){
-		if(min.x <= p.x && p.x <= max.x){
-			if(min.y <= p.y && p.y <= max.y){
-				if(min.z <= p.z && p.z <= max.z){
+		if(min.x <= p.position.x && p.position.x <= max.x){
+			if(min.y <= p.position.y && p.position.y <= max.y){
+				if(min.z <= p.position.z && p.position.z <= max.z){
 					return true;
 				}
 			}
