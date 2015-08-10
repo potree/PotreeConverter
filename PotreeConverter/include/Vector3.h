@@ -46,7 +46,7 @@ public:
 		return sqrt(x*x + y*y + z*z);
 	}
 
-	T squaredLength(){
+	T squaredLength() const {
 		return x*x + y*y + z*z;
 	}
 
@@ -58,7 +58,7 @@ public:
 		return ((*this) - p).squaredLength();
 	}
 
-	T maxValue(){
+	T maxValue() const{
 		return max(x, max(y,z));
 	}
 

@@ -32,7 +32,7 @@ public:
 		size = max-min;
 	}
 
-	bool isInside(const Point &p){
+	bool isInside(const Point &p) const {
 		if(min.x <= p.position.x && p.position.x <= max.x){
 			if(min.y <= p.position.y && p.position.y <= max.y){
 				if(min.z <= p.position.z && p.position.z <= max.z){
