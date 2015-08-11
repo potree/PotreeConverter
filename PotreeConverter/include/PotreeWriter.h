@@ -172,9 +172,11 @@ public:
 		vector<Point> st = store;
 		store = vector<Point>();
 
-		if(storeThread.joinable()){
+		/*if(storeThread.joinable()){
 			storeThread.join();
-		}
+		}*/
+
+		waitUntilProcessed();
 
 		storeThread = thread([this, st]{
 			for(Point p : st){
@@ -187,6 +189,12 @@ public:
 				}
 			}
 		});
+	}
+
+	void waitUntilProcessed(){
+		if(storeThread.joinable()){
+			storeThread.join();
+		}
 	}
 
 	void add(Point &p){

@@ -283,7 +283,8 @@ void PotreeConverter::convert(){
 			writer.add(p);
 
 			if((pointsProcessed % (1'000'000)) == 0){
-				writer.flush();
+				writer.processStore();
+				writer.waitUntilProcessed();
 
 				auto end = high_resolution_clock::now();
 				long long duration = duration_cast<milliseconds>(end-start).count();
@@ -298,12 +299,24 @@ void PotreeConverter::convert(){
 				ssMessage << seconds << " seconds passed";
 
 				cout << ssMessage.str() << endl;
-
+			}
+			if((pointsProcessed % (10'000'000)) == 0){
+				cout << "FLUSHING: ";
+			
+				auto start = high_resolution_clock::now();
+			
+				writer.flush();
+			
+				auto end = high_resolution_clock::now();
+				long long duration = duration_cast<milliseconds>(end-start).count();
+				float seconds = duration / 1'000.0f;
+			
+				cout << seconds << "s" << endl;
 			}
 
-			if(pointsProcessed >= 10'000'000){
-				break;
-			}
+			//if(pointsProcessed >= 10'000'000){
+			//	break;
+			//}
 		}
 		writer.flush();
 		reader->close();
