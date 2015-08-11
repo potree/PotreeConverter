@@ -38,27 +38,38 @@ public:
 	AABB acceptedAABB;
 	float spacing;
 	int level;
-	int maxLevel;
 	SparseGrid *grid;
 	unsigned int numAccepted;
-	PotreeWriterNode *children[8];
+	PotreeWriterNode *parent;
+	vector<PotreeWriterNode*> children;
 	long long lastAccepted;
 	bool addCalledSinceLastFlush;
 	PotreeWriter *potreeWriter;
 	vector<Point> cache;
 	double scale;
+	int storeLimit = 30'000;
+	vector<Point> store;
+	bool isInMemory = true;
 
-	PotreeWriterNode(PotreeWriter* potreeWriter, string name, AABB aabb, float spacing, int level, int maxLevel, double scale);
+	PotreeWriterNode(PotreeWriter* potreeWriter, string name, AABB aabb, float spacing, int level, double scale);
 
 	~PotreeWriterNode(){
-		for(int i = 0; i < 8; i++){
-			if(children[i] != NULL){
-				delete children[i];
+		for(PotreeWriterNode *child : children){
+			if(child != NULL){
+				delete child;
 			}
 		}
 		delete grid;
 
 		//delete [] children;
+	}
+
+	bool isLeafNode(){
+		return children.size() == 0;
+	}
+
+	bool isInnerNode(){
+		return children.size() > 0;
 	}
 
 	void addToDescendantsWithoutCheck(Point &point);
@@ -67,9 +78,9 @@ public:
 
 	PotreeWriterNode *add(Point &point);
 
-	PotreeWriterNode *add(Point &point, int minLevel);
-
 	PotreeWriterNode *createChild(int childIndex);
+
+	void split();
 
 	string workDir();
 
@@ -78,6 +89,8 @@ public:
 	string path();
 
 	void flush();
+
+	void traverse(std::function<void(PotreeWriterNode*)> callback);
 
 	vector<PotreeWriterNode*> getHierarchy(int levels);
 
@@ -98,7 +111,7 @@ public:
 	AABB tightAABB;
 	string workDir;
 	float spacing;
-	int maxLevel;
+	int maxDepth;
 	PotreeWriterNode *root;
 	long long numAccepted;
 	CloudJS cloudjs;
@@ -113,46 +126,17 @@ public:
 
 
 
-	PotreeWriter(string workDir, AABB aabb, float spacing, int maxLevel, double scale, OutputFormat outputFormat, PointAttributes pointAttributes){
+	PotreeWriter(string workDir, AABB aabb, float spacing, int maxDepth, double scale, OutputFormat outputFormat, PointAttributes pointAttributes){
 		this->workDir = workDir;
 		this->aabb = aabb;
 		this->spacing = spacing;
-		this->maxLevel = maxLevel;
+		this->maxDepth = maxDepth;
 		this->outputFormat = outputFormat;
 		numAccepted = 0;
 		pointsInMemory = 0;
 		pointsInMemoryLimit = 1*1000*1000;
 
-
-		// TODO calculate step size instead
-		if(maxLevel <= 5){
-			hierarchyStepSize = 6;
-		}else if(maxLevel <= 7){
-			hierarchyStepSize = 4;
-		}else if(maxLevel <= 9){
-			hierarchyStepSize = 5;
-		}else if(maxLevel <= 11){
-			hierarchyStepSize = 4;
-		}else if(maxLevel <= 14){
-			hierarchyStepSize = 5;
-		}else if(maxLevel <= 17){
-			hierarchyStepSize = 6;
-		}else if(maxLevel <= 19){
-			hierarchyStepSize = 5;
-		}else if(maxLevel <= 23){
-			hierarchyStepSize = 6;
-		}else if(maxLevel <= 24){
-			hierarchyStepSize = 5;
-		}else if(maxLevel <= 27){
-			hierarchyStepSize = 4;
-		}else if(maxLevel <= 29){
-			hierarchyStepSize = 5;
-		}else if(maxLevel <= 31){
-			hierarchyStepSize = 4;
-		}else{
-			// I don't think this will happen anytime soon. This level would provide insane precision.
-			hierarchyStepSize = 5;
-		}
+		hierarchyStepSize = 4;
 
 		fs::create_directories(workDir + "/data");
 		fs::create_directories(workDir + "/temp");
@@ -167,7 +151,7 @@ public:
 		cloudjs.scale = scale;
 		cloudjs.pointAttributes = pointAttributes;
 
-		root = new PotreeWriterNode(this, "r", aabb, spacing, 0, maxLevel, scale);
+		root = new PotreeWriterNode(this, "r", aabb, spacing, 0, scale);
 	}
 
 	~PotreeWriter(){
@@ -254,12 +238,12 @@ public:
 				fout.open(dest, ios::out | ios::binary);
 				vector<PotreeWriterNode*> hierarchy = node->getHierarchy(hierarchyStepSize + 1);
 				for(const auto &descendant : hierarchy){
-					if(descendant->level == node->level + hierarchyStepSize && (node->level + hierarchyStepSize) < maxLevel ){
+					if(descendant->level == node->level + hierarchyStepSize ){
 						stack.push_back(descendant);
 					}
 		
 					char children = 0;
-					for(int j = 0; j < 8; j++){
+					for(int j = 0; j < descendant->children.size(); j++){
 						if(descendant->children[j] != NULL){
 							children = children | (1 << j);
 						}

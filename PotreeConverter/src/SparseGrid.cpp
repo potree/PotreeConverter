@@ -57,6 +57,29 @@ bool SparseGrid::isDistant(const Vector3<double> &p, GridCell *cell){
 	//return true;
 }
 
+bool SparseGrid::willBeAccepted(const Vector3<double> &p){
+	int nx = (int)(width*(p.x - aabb.min.x) / aabb.size.x);
+	int ny = (int)(height*(p.y - aabb.min.y) / aabb.size.y);
+	int nz = (int)(depth*(p.z - aabb.min.z) / aabb.size.z);
+
+	int i = min(nx, width-1);
+	int j = min(ny, height-1);
+	int k = min(nz, depth-1);
+
+	GridIndex index(i,j,k);
+	long long key = ((long long)k << 40) | ((long long)j << 20) | (long long)i;
+	SparseGrid::iterator it = find(key);
+	if(it == end()){
+		it = this->insert(value_type(key, new GridCell(this, index))).first;
+	}
+
+	if(isDistant(p, it->second)){
+		return true;
+	}else{
+		return false;
+	}
+}
+
 bool SparseGrid::add(Vector3<double> &p){
 	int nx = (int)(width*(p.x - aabb.min.x) / aabb.size.x);
 	int ny = (int)(height*(p.y - aabb.min.y) / aabb.size.y);

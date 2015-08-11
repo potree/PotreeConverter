@@ -151,7 +151,7 @@ int main(int argc, char **argv){
 		if(!vm.count("spacing")) spacing = 0;
 		generatePage = (!vm.count("generate-page")) ? false : true;
 		if(!vm.count("spacing-by-diagonal-fraction")) diagonalFraction = 0;
-		if(!vm.count("levels")) levels = 3;
+		if(!vm.count("levels")) levels = -1;
 		if(!vm.count("input-format")) format = "";
 		if(!vm.count("scale")) scale = 0;
 		if(!vm.count("output-format")) outFormatString = "BINARY";
