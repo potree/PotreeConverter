@@ -8,9 +8,7 @@ find_package(LibLAS REQUIRED)
 find_package(Boost COMPONENTS system thread filesystem program_options regex REQUIRED)
 
 if(UNIX)
-#  if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -std=c++0x -pthread -lstdc++ -lm")
-#  endif()
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -std=c++14 -pthread -lstdc++ -lm")
 endif()
 
 add_subdirectory(PotreeConverter)
