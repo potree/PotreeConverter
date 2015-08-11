@@ -10,6 +10,7 @@ using std::endl;
 using std::min;
 using std::max;
 
+namespace Potree{
 
 GridCell::GridCell(){
 
@@ -84,4 +85,6 @@ bool GridCell::isDistant(const Vector3<double> &p, const double squaredSpacing) 
 	}
 
 	return true;
+}
+
 }

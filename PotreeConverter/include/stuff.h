@@ -46,6 +46,8 @@ using std::map;
 
 namespace fs = boost::filesystem;
 
+namespace Potree{
+
 AABB readAABB(string fIn, int numPoints);
 
 AABB readAABB(string fIn);
@@ -102,8 +104,8 @@ string toUpper(string str);
 
 bool copyDir(fs::path source, fs::path destination);
 
-int psign(float value);
+float psign(float value);
 
-
+}
 
 #endif

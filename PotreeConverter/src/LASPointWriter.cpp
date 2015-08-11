@@ -5,19 +5,20 @@
 
 using std::vector;
 
+namespace Potree{
 
 void LASPointWriter::write(const Point &point){
 	liblas::Point lp(header);
 	
-	lp.SetX(point.x);
-	lp.SetY(point.y);
-	lp.SetZ(point.z);
+	lp.SetX(point.position.x);
+	lp.SetY(point.position.y);
+	lp.SetZ(point.position.z);
 
 	vector<uint8_t> &data = lp.GetData();
 
-	unsigned short pr = point.r * 256;
-	unsigned short pg = point.g * 256;
-	unsigned short pb = point.b * 256;
+	unsigned short pr = point.color.x * 256;
+	unsigned short pg = point.color.y * 256;
+	unsigned short pb = point.color.z * 256;
 	
 	//liblas::Color color(int(point.r) * 256, int(point.g) * 256, int(point.b) * 256);
 	//lp.SetColor(color);
@@ -41,4 +42,6 @@ void LASPointWriter::write(const Point &point){
 	writer->WritePoint(lp);
 
 	numPoints++;
+}
+
 }

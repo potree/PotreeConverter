@@ -28,6 +28,8 @@ using std::lock_guard;
 
 namespace fs = boost::filesystem;
 
+namespace Potree{
+
 class PotreeWriter;
 
 class PotreeWriterNode{
@@ -113,16 +115,14 @@ public:
 	float spacing;
 	int maxDepth;
 	PotreeWriterNode *root;
-	long long numAccepted;
+	long long numAccepted = 0;
 	CloudJS cloudjs;
 	OutputFormat outputFormat;
 	PointAttributes pointAttributes;
-	int hierarchyStepSize;
+	int hierarchyStepSize = 4;
 	vector<Point> store;
 	thread storeThread;
-
-	int pointsInMemory;
-	int pointsInMemoryLimit;
+	int pointsInMemory = 0;
 
 
 
@@ -132,11 +132,6 @@ public:
 		this->spacing = spacing;
 		this->maxDepth = maxDepth;
 		this->outputFormat = outputFormat;
-		numAccepted = 0;
-		pointsInMemory = 0;
-		pointsInMemoryLimit = 1*1000*1000;
-
-		hierarchyStepSize = 4;
 
 		fs::create_directories(workDir + "/data");
 		fs::create_directories(workDir + "/temp");
@@ -188,8 +183,7 @@ public:
 					pointsInMemory++;
 					numAccepted++;
 
-					Vector3<double> position = p.position();
-					tightAABB.update(position);
+					tightAABB.update(p.position);
 				}
 			}
 		});
@@ -198,7 +192,7 @@ public:
 	void add(Point &p){
 		store.push_back(p);
 
-		if(store.size() > 10*1000){
+		if(store.size() > 10'000){
 			processStore();
 		}
 	}
@@ -270,5 +264,7 @@ public:
 	}
 
 };
+
+}
 
 #endif

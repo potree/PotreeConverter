@@ -17,6 +17,8 @@ using std::fstream;
 using std::ios;
 using boost::algorithm::iends_with;
 
+namespace Potree{
+
 class LASPointWriter : public PointWriter{
 
 public:
@@ -85,6 +87,7 @@ public:
 
 };
 
+}
 
 #endif
 

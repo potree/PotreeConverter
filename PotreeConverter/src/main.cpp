@@ -61,7 +61,7 @@ int main(int argc, char **argv){
 	string outFormatString;
 	double scale;
 	int diagonalFraction;
-	OutputFormat outFormat;
+	Potree::OutputFormat outFormat;
 	vector<double> colorRange;
 	vector<double> intensityRange;
 	vector<string> outputAttributes;
@@ -156,11 +156,11 @@ int main(int argc, char **argv){
 		if(!vm.count("scale")) scale = 0;
 		if(!vm.count("output-format")) outFormatString = "BINARY";
 		if(outFormatString == "BINARY"){
-			outFormat = OutputFormat::BINARY;
+			outFormat = Potree::OutputFormat::BINARY;
 		}else if(outFormatString == "LAS"){
-			outFormat = OutputFormat::LAS;
+			outFormat = Potree::OutputFormat::LAS;
 		}else if(outFormatString == "LAZ"){
-			outFormat = OutputFormat::LAZ;
+			outFormat = Potree::OutputFormat::LAZ;
 		}
 		if (diagonalFraction != 0) {
 			spacing = 0;
@@ -200,7 +200,7 @@ int main(int argc, char **argv){
 		string templateTargetPath = pagedir + "/examples/" + pointCloudName + ".html";
 
 		//cout << "copy './resources/page_template' to '" << pagedir << "'" << endl;
-		copyDir(fs::path("./resources/page_template"), fs::path(pagedir));
+		Potree::copyDir(fs::path("./resources/page_template"), fs::path(pagedir));
 		//fs::rename(fs::path(templateSourcePath), fs::path(templateTargetPath));
 		fs::remove(pagedir + "/examples/viewer_template.html");
 
@@ -212,7 +212,7 @@ int main(int argc, char **argv){
 			while(getline(in, line)){
 				if(line.find("<!-- INCLUDE SETTINGS HERE -->") != string::npos){
 					out << "\t<script src=\"./" << pointCloudName << ".js\"></script>" << endl;
-				}else if((outFormat == OutputFormat::LAS || outFormat == OutputFormat::LAZ) && 
+				}else if((outFormat == Potree::OutputFormat::LAS || outFormat == Potree::OutputFormat::LAZ) && 
 					line.find("<!-- INCLUDE ADDITIONAL DEPENDENCIES HERE -->") != string::npos){
 
 					out << "\t<script src=\"../libs/plasio/js/laslaz.js\"></script>" << endl;
@@ -255,7 +255,7 @@ int main(int argc, char **argv){
 	}
 	
 	try{
-		PotreeConverter pc(source, outdir, spacing, diagonalFraction, levels, format, colorRange, intensityRange, scale, outFormat, outputAttributes, aabbValues);
+		Potree::PotreeConverter pc(source, outdir, spacing, diagonalFraction, levels, format, colorRange, intensityRange, scale, outFormat, outputAttributes, aabbValues);
 		pc.convert();
 	}catch(exception &e){
 		cout << "ERROR: " << e.what() << endl;

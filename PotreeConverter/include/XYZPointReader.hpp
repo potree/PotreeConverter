@@ -30,6 +30,8 @@ using boost::is_any_of;
 using boost::trim;
 using boost::erase_all;
 
+namespace Potree{
+
 class XYZPointReader : public PointReader{
 private:
 	AABB aabb;
@@ -139,8 +141,7 @@ public:
 		// read through once to calculate aabb and number of points
 		while(readNextPoint()){
 			Point p = getPoint();
-			Vector3<double> position = p.position();
-			aabb.update(position);
+			aabb.update(p.position);
 			pointCount++;
 		}
 		stream.clear();
@@ -205,9 +206,9 @@ public:
 			}
 
 			point = Point(x,y,z,r,g,b);
-			point.nx = nx;
-			point.ny = ny;
-			point.nz = nz;
+			point.normal.x = nx;
+			point.normal.y = ny;
+			point.normal.z = nz;
 			point.intensity = intensity;
 			pointsRead++;
 			return true;
@@ -230,4 +231,7 @@ public:
 		stream.close();
 	}
 };
+
+}
+
 #endif

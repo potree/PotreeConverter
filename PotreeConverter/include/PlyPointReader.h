@@ -24,9 +24,10 @@ using namespace boost::assign;
 using boost::split;
 using boost::is_any_of;
 
+namespace Potree{
+
 const int PLY_FILE_FORMAT_ASCII = 0;
 const int PLY_FILE_FORMAT_BINARY_LITTLE_ENDIAN = 1;
-
 
 struct PlyPropertyType{
 	string name;
@@ -258,9 +259,9 @@ public:
 		}
 
 		point = Point(x,y,z,r,g,b);
-		point.nx = nx;
-		point.ny = ny;
-		point.nz = nz;
+		point.normal.x = nx;
+		point.normal.y = ny;
+		point.normal.z = nz;
 		pointsRead++;
 		return true;
 	}
@@ -277,8 +278,7 @@ public:
 			PlyPointReader *reader = new PlyPointReader(file);
 			while(reader->readNextPoint()){
 				Point p = reader->getPoint();
-				Vector3<double> position = p.position();
-				aabb->update(position);
+				aabb->update(p.position);
 			}
 
 			reader->close();
@@ -300,6 +300,6 @@ public:
 
 };
 
-
+}
 
 #endif

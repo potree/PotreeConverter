@@ -36,7 +36,7 @@ using std::map;
 
 
 
-
+namespace Potree{
 
 /**
  *   y 
@@ -57,19 +57,19 @@ AABB childAABB(const AABB &aabb, const int &index){
 	Vector3<double> min = aabb.min;
 	Vector3<double> max = aabb.max;
 
-	if((index & 1) > 0){
+	if((index & 0b0001) > 0){
 		min.z += aabb.size.z / 2;
 	}else{
 		max.z -= aabb.size.z / 2;
 	}
 
-	if((index & 2) > 0){
+	if((index & 0b0010) > 0){
 		min.y += aabb.size.y / 2;
 	}else{
 		max.y -= aabb.size.y / 2;
 	}
 
-	if((index & 4) > 0){
+	if((index & 0b0100) > 0){
 		min.x += aabb.size.x / 2;
 	}else{
 		max.x -= aabb.size.x / 2;
@@ -95,9 +95,9 @@ AABB childAABB(const AABB &aabb, const int &index){
  *
  */
 int nodeIndex(const AABB &aabb, const Point &point){
-	int mx = (int)(2.0 * (point.x - aabb.min.x) / aabb.size.x);
-	int my = (int)(2.0 * (point.y - aabb.min.y) / aabb.size.y);
-	int mz = (int)(2.0 * (point.z - aabb.min.z) / aabb.size.z);
+	int mx = (int)(2.0 * (point.position.x - aabb.min.x) / aabb.size.x);
+	int my = (int)(2.0 * (point.position.y - aabb.min.y) / aabb.size.y);
+	int mz = (int)(2.0 * (point.position.z - aabb.min.z) / aabb.size.z);
 
 	mx = min(mx, 1);
 	my = min(my, 1);
@@ -185,7 +185,7 @@ bool copyDir(fs::path source, fs::path destination){
 }
 
 
-int psign(float value){
+float psign(float value){
 	if(value == 0.0){
 		return 0.0;
 	}else if(value < 0.0){
@@ -193,4 +193,6 @@ int psign(float value){
 	}else{
 		return 1.0;
 	}
+}
+
 }

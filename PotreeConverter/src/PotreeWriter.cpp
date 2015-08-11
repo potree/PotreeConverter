@@ -15,6 +15,7 @@ using std::stack;
 
 namespace fs = boost::filesystem;
 
+namespace Potree{
 
 PotreeWriterNode::PotreeWriterNode(PotreeWriter* potreeWriter, string name, AABB aabb, float spacing, int level, double scale){
 	this->name = name;
@@ -86,8 +87,7 @@ void PotreeWriterNode::loadFromDisk(){
 		if(isLeafNode()){
 			store.push_back(p);		
 		}else{
-			Vector3<double> position = Vector3<double>(p.x, p.y, p.z);
-			grid->addWithoutCheck(position);
+			grid->addWithoutCheck(p.position);
 		}
 	}
 	grid->numAccepted = numAccepted;
@@ -133,8 +133,7 @@ PotreeWriterNode *PotreeWriterNode::add(Point &point){
 
 		return this;
 	}else{
-		Vector3<double> position(point.x, point.y, point.z);
-		bool accepted = grid->add(position);
+		bool accepted = grid->add(point.position);
 
 		//if(accepted){
 		//	PotreeWriterNode *node = this->parent;
@@ -147,8 +146,7 @@ PotreeWriterNode *PotreeWriterNode::add(Point &point){
 
 		if(accepted){
 			cache.push_back(point);
-			Vector3<double> position(point.x, point.y, point.z);
-			acceptedAABB.update(position);
+			acceptedAABB.update(point.position);
 			numAccepted++;
 
 			return this;
@@ -245,27 +243,6 @@ void PotreeWriterNode::flush(){
 			child->flush();
 		}
 	}
-
-	//if(cache.size() > 0){
-	//	 // move data file aside to temporary directory for reading
-	//	
-	//
-	//	cache = vector<Point>();
-	////}else if(cache.size() == 0 && grid->numAccepted > 0 && addCalledSinceLastFlush == false){
-	//}else if(isInMemory && grid->size() > 0 && !addCalledSinceLastFlush){
-	//	delete grid;
-	//	grid = new SparseGrid(aabb, spacing);
-	//
-	//	isInMemory = false;
-	//}
-	//
-	//addCalledSinceLastFlush = false;
-	//
-	//for(PotreeWriterNode *child : children){
-	//	if(child != NULL){
-	//		child->flush();
-	//	}
-	//}
 }
 
 vector<PotreeWriterNode*> PotreeWriterNode::getHierarchy(int levels){
@@ -312,3 +289,4 @@ void PotreeWriterNode::traverse(std::function<void(PotreeWriterNode*)> callback)
 	}
 }
 
+}

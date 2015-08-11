@@ -16,13 +16,16 @@
 #include <map>
 #include <cstdint>
 
-class SparseGrid;
 
 
 using std::vector;
 using std::string;
 using std::stringstream;
 using std::map;
+
+namespace Potree{
+
+class SparseGrid;
 
 struct ProcessResult{
 	vector<int> indices;
@@ -75,5 +78,7 @@ public:
 	void convert();
 
 };
+
+}
 
 #endif

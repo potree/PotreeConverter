@@ -7,6 +7,8 @@
 
 using std::string;
 
+namespace Potree{
+
 class PointWriter{
 
 public:
@@ -20,6 +22,8 @@ public:
 	virtual void close() = 0;
 
 };
+
+}
 
 #endif
 

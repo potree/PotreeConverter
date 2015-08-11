@@ -19,6 +19,8 @@ using std::unordered_map;
 using std::min;
 using std::max;
 
+namespace Potree{
+
 #define MAX_FLOAT std::numeric_limits<float>::max()
 
 class SparseGrid : public unordered_map<long long, GridCell*>{
@@ -28,16 +30,13 @@ public:
 	int depth;
 	AABB aabb;
 	float squaredSpacing;
-	unsigned int numAccepted;
-
-	static long long count;
+	unsigned int numAccepted = 0;
 
 	SparseGrid(AABB aabb, float minGap);
 
 	SparseGrid(const SparseGrid &other)
 		: width(other.width), height(other.height), depth(other.depth), aabb(other.aabb), squaredSpacing(other.squaredSpacing), numAccepted(other.numAccepted)
 	{
-		count++;
 	}
 
 	~SparseGrid();
@@ -52,6 +51,6 @@ public:
 
 };
 
-
+}
 
 #endif

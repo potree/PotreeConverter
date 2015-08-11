@@ -6,22 +6,17 @@
 
 using std::min;
 
-long long SparseGrid::count = 0;
+namespace Potree{
 
 SparseGrid::SparseGrid(AABB aabb, float spacing){
-	count++;
-
 	this->aabb = aabb;
 	this->width =	(int)(aabb.size.x / (spacing * 5.0) );
 	this->height =	(int)(aabb.size.y / (spacing * 5.0) );
 	this->depth =	(int)(aabb.size.z / (spacing * 5.0) );
 	this->squaredSpacing = spacing * spacing;
-	numAccepted = 0;
 }
 
 SparseGrid::~SparseGrid(){
-	count--;
-
 	SparseGrid::iterator it;
 	for(it = begin(); it != end(); it++){
 		delete it->second;
@@ -41,20 +36,6 @@ bool SparseGrid::isDistant(const Vector3<double> &p, GridCell *cell){
 	}
 
 	return true;
-
-
-	//if(cell->squaredMinGap(p) < squaredSpacing){
-	//	return false;
-	//}
-	//for(int a = 0; a < cell->neighbours.size(); a++){
-	//	GridCell *neighbour = cell->neighbours[a];
-	//	float gap = neighbour->squaredMinGap(p);
-	//	if(gap < squaredSpacing){
-	//		return false;
-	//	}
-	//}
-	//
-	//return true;
 }
 
 bool SparseGrid::willBeAccepted(const Vector3<double> &p){
@@ -122,4 +103,6 @@ void SparseGrid::addWithoutCheck(Vector3<double> &p){
 	}
 
 	it->second->add(p);
+}
+
 }

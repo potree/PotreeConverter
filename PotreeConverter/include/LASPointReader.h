@@ -19,6 +19,7 @@ using std::cout;
 using std::endl;
 using std::vector;
 
+namespace Potree{
 
 class LIBLASReader{
 private:
@@ -27,13 +28,13 @@ private:
     Point transform(double x, double y, double z) const {
         Point p;
         if (hasTransform) {
-            p.x = tr[0] * x + tr[4] * y + tr[8] * z + tr[12];
-            p.y = tr[1] * x + tr[5] * y + tr[9] * z + tr[13];
-            p.z = tr[2] * x + tr[6] * y + tr[10] * z + tr[14];
+            p.position.x = tr[0] * x + tr[4] * y + tr[8] * z + tr[12];
+            p.position.y = tr[1] * x + tr[5] * y + tr[9] * z + tr[13];
+            p.position.z = tr[2] * x + tr[6] * y + tr[10] * z + tr[14];
         } else {
-            p.x = x;
-            p.y = y;
-            p.z = z;
+            p.position.x = x;
+            p.position.y = y;
+            p.position.z = z;
         }
         return p;
     }
@@ -99,9 +100,9 @@ public:
         p.intensity = lp.GetIntensity();
         p.classification = lp.GetClassification().GetClass();
 
-        p.r = lp.GetColor().GetRed() / colorScale;
-        p.g = lp.GetColor().GetGreen() / colorScale;
-        p.b = lp.GetColor().GetBlue() / colorScale;
+        p.color.x = lp.GetColor().GetRed() / colorScale;
+        p.color.y = lp.GetColor().GetGreen() / colorScale;
+        p.color.z = lp.GetColor().GetBlue() / colorScale;
 
 		p.returnNumber = (unsigned char)lp.GetReturnNumber();
 		p.numberOfReturns = (unsigned char)lp.GetNumberOfReturns();
@@ -142,5 +143,7 @@ public:
 
 	Vector3<double> getScale();
 };
+
+}
 
 #endif

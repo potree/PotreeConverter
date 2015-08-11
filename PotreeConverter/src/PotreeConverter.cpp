@@ -38,6 +38,8 @@ using boost::filesystem::directory_iterator;
 using boost::filesystem::is_regular_file;
 using boost::filesystem::path;
 
+namespace Potree{
+
 struct Task{
 	string source;
 	string target;
@@ -237,7 +239,7 @@ void PotreeConverter::convert(){
 	}
 
 	if(scale == 0){
-		if(aabb.size.length() > 1000*1000){
+		if(aabb.size.length() > 1'000'000){
 			scale = 0.1;
 		}else if(aabb.size.length() > 1000){
 			scale = 0.01;
@@ -280,7 +282,7 @@ void PotreeConverter::convert(){
 			Point p = reader->getPoint();
 			writer.add(p);
 
-			if((pointsProcessed % (5'000'000)) == 0){
+			if((pointsProcessed % (1'000'000)) == 0){
 				writer.flush();
 
 				auto end = high_resolution_clock::now();
@@ -323,4 +325,6 @@ void PotreeConverter::convert(){
 	cout << pointsProcessed << " points were processed and " << writer.numAccepted << " points ( " << percent << "% ) were written to the output. " << endl;
 
 	cout << "duration: " << (duration / 1000.0f) << "s" << endl;
+}
+
 }

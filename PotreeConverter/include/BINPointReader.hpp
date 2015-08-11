@@ -18,6 +18,8 @@ using std::cout;
 using std::endl;
 using std::vector;
 
+namespace Potree{
+
 class BINPointReader : public PointReader{
 private:
 	AABB aabb;
@@ -47,5 +49,7 @@ public:
 
 	Vector3<double> getScale();
 };
+
+}
 
 #endif

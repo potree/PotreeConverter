@@ -10,17 +10,17 @@ using std::ostream;
 using std::max;
 #endif
 
+namespace Potree{
+
 template<class T>
 class Vector3{
 
 public:
-	T x,y,z;
+	T x = 0;
+	T y = 0;
+	T z = 0;
 
-	Vector3(){
-		x = 0;
-		y = 0;
-		z = 0;
-	}
+	Vector3() = default;
 
 	Vector3(T x, T y, T z){
 		this->x = x;
@@ -79,5 +79,7 @@ public:
 		return output;            
 	}
 };
+
+}
 
 #endif

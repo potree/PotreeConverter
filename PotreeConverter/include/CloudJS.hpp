@@ -17,6 +17,7 @@ using std::vector;
 using std::stringstream;
 using std::list;
 
+namespace Potree{
 
 class CloudJS{
 public:
@@ -114,5 +115,6 @@ public:
 	}
 };
 
+}
 
 #endif

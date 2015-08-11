@@ -13,6 +13,8 @@ using std::min;
 using std::max;
 using std::endl;
 
+namespace Potree{
+
 class AABB{
 
 public:
@@ -33,9 +35,9 @@ public:
 	}
 
 	bool isInside(const Point &p){
-		if(min.x <= p.x && p.x <= max.x){
-			if(min.y <= p.y && p.y <= max.y){
-				if(min.z <= p.z && p.z <= max.z){
+		if(min.x <= p.position.x && p.position.x <= max.x){
+			if(min.y <= p.position.y && p.position.y <= max.y){
+				if(min.z <= p.position.z && p.position.z <= max.z){
 					return true;
 				}
 			}
@@ -44,7 +46,7 @@ public:
 		return false;
 	}
 
-	void update(Vector3<double> &point){
+	void update(const Vector3<double> &point){
 		min.x = std::min(min.x, point.x);
 		min.y = std::min(min.y, point.y);
 		min.z = std::min(min.z, point.z);
@@ -54,6 +56,11 @@ public:
 		max.z = std::max(max.z, point.z);
 
 		size = max-min;
+	}
+
+	void update(const AABB &aabb){
+		update(aabb.min);
+		update(aabb.max);
 	}
 
 	void makeCubic(){
@@ -92,6 +99,6 @@ public:
 
 };
 
-
+}
 
 #endif
