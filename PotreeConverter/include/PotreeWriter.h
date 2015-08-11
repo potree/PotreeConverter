@@ -18,26 +18,30 @@ class PointWriter;
 class PWNode{
 
 public:
-	string name;
+	int index = -1;
 	AABB aabb;
 	AABB acceptedAABB;
-	float spacing;
-	int level;
+	int level = 0;
 	SparseGrid *grid;
-	unsigned int numAccepted;
-	PWNode *parent;
+	unsigned int numAccepted = 0;
+	PWNode *parent = NULL;
 	vector<PWNode*> children;
-	bool addCalledSinceLastFlush;
+	bool addCalledSinceLastFlush = false;
 	PotreeWriter *potreeWriter;
 	vector<Point> cache;
-	double scale;
 	int storeLimit = 30'000;
 	vector<Point> store;
 	bool isInMemory = true;
 
-	PWNode(PotreeWriter* potreeWriter, string name, AABB aabb, float spacing, int level, double scale);
+	PWNode(PotreeWriter* potreeWriter, AABB aabb);
+
+	PWNode(PotreeWriter* potreeWriter, int index, AABB aabb, int level);
 
 	~PWNode();
+
+	string name() const;
+
+	float spacing();
 
 	bool isLeafNode(){
 		return children.size() == 0;
@@ -70,7 +74,7 @@ public:
 private:
 
 	PointReader *createReader(string path);
-	PointWriter *createWriter(string path, double scale);
+	PointWriter *createWriter(string path);
 
 };
 
@@ -84,6 +88,7 @@ public:
 	AABB tightAABB;
 	string workDir;
 	float spacing;
+	double scale = 0.01;
 	int maxDepth;
 	PWNode *root;
 	long long numAccepted = 0;

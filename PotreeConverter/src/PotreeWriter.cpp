@@ -27,16 +27,18 @@ namespace fs = boost::filesystem;
 
 namespace Potree{
 
-PWNode::PWNode(PotreeWriter* potreeWriter, string name, AABB aabb, float spacing, int level, double scale){
-	this->name = name;
+PWNode::PWNode(PotreeWriter* potreeWriter, AABB aabb){
+	this->potreeWriter = potreeWriter;
 	this->aabb = aabb;
-	this->spacing = spacing;
+	this->grid = new SparseGrid(aabb, spacing());
+}
+
+PWNode::PWNode(PotreeWriter* potreeWriter, int index, AABB aabb, int level){
+	this->index = index;
+	this->aabb = aabb;
 	this->level = level;
 	this->potreeWriter = potreeWriter;
-	this->grid = new SparseGrid(aabb, spacing);
-	this->scale = scale;
-	numAccepted = 0;
-	addCalledSinceLastFlush = false;
+	this->grid = new SparseGrid(aabb, spacing());
 }
 
 PWNode::~PWNode(){
@@ -48,6 +50,18 @@ PWNode::~PWNode(){
 	delete grid;
 }
 
+string PWNode::name() const {
+	if(parent == NULL){
+		return "r";
+	}else{
+		return parent->name() + std::to_string(index);
+	}
+}
+
+float PWNode::spacing(){
+	return float(potreeWriter->spacing / pow(2.0, float(level)));
+}
+
 string PWNode::workDir(){
 	return potreeWriter->workDir;
 }
@@ -56,7 +70,7 @@ string PWNode::hierarchyPath(){
 	string path = "r/";
 
 	int hierarchyStepSize = potreeWriter->hierarchyStepSize;
-	string indices = name.substr(1);
+	string indices = name().substr(1);
 
 	int numParts = (int)floor((float)indices.size() / (float)hierarchyStepSize);
 	for(int i = 0; i < numParts; i++){
@@ -67,7 +81,7 @@ string PWNode::hierarchyPath(){
 }
 
 string PWNode::path(){
-	string path = hierarchyPath() + "/" + name + potreeWriter->getExtension();
+	string path = hierarchyPath() + "/" + name() + potreeWriter->getExtension();
 	return path;
 }
 
@@ -77,19 +91,19 @@ PointReader *PWNode::createReader(string path){
 	if(outputFormat == OutputFormat::LAS || outputFormat == OutputFormat::LAZ){
 		reader = new LASPointReader(path);
 	}else if(outputFormat == OutputFormat::BINARY){
-		reader = new BINPointReader(path, aabb, scale, this->potreeWriter->pointAttributes);
+		reader = new BINPointReader(path, aabb, potreeWriter->scale, this->potreeWriter->pointAttributes);
 	}
 
 	return reader;
 }
 
-PointWriter *PWNode::createWriter(string path, double scale){
+PointWriter *PWNode::createWriter(string path){
 	PointWriter *writer = NULL;
 	OutputFormat outputFormat = this->potreeWriter->outputFormat;
 	if(outputFormat == OutputFormat::LAS || outputFormat == OutputFormat::LAZ){
-		writer = new LASPointWriter(path, aabb, scale);
+		writer = new LASPointWriter(path, aabb, potreeWriter->scale);
 	}else if(outputFormat == OutputFormat::BINARY){
-		writer = new BINPointWriter(path, aabb, scale, this->potreeWriter->pointAttributes);
+		writer = new BINPointWriter(path, aabb, potreeWriter->scale, this->potreeWriter->pointAttributes);
 	}
 
 	return writer;
@@ -116,10 +130,8 @@ void PWNode::loadFromDisk(){
 }
 
 PWNode *PWNode::createChild(int childIndex ){
-	stringstream childName;
-	childName << name << childIndex;
 	AABB cAABB = childAABB(aabb, childIndex);
-	PWNode *child = new PWNode(potreeWriter, childName.str(), cAABB, spacing / 2.0f, level+1, scale);
+	PWNode *child = new PWNode(potreeWriter, childIndex, cAABB, level+1);
 	child->parent = this;
 	children[childIndex] = child;
 
@@ -213,7 +225,7 @@ void PWNode::flush(){
 				fs::rename(fs::path(filepath), fs::path(temppath));
 			}
 
-			writer = createWriter(filepath, scale);
+			writer = createWriter(filepath);
 			if(fs::exists(temppath)){
 				PointReader *reader = createReader(temppath);
 				while(reader->readNextPoint()){
@@ -225,7 +237,7 @@ void PWNode::flush(){
 			}
 		}else{
 			fs::remove(filepath);
-			writer = createWriter(filepath, scale);
+			writer = createWriter(filepath);
 		}
 
 		for(const auto &e_c : points){
@@ -249,7 +261,7 @@ void PWNode::flush(){
 			cache = vector<Point>();
 		}else if(!addCalledSinceLastFlush && isInMemory){
 			delete grid;
-			grid = new SparseGrid(aabb, spacing);
+			grid = new SparseGrid(aabb, spacing());
 			isInMemory = false;
 		}
 	}
@@ -331,6 +343,7 @@ PotreeWriter::PotreeWriter(string workDir, AABB aabb, float spacing, int maxDept
 	this->workDir = workDir;
 	this->aabb = aabb;
 	this->spacing = spacing;
+	this->scale = scale;
 	this->maxDepth = maxDepth;
 	this->outputFormat = outputFormat;
 
@@ -347,7 +360,7 @@ PotreeWriter::PotreeWriter(string workDir, AABB aabb, float spacing, int maxDept
 	cloudjs.scale = scale;
 	cloudjs.pointAttributes = pointAttributes;
 
-	root = new PWNode(this, "r", aabb, spacing, 0, scale);
+	root = new PWNode(this, aabb);
 }
 
 string PotreeWriter::getExtension(){
@@ -405,8 +418,6 @@ void PotreeWriter::flush(){
 	root->flush();
 
 	{// update cloud.js
-		// long long numPointsInMemory = 0;  // unused variable
-		// long long numPointsInHierarchy = 0  // unused variable;
 		cloudjs.hierarchy = vector<CloudJS::Node>();
 		cloudjs.hierarchyStepSize = hierarchyStepSize;
 		cloudjs.tightBoundingBox = tightAABB;
@@ -425,7 +436,7 @@ void PotreeWriter::flush(){
 			stack.pop_front();
 	
 			//string dest = workDir + "/hierarchy/" + node->name + ".hrc";
-			string dest = workDir + "/data/" + node->hierarchyPath() + "/" + node->name + ".hrc";
+			string dest = workDir + "/data/" + node->hierarchyPath() + "/" + node->name() + ".hrc";
 			ofstream fout;
 			fout.open(dest, ios::out | ios::binary);
 			vector<PWNode*> hierarchy = node->getHierarchy(hierarchyStepSize + 1);
