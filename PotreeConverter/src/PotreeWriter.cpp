@@ -3,8 +3,12 @@
 #include <cmath>
 #include <sstream>
 #include <stack>
+#include <chrono>
+
+
 
 #include <boost/filesystem.hpp>
+
 
 #include "AABB.h"
 #include "SparseGrid.h"
@@ -22,6 +26,9 @@
 
 using std::stack;
 using std::stringstream;
+using std::chrono::high_resolution_clock;
+using std::chrono::milliseconds;
+using std::chrono::duration_cast;
 
 namespace fs = boost::filesystem;
 
@@ -319,7 +326,38 @@ void PWNode::traverse(std::function<void(PWNode*)> callback){
 	}
 }
 
+void PWNode::traverseBreadthFirst(std::function<void(PWNode*)> callback){
 
+	// https://en.wikipedia.org/wiki/Iterative_deepening_depth-first_search
+
+	int currentLevel = 0;
+	int visitedAtLevel = 0;
+
+	do{
+
+		// doing depth first search until node->level = curentLevel
+		stack<PWNode*> st;
+		st.push(this);
+		while(!st.empty()){
+			PWNode *node = st.top();
+			st.pop();
+
+			if(node->level == currentLevel){
+				callback(node);
+				visitedAtLevel++;
+			}else if(node->level < currentLevel){
+				for(PWNode *child : node->children){
+					if(child != NULL){
+						st.push(child);
+					}
+				}
+			}
+		}
+
+		currentLevel++;
+
+	}while(visitedAtLevel > 0);
+}
 
 
 
@@ -415,7 +453,14 @@ void PotreeWriter::flush(){
 		storeThread.join();
 	}
 
+	auto start = high_resolution_clock::now();
+
 	root->flush();
+
+	auto end = high_resolution_clock::now();
+	long long duration = duration_cast<milliseconds>(end-start).count();
+	float seconds = duration / 1'000.0f;
+	cout << "flush nodes: " << seconds << "s" << endl;
 
 	{// update cloud.js
 		cloudjs.hierarchy = vector<CloudJS::Node>();
@@ -426,44 +471,67 @@ void PotreeWriter::flush(){
 		cloudOut << cloudjs.getString();
 		cloudOut.close();
 	}
-		
 
+		
+	
 	{// write hierarchy
+		auto start = high_resolution_clock::now();
+
+		int hrcTotal = 0;
+		int hrcFlushed = 0;
+
 		list<PWNode*> stack;
 		stack.push_back(root);
 		while(!stack.empty()){
 			PWNode *node = stack.front();
 			stack.pop_front();
 	
-			//string dest = workDir + "/hierarchy/" + node->name + ".hrc";
-			string dest = workDir + "/data/" + node->hierarchyPath() + "/" + node->name() + ".hrc";
-			ofstream fout;
-			fout.open(dest, ios::out | ios::binary);
+			hrcTotal++;
+			
 			vector<PWNode*> hierarchy = node->getHierarchy(hierarchyStepSize + 1);
+			bool needsFlush = false;
 			for(const auto &descendant : hierarchy){
 				if(descendant->level == node->level + hierarchyStepSize ){
 					stack.push_back(descendant);
 				}
-	
-				char children = 0;
-				for(int j = 0; j < descendant->children.size(); j++){
-					if(descendant->children[j] != NULL){
-						children = children | (1 << j);
-					}
-				}
-				//
-				//
-				//
-				fout.write(reinterpret_cast<const char*>(&children), 1);
-				fout.write(reinterpret_cast<const char*>(&(descendant->numAccepted)), 4);
-				//fout.write("bla", 4);
-	
+
+				needsFlush = needsFlush || descendant->addedSinceLastFlush;
 			}
-			fout.close();
-	
+
+
+			if(needsFlush){
+				string dest = workDir + "/data/" + node->hierarchyPath() + "/" + node->name() + ".hrc";
+				ofstream fout;
+				fout.open(dest, ios::out | ios::binary);
+
+				for(const auto &descendant : hierarchy){
+					char children = 0;
+					for(int j = 0; j < descendant->children.size(); j++){
+						if(descendant->children[j] != NULL){
+							children = children | (1 << j);
+						}
+					}
+
+					fout.write(reinterpret_cast<const char*>(&children), 1);
+					fout.write(reinterpret_cast<const char*>(&(descendant->numAccepted)), 4);
+				}
+
+				fout.close();
+				hrcFlushed++;
+			}
 		}
+
+		root->traverse([](PWNode* node){
+			node->addedSinceLastFlush = false;
+		});
+
+		cout << "hrcTotal: " << hrcTotal << "; " << "hrcFlushed: " << hrcFlushed << endl;
 	
 	
+		auto end = high_resolution_clock::now();
+		long long duration = duration_cast<milliseconds>(end-start).count();
+		float seconds = duration / 1'000.0f;
+		cout << "writing hierarchy: " << seconds << "s" << endl;
 	
 	}
 }

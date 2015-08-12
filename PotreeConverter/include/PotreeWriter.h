@@ -26,10 +26,11 @@ public:
 	unsigned int numAccepted = 0;
 	PWNode *parent = NULL;
 	vector<PWNode*> children;
+	bool addedSinceLastFlush = true;
 	bool addCalledSinceLastFlush = false;
 	PotreeWriter *potreeWriter;
 	vector<Point> cache;
-	int storeLimit = 30'000;
+	int storeLimit = 20'000;
 	vector<Point> store;
 	bool isInMemory = true;
 
@@ -68,6 +69,8 @@ public:
 	void flush();
 
 	void traverse(std::function<void(PWNode*)> callback);
+
+	void traverseBreadthFirst(std::function<void(PWNode*)> callback);
 
 	vector<PWNode*> getHierarchy(int levels);
 
