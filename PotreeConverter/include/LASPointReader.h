@@ -32,9 +32,7 @@ private:
             p.position.y = tr[1] * x + tr[5] * y + tr[9] * z + tr[13];
             p.position.z = tr[2] * x + tr[6] * y + tr[10] * z + tr[14];
         } else {
-            p.position.x = x;
-            p.position.y = y;
-            p.position.z = z;
+			p.position = Vector3<double>{x,y,z};
         }
         return p;
     }
