@@ -453,14 +453,14 @@ void PotreeWriter::flush(){
 		storeThread.join();
 	}
 
-	auto start = high_resolution_clock::now();
+	//auto start = high_resolution_clock::now();
 
 	root->flush();
 
-	auto end = high_resolution_clock::now();
-	long long duration = duration_cast<milliseconds>(end-start).count();
-	float seconds = duration / 1'000.0f;
-	cout << "flush nodes: " << seconds << "s" << endl;
+	//auto end = high_resolution_clock::now();
+	//long long duration = duration_cast<milliseconds>(end-start).count();
+	//float seconds = duration / 1'000.0f;
+	//cout << "flush nodes: " << seconds << "s" << endl;
 
 	{// update cloud.js
 		cloudjs.hierarchy = vector<CloudJS::Node>();
@@ -475,7 +475,7 @@ void PotreeWriter::flush(){
 		
 	
 	{// write hierarchy
-		auto start = high_resolution_clock::now();
+		//auto start = high_resolution_clock::now();
 
 		int hrcTotal = 0;
 		int hrcFlushed = 0;
@@ -525,13 +525,12 @@ void PotreeWriter::flush(){
 			node->addedSinceLastFlush = false;
 		});
 
-		cout << "hrcTotal: " << hrcTotal << "; " << "hrcFlushed: " << hrcFlushed << endl;
+		//cout << "hrcTotal: " << hrcTotal << "; " << "hrcFlushed: " << hrcFlushed << endl;
 	
-	
-		auto end = high_resolution_clock::now();
-		long long duration = duration_cast<milliseconds>(end-start).count();
-		float seconds = duration / 1'000.0f;
-		cout << "writing hierarchy: " << seconds << "s" << endl;
+		//auto end = high_resolution_clock::now();
+		//long long duration = duration_cast<milliseconds>(end-start).count();
+		//float seconds = duration / 1'000.0f;
+		//cout << "writing hierarchy: " << seconds << "s" << endl;
 	
 	}
 }
