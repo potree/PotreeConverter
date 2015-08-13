@@ -91,9 +91,10 @@ public:
 	AABB tightAABB;
 	string workDir;
 	float spacing;
-	double scale = 0.01;
+	double scale = 0;
 	int maxDepth;
 	PWNode *root;
+	long long numAdded = 0;
 	long long numAccepted = 0;
 	CloudJS cloudjs;
 	OutputFormat outputFormat;
@@ -122,6 +123,8 @@ public:
 	void add(Point &p);
 
 	void flush();
+
+	void generatePage(string name);
 
 	void close(){
 		flush();

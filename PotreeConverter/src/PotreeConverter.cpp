@@ -40,18 +40,6 @@ using boost::filesystem::path;
 
 namespace Potree{
 
-struct Task{
-	string source;
-	string target;
-	AABB aabb;
-
-	Task(string source, string target, AABB aabb){
-		this->source = source;
-		this->target = target;
-		this->aabb = aabb;
-	}
-};
-
 PointReader *PotreeConverter::createPointReader(string path, PointAttributes pointAttributes){
 	PointReader *reader = NULL;
 	if(boost::iends_with(path, ".las") || boost::iends_with(path, ".laz")){
@@ -78,20 +66,13 @@ PointReader *PotreeConverter::createPointReader(string path, PointAttributes poi
 	return reader;
 }
 
-PotreeConverter::PotreeConverter(
-	vector<string> sources, 
-	string workDir, 
-	float spacing, 
-	int diagonalFraction,
-	int maxDepth, 
-	string format, 
-	vector<double> colorRange, 
-	vector<double> intensityRange, 
-	double scale, 
-	OutputFormat outFormat,
-	vector<string> outputAttributes,
-	vector<double> aabbValues){
-	
+PotreeConverter::PotreeConverter(string workDir, vector<string> sources){
+	this->workDir = workDir;
+	this->sources = sources;
+}
+
+void PotreeConverter::prepare(){
+
 	// if sources contains directories, use files inside the directory instead
 	vector<string> sourceFiles;
 	for (const auto &source : sources) {
@@ -116,41 +97,10 @@ PotreeConverter::PotreeConverter(
 			sourceFiles.push_back(source);
 		}
 	}
-	
-
 	this->sources = sourceFiles;
-	this->workDir = workDir;
-	this->spacing = spacing;
-	this->maxDepth = maxDepth;
-	this->format = format;
-	this->colorRange = colorRange;
-	this->intensityRange = intensityRange;
-	this->scale = scale;
-	this->outputFormat = outFormat;
-	this->outputAttributes = outputAttributes;
-	this->diagonalFraction = diagonalFraction;
-	this->aabbValues = aabbValues;
 
-	boost::filesystem::path dataDir(workDir + "/data");
-	boost::filesystem::path tempDir(workDir + "/temp");
-	fs::remove_all(dataDir);
-	fs::remove_all(tempDir);
-	boost::filesystem::create_directories(dataDir);
-	boost::filesystem::create_directories(tempDir);
-
-	cloudjs.octreeDir = "data";
-	cloudjs.spacing = spacing;
-	cloudjs.outputFormat = OutputFormat::LAS;
-}
-
-
-void PotreeConverter::convert(){
-	long long pointsProcessed = 0;
-	auto start = high_resolution_clock::now();
-
-	PointAttributes pointAttributes;
+	pointAttributes = PointAttributes();
 	pointAttributes.add(PointAttribute::POSITION_CARTESIAN);
-
 	for(const auto &attribute : outputAttributes){
 		if(attribute == "RGB"){
 			pointAttributes.add(PointAttribute::COLOR_PACKED);
@@ -162,116 +112,53 @@ void PotreeConverter::convert(){
 			pointAttributes.add(PointAttribute::NORMAL_OCT16);
 		}
 	}
+}
 
-	//// convert XYZ sources to BIN sources
-	//for(int i = 0; i < sources.size(); i++){
-	//	string source = sources[i];
-	//
-	//	if(boost::iends_with(source, ".txt") || boost::iends_with(source, ".xyz") || boost::iends_with(source, ".pts") || boost::iends_with(source, ".ptx")){
-	//		boost::filesystem::path lasDir(workDir + "/input");
-	//		boost::filesystem::create_directories(lasDir);
-	//		string dest = workDir + "/input/" + fs::path(source).stem().string() + ".bin";
-	//
-	//		PointReader *reader = createPointReader(source, pointAttributes);
-	//
-	//		BINPointWriter *writer = new BINPointWriter(dest, aabb, scale, pointAttributes);
-	//		AABB aabb;
-	//
-	//		while(reader->readNextPoint()){
-	//			Point p = reader->getPoint();
-	//			writer->write(p);
-	//
-	//			Vector3<double> pos = p.position();
-	//			aabb.update(pos);
-	//			pointsProcessed++;
-	//
-	//			if (0 == pointsProcessed  % 1000000) {
-	//				auto end = high_resolution_clock::now();
-	//				long long duration = duration_cast<milliseconds>(end - start).count();
-	//				float seconds = duration / 1000.0f;
-	//				stringstream ssMessage;
-	//				ssMessage.imbue(std::locale(""));
-	//				ssMessage << "CONVERT-BIN: ";
-	//				ssMessage << pointsProcessed << " points processed; ";
-	//				ssMessage << seconds << " seconds passed";
-	//
-	//				cout << ssMessage.str() << endl;
-	//			}
-	//		}
-	//
-	//		reader->close();
-	//		writer->close();
-	//
-	//		delete reader;
-	//		delete writer;
-	//
-	//		sources[i] = dest;
-	//	}
-	//	
-	//}
-	//cout << endl;
-
-
-	// calculate AABB and total number of points
+AABB PotreeConverter::calculateAABB(){
 	AABB aabb;
-	// if aabbValues is given by the user we set the the variable aabb with them
 	if(aabbValues.size() == 6){
 		Vector3<double> userMin(aabbValues[0],aabbValues[1],aabbValues[2]);
 		Vector3<double> userMax(aabbValues[3],aabbValues[4],aabbValues[5]);
 		aabb = AABB(userMin, userMax);
-	}
+	}else{
+		for(string source : sources){
 
-	long long numPoints = 0;
-	for(string source : sources){
-
-		PointReader *reader = createPointReader(source, pointAttributes);
-		// we update the AABB only if it was not provided by the user
-		if (aabbValues.size() == 0){	
+			PointReader *reader = createPointReader(source, pointAttributes);
+			
 			AABB lAABB = reader->getAABB();
 			aabb.update(lAABB.min);
 			aabb.update(lAABB.max);
-		}
-		numPoints += reader->numPoints();
 
-		reader->close();
-		delete reader;
-
-	}
-
-	if(scale == 0){
-		if(aabb.size.length() > 1'000'000){
-			scale = 0.1;
-		}else if(aabb.size.length() > 1000){
-			scale = 0.01;
-		}else if(aabb.size.length() > 1){
-			scale = 0.001;
-		}else{
-			scale = 0.0001;
+			reader->close();
+			delete reader;
 		}
 	}
 
+	return aabb;
+}
+
+void PotreeConverter::convert(){
+	auto start = high_resolution_clock::now();
+
+	prepare();
+
+	long long pointsProcessed = 0;
+
+	AABB aabb = calculateAABB();
+	cout << "AABB: " << endl << aabb << endl;
+	aabb.makeCubic();
+	cout << "cubic AABB: " << endl << aabb << endl;
 
 	if (diagonalFraction != 0) {
 		spacing = (float)(aabb.size.length() / diagonalFraction);
 		cout << "spacing calculated from diagonal: " << spacing << endl;
 	}
-	cout << "Last level will have spacing:     " << spacing / pow(2, maxDepth - 1) << endl;
-	cout << endl;
-
-	cout << "AABB: " << endl << aabb << endl;
-
-	aabb.makeCubic();
-
-	cout << "cubic AABB: " << endl << aabb << endl;
-
-	cloudjs.boundingBox = aabb;
-
-	start = high_resolution_clock::now();
 
 	PotreeWriter writer(this->workDir, aabb, spacing, maxDepth, scale, outputFormat, pointAttributes);
-	//PotreeWriterLBL writer(this->workDir, aabb, spacing, maxDepth, outputFormat);
+	if(pageName.size() > 0){
+		writer.generatePage(pageName);
+	}
 
-	pointsProcessed = 0;
 	for (const auto &source : sources) {
 		cout << "READING:  " << source << endl;
 
@@ -318,12 +205,12 @@ void PotreeConverter::convert(){
 			//	break;
 			//}
 		}
-		writer.flush();
 		reader->close();
 		delete reader;
 	}
 	
 	cout << "closing writer" << endl;
+	writer.flush();
 	writer.close();
 
 	float percent = (float)writer.numAccepted / (float)pointsProcessed;
