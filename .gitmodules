@@ -1,0 +1,3 @@
+[submodule "PotreeConverter/lib/rapidjson"]
+	path = PotreeConverter/lib/rapidjson
+	url = https://github.com/miloyip/rapidjson.git
