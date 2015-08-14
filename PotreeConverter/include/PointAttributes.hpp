@@ -33,6 +33,8 @@ public:
 		this->byteSize = byteSize;
 	}
 
+	static PointAttribute fromString(string name);
+
 };
 
 bool operator==(const PointAttribute& lhs, const PointAttribute& rhs);

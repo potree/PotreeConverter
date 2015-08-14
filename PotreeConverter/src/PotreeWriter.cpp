@@ -4,6 +4,7 @@
 #include <sstream>
 #include <stack>
 #include <chrono>
+#include <fstream>
 
 
 
@@ -25,6 +26,7 @@
 
 #include "PotreeWriter.h"
 
+using std::ifstream;
 using std::stack;
 using std::stringstream;
 using std::chrono::high_resolution_clock;
@@ -376,7 +378,9 @@ void PWNode::traverseBreadthFirst(std::function<void(PWNode*)> callback){
 
 
 
-
+PotreeWriter::PotreeWriter(string workDir){
+	this->workDir = workDir;
+}
 
 PotreeWriter::PotreeWriter(string workDir, AABB aabb, float spacing, int maxDepth, double scale, OutputFormat outputFormat, PointAttributes pointAttributes){
 	this->workDir = workDir;
@@ -624,6 +628,93 @@ void PotreeWriter::flush(){
 	}
 }
 
+#include <bitset>
+
+void PotreeWriter::loadStateFromDisk(){
+
+
+	{// cloudjs
+		string cloudJSPath = workDir + "/cloud.js";
+		ifstream file(cloudJSPath);
+		string line;
+		string content;
+		while (std::getline(file, line)){
+			content += line + "\n";
+		}
+		cloudjs = CloudJS(content);
+	}
+
+	{// tree
+		vector<string> hrcPaths;
+		fs::path rootDir(workDir + "/data/r"); 
+		for (fs::recursive_directory_iterator iter(rootDir), end; iter != end; ++iter){
+			fs::path path = iter->path();
+			if(fs::is_regular_file(path)){
+				if(boost::iends_with(path.extension().string(), ".hrc")){
+					hrcPaths.push_back(path.string());
+				}else{
+			
+				}
+			}else if(fs::is_directory(path)){
+		
+			}
+			//cout << iter->path() << "\n";
+		}
+		std::sort(hrcPaths.begin(), hrcPaths.end(), [](string &a, string &b){
+			return a.size() < b.size();
+		});
+
+		PWNode *root = new PWNode(this, AABB());
+		for(string hrcPath : hrcPaths){
+
+			PWNode *hrcRoot = new PWNode(this, AABB());
+			PWNode *current = hrcRoot;
+			vector<PWNode*> nodes;
+			nodes.push_back(hrcRoot);
+		
+			ifstream fin(hrcPath, ios::in | ios::binary);
+			std::vector<char> buffer((std::istreambuf_iterator<char>(fin)), (std::istreambuf_iterator<char>()));
+
+			for(int i = 0; 5*i < buffer.size(); i++){
+				PWNode *current= nodes[i];
+
+				char children = buffer[i*5];
+				char *p = &buffer[i*5+1];
+				unsigned int* ip = reinterpret_cast<unsigned int*>(p);
+				unsigned int numPoints = *ip;
+
+				std::bitset<8> bs(children);
+				cout << i << "\t: " << "children: " << bs << "; " << "numPoints: " << numPoints << endl;
+
+				current->numAccepted = numPoints;
+
+				if(children != 0){
+					current->children.resize(8, NULL);
+					for(int j = 0; j < 8; j++){
+						if((children & (1 << j)) != 0){
+							PWNode *child = new PWNode(this, AABB());
+							child->index = j;
+							child->parent = current;
+							current->children[j] = child;
+							nodes.push_back(child);
+						}
+					}
+				}
+
+			}
+
+			hrcRoot->traverse([](PWNode *node){
+				cout << node->name() << endl;
+			});
+
+			break;
+		}
+
+		string lala;
+	}
+
+
+}
 
 
 }

@@ -5,9 +5,17 @@
 
 #include <string>
 #include <thread>
+#include <vector>
+
+
+#include "AABB.h";
+#include "SparseGrid.h"
+#include "CloudJS.hpp"
+#include "PointAttributes.hpp"
 
 using std::string;
 using std::thread;
+using std::vector;
 
 namespace Potree{
 
@@ -105,6 +113,7 @@ public:
 	int pointsInMemory = 0;
 
 
+	PotreeWriter(string workDir);
 
 	PotreeWriter(string workDir, AABB aabb, float spacing, int maxDepth, double scale, OutputFormat outputFormat, PointAttributes pointAttributes);
 
@@ -129,6 +138,9 @@ public:
 	void close(){
 		flush();
 	}
+
+	void loadStateFromDisk();
+private:
 
 };
 
