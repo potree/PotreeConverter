@@ -11,6 +11,7 @@
 
 #include "AABB.h"
 #include "PointWriter.hpp"
+#include "Point.h"
 
 using std::string;
 using std::fstream;

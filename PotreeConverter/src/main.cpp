@@ -1,14 +1,10 @@
-//
+
 #include <chrono>
 #include <vector>
 #include <map>
-#include <iostream>
-#include <math.h>
 #include <string>
-#include <fstream>
 #include <exception>
 
-#include "Vector3.h"
 #include "AABB.h"
 #include "PotreeConverter.h"
 #include "PotreeException.h"
@@ -17,17 +13,11 @@
 #include <boost/filesystem.hpp>
 
 namespace po = boost::program_options; 
+namespace fs = boost::filesystem;
 
-using std::ifstream;
-using std::ofstream;
-using std::ios;
 using std::string;
-using std::min;
-using std::max;
-using std::ostream;
 using std::cout;
 using std::cerr;
-using std::cin;
 using std::endl;
 using std::vector;
 using std::binary_function;
@@ -35,7 +25,6 @@ using std::map;
 using std::chrono::high_resolution_clock;
 using std::chrono::milliseconds;
 using std::chrono::duration_cast;
-using boost::filesystem::path;
 using std::exception;
 using Potree::PotreeConverter;
 
@@ -140,7 +129,7 @@ Arguments parseArguments(int argc, char **argv){
 	}
 
 	// set default parameters 
-	path pSource(a.source[0]);
+	fs::path pSource(a.source[0]);
 	a.outdir = vm.count("outdir") ? vm["outdir"].as<string>() : pSource.generic_string() + "_converted";
 	if(!vm.count("spacing")) a.spacing = 0;
 	a.generatePage = (!vm.count("generate-page")) ? false : true;

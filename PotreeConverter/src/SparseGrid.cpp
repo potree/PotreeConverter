@@ -3,6 +3,7 @@
 #include <math.h>
 
 #include "SparseGrid.h"
+#include "GridIndex.h"
 
 using std::min;
 

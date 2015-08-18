@@ -3,11 +3,11 @@
 #ifndef AABB_H
 #define AABB_H
 
-#include "Vector3.h"
-#include "Point.h"
 
 #include <math.h>
 #include <algorithm>
+
+#include "Vector3.h"
 
 using std::min;
 using std::max;
@@ -34,10 +34,10 @@ public:
 		size = max-min;
 	}
 
-	bool isInside(const Point &p){
-		if(min.x <= p.position.x && p.position.x <= max.x){
-			if(min.y <= p.position.y && p.position.y <= max.y){
-				if(min.z <= p.position.z && p.position.z <= max.z){
+	bool isInside(const Vector3<double> &p){
+		if(min.x <= p.x && p.x <= max.x){
+			if(min.y <= p.y && p.y <= max.y){
+				if(min.z <= p.z && p.z <= max.z){
 					return true;
 				}
 			}
@@ -55,7 +55,7 @@ public:
 		max.y = std::max(max.y, point.y);
 		max.z = std::max(max.z, point.z);
 
-		size = max-min;
+		size = max - min;
 	}
 
 	void update(const AABB &aabb){
@@ -64,30 +64,8 @@ public:
 	}
 
 	void makeCubic(){
-		double maxlength = size.maxValue();
-		max.x = min.x + maxlength;
-		max.y = min.y + maxlength;
-		max.z = min.z + maxlength;
+		max = min + size.maxValue();
 		size = max - min;
-
-
-		//if(abs(min.x) > max.x){
-		//	min.x = max.x - maxlength;
-		//}else{
-		//	max.x = min.x + maxlength;
-		//}
-		//
-		//if(abs(min.y) > max.y){
-		//	min.y = max.y - maxlength;
-		//}else{
-		//	max.y = min.y + maxlength;
-		//}
-		//
-		//if(abs(min.z) > max.z){
-		//	min.z = max.z - maxlength;
-		//}else{
-		//	max.z = min.z + maxlength;
-		//}
 	}
 
 	friend ostream &operator<<( ostream &output,  const AABB &value ){ 

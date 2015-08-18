@@ -5,7 +5,6 @@
 
 #include "AABB.h"
 #include "Point.h"
-#include "GridIndex.h"
 #include "GridCell.h"
 
 #include <map>
