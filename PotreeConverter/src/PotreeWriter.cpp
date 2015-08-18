@@ -5,6 +5,7 @@
 #include <stack>
 #include <chrono>
 #include <fstream>
+#include <iomanip>
 
 
 
@@ -312,19 +313,11 @@ vector<PWNode*> PWNode::getHierarchy(int levels){
 
 
 void PWNode::traverse(std::function<void(PWNode*)> callback){
+	callback(this);
 
-	stack<PWNode*> st;
-	st.push(this);
-	while(!st.empty()){
-		PWNode *node = st.top();
-		st.pop();
-
-		callback(node);
-
-		for(PWNode *child : node->children){
-			if(child != NULL){
-				st.push(child);
-			}
+	for(PWNode *child : this->children){
+		if(child != NULL){
+			child->traverse(callback);
 		}
 	}
 }
@@ -362,6 +355,23 @@ void PWNode::traverseBreadthFirst(std::function<void(PWNode*)> callback){
 	}while(visitedAtLevel > 0);
 }
 
+
+PWNode* PWNode::findNode(string name){
+	string thisName = this->name();
+
+	if(name.size() == thisName.size()){
+		return (name == thisName) ? this : NULL;
+	}else if(name.size() > thisName.size()){
+		int childIndex = stoi(string(1, name[thisName.size()]));
+		if(!isLeafNode() && children[childIndex] != NULL){
+			return children[childIndex]->findNode(name);
+		}else{
+			return NULL;
+		}
+	}else{
+		return NULL;
+	}
+}
 
 
 
@@ -628,8 +638,6 @@ void PotreeWriter::flush(){
 	}
 }
 
-#include <bitset>
-
 void PotreeWriter::loadStateFromDisk(){
 
 
@@ -642,6 +650,16 @@ void PotreeWriter::loadStateFromDisk(){
 			content += line + "\n";
 		}
 		cloudjs = CloudJS(content);
+	}
+
+	{
+		this->outputFormat = cloudjs.outputFormat;
+		this->pointAttributes = cloudjs.pointAttributes;
+		this->hierarchyStepSize = cloudjs.hierarchyStepSize;
+		this->spacing = cloudjs.spacing;
+		this->scale = cloudjs.scale;
+		this->aabb = cloudjs.boundingBox;
+		this->tightAABB = cloudjs.boundingBox;
 	}
 
 	{// tree
@@ -658,17 +676,21 @@ void PotreeWriter::loadStateFromDisk(){
 			}else if(fs::is_directory(path)){
 		
 			}
-			//cout << iter->path() << "\n";
 		}
 		std::sort(hrcPaths.begin(), hrcPaths.end(), [](string &a, string &b){
 			return a.size() < b.size();
 		});
 
-		PWNode *root = new PWNode(this, AABB());
+		PWNode *root = new PWNode(this, cloudjs.boundingBox);
 		for(string hrcPath : hrcPaths){
 
-			PWNode *hrcRoot = new PWNode(this, AABB());
+			fs::path pHrcPath(hrcPath);
+			string hrcName = pHrcPath.stem().string();
+			PWNode *hrcRoot = root->findNode(hrcName);
+
 			PWNode *current = hrcRoot;
+			current->addedSinceLastFlush = false;
+			current->isInMemory = false;
 			vector<PWNode*> nodes;
 			nodes.push_back(hrcRoot);
 		
@@ -683,8 +705,8 @@ void PotreeWriter::loadStateFromDisk(){
 				unsigned int* ip = reinterpret_cast<unsigned int*>(p);
 				unsigned int numPoints = *ip;
 
-				std::bitset<8> bs(children);
-				cout << i << "\t: " << "children: " << bs << "; " << "numPoints: " << numPoints << endl;
+				//std::bitset<8> bs(children);
+				//cout << i << "\t: " << "children: " << bs << "; " << "numPoints: " << numPoints << endl;
 
 				current->numAccepted = numPoints;
 
@@ -692,9 +714,11 @@ void PotreeWriter::loadStateFromDisk(){
 					current->children.resize(8, NULL);
 					for(int j = 0; j < 8; j++){
 						if((children & (1 << j)) != 0){
-							PWNode *child = new PWNode(this, AABB());
-							child->index = j;
+							AABB cAABB = childAABB(current->aabb, j);
+							PWNode *child = new PWNode(this, j, cAABB, current->level + 1);
 							child->parent = current;
+							child->addedSinceLastFlush = false;
+							child->isInMemory = false;
 							current->children[j] = child;
 							nodes.push_back(child);
 						}
@@ -702,15 +726,24 @@ void PotreeWriter::loadStateFromDisk(){
 				}
 
 			}
-
-			hrcRoot->traverse([](PWNode *node){
-				cout << node->name() << endl;
-			});
-
-			break;
 		}
 
-		string lala;
+		this->root = root;
+
+		// TODO set it to actual number
+		this->numAdded = 1;
+
+		//int numNodes = 0;
+		//root->traverse([&](PWNode *node){
+		//	if(numNodes < 50){
+		//		cout << std::left << std::setw(10) << node->name();
+		//		cout << std::right << std::setw(10) << node->numAccepted << "; ";
+		//		cout << node->aabb.min << " - " << node->aabb.max << endl;
+		//	}
+		//
+		//	numNodes++;
+		//	
+		//});
 	}
 
 

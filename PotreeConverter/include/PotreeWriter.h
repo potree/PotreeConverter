@@ -7,8 +7,7 @@
 #include <thread>
 #include <vector>
 
-
-#include "AABB.h";
+#include "AABB.h"
 #include "SparseGrid.h"
 #include "CloudJS.hpp"
 #include "PointAttributes.hpp"
@@ -81,6 +80,8 @@ public:
 	void traverseBreadthFirst(std::function<void(PWNode*)> callback);
 
 	vector<PWNode*> getHierarchy(int levels);
+
+	PWNode* findNode(string name);
 
 private:
 

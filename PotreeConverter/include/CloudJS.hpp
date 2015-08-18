@@ -75,11 +75,11 @@ public:
 		octreeDir = vOctreeDir.GetString();
 		boundingBox = AABB(
 			Vector3<double>(vBoundingBox["lx"].GetDouble(), vBoundingBox["ly"].GetDouble(), vBoundingBox["lz"].GetDouble()),
-			Vector3<double>(vBoundingBox["lx"].GetDouble(), vBoundingBox["ly"].GetDouble(), vBoundingBox["lz"].GetDouble())
+			Vector3<double>(vBoundingBox["ux"].GetDouble(), vBoundingBox["uy"].GetDouble(), vBoundingBox["uz"].GetDouble())
 		);
 		tightBoundingBox = AABB(
 			Vector3<double>(vTightBoundingBox["lx"].GetDouble(), vTightBoundingBox["ly"].GetDouble(), vTightBoundingBox["lz"].GetDouble()),
-			Vector3<double>(vTightBoundingBox["lx"].GetDouble(), vTightBoundingBox["ly"].GetDouble(), vTightBoundingBox["lz"].GetDouble())
+			Vector3<double>(vTightBoundingBox["ux"].GetDouble(), vTightBoundingBox["uy"].GetDouble(), vTightBoundingBox["uz"].GetDouble())
 		);
 
 		if(vPointAttributes.IsArray()){
@@ -112,7 +112,7 @@ public:
 
 		Document d(rapidjson::kObjectType);
 
-		Value version(this->version.c_str(), this->version.size());
+		Value version(this->version.c_str(), (rapidjson::SizeType)this->version.size());
 		Value octreeDir("data");
 		Value boundingBox(rapidjson::kObjectType);
 		{
