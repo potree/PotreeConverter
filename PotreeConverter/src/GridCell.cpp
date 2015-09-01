@@ -12,6 +12,8 @@ using std::max;
 
 namespace Potree{
 
+#define MAX_FLOAT std::numeric_limits<float>::max()
+
 GridCell::GridCell(){
 
 }
@@ -43,7 +45,7 @@ void GridCell::add(Vector3<double> p){
 	points.push_back(p);
 }
 
-bool GridCell::isDistant(const Vector3<double> &p, const double squaredSpacing) const {
+bool GridCell::isDistant(const Vector3<double> &p, const double &squaredSpacing) const {
 	for(const Vector3<double> &point : points){
 		
 		if(p.squaredDistanceTo(point) < squaredSpacing){

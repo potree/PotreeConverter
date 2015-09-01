@@ -5,6 +5,8 @@
 #include <string>
 #include <iostream>
 
+#include "Point.h"
+
 using std::string;
 
 namespace Potree{

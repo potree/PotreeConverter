@@ -5,9 +5,16 @@
 
 #include <string>
 #include <thread>
+#include <vector>
+
+#include "AABB.h"
+#include "SparseGrid.h"
+#include "CloudJS.hpp"
+#include "PointAttributes.hpp"
 
 using std::string;
 using std::thread;
+using std::vector;
 
 namespace Potree{
 
@@ -74,6 +81,8 @@ public:
 
 	vector<PWNode*> getHierarchy(int levels);
 
+	PWNode* findNode(string name);
+
 private:
 
 	PointReader *createReader(string path);
@@ -92,7 +101,7 @@ public:
 	string workDir;
 	float spacing;
 	double scale = 0;
-	int maxDepth;
+	int maxDepth = -1;
 	PWNode *root;
 	long long numAdded = 0;
 	long long numAccepted = 0;
@@ -105,6 +114,7 @@ public:
 	int pointsInMemory = 0;
 
 
+	PotreeWriter(string workDir);
 
 	PotreeWriter(string workDir, AABB aabb, float spacing, int maxDepth, double scale, OutputFormat outputFormat, PointAttributes pointAttributes);
 
@@ -129,6 +139,9 @@ public:
 	void close(){
 		flush();
 	}
+
+	void loadStateFromDisk();
+private:
 
 };
 

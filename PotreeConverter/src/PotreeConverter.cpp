@@ -154,9 +154,33 @@ void PotreeConverter::convert(){
 		cout << "spacing calculated from diagonal: " << spacing << endl;
 	}
 
-	PotreeWriter writer(this->workDir, aabb, spacing, maxDepth, scale, outputFormat, pointAttributes);
 	if(pageName.size() > 0){
-		writer.generatePage(pageName);
+		// generating page
+		workDir = workDir + "/resources/pointclouds";
+	}
+
+
+	PotreeWriter *writer;
+	if(fs::exists(fs::path(this->workDir + "/cloud.js"))){
+
+		if(storeOption == StoreOption::ABORT_IF_EXISTS){
+			cout << "ABORTING CONVERSION: target already exists: " << this->workDir << "/cloud.js" << endl;
+			cout << "If you want to overwrite the existing conversion, specify --overwrite" << endl;
+			cout << "If you want add new points to the existing conversion, make sure the new points ";
+			cout << "are contained within the bounding box of the existing conversion and then specify --incremental" << endl;
+
+			return;
+		}else if(storeOption == StoreOption::OVERWRITE){
+			fs::remove_all(workDir + "/data");
+			fs::remove_all(workDir + "/temp");
+			fs::remove(workDir + "/cloud.js");
+			writer = new PotreeWriter(this->workDir, aabb, spacing, maxDepth, scale, outputFormat, pointAttributes);
+		}else if(storeOption == StoreOption::INCREMENTAL){
+			writer = new PotreeWriter(this->workDir);
+			writer->loadStateFromDisk();
+		}
+	}else{
+		writer = new PotreeWriter(this->workDir, aabb, spacing, maxDepth, scale, outputFormat, pointAttributes);
 	}
 
 	for (const auto &source : sources) {
@@ -167,11 +191,11 @@ void PotreeConverter::convert(){
 			pointsProcessed++;
 
 			Point p = reader->getPoint();
-			writer.add(p);
+			writer->add(p);
 
 			if((pointsProcessed % (1'000'000)) == 0){
-				writer.processStore();
-				writer.waitUntilProcessed();
+				writer->processStore();
+				writer->waitUntilProcessed();
 
 				auto end = high_resolution_clock::now();
 				long long duration = duration_cast<milliseconds>(end-start).count();
@@ -182,7 +206,7 @@ void PotreeConverter::convert(){
 				ssMessage.imbue(std::locale(""));
 				ssMessage << "INDEXING: ";
 				ssMessage << pointsProcessed << " points processed; ";
-				ssMessage << writer.numAccepted << " points written; ";
+				ssMessage << writer->numAccepted << " points written; ";
 				ssMessage << seconds << " seconds passed";
 
 				cout << ssMessage.str() << endl;
@@ -192,7 +216,7 @@ void PotreeConverter::convert(){
 			
 				auto start = high_resolution_clock::now();
 			
-				writer.flush();
+				writer->flush();
 			
 				auto end = high_resolution_clock::now();
 				long long duration = duration_cast<milliseconds>(end-start).count();
@@ -210,10 +234,10 @@ void PotreeConverter::convert(){
 	}
 	
 	cout << "closing writer" << endl;
-	writer.flush();
-	writer.close();
+	writer->flush();
+	writer->close();
 
-	float percent = (float)writer.numAccepted / (float)pointsProcessed;
+	float percent = (float)writer->numAccepted / (float)pointsProcessed;
 	percent = percent * 100;
 
 	auto end = high_resolution_clock::now();
@@ -222,7 +246,7 @@ void PotreeConverter::convert(){
 	
 	cout << endl;
 	cout << "conversion finished" << endl;
-	cout << pointsProcessed << " points were processed and " << writer.numAccepted << " points ( " << percent << "% ) were written to the output. " << endl;
+	cout << pointsProcessed << " points were processed and " << writer->numAccepted << " points ( " << percent << "% ) were written to the output. " << endl;
 
 	cout << "duration: " << (duration / 1000.0f) << "s" << endl;
 }

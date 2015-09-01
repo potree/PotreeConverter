@@ -44,6 +44,7 @@ public:
 	int diagonalFraction = 250;
 	vector<double> aabbValues;
 	string pageName = "";
+	StoreOption storeOption = StoreOption::ABORT_IF_EXISTS;
 
 	PotreeConverter(string workDir, vector<string> sources);
 		

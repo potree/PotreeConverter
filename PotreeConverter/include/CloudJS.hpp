@@ -8,6 +8,10 @@
 #include <sstream>
 #include <list>
 
+#include "rapidjson/document.h"
+#include "rapidjson/prettywriter.h"
+#include "rapidjson/stringbuffer.h"
+
 #include "AABB.h"
 #include "definitions.hpp"
 #include "PointAttributes.hpp"
@@ -16,6 +20,11 @@ using std::string;
 using std::vector;
 using std::stringstream;
 using std::list;
+using rapidjson::Document;
+using rapidjson::StringBuffer;
+using rapidjson::Writer;
+using rapidjson::PrettyWriter;
+using rapidjson::Value;
 
 namespace Potree{
 
@@ -34,84 +43,126 @@ public:
 	};
 
 	string version;
-	string octreeDir;
+	string octreeDir = "data";
 	AABB boundingBox;
-	AABB tightBoundingBox;
 	OutputFormat outputFormat;
 	PointAttributes pointAttributes;
 	double spacing;
 	vector<Node> hierarchy;
 	double scale;
-	int hierarchyStepSize;
+	int hierarchyStepSize = -1;
+	long long numAccepted = 0;
 
-	CloudJS(){
-		version = "0.0";
-		hierarchyStepSize = -1;
+	CloudJS() = default;
+
+	CloudJS(string content){
+		Document d;
+		d.Parse(content.c_str());
+
+		Value &vVersion = d["version"];
+		Value &vOctreeDir = d["octreeDir"];
+		Value &vPoints = d["points"];
+		Value &vBoundingBox = d["boundingBox"];
+		Value &vPointAttributes = d["pointAttributes"];
+		Value &vSpacing = d["spacing"];
+		Value &vScale = d["scale"];
+		Value &vHierarchyStepSize = d["hierarchyStepSize"];
+
+		version = vVersion.GetString();
+		octreeDir = vOctreeDir.GetString();
+		numAccepted = vPoints.GetInt64();
+		boundingBox = AABB(
+			Vector3<double>(vBoundingBox["lx"].GetDouble(), vBoundingBox["ly"].GetDouble(), vBoundingBox["lz"].GetDouble()),
+			Vector3<double>(vBoundingBox["ux"].GetDouble(), vBoundingBox["uy"].GetDouble(), vBoundingBox["uz"].GetDouble())
+		);
+
+		if(vPointAttributes.IsArray()){
+			outputFormat = OutputFormat::BINARY;
+			pointAttributes = PointAttributes();
+
+			for (Value::ConstValueIterator itr = vPointAttributes.Begin(); itr != vPointAttributes.End(); ++itr){
+				string strpa = itr->GetString();
+				PointAttribute pa = PointAttribute::fromString(strpa);
+				pointAttributes.add(pa);
+			}
+
+
+		}else{
+			string pa = vPointAttributes.GetString();
+			if(pa == "LAS"){
+				outputFormat = OutputFormat::LAS;
+			}else if(pa == "LAZ"){
+				outputFormat = OutputFormat::LAZ;
+			}
+		}
+
+		spacing = vSpacing.GetDouble();
+		scale = vScale.GetDouble();
+		hierarchyStepSize = vHierarchyStepSize.GetInt();
+
 	}
 
 	string getString(){
-		stringstream cloudJs;
 
-		cloudJs.precision(15);
-		cloudJs << "{" << endl;
-		cloudJs << "\t" << "\"version\": \"" << version << "\"," << endl;
-		cloudJs << "\t" << "\"octreeDir\": \"data\"," << endl;
-		cloudJs << "\t" << "\"boundingBox\": {" << endl;
-		cloudJs << "\t\t" << "\"lx\": " << boundingBox.min.x << "," << endl;
-		cloudJs << "\t\t" << "\"ly\": " << boundingBox.min.y << "," << endl;
-		cloudJs << "\t\t" << "\"lz\": " << boundingBox.min.z << "," << endl;
-		cloudJs << "\t\t" << "\"ux\": " << boundingBox.max.x << "," << endl;
-		cloudJs << "\t\t" << "\"uy\": " << boundingBox.max.y << "," << endl;
-		cloudJs << "\t\t" << "\"uz\": " << boundingBox.max.z << endl;
-		cloudJs << "\t" << "}," << endl;
-		cloudJs << "\t" << "\"tightBoundingBox\": {" << endl;
-		cloudJs << "\t\t" << "\"lx\": " << tightBoundingBox.min.x << "," << endl;
-		cloudJs << "\t\t" << "\"ly\": " << tightBoundingBox.min.y << "," << endl;
-		cloudJs << "\t\t" << "\"lz\": " << tightBoundingBox.min.z << "," << endl;
-		cloudJs << "\t\t" << "\"ux\": " << tightBoundingBox.max.x << "," << endl;
-		cloudJs << "\t\t" << "\"uy\": " << tightBoundingBox.max.y << "," << endl;
-		cloudJs << "\t\t" << "\"uz\": " << tightBoundingBox.max.z << endl;
-		cloudJs << "\t" << "}," << endl;
+		Document d(rapidjson::kObjectType);
+
+		Value version(this->version.c_str(), (rapidjson::SizeType)this->version.size());
+		Value octreeDir("data");
+		Value boundingBox(rapidjson::kObjectType);
+		{
+			//Value min(rapidjson::kArrayType);
+			//min.PushBack(this->boundingBox.min.x, d.GetAllocator());
+			//min.PushBack(this->boundingBox.min.y, d.GetAllocator());
+			//min.PushBack(this->boundingBox.min.z, d.GetAllocator());
+			//
+			//Value max(rapidjson::kArrayType);
+			//max.PushBack(this->boundingBox.max.x, d.GetAllocator());
+			//max.PushBack(this->boundingBox.max.y, d.GetAllocator());
+			//max.PushBack(this->boundingBox.max.z, d.GetAllocator());
+			//
+			//boundingBox.AddMember("min", min, d.GetAllocator());
+			//boundingBox.AddMember("max", max, d.GetAllocator());
+
+			boundingBox.AddMember("lx", this->boundingBox.min.x, d.GetAllocator());
+			boundingBox.AddMember("ly", this->boundingBox.min.y, d.GetAllocator());
+			boundingBox.AddMember("lz", this->boundingBox.min.z, d.GetAllocator());
+			boundingBox.AddMember("ux", this->boundingBox.max.x, d.GetAllocator());
+			boundingBox.AddMember("uy", this->boundingBox.max.y, d.GetAllocator());
+			boundingBox.AddMember("uz", this->boundingBox.max.z, d.GetAllocator());
+		}
+		
+		Value pointAttributes;
 		if(outputFormat == OutputFormat::BINARY){
-			cloudJs << "\t" << "\"pointAttributes\": [" << endl;
-
-			for(int i = 0; i < pointAttributes.size(); i++){
-				PointAttribute attribute = pointAttributes[i];
-
-				cloudJs << "\t\t" << "\"" << attribute.name << "\"";
-
-				if(i+1 < pointAttributes.size()){
-					cloudJs << ",";
-				}
-				cloudJs << endl;
+			pointAttributes.SetArray();
+			for(int i = 0; i < this->pointAttributes.size(); i++){
+				PointAttribute attribute = this->pointAttributes[i];
+				Value str(attribute.name.c_str(), d.GetAllocator());
+				pointAttributes.PushBack(str, d.GetAllocator());
 			}
-
-			cloudJs << "\t" << "]," << endl;
 		}else if(outputFormat == OutputFormat::LAS){
-			cloudJs << "\t" << "\"pointAttributes\": \"LAS\"," << endl;
+			pointAttributes = "LAS";
 		}else if(outputFormat == OutputFormat::LAZ){
-			cloudJs << "\t" << "\"pointAttributes\": \"LAZ\"," << endl;
+			pointAttributes = "LAZ";
 		}
-		cloudJs << "\t" << "\"spacing\": " << spacing << "," << endl;
-		cloudJs << "\t" << "\"scale\": " << scale << "," << endl;
-		if(hierarchyStepSize >= 0){
-			cloudJs << "\t" << "\"hierarchyStepSize\": " << hierarchyStepSize << endl;
-		}
-		//cloudJs << "\t" << "\"hierarchy\": [" << endl;
-		//
-		//for(int i = 0; i < hierarchy.size(); i++){
-		//	Node node = hierarchy[i];
-		//	cloudJs << "\t\t[\"" << node.name << "\", " << node.pointCount << "]";
-		//
-		//	if(i < hierarchy.size()-1){
-		//		cloudJs << ",";
-		//	}
-		//	cloudJs << endl;
-		//}
-		//cloudJs << "\t]" << endl;
-		cloudJs << "}" << endl;
+		Value spacing(this->spacing);
+		Value scale(this->scale);
+		Value hierarchyStepSize(this->hierarchyStepSize);
 
-		return cloudJs.str();
+
+		d.AddMember("version", version, d.GetAllocator());
+		d.AddMember("octreeDir", octreeDir, d.GetAllocator());
+		d.AddMember("points", numAccepted, d.GetAllocator());
+		d.AddMember("boundingBox", boundingBox, d.GetAllocator());
+		d.AddMember("pointAttributes", pointAttributes, d.GetAllocator());
+		d.AddMember("spacing", spacing, d.GetAllocator());
+		d.AddMember("scale", scale, d.GetAllocator());
+		d.AddMember("hierarchyStepSize", hierarchyStepSize, d.GetAllocator());
+
+		StringBuffer buffer;
+		PrettyWriter<StringBuffer> writer(buffer);
+		d.Accept(writer);
+
+		return buffer.GetString();
 	}
 };
 

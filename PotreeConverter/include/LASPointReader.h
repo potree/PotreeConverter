@@ -69,7 +69,7 @@ public:
 			int i = 0; 
 			colorScale = 1;
 			while(reader.ReadNextPoint() && i < 1000){
-				liblas::Point const lp = reader.GetPoint();
+				liblas::Point const &lp = reader.GetPoint();
 		
 				liblas::Color::value_type r = lp.GetColor().GetRed();
 				liblas::Color::value_type g = lp.GetColor().GetGreen();
@@ -93,7 +93,7 @@ public:
 	}
 
     Point GetPoint() {
-        liblas::Point const lp = reader.GetPoint();
+        liblas::Point const &lp = reader.GetPoint();
         Point p = transform(lp.GetX(), lp.GetY(), lp.GetZ());
         p.intensity = lp.GetIntensity();
         p.classification = lp.GetClassification().GetClass();

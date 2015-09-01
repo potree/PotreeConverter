@@ -70,6 +70,10 @@ public:
 		return Vector3<T>(x + right.x, y + right.y, z + right.z);
 	}
 
+	Vector3<T> operator+(const T right) const {
+		return Vector3<T>(x + right, y + right, z + right);
+	}
+
 	Vector3<T> operator/(const T &a) const{
 		return Vector3<T>(x / a, y / a, z / a);
 	}

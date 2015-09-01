@@ -10,8 +10,6 @@
 
 using std::vector;
 
-#define MAX_FLOAT std::numeric_limits<float>::max()
-
 namespace Potree{
 
 class SparseGrid;
@@ -29,7 +27,7 @@ public:
 
 	void add(Vector3<double> p);
 
-	bool isDistant(const Vector3<double> &p, const double squaredSpacing) const;
+	bool isDistant(const Vector3<double> &p, const double &squaredSpacing) const;
 };
 
 }

@@ -4,6 +4,8 @@
 #include <sstream>
 #include <stack>
 #include <chrono>
+#include <fstream>
+#include <iomanip>
 
 
 
@@ -25,6 +27,7 @@
 
 #include "PotreeWriter.h"
 
+using std::ifstream;
 using std::stack;
 using std::stringstream;
 using std::chrono::high_resolution_clock;
@@ -310,19 +313,11 @@ vector<PWNode*> PWNode::getHierarchy(int levels){
 
 
 void PWNode::traverse(std::function<void(PWNode*)> callback){
+	callback(this);
 
-	stack<PWNode*> st;
-	st.push(this);
-	while(!st.empty()){
-		PWNode *node = st.top();
-		st.pop();
-
-		callback(node);
-
-		for(PWNode *child : node->children){
-			if(child != NULL){
-				st.push(child);
-			}
+	for(PWNode *child : this->children){
+		if(child != NULL){
+			child->traverse(callback);
 		}
 	}
 }
@@ -361,6 +356,22 @@ void PWNode::traverseBreadthFirst(std::function<void(PWNode*)> callback){
 }
 
 
+PWNode* PWNode::findNode(string name){
+	string thisName = this->name();
+
+	if(name.size() == thisName.size()){
+		return (name == thisName) ? this : NULL;
+	}else if(name.size() > thisName.size()){
+		int childIndex = stoi(string(1, name[thisName.size()]));
+		if(!isLeafNode() && children[childIndex] != NULL){
+			return children[childIndex]->findNode(name);
+		}else{
+			return NULL;
+		}
+	}else{
+		return NULL;
+	}
+}
 
 
 
@@ -377,6 +388,9 @@ void PWNode::traverseBreadthFirst(std::function<void(PWNode*)> callback){
 
 
 
+PotreeWriter::PotreeWriter(string workDir){
+	this->workDir = workDir;
+}
 
 PotreeWriter::PotreeWriter(string workDir, AABB aabb, float spacing, int maxDepth, double scale, OutputFormat outputFormat, PointAttributes pointAttributes){
 	this->workDir = workDir;
@@ -497,13 +511,6 @@ void PotreeWriter::add(Point &p){
 		boost::filesystem::path dataDir(workDir + "/data");
 		boost::filesystem::path tempDir(workDir + "/temp");
 
-		if(fs::exists(dataDir)){
-			fs::remove_all(dataDir);
-		}
-		if(fs::exists(tempDir)){
-			fs::remove_all(tempDir);
-		}
-
 		fs::create_directories(dataDir);
 		fs::create_directories(tempDir);
 	}
@@ -528,8 +535,6 @@ void PotreeWriter::processStore(){
 			if(acceptedBy != NULL){
 				pointsInMemory++;
 				numAccepted++;
-
-				tightAABB.update(p.position);
 			}
 		}
 	});
@@ -554,7 +559,7 @@ void PotreeWriter::flush(){
 	{// update cloud.js
 		cloudjs.hierarchy = vector<CloudJS::Node>();
 		cloudjs.hierarchyStepSize = hierarchyStepSize;
-		cloudjs.tightBoundingBox = tightAABB;
+		cloudjs.numAccepted = numAccepted;
 
 		ofstream cloudOut(workDir + "/cloud.js", ios::out);
 		cloudOut << cloudjs.getString();
@@ -624,6 +629,116 @@ void PotreeWriter::flush(){
 	}
 }
 
+void PotreeWriter::loadStateFromDisk(){
+
+
+	{// cloudjs
+		string cloudJSPath = workDir + "/cloud.js";
+		ifstream file(cloudJSPath);
+		string line;
+		string content;
+		while (std::getline(file, line)){
+			content += line + "\n";
+		}
+		cloudjs = CloudJS(content);
+	}
+
+	{
+		this->outputFormat = cloudjs.outputFormat;
+		this->pointAttributes = cloudjs.pointAttributes;
+		this->hierarchyStepSize = cloudjs.hierarchyStepSize;
+		this->spacing = cloudjs.spacing;
+		this->scale = cloudjs.scale;
+		this->aabb = cloudjs.boundingBox;
+		this->numAccepted = cloudjs.numAccepted;
+	}
+
+	{// tree
+		vector<string> hrcPaths;
+		fs::path rootDir(workDir + "/data/r"); 
+		for (fs::recursive_directory_iterator iter(rootDir), end; iter != end; ++iter){
+			fs::path path = iter->path();
+			if(fs::is_regular_file(path)){
+				if(boost::iends_with(path.extension().string(), ".hrc")){
+					hrcPaths.push_back(path.string());
+				}else{
+			
+				}
+			}else if(fs::is_directory(path)){
+		
+			}
+		}
+		std::sort(hrcPaths.begin(), hrcPaths.end(), [](string &a, string &b){
+			return a.size() < b.size();
+		});
+
+		PWNode *root = new PWNode(this, cloudjs.boundingBox);
+		for(string hrcPath : hrcPaths){
+
+			fs::path pHrcPath(hrcPath);
+			string hrcName = pHrcPath.stem().string();
+			PWNode *hrcRoot = root->findNode(hrcName);
+
+			PWNode *current = hrcRoot;
+			current->addedSinceLastFlush = false;
+			current->isInMemory = false;
+			vector<PWNode*> nodes;
+			nodes.push_back(hrcRoot);
+		
+			ifstream fin(hrcPath, ios::in | ios::binary);
+			std::vector<char> buffer((std::istreambuf_iterator<char>(fin)), (std::istreambuf_iterator<char>()));
+
+			for(int i = 0; 5*i < buffer.size(); i++){
+				PWNode *current= nodes[i];
+
+				char children = buffer[i*5];
+				char *p = &buffer[i*5+1];
+				unsigned int* ip = reinterpret_cast<unsigned int*>(p);
+				unsigned int numPoints = *ip;
+
+				//std::bitset<8> bs(children);
+				//cout << i << "\t: " << "children: " << bs << "; " << "numPoints: " << numPoints << endl;
+
+				current->numAccepted = numPoints;
+
+				if(children != 0){
+					current->children.resize(8, NULL);
+					for(int j = 0; j < 8; j++){
+						if((children & (1 << j)) != 0){
+							AABB cAABB = childAABB(current->aabb, j);
+							PWNode *child = new PWNode(this, j, cAABB, current->level + 1);
+							child->parent = current;
+							child->addedSinceLastFlush = false;
+							child->isInMemory = false;
+							current->children[j] = child;
+							nodes.push_back(child);
+						}
+					}
+				}
+
+			}
+		}
+
+		this->root = root;
+
+		// TODO set it to actual number
+		this->numAdded = 1;
+
+		//int numNodes = 0;
+		//root->traverse([&](PWNode *node){
+		//	if(numNodes < 50){
+		//		cout << std::left << std::setw(10) << node->name();
+		//		cout << std::right << std::setw(10) << node->numAccepted << "; ";
+		//		cout << node->aabb.min << " - " << node->aabb.max << endl;
+		//	}
+		//
+		//	numNodes++;
+		//	
+		//});
+	}
+
+
+}
 
 
 }
