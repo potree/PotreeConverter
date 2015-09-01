@@ -101,7 +101,7 @@ public:
 	string workDir;
 	float spacing;
 	double scale = 0;
-	int maxDepth;
+	int maxDepth = -1;
 	PWNode *root;
 	long long numAdded = 0;
 	long long numAccepted = 0;

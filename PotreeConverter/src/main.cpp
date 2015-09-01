@@ -27,6 +27,7 @@ using std::chrono::milliseconds;
 using std::chrono::duration_cast;
 using std::exception;
 using Potree::PotreeConverter;
+using Potree::StoreOption;
 
 #define MAX_FLOAT std::numeric_limits<float>::max()
 
@@ -37,8 +38,16 @@ void printUsage(po::options_description &desc){
 	cout << desc << endl;
 }
 
+// from http://stackoverflow.com/questions/15577107/sets-of-mutually-exclusive-options-in-boost-program-options
+void conflicting_options(const boost::program_options::variables_map & vm, const std::string & opt1, const std::string & opt2){
+    if (vm.count(opt1) && !vm[opt1].defaulted() && vm.count(opt2) && !vm[opt2].defaulted()){
+        throw std::logic_error(std::string("Conflicting options '") + opt1 + "' and '" + opt2 + "'.");
+    }
+}
+
 struct Arguments{
 	bool help = false;
+	StoreOption storeOption = StoreOption::ABORT_IF_EXISTS;
 	vector<string> source;
 	string outdir;
 	float spacing;
@@ -75,6 +84,8 @@ Arguments parseArguments(int argc, char **argv){
 		("output-attributes,a", po::value<std::vector<std::string> >()->multitoken(), "can be any combination of RGB, INTENSITY and CLASSIFICATION. Default is RGB.")
 		("scale", po::value<double>(&a.scale), "Scale of the X, Y, Z coordinate in LAS and LAZ files.")
 		("aabb", po::value<string>(&a.aabbValuesString), "Bounding cube as \"minX minY minZ maxX maxY maxZ\". If not provided it is automatically computed")
+		("incremental", "Add new points to existing conversion")
+		("overwrite", "Replace existing conversion at target directory")
 		("source", po::value<std::vector<std::string> >(), "Source file. Can be LAS, LAZ, PTX or PLY");
 	po::positional_options_description p; 
 	p.add("source", -1); 
@@ -83,7 +94,17 @@ Arguments parseArguments(int argc, char **argv){
 	po::store(po::command_line_parser(argc, argv).options(desc).positional(p).run(), vm); 
 	po::notify(vm);
 
+	conflicting_options(vm, "incremental", "overwrite");
+
 	a.help = vm.count("help") || !vm.count("source");
+
+	if(vm.count("incremental")){
+		a.storeOption = StoreOption::INCREMENTAL;
+	}else if(vm.count("overwrite")){
+		a.storeOption = StoreOption::OVERWRITE;
+	}else{
+		a.storeOption = StoreOption::ABORT_IF_EXISTS;
+	}
 
 	if(vm.count("source")){
 		a.source = vm["source"].as<std::vector<std::string> >();
@@ -182,10 +203,12 @@ void printArguments(Arguments &a){
 int main(int argc, char **argv){
 	cout.imbue(std::locale(""));
 	
-	Arguments a = parseArguments(argc, argv);
-	printArguments(a);
+	
 	
 	try{
+		Arguments a = parseArguments(argc, argv);
+		printArguments(a);
+
 		PotreeConverter pc(a.outdir, a.source);
 
 		pc.spacing = a.spacing;
@@ -199,6 +222,7 @@ int main(int argc, char **argv){
 		pc.outputAttributes = a.outputAttributes;
 		pc.aabbValues = a.aabbValues;
 		pc.pageName = a.pageName;
+		pc.storeOption = a.storeOption;
 
 		pc.convert();
 	}catch(exception &e){

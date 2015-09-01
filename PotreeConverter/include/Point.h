@@ -37,15 +37,7 @@ public:
 
 	}
 
-	Point(const Point &other)
-		: position(other.position), 
-		color(other.color), 
-		normal(other.normal),
-		intensity(other.intensity), classification(other.classification), 
-		returnNumber(other.returnNumber), numberOfReturns(other.numberOfReturns), 
-		pointSourceID(other.pointSourceID)
-	{
-	}
+	Point(const Point &other) = default;
 
 	~Point() = default;
 

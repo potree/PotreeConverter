@@ -511,13 +511,6 @@ void PotreeWriter::add(Point &p){
 		boost::filesystem::path dataDir(workDir + "/data");
 		boost::filesystem::path tempDir(workDir + "/temp");
 
-		if(fs::exists(dataDir)){
-			fs::remove_all(dataDir);
-		}
-		if(fs::exists(tempDir)){
-			fs::remove_all(tempDir);
-		}
-
 		fs::create_directories(dataDir);
 		fs::create_directories(tempDir);
 	}
@@ -542,8 +535,6 @@ void PotreeWriter::processStore(){
 			if(acceptedBy != NULL){
 				pointsInMemory++;
 				numAccepted++;
-
-				tightAABB.update(p.position);
 			}
 		}
 	});
@@ -568,7 +559,7 @@ void PotreeWriter::flush(){
 	{// update cloud.js
 		cloudjs.hierarchy = vector<CloudJS::Node>();
 		cloudjs.hierarchyStepSize = hierarchyStepSize;
-		cloudjs.tightBoundingBox = tightAABB;
+		cloudjs.numAccepted = numAccepted;
 
 		ofstream cloudOut(workDir + "/cloud.js", ios::out);
 		cloudOut << cloudjs.getString();
@@ -659,7 +650,7 @@ void PotreeWriter::loadStateFromDisk(){
 		this->spacing = cloudjs.spacing;
 		this->scale = cloudjs.scale;
 		this->aabb = cloudjs.boundingBox;
-		this->tightAABB = cloudjs.boundingBox;
+		this->numAccepted = cloudjs.numAccepted;
 	}
 
 	{// tree

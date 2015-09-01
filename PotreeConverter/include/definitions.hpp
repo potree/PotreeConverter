@@ -10,6 +10,12 @@ enum class OutputFormat{
 	LAZ
 };
 
+enum class StoreOption{
+	ABORT_IF_EXISTS,
+	OVERWRITE,
+	INCREMENTAL
+};
+
 }
 
 #endif

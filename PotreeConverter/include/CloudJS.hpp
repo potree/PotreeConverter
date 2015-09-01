@@ -45,13 +45,13 @@ public:
 	string version;
 	string octreeDir = "data";
 	AABB boundingBox;
-	AABB tightBoundingBox;
 	OutputFormat outputFormat;
 	PointAttributes pointAttributes;
 	double spacing;
 	vector<Node> hierarchy;
 	double scale;
 	int hierarchyStepSize = -1;
+	long long numAccepted = 0;
 
 	CloudJS() = default;
 
@@ -61,8 +61,8 @@ public:
 
 		Value &vVersion = d["version"];
 		Value &vOctreeDir = d["octreeDir"];
+		Value &vPoints = d["points"];
 		Value &vBoundingBox = d["boundingBox"];
-		Value &vTightBoundingBox = d["tightBoundingBox"];
 		Value &vPointAttributes = d["pointAttributes"];
 		Value &vSpacing = d["spacing"];
 		Value &vScale = d["scale"];
@@ -70,13 +70,10 @@ public:
 
 		version = vVersion.GetString();
 		octreeDir = vOctreeDir.GetString();
+		numAccepted = vPoints.GetInt64();
 		boundingBox = AABB(
 			Vector3<double>(vBoundingBox["lx"].GetDouble(), vBoundingBox["ly"].GetDouble(), vBoundingBox["lz"].GetDouble()),
 			Vector3<double>(vBoundingBox["ux"].GetDouble(), vBoundingBox["uy"].GetDouble(), vBoundingBox["uz"].GetDouble())
-		);
-		tightBoundingBox = AABB(
-			Vector3<double>(vTightBoundingBox["lx"].GetDouble(), vTightBoundingBox["ly"].GetDouble(), vTightBoundingBox["lz"].GetDouble()),
-			Vector3<double>(vTightBoundingBox["ux"].GetDouble(), vTightBoundingBox["uy"].GetDouble(), vTightBoundingBox["uz"].GetDouble())
 		);
 
 		if(vPointAttributes.IsArray()){
@@ -133,28 +130,7 @@ public:
 			boundingBox.AddMember("uy", this->boundingBox.max.y, d.GetAllocator());
 			boundingBox.AddMember("uz", this->boundingBox.max.z, d.GetAllocator());
 		}
-		Value tightBoundingBox(rapidjson::kObjectType);
-		{
-			//Value min(rapidjson::kArrayType);
-			//min.PushBack(this->tightBoundingBox.min.x, d.GetAllocator());
-			//min.PushBack(this->tightBoundingBox.min.y, d.GetAllocator());
-			//min.PushBack(this->tightBoundingBox.min.z, d.GetAllocator());
-			//
-			//Value max(rapidjson::kArrayType);
-			//max.PushBack(this->tightBoundingBox.max.x, d.GetAllocator());
-			//max.PushBack(this->tightBoundingBox.max.y, d.GetAllocator());
-			//max.PushBack(this->tightBoundingBox.max.z, d.GetAllocator());
-			//
-			//tightBoundingBox.AddMember("min", min, d.GetAllocator());
-			//tightBoundingBox.AddMember("max", max, d.GetAllocator());
-
-			tightBoundingBox.AddMember("lx", this->tightBoundingBox.min.x, d.GetAllocator());
-			tightBoundingBox.AddMember("ly", this->tightBoundingBox.min.y, d.GetAllocator());
-			tightBoundingBox.AddMember("lz", this->tightBoundingBox.min.z, d.GetAllocator());
-			tightBoundingBox.AddMember("ux", this->tightBoundingBox.max.x, d.GetAllocator());
-			tightBoundingBox.AddMember("uy", this->tightBoundingBox.max.y, d.GetAllocator());
-			tightBoundingBox.AddMember("uz", this->tightBoundingBox.max.z, d.GetAllocator());
-		}
+		
 		Value pointAttributes;
 		if(outputFormat == OutputFormat::BINARY){
 			pointAttributes.SetArray();
@@ -175,8 +151,8 @@ public:
 
 		d.AddMember("version", version, d.GetAllocator());
 		d.AddMember("octreeDir", octreeDir, d.GetAllocator());
+		d.AddMember("points", numAccepted, d.GetAllocator());
 		d.AddMember("boundingBox", boundingBox, d.GetAllocator());
-		d.AddMember("tightBoundingBox", tightBoundingBox, d.GetAllocator());
 		d.AddMember("pointAttributes", pointAttributes, d.GetAllocator());
 		d.AddMember("spacing", spacing, d.GetAllocator());
 		d.AddMember("scale", scale, d.GetAllocator());

@@ -154,16 +154,33 @@ void PotreeConverter::convert(){
 		cout << "spacing calculated from diagonal: " << spacing << endl;
 	}
 
+	if(pageName.size() > 0){
+		// generating page
+		workDir = workDir + "/resources/pointclouds";
+	}
+
+
 	PotreeWriter *writer;
 	if(fs::exists(fs::path(this->workDir + "/cloud.js"))){
-		writer = new PotreeWriter(this->workDir);
-		writer->loadStateFromDisk();
+
+		if(storeOption == StoreOption::ABORT_IF_EXISTS){
+			cout << "ABORTING CONVERSION: target already exists: " << this->workDir << "/cloud.js" << endl;
+			cout << "If you want to overwrite the existing conversion, specify --overwrite" << endl;
+			cout << "If you want add new points to the existing conversion, make sure the new points ";
+			cout << "are contained within the bounding box of the existing conversion and then specify --incremental" << endl;
+
+			return;
+		}else if(storeOption == StoreOption::OVERWRITE){
+			fs::remove_all(workDir + "/data");
+			fs::remove_all(workDir + "/temp");
+			fs::remove(workDir + "/cloud.js");
+			writer = new PotreeWriter(this->workDir, aabb, spacing, maxDepth, scale, outputFormat, pointAttributes);
+		}else if(storeOption == StoreOption::INCREMENTAL){
+			writer = new PotreeWriter(this->workDir);
+			writer->loadStateFromDisk();
+		}
 	}else{
 		writer = new PotreeWriter(this->workDir, aabb, spacing, maxDepth, scale, outputFormat, pointAttributes);
-		//PotreeWriter writer(this->workDir, aabb, spacing, maxDepth, scale, outputFormat, pointAttributes);
-		if(pageName.size() > 0){
-			writer->generatePage(pageName);
-		}
 	}
 
 	for (const auto &source : sources) {
