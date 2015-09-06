@@ -20,6 +20,15 @@ See [docs/changelog.md](./docs/changelog.md) for a list of new features, bugfixe
 
 ## Build
 
+```
+# clone repository
+git clone https://github.com/potree/PotreeConverter.git potree
+
+# update submodules
+git submodule init
+git submodule update
+```
+
 Linux/MacOSX:
 
     mkdir build && cd build
@@ -27,7 +36,7 @@ Linux/MacOSX:
     make
 
     # copy ./PotreeConverter/resources/page_template to your binary working directory.
-	
+
 Linux with custom builds of liblas and laszip
 
 ```
@@ -66,9 +75,6 @@ b2 toolset=msvc-14.0 address-model=64 link=static link=shared threading=multi --
 mkdir build
 cd build
 
-# 32bit project
-cmake -G "Visual Studio 14 2015" -DBoost_USE_STATIC_LIBS=ON -DBOOST_ROOT=%BOOST_ROOT% -DBOOST_LIBRARYDIR=%BOOST_LIBRARYDIR% -DLIBLAS_INCLUDE_DIR=%LIBLAS_INCLUDE_DIR% -DLIBLAS_LIBRARY=%LIBLAS_LIBRARY_DIR%/liblas.lib  ..\
-
 # or 64bit project
 cmake -G "Visual Studio 14 2015 Win64" -DBoost_USE_STATIC_LIBS=ON -DBOOST_ROOT=%BOOST_ROOT% -DBOOST_LIBRARYDIR=%BOOST_LIBRARYDIR% -DLIBLAS_INCLUDE_DIR=%LIBLAS_INCLUDE_DIR% -DLIBLAS_LIBRARY=%LIBLAS_LIBRARY_DIR%/liblas.lib  ..\
 
@@ -85,35 +91,37 @@ Options:
 
 
 ```
--h [ --help ]                         prints usage
--p [ --generate-page ]                Generates a ready to use web page alongwith the model.
--o [ --outdir ] arg                   output directory
--s [ --spacing ] arg                  Distance between points at root level. Distance halves each level.
--d [ --spacing-by-diagonal-fraction ] arg Maximum number of points on the diagonal in the first level (sets spacing). spacing = diagonal / value
--l [ --levels ] arg                   Number of levels that will be generated. 0: only root, 1: root and its children, ...
--f [ --input-format ] arg             Input format. xyz: cartesian coordinates as floats, rgb: colors as numbers, i: intensity as number
+-h [ --help ]                           prints usage
+-p [ --generate-page ] arg              Generates a ready to use web page with the given name.
+-o [ --outdir ] arg                     output directory
+-s [ --spacing ] arg                    Distance between points at root level. Distance halves each level.
+-d [ --spacing-by-diagonal-fraction ] arg
+                                        Maximum number of points on the diagonal in the first level (sets spacing). spacing = diagonal / value
+-l [ --levels ] arg                     Number of levels that will be generated. 0: only root, 1: root and its children, ...
+-f [ --input-format ] arg               Input format. xyz: cartesian coordinates as floats, rgb: colors as numbers, i: intensity as number
 --color-range arg
 --intensity-range arg
---output-format arg                   Output format can be BINARY, LAS or
-                                      LAZ. Default is BINARY
--a [ --output-attributes ] arg        Can be any combination of RGB, INTENSITY, CLASSIFICATION and NORMAL. Default is RGB.
---scale arg                           Scale of the X, Y, Z coordinate in LAS and LAZ files.
---source arg                          Source file. Can be LAS, LAZ, PTX or
+--output-format arg                     Output format can be BINARY, LAS or LAZ. Default is BINARY
+-a [ --output-attributes ] arg          can be any combination of RGB, INTENSITY, CLASSIFICATION and NORMAL. Default is RGB.
+--scale arg                             Scale of the X, Y, Z coordinate in LAS and LAZ files.
+--aabb arg                              Bounding cube as "minX minY minZ maxX maxY maxZ". If not provided it is automatically computed
+--incremental                           Add new points to existing conversion
+--overwrite                             Replace existing conversion at target directory
+--source arg                            Source file. Can be LAS, LAZ, PTX or PLY
 ```
 
 Examples:
 
     # convert data.las and generate web page.
-    ./PotreeConverter.exe C:/data.las -o C:/potree_converted -p
-
-    # convert with an octree depth of 5 (-l); generate web page (-p); write RGB, INTENSITY and CLASSIFICATION attributes (-a)
-    ./PotreeConverter.exe data.las -o C:/potree_converted -p -l 5 -a RGB INTENSITY CLASSIFICATION
+    ./PotreeConverter.exe C:/data.las -o C:/potree_converted -p data
 
     # generate compressed LAZ files instead of the default BIN format.
-    ./PotreeConverter.exe C:/data.las -l 4 -o C:/potree_converted --output-format LAZ
-
-    # convert data1.las and data2.las with a spacing of 0.5 and a depth of 4
-    ./PotreeConverter.exe C:/data1.las C:/data1.las C:/data2.las -s 0.5 -l 4 -o C:/potree_converted
+    ./PotreeConverter.exe C:/data.las -o C:/potree_converted --output-format LAZ
 
     # convert all files inside the data directory
-    ./PotreeConverter.exe C:/data -s 0.5 -l 4 -o C:/potree_converted
+    ./PotreeConverter.exe C:/data -o C:/potree_converted
+
+    # first, convert with custom bounding box and then append new_data.las afterwards.
+    # points in new_data MUST fit into bounding box!
+    ./PotreeConverter.exe C:/data -o C:/potree_converted -aabb "-0.748 -2.780 2.547 3.899 1.867 7.195"
+    ./PotreeConverter.exe C:/new_data.las -o C:/potree_converted --incremental
