@@ -1,5 +1,6 @@
 
 #include "PointAttributes.hpp"
+#include "PotreeException.h"
 
 namespace Potree{
 
@@ -27,6 +28,8 @@ PointAttribute PointAttribute::fromString(string name){
 	}else if(name == "NORMAL"){
 		return PointAttribute::NORMAL;
 	}
+
+	throw PotreeException("Invalid PointAttribute name: '" + name + "'");
 }
 
 bool operator==(const PointAttribute& lhs, const PointAttribute& rhs){ 

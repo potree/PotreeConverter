@@ -3,12 +3,12 @@ if( /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(naviga
 	sceneProperties.navigation = "Orbit";
 }
 
+if(sceneProperties.useEDL && !Potree.Features.SHADER_EDL.isSupported()){
+	sceneProperties.useEDL = false;
+}
+
 if(sceneProperties.quality === null){
-	if(Potree.Features.SHADER_INTERPOLATION.isSupported()){
-		sceneProperties.quality = "Interpolation";
-	}else{
-		sceneProperties.quality = "Squares";
-	}
+	sceneProperties.quality = "Squares";
 }
 
 var fov = sceneProperties.fov;
@@ -22,7 +22,7 @@ var clipMode = Potree.ClipMode.HIGHLIGHT_INSIDE;
 var quality = null;
 var isFlipYZ = false;
 var useDEMCollisions = false;
-var minNodeSize = 0;
+var minNodeSize = 100;
 var directionalLight;
 
 var showStats = false;
@@ -83,7 +83,7 @@ function setMaterial(value){
 		pointColorType = Potree.PointColorType.RGB;
 	}else if(value === "Color"){
 		pointColorType = Potree.PointColorType.COLOR;
-	}else if(value === "Height"){
+	}else if(value === "Elevation"){
 		pointColorType = Potree.PointColorType.HEIGHT;
 	}else if(value === "Intensity"){
 		pointColorType = Potree.PointColorType.INTENSITY;
@@ -167,7 +167,7 @@ function initGUI(){
 	var attributes = pointcloud.pcoGeometry.pointAttributes
 	if(attributes === "LAS" || attributes === "LAZ"){
 		options = [ 
-		"RGB", "Color", "Height", "Intensity", "Intensity Gradient", 
+		"RGB", "Color", "Elevation", "Intensity", "Intensity Gradient", 
 		"Classification", "Return Number", "Source",
 		"Tree Depth"];
 	}else{
@@ -188,16 +188,16 @@ function initGUI(){
 			options.push("Normal");
 		}
 		
-		options.push("Height");
+		options.push("Elevation");
 		options.push("Color");
 		options.push("Tree Depth");
 	}
 	
-	// default material is not available. set material to Height
+	// default material is not available. set material to Elevation
 	if(options.indexOf(params.Materials) < 0){
-		console.error("Default Material '" + params.Material + "' is not available. Using Height instead");
-		setMaterial("Height");
-		params.Materials = "Height";
+		console.error("Default Material '" + params.Material + "' is not available. Using Elevation instead");
+		setMaterial("Elevation");
+		params.Materials = "Elevation";
 	}
 	
 	
@@ -348,6 +348,18 @@ function initThree(){
 			referenceFrame.position.copy(sg.center).multiplyScalar(-1);
 			referenceFrame.updateMatrixWorld(true);
 			
+			if(sg.radius > 50*1000){
+				camera.near = 10;
+			}else if(sg.radius > 10*1000){
+				camera.near = 2;
+			}else if(sg.radius > 1000){
+				camera.near = 1;
+			}else if(sg.radius > 100){
+				camera.near = 0.5;
+			}else{
+				camera.near = 0.1;
+			}
+			
 			
 			flipYZ();
 			camera.zoomTo(pointcloud, 1);
@@ -363,7 +375,7 @@ function initThree(){
 			}else if(sceneProperties.navigation === "Flight"){
 				useFPSControls();
 			}else{
-				console.warning("No navigation mode specivied. Using OrbitControls");
+				console.warning("No navigation mode specified. Using OrbitControls");
 				useOrbitControls();
 			}
 			
@@ -599,7 +611,7 @@ function update(){
 
 	// update progress bar
 	if(pointcloud){
-		var progress = pointcloud.progress;;
+		var progress = pointcloud.progress;
 		
 		progressBar.progress = progress;
 		
@@ -650,6 +662,21 @@ function update(){
 	if(pointcloud){
 		pointcloud.material.setClipBoxes(clipBoxes);
 	}
+	
+	//if(pointcloud){
+	//
+	//	var levels = new Uint32Array(20);
+	//
+	//	var vn = pointcloud.visibleNodes;
+	//	for(var i = 0; i < vn.length; i++){
+	//		var node = vn[i].node;
+	//		var level = node.level;
+	//		
+	//		levels[level]++;
+	//	}
+	//	
+	//	var a;
+	//}
 	
 }
 
@@ -876,11 +903,6 @@ var HighQualityRenderer = function(){
 			pointcloud.visiblePointsTarget = pointCountTarget * 1000 * 1000;
 			var originalMaterial = pointcloud.material;
 			
-			var vn = [];
-			for(var i = 0; i < pointcloud.visibleNodes.length; i++){
-				vn.push(pointcloud.visibleNodes[i].node);
-			}
-			
 			{// DEPTH PASS
 				depthMaterial.size = pointSize;
 				depthMaterial.pointSizeType = pointSizeType;
@@ -894,7 +916,8 @@ var HighQualityRenderer = function(){
 				depthMaterial.far = camera.far;
 				depthMaterial.heightMin = heightMin;
 				depthMaterial.heightMax = heightMax;
-				pointcloud.updateVisibilityTexture(depthMaterial, vn);
+				attributeMaterial.uniforms.visibleNodes.value = pointcloud.material.visibleNodesTexture;
+				attributeMaterial.uniforms.octreeSize.value = pointcloud.pcoGeometry.boundingBox.size().x;
 				
 				scenePointCloud.overrideMaterial = depthMaterial;
 				renderer.clearTarget( rtDepth, true, true, true );
@@ -919,7 +942,8 @@ var HighQualityRenderer = function(){
 				attributeMaterial.heightMax = heightMax;
 				attributeMaterial.intensityMin = pointcloud.material.intensityMin;
 				attributeMaterial.intensityMax = pointcloud.material.intensityMax;
-				pointcloud.updateVisibilityTexture(depthMaterial, vn);
+				attributeMaterial.setClipBoxes(pointcloud.material.clipBoxes);
+				attributeMaterial.clipMode = pointcloud.material.clipMode;
 				
 				scenePointCloud.overrideMaterial = attributeMaterial;
 				renderer.clearTarget( rtNormalize, true, true, true );
@@ -1063,17 +1087,13 @@ var EDLRenderer = function(){
 			pointcloud.visiblePointsTarget = pointCountTarget * 1000 * 1000;
 			var originalMaterial = pointcloud.material;
 			
-			var vn = [];
-			for(var i = 0; i < pointcloud.visibleNodes.length; i++){
-				vn.push(pointcloud.visibleNodes[i].node);
-			}
-			
 			{// COLOR & DEPTH PASS
 				attributeMaterial.size = pointSize;
 				attributeMaterial.pointSizeType = pointSizeType;
 				attributeMaterial.screenWidth = width;
 				attributeMaterial.screenHeight = height;
 				attributeMaterial.pointColorType = pointColorType;
+				attributeMaterial.uniforms.visibleNodes.value = pointcloud.material.visibleNodesTexture;
 				attributeMaterial.uniforms.octreeSize.value = octreeSize;
 				attributeMaterial.fov = camera.fov * (Math.PI / 180);
 				attributeMaterial.spacing = pointcloud.pcoGeometry.spacing;
@@ -1085,7 +1105,6 @@ var EDLRenderer = function(){
 				attributeMaterial.intensityMax = pointcloud.material.intensityMax;
 				attributeMaterial.setClipBoxes(pointcloud.material.clipBoxes);
 				attributeMaterial.clipMode = pointcloud.material.clipMode;
-				pointcloud.updateVisibilityTexture(attributeMaterial, vn);
 				
 				scenePointCloud.overrideMaterial = attributeMaterial;
 				renderer.clearTarget( rtColor, true, true, true );
@@ -1119,12 +1138,20 @@ var EDLRenderer = function(){
 	}
 };
 
-
+//var toggleMessage = 0;
 
 function loop() {
 	requestAnimationFrame(loop);
 	
+	//var start = new Date().getTime();
 	update();
+	//var end = new Date().getTime();
+	//var duration = end - start;
+	//toggleMessage++;
+	//if(toggleMessage > 30){
+	//	document.getElementById("lblMessage").innerHTML = "update: " + duration + "ms";
+	//	toggleMessage = 0;
+	//}
 	
 	if(sceneProperties.useEDL){
 		if(!edlRenderer){

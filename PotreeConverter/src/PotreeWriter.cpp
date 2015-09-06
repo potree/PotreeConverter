@@ -425,69 +425,6 @@ PotreeWriter::PotreeWriter(string workDir, AABB aabb, float spacing, int maxDept
 	root = new PWNode(this, aabb);
 }
 
-void PotreeWriter::generatePage(string name){
-	if(this->numAdded > 0){
-		throw PotreeException("generatePage() must be called before add()!");
-	}
-
-	string pagedir = this->workDir;
-	this->workDir += "/resources/pointclouds/" + name;
-	string templateSourcePath = "./resources/page_template/examples/viewer_template.html";
-	string templateTargetPath = pagedir + "/examples/" + name + ".html";
-
-	Potree::copyDir(fs::path("./resources/page_template"), fs::path(pagedir));
-	fs::remove(pagedir + "/examples/viewer_template.html");
-
-	{ // change viewer template
-		ifstream in( templateSourcePath );
-		ofstream out( templateTargetPath );
-
-		string line;
-		while(getline(in, line)){
-			if(line.find("<!-- INCLUDE SETTINGS HERE -->") != string::npos){
-				out << "\t<script src=\"./" << name << ".js\"></script>" << endl;
-			}else if((outputFormat == Potree::OutputFormat::LAS || outputFormat == Potree::OutputFormat::LAZ) && 
-				line.find("<!-- INCLUDE ADDITIONAL DEPENDENCIES HERE -->") != string::npos){
-				
-				out << "\t<script src=\"../libs/plasio/js/laslaz.js\"></script>" << endl;
-				out << "\t<script src=\"../libs/plasio/vendor/bluebird.js\"></script>" << endl;
-				out << "\t<script src=\"../build/js/laslaz.js\"></script>" << endl;
-			}else{
-				out << line << endl;
-			}
-			
-		}
-
-		in.close();
-		out.close();
-	}
-
-
-	{ // write settings
-		stringstream ssSettings;
-
-		ssSettings << "var sceneProperties = {" << endl;
-		ssSettings << "\tpath: \"" << "../resources/pointclouds/" << name << "/cloud.js\"," << endl;
-		ssSettings << "\tcameraPosition: null, 		// other options: cameraPosition: [10,10,10]," << endl;
-		ssSettings << "\tcameraTarget: null, 		// other options: cameraTarget: [0,0,0]," << endl;
-		ssSettings << "\tfov: 60, 					// field of view in degrees," << endl;
-		ssSettings << "\tsizeType: \"Adaptive\",	// other options: \"Fixed\", \"Attenuated\"" << endl;
-		ssSettings << "\tquality: null, 			// other options: \"Circles\", \"Interpolation\", \"Splats\"" << endl;
-		ssSettings << "\tmaterial: \"RGB\", 		// other options: \"Height\", \"Intensity\", \"Classification\"" << endl;
-		ssSettings << "\tpointLimit: 1,				// max number of points in millions" << endl;
-		ssSettings << "\tpointSize: 1,				// " << endl;
-		ssSettings << "\tnavigation: \"Orbit\",		// other options: \"Orbit\", \"Flight\"" << endl;
-		ssSettings << "\tuseEDL: false,				" << endl;
-		ssSettings << "};" << endl;
-
-	
-		ofstream fSettings;
-		fSettings.open(pagedir + "/examples/" + name + ".js", ios::out);
-		fSettings << ssSettings.str();
-		fSettings.close();
-	}
-}
-
 string PotreeWriter::getExtension(){
 	if(outputFormat == OutputFormat::LAS){
 		return ".las";
@@ -533,6 +470,8 @@ void PotreeWriter::processStore(){
 		for(Point p : st){
 			PWNode *acceptedBy = root->add(p);
 			if(acceptedBy != NULL){
+				tightAABB.update(p.position);
+
 				pointsInMemory++;
 				numAccepted++;
 			}
@@ -559,6 +498,7 @@ void PotreeWriter::flush(){
 	{// update cloud.js
 		cloudjs.hierarchy = vector<CloudJS::Node>();
 		cloudjs.hierarchyStepSize = hierarchyStepSize;
+		cloudjs.tightBoundingBox = tightAABB;
 		cloudjs.numAccepted = numAccepted;
 
 		ofstream cloudOut(workDir + "/cloud.js", ios::out);

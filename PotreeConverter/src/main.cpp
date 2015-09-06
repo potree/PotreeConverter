@@ -94,9 +94,12 @@ Arguments parseArguments(int argc, char **argv){
 	po::store(po::command_line_parser(argc, argv).options(desc).positional(p).run(), vm); 
 	po::notify(vm);
 
-	conflicting_options(vm, "incremental", "overwrite");
+	if(vm.count("help") || !vm.count("source")){
+		printUsage(desc);
+		exit(0);
+	}
 
-	a.help = vm.count("help") || !vm.count("source");
+	conflicting_options(vm, "incremental", "overwrite");
 
 	if(vm.count("incremental")){
 		a.storeOption = StoreOption::INCREMENTAL;

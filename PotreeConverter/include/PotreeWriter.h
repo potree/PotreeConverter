@@ -108,7 +108,7 @@ public:
 	CloudJS cloudjs;
 	OutputFormat outputFormat;
 	PointAttributes pointAttributes;
-	int hierarchyStepSize = 4;
+	int hierarchyStepSize = 5;
 	vector<Point> store;
 	thread storeThread;
 	int pointsInMemory = 0;
@@ -133,8 +133,6 @@ public:
 	void add(Point &p);
 
 	void flush();
-
-	void generatePage(string name);
 
 	void close(){
 		flush();

@@ -31,6 +31,7 @@ private:
 	PointReader *createPointReader(string source, PointAttributes pointAttributes);
 	void prepare();
 	AABB calculateAABB();
+	void generatePage(string name);
 
 public:
 	float spacing;
