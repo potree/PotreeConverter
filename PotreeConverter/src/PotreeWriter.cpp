@@ -168,7 +168,7 @@ PWNode *PWNode::add(Point &point){
 
 	if(isLeafNode()){
 		store.push_back(point);
-		if(store.size() >= storeLimit){
+		if(int(store.size()) >= storeLimit){
 			split();
 		}
 
@@ -540,7 +540,7 @@ void PotreeWriter::flush(){
 
 				for(const auto &descendant : hierarchy){
 					char children = 0;
-					for(int j = 0; j < descendant->children.size(); j++){
+					for(int j = 0; j < (int)descendant->children.size(); j++){
 						if(descendant->children[j] != NULL){
 							children = children | (1 << j);
 						}
@@ -628,7 +628,7 @@ void PotreeWriter::loadStateFromDisk(){
 			ifstream fin(hrcPath, ios::in | ios::binary);
 			std::vector<char> buffer((std::istreambuf_iterator<char>(fin)), (std::istreambuf_iterator<char>()));
 
-			for(int i = 0; 5*i < buffer.size(); i++){
+			for(int i = 0; 5*i < (int)buffer.size(); i++){
 				PWNode *current= nodes[i];
 
 				char children = buffer[i*5];

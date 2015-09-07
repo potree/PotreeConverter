@@ -217,7 +217,7 @@ void PotreeConverter::convert(){
 		workDir = workDir + "/resources/pointclouds/" + pageName;
 	}
 
-	PotreeWriter *writer;
+	PotreeWriter *writer = NULL;
 	if(fs::exists(fs::path(this->workDir + "/cloud.js"))){
 
 		if(storeOption == StoreOption::ABORT_IF_EXISTS){
@@ -238,6 +238,10 @@ void PotreeConverter::convert(){
 		}
 	}else{
 		writer = new PotreeWriter(this->workDir, aabb, spacing, maxDepth, scale, outputFormat, pointAttributes);
+	}
+
+	if(writer == NULL){
+		return;
 	}
 
 	for (const auto &source : sources) {

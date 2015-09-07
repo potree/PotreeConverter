@@ -179,7 +179,7 @@ public:
 
 		d.AddMember("version", version, d.GetAllocator());
 		d.AddMember("octreeDir", octreeDir, d.GetAllocator());
-		d.AddMember("points", numAccepted, d.GetAllocator());
+		d.AddMember("points", (uint64_t)numAccepted, d.GetAllocator());
 		d.AddMember("boundingBox", boundingBox, d.GetAllocator());
 		d.AddMember("tightBoundingBox", tightBoundingBox, d.GetAllocator());
 		d.AddMember("pointAttributes", pointAttributes, d.GetAllocator());
