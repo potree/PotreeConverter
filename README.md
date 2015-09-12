@@ -4,9 +4,7 @@ Builds a potree octree from las, laz, binary ply, xyz or ptx files.
 
 ## Downloads
 
-* [PotreeConverter 1.2, windows 64bit](https://github.com/potree/PotreeConverter/releases/tag/1.2)
-* [PotreeConverter 1.1.1, windows 64bit](http://potree.org/downloads/PotreeConverter/PotreeConverter_1.1.1.zip)
-* [PotreeConverter 1.0, windows 64bit](http://potree.org/downloads/PotreeConverter/PotreeConverter_2014.12.30.zip)
+[Source Code and windows 64bit releases](https://github.com/potree/PotreeConverter/releases)
 
 ## Changelog
 
@@ -14,71 +12,74 @@ See [docs/changelog.md](./docs/changelog.md) for a list of new features, bugfixe
 
 ## Dependencies
 
-* [libLAS](https://github.com/libLAS/libLAS)
-* [LASzip](https://github.com/LASzip/LASzip)
+* [lastools(LASzip)](https://github.com/LAStools/LAStools) or [fork of lastools with cmake for LASzip](https://github.com/m-schuetz/LAStools)
 * [boost](http://www.boost.org/)
 
 ## Build
 
+### linux / gcc 4.9
+
+
+lastools
 ```
-# clone repository
-git clone https://github.com/potree/PotreeConverter.git potree
-
-# update submodules
-git submodule init
-git submodule update
-```
-
-Linux/MacOSX:
-
-    mkdir build && cd build
-    cmake ../
-    make
-
-    # copy ./PotreeConverter/resources/page_template to your binary working directory.
-
-Linux with custom builds of liblas and laszip
+cd ~/dev/workspaces/lastools
+git clone https://github.com/m-schuetz/LAStools.git master
+cd master
+mkdir build
+cd build
+cmake -DCMAKE_BUILD_TYPE=Release -DLASZIP_INCLUDE_DIRS=~/dev/workspaces/lastools/master/LASzip/dll -DLASZIP_LIBRARY_DIR=~/dev/workspaces/lastools/master/LASzip/build/ ..
 
 ```
-mkdir build && cd build
-cmake -DCMAKE_BUILD_TYPE=Release -DLIBLAS_INCLUDE_DIR=/opt/source/libLAS-1.8.0/build/include/ -DLIBLAS_LIBRARY=/opt/source/libLAS-1.8.0/build/lib/liblas.so -DLASZIP_INCLUDE_DIR=/opt/source/laszip-2.1.0/build/include -DLASZIP_LIBRARY=/opt/source/laszip-2.1.0/build/lib/liblaszip.so ..
+
+PotreeConverter
+
+```
+cd ~/dev/workspaces/PotreeConverter
+git clone https://github.com/potree/PotreeConverter.git master
+cd master
+mkdir build
+cd build
+cmake -DCMAKE_BUILD_TYPE=Release -DLASZIP_INCLUDE_DIRS=~/dev/workspaces/lastools/master/LASzip/dll -DLASZIP_LIBRARY=~/dev/workspaces/lastools/master/LASzip/build/src/liblaszip.so ..
+
+# copy ./PotreeConverter/resources/page_template to your binary working directory.
+
 ```
 
-Ubuntu:
+### Windows / Microsoft Visual Studio 2015:
 
-    sudo apt-get install libboost-system-dev libboost-thread-dev
+lastools
 
-    # Add UbuntuGIS "unstable" PPA from Launchpad
-    # (TODO: test if this PPA is really necessary)
-    sudo add-apt-repository ppa:ubuntugis/ubuntugis-unstable
-    sudo apt-get update
-    sudo apt-get install liblas-dev liblas-c-dev
-
-    mkdir build && cd build
-    cmake ../
-    make
-
-    # copy ./PotreeConverter/resources/page_template to your binary working directory.
-
-Windows / Microsoft Visual Studio 2015:
+```
+cd D:/dev/workspaces/lastools/
+git clone https://github.com/m-schuetz/LAStools.git master
+cd master
+mkdir build
+cd build
+cmake -G "Visual Studio 14 2015 Win64" ../
+```
 
 ```
 # make sure you've got these environment variables set with your directory structure
+set LASZIP_INCLUDE_DIRS=D:\dev\workspaces\lastools\master\LASzip\dll
+set LASZIP_LIBRARY=D:\dev\workspaces\lastools\master\LASzip\build\src\Release\laszip.lib
 set BOOST_ROOT=D:\dev\lib\boost_1_58_0
 set BOOST_LIBRARYDIR=D:\dev\lib\boost\1.58_x64_msvc2015
-set LIBLAS_INCLUDE_DIR=D:\dev\lib\libLAS\include
-set LIBLAS_LIBRARY_DIR=D:\dev\lib\libLAS\build\bin\Release
 
 # compile boost
 b2 toolset=msvc-14.0 address-model=64 link=static link=shared threading=multi --build-type=complete stage --width-system --with-thread --with-filesystem --with-program_options --with-regex
 
+
+cd D:/dev/workspaces/PotreeConverter
+git clone https://github.com/potree/PotreeConverter.git master
+cd master
 mkdir build
 cd build
 
-# or 64bit project
-cmake -G "Visual Studio 14 2015 Win64" -DBoost_USE_STATIC_LIBS=ON -DBOOST_ROOT=%BOOST_ROOT% -DBOOST_LIBRARYDIR=%BOOST_LIBRARYDIR% -DLIBLAS_INCLUDE_DIR=%LIBLAS_INCLUDE_DIR% -DLIBLAS_LIBRARY=%LIBLAS_LIBRARY_DIR%/liblas.lib  ..\
+# VS2015 64bit project
+cmake -G "Visual Studio 14 2015 Win64" -DBoost_USE_STATIC_LIBS=ON -DBOOST_ROOT=%BOOST_ROOT% -DBOOST_LIBRARYDIR=%BOOST_LIBRARYDIR% -DLASZIP_INCLUDE_DIRS=%LASZIP_INCLUDE_DIRS% -DLASZIP_LIBRARY=%LASZIP_LIBRARY%  ..\
 
 # copy ./PotreeConverter/resources/page_template to your binary working directory.
+
 ```
 
 ## PotreeConverter Usage
@@ -113,7 +114,7 @@ Options:
 Examples:
 
     # convert data.las and generate web page.
-    ./PotreeConverter.exe C:/data.las -o C:/potree_converted -p data
+    ./PotreeConverter.exe C:/data.las -o C:/potree_converted -p pageName
 
     # generate compressed LAZ files instead of the default BIN format.
     ./PotreeConverter.exe C:/data.las -o C:/potree_converted --output-format LAZ
