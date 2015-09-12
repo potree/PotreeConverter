@@ -38,7 +38,7 @@ public:
 		
 
 		memset(&header, 0, sizeof(laszip_header));
-		strcpy_s(header.generating_software, "potree");
+		strcpy(header.generating_software, "potree");
 
 		header.version_major = 1;
 		header.version_minor = 2;
