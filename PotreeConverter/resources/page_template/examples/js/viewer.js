@@ -368,6 +368,8 @@ function initThree(){
 		
 			earthControls.pointclouds.push(pointcloud);	
 			
+			
+			
 			if(sceneProperties.navigation === "Earth"){
 				useEarthControls();
 			}else if(sceneProperties.navigation === "Orbit"){
@@ -383,20 +385,16 @@ function initThree(){
 				var cp = new THREE.Vector3(sceneProperties.cameraPosition[0], sceneProperties.cameraPosition[1], sceneProperties.cameraPosition[2]);
 				camera.position.copy(cp);
 			}
+			
 			if(sceneProperties.cameraTarget != null){
-				var cp = new THREE.Vector3(sceneProperties.cameraPosition[0], sceneProperties.cameraPosition[1], sceneProperties.cameraPosition[2]);
 				var ct = new THREE.Vector3(sceneProperties.cameraTarget[0], sceneProperties.cameraTarget[1], sceneProperties.cameraTarget[2]);
+				camera.lookAt(ct);
 				
-				camera.lookAt(new THREE.Vector3().addVectors(cp, ct));
-				orbitControls.target.copy(ct);
+				if(sceneProperties.navigation === "Orbit"){
+					controls.target.copy(ct);
+				}
 			}
 			
-			if(sceneProperties.cameraPosition){
-				camera.position.set(sceneProperties.cameraPosition[0], sceneProperties.cameraPosition[1], sceneProperties.cameraPosition[2]);
-			}
-			if(sceneProperties.cameraTarget){
-				camera.lookAt(new THREE.Vector3(sceneProperties.cameraTarget[0], sceneProperties.cameraTarget[1], sceneProperties.cameraTarget[2]));
-			}
 		});
 	}else if(pointcloudPath.indexOf(".vpc") > 0){
 		Potree.PointCloudArena4DGeometry.load(pointcloudPath, function(geometry){
@@ -438,6 +436,16 @@ function initThree(){
 			}else{
 				console.warning("No navigation mode specivied. Using OrbitControls");
 				useOrbitControls();
+			}
+			
+			if(sceneProperties.cameraPosition != null){
+				var cp = new THREE.Vector3(sceneProperties.cameraPosition[0], sceneProperties.cameraPosition[1], sceneProperties.cameraPosition[2]);
+				camera.position.copy(cp);
+			}
+			
+			if(sceneProperties.cameraTarget != null){
+				var ct = new THREE.Vector3(sceneProperties.cameraTarget[0], sceneProperties.cameraTarget[1], sceneProperties.cameraTarget[2]);
+				camera.lookAt(ct);
 			}
 			
 		});
@@ -567,7 +575,7 @@ function update(){
 			}
 		}
 		
-		if(!heightMin){
+		if(heightMin === null){
 			heightMin = bbWorld.min.y;
 			heightMax = bbWorld.max.y;
 		}
@@ -715,7 +723,7 @@ function useFPSControls(){
 	controls = fpControls;
 	controls.enabled = true;
 	
-	controls.moveSpeed = pointcloud.boundingSphere.radius / 2;
+	controls.moveSpeed = pointcloud.boundingSphere.radius / 6;
 }
 
 function useOrbitControls(){
@@ -916,8 +924,10 @@ var HighQualityRenderer = function(){
 				depthMaterial.far = camera.far;
 				depthMaterial.heightMin = heightMin;
 				depthMaterial.heightMax = heightMax;
-				attributeMaterial.uniforms.visibleNodes.value = pointcloud.material.visibleNodesTexture;
-				attributeMaterial.uniforms.octreeSize.value = pointcloud.pcoGeometry.boundingBox.size().x;
+				depthMaterial.uniforms.visibleNodes.value = pointcloud.material.visibleNodesTexture;
+				depthMaterial.uniforms.octreeSize.value = pointcloud.pcoGeometry.boundingBox.size().x;
+				depthMaterial.bbSize = pointcloud.material.bbSize;
+				depthMaterial.treeType = pointcloud.material.treeType;
 				
 				scenePointCloud.overrideMaterial = depthMaterial;
 				renderer.clearTarget( rtDepth, true, true, true );
@@ -944,6 +954,8 @@ var HighQualityRenderer = function(){
 				attributeMaterial.intensityMax = pointcloud.material.intensityMax;
 				attributeMaterial.setClipBoxes(pointcloud.material.clipBoxes);
 				attributeMaterial.clipMode = pointcloud.material.clipMode;
+				attributeMaterial.bbSize = pointcloud.material.bbSize;
+				attributeMaterial.treeType = pointcloud.material.treeType;
 				
 				scenePointCloud.overrideMaterial = attributeMaterial;
 				renderer.clearTarget( rtNormalize, true, true, true );
@@ -1105,6 +1117,8 @@ var EDLRenderer = function(){
 				attributeMaterial.intensityMax = pointcloud.material.intensityMax;
 				attributeMaterial.setClipBoxes(pointcloud.material.clipBoxes);
 				attributeMaterial.clipMode = pointcloud.material.clipMode;
+				attributeMaterial.bbSize = pointcloud.material.bbSize;
+				attributeMaterial.treeType = pointcloud.material.treeType;
 				
 				scenePointCloud.overrideMaterial = attributeMaterial;
 				renderer.clearTarget( rtColor, true, true, true );
