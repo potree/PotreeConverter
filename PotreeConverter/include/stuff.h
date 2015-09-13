@@ -26,7 +26,6 @@
 #include "Vector3.h"
 #include "AABB.h"
 #include "Point.h"
-#include "GridIndex.h"
 #include "SparseGrid.h"
 #include "GridCell.h"
 
@@ -45,6 +44,8 @@ using std::binary_function;
 using std::map;
 
 namespace fs = boost::filesystem;
+
+namespace Potree{
 
 AABB readAABB(string fIn, int numPoints);
 
@@ -102,8 +103,8 @@ string toUpper(string str);
 
 bool copyDir(fs::path source, fs::path destination);
 
-int psign(float value);
+float psign(float value);
 
-
+}
 
 #endif

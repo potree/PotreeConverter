@@ -5,7 +5,11 @@
 #include <string>
 #include <iostream>
 
+#include "Point.h"
+
 using std::string;
+
+namespace Potree{
 
 class PointWriter{
 
@@ -20,6 +24,8 @@ public:
 	virtual void close() = 0;
 
 };
+
+}
 
 #endif
 

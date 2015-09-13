@@ -5,40 +5,29 @@
 
 using std::vector;
 
+namespace Potree{
 
 void LASPointWriter::write(const Point &point){
-	liblas::Point lp(header);
-	
-	lp.SetX(point.x);
-	lp.SetY(point.y);
-	lp.SetZ(point.z);
 
-	vector<uint8_t> &data = lp.GetData();
+	coordinates[0] = point.position.x;
+	coordinates[1] = point.position.y;
+	coordinates[2] = point.position.z;
+	laszip_set_coordinates(writer, coordinates);
 
-	unsigned short pr = point.r * 256;
-	unsigned short pg = point.g * 256;
-	unsigned short pb = point.b * 256;
-	
-	//liblas::Color color(int(point.r) * 256, int(point.g) * 256, int(point.b) * 256);
-	//lp.SetColor(color);
-	{ // TODO lp.SetColor did not work, do this instead. check for bugs?
-		data[20] = reinterpret_cast<unsigned char*>(&pr)[0];
-		data[21] = reinterpret_cast<unsigned char*>(&pr)[1];
-	
-		data[22] = reinterpret_cast<unsigned char*>(&pg)[0];
-		data[23] = reinterpret_cast<unsigned char*>(&pg)[1];
-	
-		data[24] = reinterpret_cast<unsigned char*>(&pb)[0];
-		data[25] = reinterpret_cast<unsigned char*>(&pb)[1];
-	}
+	this->point->rgb[0] = point.color.x * 256;
+	this->point->rgb[1] = point.color.y * 256;
+	this->point->rgb[2] = point.color.z * 256;
 
-	lp.SetIntensity(point.intensity);
-	lp.SetClassification(point.classification);
-	lp.SetReturnNumber(point.returnNumber);
-	lp.SetNumberOfReturns(point.numberOfReturns);
-	lp.SetPointSourceID(point.pointSourceID);
-
-	writer->WritePoint(lp);
+	this->point->intensity = point.intensity;
+	this->point->classification = point.classification;
+	this->point->return_number = point.returnNumber;
+	this->point->number_of_returns = point.numberOfReturns;
+	this->point->point_source_ID = point.pointSourceID;
+	
+	laszip_set_point(writer, this->point);
+	laszip_write_point(writer);
 
 	numPoints++;
+}
+
 }

@@ -9,6 +9,8 @@
 using std::string;
 using std::vector;
 
+namespace Potree{
+
 class PointAttribute{
 public:
 	static const PointAttribute POSITION_CARTESIAN;
@@ -30,6 +32,8 @@ public:
 		this->numElements = numElements;
 		this->byteSize = byteSize;
 	}
+
+	static PointAttribute fromString(string name);
 
 };
 
@@ -62,6 +66,7 @@ public:
 };
 
 
+}
 
 
 

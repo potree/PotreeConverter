@@ -10,6 +10,8 @@
 using std::exception;
 using std::string;
 
+namespace Potree{
+
 class PotreeException: public exception{
 private:
 	string message;
@@ -27,5 +29,6 @@ public:
 	}
 };
 
+}
 
 #endif

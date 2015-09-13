@@ -13,6 +13,8 @@ namespace fs = boost::filesystem;
 
 using boost::iequals;
 
+namespace Potree{
+
 class PointReader{
 public:
 
@@ -28,5 +30,7 @@ public:
 
 	virtual void close() = 0;
 };
+
+}
 
 #endif

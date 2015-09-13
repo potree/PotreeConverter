@@ -2,6 +2,7 @@
 <head>
 	<meta charset="utf-8"/>
 	<title>Potree Viewer</title>
+	<!--<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no">-->
 	<link rel="stylesheet" type="text/css" href="css/potree.css">
 </head>
 <body>
@@ -9,10 +10,10 @@
 	<script src="../libs/three.js/build/three.js"></script>
 	<script src="../libs/other/stats.min.js"></script>
 	<script src="../libs/other/dat.gui.min.js"></script>
+	<script src="../libs/other/BinaryHeap.js"></script>
 	
 	<script src="../build/js/potree.js"></script>
 	<script src="./js/ProgressBar.js"></script>
-	
 	
 	<!-- uncomment this to debug changes to the individual js files -->
 	<!--
@@ -20,7 +21,9 @@
 	<script src="../src/PointCloudOctreeGeometry.js"></script>
 	<script src="../src/loader/POCLoader.js"></script>
 	<script src="../src/loader/BinaryLoader.js"></script>
+	<script src="../src/loader/LasLazLoader.js"></script>
 	<script src="../src/materials/PointCloudMaterial.js"></script>
+	<script src="../src/materials/EyeDomeLightingMaterial.js"></script>
 	<script src="../src/EarthControls.js"></script>
 	<script src="../src/OrbitControls.js"></script>
 	<script src="../src/FirstPersonControls.js"></script>
@@ -35,8 +38,6 @@
 	<script src="../src/arena4d/PointCloudArena4D.js"></script>
 	<script src="../src/arena4d/PointCloudArena4DGeometry.js"></script>
 	-->
-	
-	
 	
 	<!-- INCLUDE ADDITIONAL DEPENDENCIES HERE -->
 	<!-- INCLUDE SETTINGS HERE -->

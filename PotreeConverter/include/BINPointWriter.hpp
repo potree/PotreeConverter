@@ -18,6 +18,7 @@ using std::vector;
 using std::ofstream;
 using std::ios;
 
+namespace Potree{
 
 class BINPointWriter : public PointWriter{
 
@@ -57,13 +58,13 @@ public:
 			PointAttribute attribute = attributes[i];
 			if(attribute == PointAttribute::POSITION_CARTESIAN){
 				//float pos[3] = {(float) point.x,(float)  point.y,(float)  point.z};
-				int x = (int)((point.x - aabb.min.x) / scale);
-				int y = (int)((point.y - aabb.min.y) / scale);
-				int z = (int)((point.z - aabb.min.z) / scale);
+				int x = (int)((point.position.x - aabb.min.x) / scale);
+				int y = (int)((point.position.y - aabb.min.y) / scale);
+				int z = (int)((point.position.z - aabb.min.z) / scale);
 				int pos[3] = {x, y, z};
 				writer->write((const char*)pos, 3*sizeof(int));
 			}else if(attribute == PointAttribute::COLOR_PACKED){
-				unsigned char rgba[4] = {point.r, point.g, point.b, 255};
+				unsigned char rgba[4] = {point.color.x, point.color.y, point.color.z, 255};
 				writer->write((const char*)rgba, 4*sizeof(unsigned char));
 			}else if(attribute == PointAttribute::INTENSITY){
 				writer->write((const char*)&point.intensity, sizeof(unsigned short));
@@ -71,9 +72,9 @@ public:
 				writer->write((const char*)&point.classification, sizeof(unsigned char));
 			}else if(attribute == PointAttribute::NORMAL_SPHEREMAPPED){
 				// see http://aras-p.info/texts/CompactNormalStorage.html
-				float nx = point.nx;
-				float ny = point.ny;
-				float nz = point.nz;
+				float nx = point.normal.x;
+				float ny = point.normal.y;
+				float nz = point.normal.z;
 				float lengthxy = sqrt(nx * nx + ny * ny);
 
 				float ex = 0.5f * (nx / lengthxy) * sqrt(-nz * 0.5f + 0.5f) + 0.5f;
@@ -87,9 +88,9 @@ public:
 			}else if(attribute == PointAttribute::NORMAL_OCT16){
 				// see http://lgdv.cs.fau.de/get/1602
 
-				float nx = point.nx;
-				float ny = point.ny;
-				float nz = point.nz;
+				float nx = point.normal.x;
+				float ny = point.normal.y;
+				float nz = point.normal.z;
 				
 				float norm1 = abs(nx) + abs(ny) + abs(nz);
 
@@ -114,9 +115,9 @@ public:
 				writer->write((const char*)&bx, 1);
 				writer->write((const char*)&by, 1);
 			}else if(attribute == PointAttribute::NORMAL){
-				writer->write((const char*)&point.nx, sizeof(float));
-				writer->write((const char*)&point.ny, sizeof(float));
-				writer->write((const char*)&point.nz, sizeof(float));
+				writer->write((const char*)&point.normal.x, sizeof(float));
+				writer->write((const char*)&point.normal.y, sizeof(float));
+				writer->write((const char*)&point.normal.z, sizeof(float));
 			}
 		}
 
@@ -132,6 +133,8 @@ public:
 	}
 
 };
+
+}
 
 #endif
 

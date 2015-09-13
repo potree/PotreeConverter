@@ -7,7 +7,7 @@
 #include <iostream>
 #include <vector>
 
-#include <liblas/liblas.hpp>
+#include "laszip_dll.h"
 
 #include "Point.h"
 #include "PointReader.h"
@@ -19,63 +19,58 @@ using std::cout;
 using std::endl;
 using std::vector;
 
+namespace Potree{
 
 class LIBLASReader{
 private:
+
     double tr[16];
-    bool hasTransform;
+    bool hasTransform = false;
+
     Point transform(double x, double y, double z) const {
         Point p;
         if (hasTransform) {
-            p.x = tr[0] * x + tr[4] * y + tr[8] * z + tr[12];
-            p.y = tr[1] * x + tr[5] * y + tr[9] * z + tr[13];
-            p.z = tr[2] * x + tr[6] * y + tr[10] * z + tr[14];
+            p.position.x = tr[0] * x + tr[4] * y + tr[8] * z + tr[12];
+            p.position.y = tr[1] * x + tr[5] * y + tr[9] * z + tr[13];
+            p.position.z = tr[2] * x + tr[6] * y + tr[10] * z + tr[14];
         } else {
-            p.x = x;
-            p.y = y;
-            p.z = z;
+			p.position = Vector3<double>{x,y,z};
         }
         return p;
     }
 public:
 
-	ifstream stream;
-	liblas::Reader reader;
+	laszip_POINTER laszip_reader;
+	laszip_header* header;
+	laszip_point* point;
 	int colorScale;
+	double coordinates[3];
+	long long pointsRead = 0;
 
-    LIBLASReader(string path)
-            : stream(path, std::ios::in | std::ios::binary),
-              reader(liblas::ReaderFactory().CreateWithStream(stream)) {
-        std::vector<liblas::VariableRecord> vlrs = reader.GetHeader().GetVLRs();
+    LIBLASReader(string path) {
 
-		hasTransform = false;
+		laszip_create(&laszip_reader);
 
-//      cout << "There are " << vlrs.size() << " VLRs." << endl;
-        for (int i = 0; i < vlrs.size(); ++i) {
-            liblas::VariableRecord vlr = vlrs[i];
-            if (vlr.GetRecordId() == 2001) {
-                const uint8_t *data = vlr.GetData().data();
-                for (int k = 0; k < 16; ++k) {
-                    memcpy(tr + k, data + (144 + k * 8), sizeof(double));
-                }
-                hasTransform = true;
-                break;
-//                cout << "Found a PTX transformation matrix.\n";
-            }
-        }
+		laszip_BOOL request_reader = 1;
+		laszip_request_compatibility_mode(laszip_reader, request_reader);
 
 		{// read first 1000 points to find if color is 1 or 2 bytes
-			ifstream stream(path, std::ios::in | std::ios::binary);
-			liblas::Reader reader(liblas::ReaderFactory().CreateWithStream(stream));
+			laszip_BOOL is_compressed = boost::iends_with(path, ".laz") ? 1 : 0;
+			laszip_open_reader(laszip_reader, path.c_str(), &is_compressed);
 
-			int i = 0; 
+			laszip_get_header_pointer(laszip_reader, &header);
+
+			long long npoints = (header->number_of_point_records ? header->number_of_point_records : header->extended_number_of_point_records);
+			
+			laszip_get_point_pointer(laszip_reader, &point);
+
 			colorScale = 1;
-			while(reader.ReadNextPoint() && i < 1000){
-				liblas::Point const lp = reader.GetPoint();
+			for(int i = 0; i < 1000 && i < npoints; i++){
+				laszip_read_point(laszip_reader);
 		
-				liblas::Color::value_type r = lp.GetColor().GetRed();
-				liblas::Color::value_type g = lp.GetColor().GetGreen();
-				liblas::Color::value_type b = lp.GetColor().GetBlue();
+				auto r = point->rgb[0];
+				auto g = point->rgb[1];
+				auto b = point->rgb[2];
 		
 				if(r > 255 || g > 255 || b > 255){
 					colorScale = 256;
@@ -84,34 +79,47 @@ public:
 		
 				i++;
 			}
-			stream.close();
 		}
+
+		laszip_seek_point(laszip_reader, 0);
     }
 
 	~LIBLASReader(){
-		if(stream.is_open()){
-			stream.close();
+		laszip_close_reader(laszip_reader);
+		laszip_destroy(laszip_reader);
+	}
+
+	bool readPoint(){
+		if(pointsRead < header->number_of_point_records){
+			laszip_read_point(laszip_reader);
+			pointsRead++;
+
+			return true;
+		}else{
+			return false;
 		}
 	}
 
     Point GetPoint() {
-        liblas::Point const lp = reader.GetPoint();
-        Point p = transform(lp.GetX(), lp.GetY(), lp.GetZ());
-        p.intensity = lp.GetIntensity();
-        p.classification = lp.GetClassification().GetClass();
+        
+		laszip_get_coordinates(laszip_reader, coordinates);
 
-        p.r = lp.GetColor().GetRed() / colorScale;
-        p.g = lp.GetColor().GetGreen() / colorScale;
-        p.b = lp.GetColor().GetBlue() / colorScale;
+        Point p = transform(coordinates[0], coordinates[1], coordinates[2]);
+        p.intensity = point->intensity;
+        p.classification = point->classification;
 
-		p.returnNumber = (unsigned char)lp.GetReturnNumber();
-		p.numberOfReturns = (unsigned char)lp.GetNumberOfReturns();
-		p.pointSourceID = lp.GetPointSourceID();
+        p.color.x = point->rgb[0] / colorScale;
+        p.color.y = point->rgb[1] / colorScale;
+        p.color.z = point->rgb[2] / colorScale;
+
+		p.returnNumber = point->return_number;
+		p.numberOfReturns = point->number_of_returns;
+		p.pointSourceID = point->point_source_ID;
 
         return p;
     }
 	void close(){
-		stream.close();
+
 	}
 
 	AABB getAABB();
@@ -143,5 +151,7 @@ public:
 
 	Vector3<double> getScale();
 };
+
+}
 
 #endif

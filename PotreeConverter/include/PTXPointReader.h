@@ -8,6 +8,8 @@ using std::string;
 using std::fstream;
 using std::vector;
 
+namespace Potree{
+
 /**
 * This reader importa PTX files. We suppose that PTX files are a concatenation,
 * of multiple PTX "chunks", all of them having the same structure. Every point
@@ -79,5 +81,7 @@ public:
         stream->close();
     }
 };
+
+}
 
 #endif

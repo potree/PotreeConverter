@@ -12,6 +12,8 @@ using std::ios;
 using std::string;
 using namespace boost::algorithm;
 
+namespace Potree{
+
 static const int INVALID_INTENSITY = 32767;
 
 std::map<string, AABB> PTXPointReader::aabbs = std::map<string, AABB>();
@@ -43,11 +45,10 @@ inline void skipline(fstream &stream) {
     getline(stream, str);
 }
 
-bool assertd(fstream &stream, int i) {
+bool assertd(fstream &stream, size_t i) {
     vector<double> tokens;
     getlined(stream, tokens);
-    bool result = i == tokens.size();
-    return result;
+    return  i == tokens.size();
 }
 
 /**
@@ -88,15 +89,23 @@ PTXPointReader::PTXPointReader(string path) {
 
 void PTXPointReader::scanForAABB() {
     // read bounding box
-    double x, y, z, minx, miny, minz, maxx, maxy, maxz, intensity;
+    double x(0), y(0), z(0);
+    // TODO: verify that this initial values are ok 
+    double minx = std::numeric_limits<float>::max();
+    double miny = std::numeric_limits<float>::max();
+    double minz = std::numeric_limits<float>::max();
+    double maxx = -std::numeric_limits<float>::max();
+    double maxy = -std::numeric_limits<float>::max();
+    double maxz = -std::numeric_limits<float>::max();
+    double intensity(0);
     bool firstPoint = true;
     bool pleaseStop = false;
     long currentChunk = 0;
     long count = 0;
     double tr[16];
     vector<double> split;
-    for (int i = 0; i < files.size(); i++) {
-        fstream stream(files[i], ios::in);
+    for (const auto &file : files) {
+        fstream stream(file, ios::in);
         currentChunk = 0;
         getlined(stream, split);
         while (!pleaseStop) {
@@ -115,17 +124,17 @@ void PTXPointReader::scanForAABB() {
                     if (0.5 != intensity) {
                         Point p = transform(tr, x, y, z);
                         if (firstPoint) {
-                            maxx = minx = p.x;
-                            maxy = miny = p.y;
-                            maxz = minz = p.z;
+                            maxx = minx = p.position.x;
+                            maxy = miny = p.position.y;
+                            maxz = minz = p.position.z;
                             firstPoint = false;
                         } else {
-                            minx = p.x < minx ? p.x : minx;
-                            maxx = p.x > maxx ? p.x : maxx;
-                            miny = p.y < miny ? p.y : miny;
-                            maxy = p.y > maxy ? p.y : maxy;
-                            minz = p.z < minz ? p.z : minz;
-                            maxz = p.z > maxz ? p.z : maxz;
+                            minx = p.position.x < minx ? p.position.x : minx;
+                            maxx = p.position.x > maxx ? p.position.x : maxx;
+                            miny = p.position.y < miny ? p.position.y : miny;
+                            maxy = p.position.y > maxy ? p.position.y : maxy;
+                            minz = p.position.z < minz ? p.position.z : minz;
+                            maxz = p.position.z > maxz ? p.position.z : maxz;
                         }
                         count++;
                         if (0 == count % 1000000)
@@ -234,18 +243,19 @@ bool PTXPointReader::doReadNextPoint() {
         this->p = transform(tr, split[0], split[1], split[2]);
         double intensity = split[3];
         this->p.intensity = (unsigned short)(65535.0 * intensity);
-        this->p.a = 0;
         if (4 == size1) {
-            this->p.r = (unsigned char)(intensity * 255.0);
-			this->p.g = (unsigned char)(intensity * 255.0);
-			this->p.b = (unsigned char)(intensity * 255.0);
+            this->p.color.x = (unsigned char)(intensity * 255.0);
+			this->p.color.y = (unsigned char)(intensity * 255.0);
+			this->p.color.z = (unsigned char)(intensity * 255.0);
         } else if (7 == size1) {
-            this->p.r = (unsigned char)(split[4]);
-            this->p.g = (unsigned char)(split[5]);
-            this->p.b = (unsigned char)(split[6]);
+            this->p.color.x = (unsigned char)(split[4]);
+            this->p.color.y = (unsigned char)(split[5]);
+            this->p.color.z = (unsigned char)(split[6]);
         }
     } else {
         this->p.intensity = INVALID_INTENSITY;
     }
     return true;
+}
+
 }

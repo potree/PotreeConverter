@@ -10,32 +10,25 @@ using std::ostream;
 using std::max;
 #endif
 
+namespace Potree{
+
 template<class T>
 class Vector3{
 
 public:
-	T x,y,z;
-	static long long count;
+	T x = 0;
+	T y = 0;
+	T z = 0;
 
-	Vector3(){
-		count++;
-
-		x = 0;
-		y = 0;
-		z = 0;
-	}
+	Vector3() = default;
 
 	Vector3(T x, T y, T z){
-		count++;
-
 		this->x = x;
 		this->y = y;
 		this->z = z;
 	}
 
 	Vector3(T value){
-		count++;
-
 		this->x = value;
 		this->y = value;
 		this->z = value;
@@ -44,12 +37,10 @@ public:
 	Vector3(const Vector3<T> &other)
 		:x(other.x), y(other.y), z(other.z)
 	{
-		count++;
 	}
 
-	~Vector3(){
-		count--;
-	}
+	~Vector3() = default;
+
 
 	T length(){
 		return sqrt(x*x + y*y + z*z);
@@ -59,11 +50,11 @@ public:
 		return x*x + y*y + z*z;
 	}
 
-	T distanceTo(Vector3<T> p){
+	T distanceTo(Vector3<T> p) const{
 		return ((*this) - p).length();
 	}
 
-	T squaredDistanceTo(const Vector3<T> &p){
+	T squaredDistanceTo(const Vector3<T> &p) const{
 		return ((*this) - p).squaredLength();
 	}
 
@@ -79,6 +70,10 @@ public:
 		return Vector3<T>(x + right.x, y + right.y, z + right.z);
 	}
 
+	Vector3<T> operator+(const T right) const {
+		return Vector3<T>(x + right, y + right, z + right);
+	}
+
 	Vector3<T> operator/(const T &a) const{
 		return Vector3<T>(x / a, y / a, z / a);
 	}
@@ -88,5 +83,7 @@ public:
 		return output;            
 	}
 };
+
+}
 
 #endif
