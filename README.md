@@ -6,10 +6,6 @@ Builds a potree octree from las, laz, binary ply, xyz or ptx files.
 
 [Source Code and windows 64bit releases](https://github.com/potree/PotreeConverter/releases)
 
-## Changelog
-
-See [docs/changelog.md](./docs/changelog.md) for a list of new features, bugfixes and changes to the API.
-
 ## Dependencies
 
 * [lastools(LASzip)](https://github.com/LAStools/LAStools) or [fork of lastools with cmake for LASzip](https://github.com/m-schuetz/LAStools)
@@ -58,6 +54,8 @@ cd build
 cmake -G "Visual Studio 14 2015 Win64" ../
 ```
 
+PotreeConverter
+
 ```
 # make sure you've got these environment variables set with your directory structure
 set LASZIP_INCLUDE_DIRS=D:\dev\workspaces\lastools\master\LASzip\dll
@@ -66,9 +64,10 @@ set BOOST_ROOT=D:\dev\lib\boost_1_58_0
 set BOOST_LIBRARYDIR=D:\dev\lib\boost\1.58_x64_msvc2015
 
 # compile boost
+cd boostDir
 b2 toolset=msvc-14.0 address-model=64 link=static link=shared threading=multi --build-type=complete stage --width-system --with-thread --with-filesystem --with-program_options --with-regex
 
-
+# checkout PotreeConverter
 cd D:/dev/workspaces/PotreeConverter
 git clone https://github.com/potree/PotreeConverter.git master
 cd master
