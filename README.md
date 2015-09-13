@@ -23,7 +23,7 @@ git clone https://github.com/m-schuetz/LAStools.git master
 cd master
 mkdir build
 cd build
-cmake -DCMAKE_BUILD_TYPE=Release -DLASZIP_INCLUDE_DIRS=~/dev/workspaces/lastools/master/LASzip/dll -DLASZIP_LIBRARY_DIR=~/dev/workspaces/lastools/master/LASzip/build/ ..
+cmake -DCMAKE_BUILD_TYPE=Release ..
 
 ```
 
