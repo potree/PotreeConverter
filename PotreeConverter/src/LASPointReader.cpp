@@ -6,7 +6,7 @@
 
 #include "boost/filesystem.hpp"
 #include <boost/algorithm/string.hpp>
-#include <liblas/detail/reader/reader.hpp>
+#include "laszip_dll.h"
 
 #include "LASPointReader.h"
 
@@ -19,17 +19,14 @@ using std::endl;
 using std::vector;
 using boost::iequals;
 using std::ios;
-using liblas::VariableRecord;
 
 namespace Potree{
 
 AABB LIBLASReader::getAABB(){
     AABB aabb;
 
-    const liblas::Header &header = reader.GetHeader();
-
-    Point minp = transform(header.GetMinX(), header.GetMinY(), header.GetMinZ());
-    Point maxp = transform(header.GetMaxX(), header.GetMaxY(), header.GetMaxZ());
+    Point minp = transform(header->min_x, header->min_y, header->min_z);
+    Point maxp = transform(header->max_x, header->max_y, header->max_z);
     aabb.update(minp.position);
     aabb.update(maxp.position);
 
@@ -86,11 +83,12 @@ void LASPointReader::close(){
 }
 
 long LASPointReader::numPoints(){
-	return reader->reader.GetHeader().GetPointRecordsCount();
+	return reader->header->number_of_point_records;
 }
 
 bool LASPointReader::readNextPoint(){
-	bool hasPoints = reader->reader.ReadNextPoint();
+
+	bool hasPoints = reader->readPoint();
 
 	if(!hasPoints){
 		// try to open next file, if available
@@ -102,7 +100,7 @@ bool LASPointReader::readNextPoint(){
 
 		if(currentFile != files.end()){
 			reader = new LIBLASReader(*currentFile);
-			hasPoints = reader->reader.ReadNextPoint();
+			hasPoints = reader->readPoint();
 		}
 	}
 
@@ -121,9 +119,9 @@ AABB LASPointReader::getAABB(){
 Vector3<double> LASPointReader::getScale(){
 
 	Vector3<double> scale;
-	scale.x = reader->reader.GetHeader().GetScaleX();
-	scale.y = reader->reader.GetHeader().GetScaleY();
-	scale.z = reader->reader.GetHeader().GetScaleZ();
+	scale.x =reader->header->x_scale_factor;
+	scale.y =reader->header->y_scale_factor;
+	scale.z =reader->header->z_scale_factor;
 
 	return scale;
 }
