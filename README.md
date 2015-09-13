@@ -16,7 +16,7 @@ Builds a potree octree from las, laz, binary ply, xyz or ptx files.
 ### linux / gcc 4.9
 
 
-lastools
+lastools (from fork with cmake)
 ```
 cd ~/dev/workspaces/lastools
 git clone https://github.com/m-schuetz/LAStools.git master
