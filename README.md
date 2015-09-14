@@ -20,10 +20,11 @@ lastools (from fork with cmake)
 ```
 cd ~/dev/workspaces/lastools
 git clone https://github.com/m-schuetz/LAStools.git master
-cd master
+cd master/LASzip
 mkdir build
 cd build
 cmake -DCMAKE_BUILD_TYPE=Release ..
+make
 
 ```
 
