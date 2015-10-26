@@ -142,7 +142,15 @@ Potree.Viewer = function(domElement, settings, args){
 			function(){scope.volumeTool.startInsertion({clip: true})}
 		));
 		
-		
+		elToolbar.appendChild(createToolIcon(
+            "../resources/icons/reset.png",
+            "reset measurements",
+            function () {
+                scope.measuringTool.reset();
+                scope.profileTool.reset();
+                scope.volumeTool.reset();
+            }
+            ));
 	}
 	
 	
