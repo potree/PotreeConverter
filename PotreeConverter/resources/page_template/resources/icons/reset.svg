@@ -15,7 +15,10 @@
    version="1.1"
    inkscape:version="0.91 r13725"
    viewBox="0 0 32 32"
-   sodipodi:docname="reset.svg">
+   sodipodi:docname="reset.svg"
+   inkscape:export-filename="E:\GitHub\PotreeConverter\PotreeConverter\resources\page_template\resources\icons\reset.png"
+   inkscape:export-xdpi="2.7367003"
+   inkscape:export-ydpi="2.7367003">
   <defs
      id="defs4212" />
   <sodipodi:namedview
@@ -26,7 +29,7 @@
      inkscape:pageopacity="0.0"
      inkscape:pageshadow="2"
      inkscape:zoom="11.197802"
-     inkscape:cx="0.77379757"
+     inkscape:cx="26.761532"
      inkscape:cy="16"
      inkscape:current-layer="g4811"
      showgrid="true"
@@ -45,7 +48,7 @@
         <dc:format>image/svg+xml</dc:format>
         <dc:type
            rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
-        <dc:title></dc:title>
+        <dc:title />
       </cc:Work>
     </rdf:RDF>
   </metadata>
@@ -60,7 +63,7 @@
          id="g4811">
         <g
            id="g4927"
-           transform="translate(-0.07488161,0.66011292)">
+           transform="matrix(1.0526476,0,0,0.984294,-0.90237914,0.90244378)">
           <path
              id="rect4766"
              transform="translate(-0.35721296,0.08930324)"
