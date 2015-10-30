@@ -248,6 +248,9 @@ void PotreeConverter::convert(){
 		cout << "READING:  " << source << endl;
 
 		PointReader *reader = createPointReader(source, pointAttributes);
+		
+		cout << "number of points: " << reader->numPoints() << endl;
+	
 		while(reader->readNextPoint()){
 			pointsProcessed++;
 
