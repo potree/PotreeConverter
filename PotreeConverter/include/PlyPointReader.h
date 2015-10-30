@@ -276,9 +276,18 @@ public:
 			aabb = new AABB();
 
 			PlyPointReader *reader = new PlyPointReader(file);
+			cout << "calculating bounding box for " << reader->numPoints() << " points" << endl;
+			long pointsProcessed = 0;
+
 			while(reader->readNextPoint()){
+				pointsProcessed++;
+
 				Point p = reader->getPoint();
 				aabb->update(p.position);
+
+				if ((pointsProcessed % (1'000'000)) == 0) {
+					cout << "calculating bounding box: " << pointsProcessed << " points processed" << endl;
+				}
 			}
 
 			reader->close();
