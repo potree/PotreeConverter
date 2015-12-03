@@ -123,6 +123,7 @@ PointWriter *PWNode::createWriter(string path){
 }
 
 void PWNode::loadFromDisk(){
+
 	PointReader *reader = createReader(workDir() + "/data/" + path());
 	while(reader->readNextPoint()){
 		Point p = reader->getPoint();
@@ -152,6 +153,11 @@ PWNode *PWNode::createChild(int childIndex ){
 void PWNode ::split(){
 	children.resize(8, NULL);
 
+	string filepath = workDir() + "/data/" + path();
+	if(fs::exists(filepath)){
+		fs::remove(filepath);
+	}
+
 	for(Point &point : store){
 		add(point);
 	}
@@ -175,15 +181,6 @@ PWNode *PWNode::add(Point &point){
 		return this;
 	}else{
 		bool accepted = grid->add(point.position);
-
-		//if(accepted){
-		//	PWNode *node = this->parent;
-		//	while(accepted && node != NULL){
-		//		accepted = accepted && node->grid->willBeAccepted(position);
-		//
-		//		node = node->parent;
-		//	}
-		//}
 
 		if(accepted){
 			cache.push_back(point);
@@ -264,6 +261,7 @@ void PWNode::flush(){
 			writeToDisk(store, false);		
 		}else if(!addCalledSinceLastFlush && isInMemory){
 			store = vector<Point>();
+
 			isInMemory = false;
 		}
 	}else{
