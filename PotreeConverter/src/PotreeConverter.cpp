@@ -208,6 +208,79 @@ void PotreeConverter::generatePage(string name){
 	}
 }
 
+void writeSources(string path, vector<string> sourceFilenames, vector<int> numPoints, vector<AABB> boundingBoxes){
+	Document d(rapidjson::kObjectType);
+
+	Value jBoundingBox(rapidjson::kObjectType);
+	{
+		Value bbMin(rapidjson::kObjectType);	
+		Value bbMax(rapidjson::kObjectType);	
+
+		bbMin.SetArray();
+		bbMin.PushBack(1, d.GetAllocator());
+		bbMin.PushBack(2, d.GetAllocator());
+		bbMin.PushBack(3, d.GetAllocator());
+
+		bbMax.SetArray();
+		bbMax.PushBack(10, d.GetAllocator());
+		bbMax.PushBack(20, d.GetAllocator());
+		bbMax.PushBack(30, d.GetAllocator());
+
+		jBoundingBox.AddMember("min", bbMin, d.GetAllocator());
+		jBoundingBox.AddMember("max", bbMax, d.GetAllocator());
+	}
+
+	Value jSources(rapidjson::kObjectType);
+	jSources.SetArray();
+	for(int i = 0; i < sourceFilenames.size(); i++){
+		string &source = sourceFilenames[i];
+		int points = numPoints[i];
+		AABB boundingBox = boundingBoxes[i];
+
+		Value jSource(rapidjson::kObjectType);
+
+		Value jName(source.c_str(), (rapidjson::SizeType)source.size());
+		Value jPoints(points);
+		Value jBounds(rapidjson::kObjectType);
+
+		{
+			Value bbMin(rapidjson::kObjectType);	
+			Value bbMax(rapidjson::kObjectType);	
+
+			bbMin.SetArray();
+			bbMin.PushBack(boundingBox.min.x, d.GetAllocator());
+			bbMin.PushBack(boundingBox.min.y, d.GetAllocator());
+			bbMin.PushBack(boundingBox.min.z, d.GetAllocator());
+
+			bbMax.SetArray();
+			bbMax.PushBack(boundingBox.max.x, d.GetAllocator());
+			bbMax.PushBack(boundingBox.max.y, d.GetAllocator());
+			bbMax.PushBack(boundingBox.max.z, d.GetAllocator());
+
+			jBounds.AddMember("min", bbMin, d.GetAllocator());
+			jBounds.AddMember("max", bbMax, d.GetAllocator());
+		}
+
+		jSource.AddMember("name", jName, d.GetAllocator());
+		jSource.AddMember("points", jPoints, d.GetAllocator());
+		jSource.AddMember("bounds", jBounds, d.GetAllocator());
+
+		jSources.PushBack(jSource, d.GetAllocator());
+	}
+
+	d.AddMember("bounds", jBoundingBox, d.GetAllocator());
+	d.AddMember("sources", jSources, d.GetAllocator());
+
+	StringBuffer buffer;
+	//PrettyWriter<StringBuffer> writer(buffer);
+	Writer<StringBuffer> writer(buffer);
+	d.Accept(writer);
+
+	ofstream sourcesOut(path, ios::out);
+	sourcesOut << buffer.GetString();
+	sourcesOut.close();
+}
+
 void PotreeConverter::convert(){
 	auto start = high_resolution_clock::now();
 
@@ -314,86 +387,15 @@ void PotreeConverter::convert(){
 		}
 		reader->close();
 		delete reader;
+
+		writeSources(this->workDir + "/sources.json", sourceFilenames, numPoints, boundingBoxes);
 	}
 	
 	cout << "closing writer" << endl;
 	writer->flush();
 	writer->close();
 
-
-	{ // write sources.json
-		Document d(rapidjson::kObjectType);
-
-		Value jBoundingBox(rapidjson::kObjectType);
-		{
-			Value bbMin(rapidjson::kObjectType);	
-			Value bbMax(rapidjson::kObjectType);	
-
-			bbMin.SetArray();
-			bbMin.PushBack(1, d.GetAllocator());
-			bbMin.PushBack(2, d.GetAllocator());
-			bbMin.PushBack(3, d.GetAllocator());
-
-			bbMax.SetArray();
-			bbMax.PushBack(10, d.GetAllocator());
-			bbMax.PushBack(20, d.GetAllocator());
-			bbMax.PushBack(30, d.GetAllocator());
-
-			jBoundingBox.AddMember("min", bbMin, d.GetAllocator());
-			jBoundingBox.AddMember("max", bbMax, d.GetAllocator());
-		}
-
-		Value jSources(rapidjson::kObjectType);
-		jSources.SetArray();
-		for(int i = 0; i < sourceFilenames.size(); i++){
-			string &source = sourceFilenames[i];
-			int points = numPoints[i];
-			AABB boundingBox = boundingBoxes[i];
-
-			Value jSource(rapidjson::kObjectType);
-
-			Value jName(source.c_str(), (rapidjson::SizeType)source.size());
-			Value jPoints(points);
-			Value jBounds(rapidjson::kObjectType);
-
-			{
-				Value bbMin(rapidjson::kObjectType);	
-				Value bbMax(rapidjson::kObjectType);	
-
-				bbMin.SetArray();
-				bbMin.PushBack(boundingBox.min.x, d.GetAllocator());
-				bbMin.PushBack(boundingBox.min.y, d.GetAllocator());
-				bbMin.PushBack(boundingBox.min.z, d.GetAllocator());
-
-				bbMax.SetArray();
-				bbMax.PushBack(boundingBox.max.x, d.GetAllocator());
-				bbMax.PushBack(boundingBox.max.y, d.GetAllocator());
-				bbMax.PushBack(boundingBox.max.z, d.GetAllocator());
-
-				jBounds.AddMember("min", bbMin, d.GetAllocator());
-				jBounds.AddMember("max", bbMax, d.GetAllocator());
-			}
-
-			jSource.AddMember("name", jName, d.GetAllocator());
-			jSource.AddMember("points", jPoints, d.GetAllocator());
-			jSource.AddMember("bounds", jBounds, d.GetAllocator());
-
-			jSources.PushBack(jSource, d.GetAllocator());
-		}
-
-		d.AddMember("bounds", jBoundingBox, d.GetAllocator());
-		d.AddMember("sources", jSources, d.GetAllocator());
-
-		StringBuffer buffer;
-		//PrettyWriter<StringBuffer> writer(buffer);
-		Writer<StringBuffer> writer(buffer);
-		d.Accept(writer);
-
-		string sourcesPath = this->workDir + "/sources.json";
-		ofstream sourcesOut(sourcesPath, ios::out);
-		sourcesOut << buffer.GetString();
-		sourcesOut.close();
-	}
+	writeSources(this->workDir + "/sources.json", sourceFilenames, numPoints, boundingBoxes);
 
 	float percent = (float)writer->numAccepted / (float)pointsProcessed;
 	percent = percent * 100;
