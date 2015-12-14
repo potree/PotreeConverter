@@ -37,7 +37,7 @@ public:
 	bool addCalledSinceLastFlush = false;
 	PotreeWriter *potreeWriter;
 	vector<Point> cache;
-	int storeLimit = 20'000;
+	int storeLimit = 2'000;
 	vector<Point> store;
 	bool isInMemory = true;
 

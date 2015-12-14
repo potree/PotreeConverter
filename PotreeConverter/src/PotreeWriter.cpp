@@ -251,6 +251,12 @@ void PWNode::flush(){
 		for(const auto &e_c : points){
 			writer->write(e_c);
 		}
+
+		if(append && (writer->numPoints != this->numAccepted)){
+			cout << "writeToDisk " << writer->numPoints  << " != " << this->numAccepted << endl;
+			exit(1);
+		}
+
 		writer->close();
 		delete writer;
 	};
@@ -259,6 +265,10 @@ void PWNode::flush(){
 	if(isLeafNode()){
 		if(addCalledSinceLastFlush){
 			writeToDisk(store, false);		
+
+			//if(store.size() != this->numAccepted){
+			//	cout << "store " << store.size() << " != " << this->numAccepted << " - " << this->name() << endl;
+			//}
 		}else if(!addCalledSinceLastFlush && isInMemory){
 			store = vector<Point>();
 
@@ -267,6 +277,11 @@ void PWNode::flush(){
 	}else{
 		if(addCalledSinceLastFlush){
 			writeToDisk(cache, true);
+			//if(cache.size() != this->numAccepted){
+			//	cout << "cache " << cache.size() << " != " << this->numAccepted << " - " << this->name() << endl;
+			//
+			//	exit(1);
+			//}
 			cache = vector<Point>();
 		}else if(!addCalledSinceLastFlush && isInMemory){
 			delete grid;

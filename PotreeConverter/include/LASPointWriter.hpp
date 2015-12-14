@@ -23,8 +23,6 @@ namespace Potree{
 class LASPointWriter : public PointWriter{
 
 public:
-	string file;
-	int numPoints = 0;
 	AABB aabb;
 	laszip_POINTER writer = NULL;
 	laszip_header header;

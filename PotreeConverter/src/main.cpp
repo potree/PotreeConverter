@@ -64,6 +64,7 @@ struct Arguments{
 	string aabbValuesString;
 	vector<double> aabbValues;
 	string pageName = "";
+	string projection;
 };
 
 Arguments parseArguments(int argc, char **argv){
@@ -86,6 +87,7 @@ Arguments parseArguments(int argc, char **argv){
 		("aabb", po::value<string>(&a.aabbValuesString), "Bounding cube as \"minX minY minZ maxX maxY maxZ\". If not provided it is automatically computed")
 		("incremental", "Add new points to existing conversion")
 		("overwrite", "Replace existing conversion at target directory")
+		("projection", po::value<string>(&a.projection), "Specify projection in proj4 format.")
 		("source", po::value<std::vector<std::string> >(), "Source file. Can be LAS, LAZ, PTX or PLY");
 	po::positional_options_description p; 
 	p.add("source", -1); 
@@ -162,6 +164,7 @@ Arguments parseArguments(int argc, char **argv){
 	if(!vm.count("input-format")) a.format = "";
 	if(!vm.count("scale")) a.scale = 0;
 	if(!vm.count("output-format")) a.outFormatString = "BINARY";
+	
 	if(a.outFormatString == "BINARY"){
 		a.outFormat = Potree::OutputFormat::BINARY;
 	}else if(a.outFormatString == "LAS"){
@@ -169,10 +172,11 @@ Arguments parseArguments(int argc, char **argv){
 	}else if(a.outFormatString == "LAZ"){
 		a.outFormat = Potree::OutputFormat::LAZ;
 	}
+	
 	if (a.diagonalFraction != 0) {
 		a.spacing = 0;
 	}else if(a.spacing == 0){
-		a.diagonalFraction = 250;
+		a.diagonalFraction = 200;
 	}
 
 	return a;
