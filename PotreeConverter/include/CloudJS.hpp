@@ -53,6 +53,7 @@ public:
 	double scale;
 	int hierarchyStepSize = -1;
 	long long numAccepted = 0;
+	string projection = "";
 
 	CloudJS() = default;
 
@@ -70,8 +71,16 @@ public:
 		Value &vScale = d["scale"];
 		Value &vHierarchyStepSize = d["hierarchyStepSize"];
 
+
+		
 		version = vVersion.GetString();
 		octreeDir = vOctreeDir.GetString();
+
+		if(d.HasMember("projection")){
+			Value &vProjection = d["projection"];
+			projection = vProjection.GetString();
+		}
+
 		numAccepted = vPoints.GetInt64();
 		boundingBox = AABB(
 			Vector3<double>(vBoundingBox["lx"].GetDouble(), vBoundingBox["ly"].GetDouble(), vBoundingBox["lz"].GetDouble()),
@@ -114,6 +123,7 @@ public:
 
 		Value version(this->version.c_str(), (rapidjson::SizeType)this->version.size());
 		Value octreeDir("data");
+		Value projection(this->projection.c_str(), (rapidjson::SizeType)this->projection.size());
 		Value boundingBox(rapidjson::kObjectType);
 		{
 			//Value min(rapidjson::kArrayType);
@@ -179,6 +189,7 @@ public:
 
 		d.AddMember("version", version, d.GetAllocator());
 		d.AddMember("octreeDir", octreeDir, d.GetAllocator());
+		d.AddMember("projection", projection, d.GetAllocator());
 		d.AddMember("points", (uint64_t)numAccepted, d.GetAllocator());
 		d.AddMember("boundingBox", boundingBox, d.GetAllocator());
 		d.AddMember("tightBoundingBox", tightBoundingBox, d.GetAllocator());

@@ -14,7 +14,10 @@
    id="svg3797"
    version="1.1"
    inkscape:version="0.48.5 r10040"
-   sodipodi:docname="area.svg">
+   sodipodi:docname="area.svg"
+   inkscape:export-filename="D:\dev\workspaces\potree\develop\resources\icons\area.png"
+   inkscape:export-xdpi="90"
+   inkscape:export-ydpi="90">
   <defs
      id="defs3799" />
   <sodipodi:namedview
@@ -24,15 +27,15 @@
      borderopacity="1.0"
      inkscape:pageopacity="0.0"
      inkscape:pageshadow="2"
-     inkscape:zoom="22.395604"
-     inkscape:cx="9.4591229"
-     inkscape:cy="15.712251"
+     inkscape:zoom="2.7994505"
+     inkscape:cx="-38.367796"
+     inkscape:cy="-28.878944"
      inkscape:current-layer="layer1"
      showgrid="true"
      inkscape:grid-bbox="true"
      inkscape:document-units="px"
      inkscape:window-width="1920"
-     inkscape:window-height="1138"
+     inkscape:window-height="1018"
      inkscape:window-x="-8"
      inkscape:window-y="-8"
      inkscape:window-maximized="1">
@@ -64,7 +67,7 @@
        sodipodi:nodetypes="cccccc" />
     <path
        sodipodi:type="arc"
-       style="fill:#000000;fill-opacity:1;stroke:#000000;stroke-width:4.36363649;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none"
+       style="fill:#00ff00;fill-opacity:1;stroke:#000000;stroke-width:2.18181828999999980;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none"
        id="path3807-0-1"
        sodipodi:cx="11"
        sodipodi:cy="22"
@@ -74,7 +77,7 @@
        transform="matrix(0.45833331,0,0,0.45833331,1.9583336,15.166667)" />
     <path
        sodipodi:type="arc"
-       style="fill:#000000;fill-opacity:1;stroke:#000000;stroke-width:4.36363649;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none"
+       style="fill:#00ff00;fill-opacity:1;stroke:#000000;stroke-width:2.18181828999999980;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none"
        id="path3807-0-7"
        sodipodi:cx="11"
        sodipodi:cy="22"
@@ -84,7 +87,7 @@
        transform="matrix(0.45833331,0,0,0.45833331,19.958334,15.166667)" />
     <path
        sodipodi:type="arc"
-       style="fill:#000000;fill-opacity:1;stroke:#000000;stroke-width:4.36363649;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none"
+       style="fill:#00ff00;fill-opacity:1;stroke:#000000;stroke-width:2.18181828999999980;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none"
        id="path3807-0-7-0"
        sodipodi:cx="11"
        sodipodi:cy="22"
@@ -94,7 +97,7 @@
        transform="matrix(0.45833331,0,0,0.45833331,1.9583336,-4.8333327)" />
     <path
        sodipodi:type="arc"
-       style="fill:#000000;fill-opacity:1;stroke:#000000;stroke-width:4.36363649;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none"
+       style="fill:#00ff00;fill-opacity:1;stroke:#000000;stroke-width:2.18181828999999980;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none"
        id="path3807-0-7-9"
        sodipodi:cx="11"
        sodipodi:cy="22"
@@ -104,7 +107,7 @@
        transform="matrix(0.45833331,0,0,0.45833331,20.958334,-4.8333327)" />
     <path
        sodipodi:type="arc"
-       style="fill:#000000;fill-opacity:1;stroke:#000000;stroke-width:4.36363649;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none"
+       style="fill:#00ff00;fill-opacity:1;stroke:#000000;stroke-width:2.18181828999999980;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none"
        id="path3807-0-7-4"
        sodipodi:cx="11"
        sodipodi:cy="22"

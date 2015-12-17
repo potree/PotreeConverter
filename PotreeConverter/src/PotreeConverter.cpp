@@ -153,10 +153,13 @@ AABB PotreeConverter::calculateAABB(){
 void PotreeConverter::generatePage(string name){
 	string pagedir = this->workDir;
 	string templateSourcePath = "./resources/page_template/examples/viewer_template.html";
+	string mapTemplateSourcePath = "./resources/page_template/examples/lasmap_template.html";
 	string templateTargetPath = pagedir + "/examples/" + name + ".html";
+	string mapTemplateTargetPath = pagedir + "/examples/lasmap_" + name + ".html";
 
 	Potree::copyDir(fs::path("./resources/page_template"), fs::path(pagedir));
 	fs::remove(pagedir + "/examples/viewer_template.html");
+	fs::remove(pagedir + "/examples/lasmap_template.html");
 
 	{ // change viewer template
 		ifstream in( templateSourcePath );
@@ -164,14 +167,14 @@ void PotreeConverter::generatePage(string name){
 
 		string line;
 		while(getline(in, line)){
-			if(line.find("<!-- INCLUDE SETTINGS HERE -->") != string::npos){
-				out << "\t<script src=\"./" << name << ".js\"></script>" << endl;
+			if(line.find("<!-- INCLUDE POINTCLOUD -->") != string::npos){
+				out << "\tviewer.addPointCloud(\"" << "../resources/pointclouds/" << name << "/cloud.js\");" << endl;
 			}else if((outputFormat == Potree::OutputFormat::LAS || outputFormat == Potree::OutputFormat::LAZ) && 
 				line.find("<!-- INCLUDE ADDITIONAL DEPENDENCIES HERE -->") != string::npos){
 				
 				out << "\t<script src=\"../libs/plasio/js/laslaz.js\"></script>" << endl;
 				out << "\t<script src=\"../libs/plasio/vendor/bluebird.js\"></script>" << endl;
-				out << "\t<script src=\"../build/js/laslaz.js\"></script>" << endl;
+				out << "\t<script src=\"../build/potree/laslaz.js\"></script>" << endl;
 			}else{
 				out << line << endl;
 			}
@@ -182,53 +185,56 @@ void PotreeConverter::generatePage(string name){
 		out.close();
 	}
 
+	if(!this->projection.empty()){ // change lasmap template
+		ifstream in( mapTemplateSourcePath );
+		ofstream out( mapTemplateTargetPath );
 
-	{ // write settings
-		stringstream ssSettings;
+		string line;
+		while(getline(in, line)){
+			if(line.find("<!-- INCLUDE SOURCE -->") != string::npos){
+				out << "\tvar source = \"" << "../resources/pointclouds/" << name << "/sources.json" << "\";";
+			}else{
+				out << line << endl;
+			}
+			
+		}
 
-		ssSettings << "var sceneProperties = {" << endl;
-		ssSettings << "\tpath: \"" << "../resources/pointclouds/" << name << "/cloud.js\"," << endl;
-		ssSettings << "\tcameraPosition: null, 		// other options: cameraPosition: [10,10,10]," << endl;
-		ssSettings << "\tcameraTarget: null, 		// other options: cameraTarget: [0,0,0]," << endl;
-		ssSettings << "\tfov: 60, 					// field of view in degrees," << endl;
-		ssSettings << "\tsizeType: \"Adaptive\",	// other options: \"Fixed\", \"Attenuated\"" << endl;
-		ssSettings << "\tquality: null, 			// other options: \"Circles\", \"Interpolation\", \"Splats\"" << endl;
-		ssSettings << "\tmaterial: \"RGB\", 		// other options: \"Height\", \"Intensity\", \"Classification\"" << endl;
-		ssSettings << "\tpointLimit: 1,				// max number of points in millions" << endl;
-		ssSettings << "\tpointSize: 1,				// " << endl;
-		ssSettings << "\tnavigation: \"Orbit\",		// other options: \"Orbit\", \"Flight\"" << endl;
-		ssSettings << "\tuseEDL: false,				" << endl;
-		ssSettings << "};" << endl;
-
-	
-		ofstream fSettings;
-		fSettings.open(pagedir + "/examples/" + name + ".js", ios::out);
-		fSettings << ssSettings.str();
-		fSettings.close();
+		in.close();
+		out.close();
 	}
+
+	//{ // write settings
+	//	stringstream ssSettings;
+	//
+	//	ssSettings << "var sceneProperties = {" << endl;
+	//	ssSettings << "\tpath: \"" << "../resources/pointclouds/" << name << "/cloud.js\"," << endl;
+	//	ssSettings << "\tcameraPosition: null, 		// other options: cameraPosition: [10,10,10]," << endl;
+	//	ssSettings << "\tcameraTarget: null, 		// other options: cameraTarget: [0,0,0]," << endl;
+	//	ssSettings << "\tfov: 60, 					// field of view in degrees," << endl;
+	//	ssSettings << "\tsizeType: \"Adaptive\",	// other options: \"Fixed\", \"Attenuated\"" << endl;
+	//	ssSettings << "\tquality: null, 			// other options: \"Circles\", \"Interpolation\", \"Splats\"" << endl;
+	//	ssSettings << "\tmaterial: \"RGB\", 		// other options: \"Height\", \"Intensity\", \"Classification\"" << endl;
+	//	ssSettings << "\tpointLimit: 1,				// max number of points in millions" << endl;
+	//	ssSettings << "\tpointSize: 1,				// " << endl;
+	//	ssSettings << "\tnavigation: \"Orbit\",		// other options: \"Orbit\", \"Flight\"" << endl;
+	//	ssSettings << "\tuseEDL: false,				" << endl;
+	//	ssSettings << "};" << endl;
+	//
+	//
+	//	ofstream fSettings;
+	//	fSettings.open(pagedir + "/examples/" + name + ".js", ios::out);
+	//	fSettings << ssSettings.str();
+	//	fSettings.close();
+	//}
 }
 
-void writeSources(string path, vector<string> sourceFilenames, vector<int> numPoints, vector<AABB> boundingBoxes){
+void writeSources(string path, vector<string> sourceFilenames, vector<int> numPoints, vector<AABB> boundingBoxes, string projection){
 	Document d(rapidjson::kObjectType);
 
-	Value jBoundingBox(rapidjson::kObjectType);
-	{
-		Value bbMin(rapidjson::kObjectType);	
-		Value bbMax(rapidjson::kObjectType);	
+	AABB bb;
 
-		bbMin.SetArray();
-		bbMin.PushBack(1, d.GetAllocator());
-		bbMin.PushBack(2, d.GetAllocator());
-		bbMin.PushBack(3, d.GetAllocator());
 
-		bbMax.SetArray();
-		bbMax.PushBack(10, d.GetAllocator());
-		bbMax.PushBack(20, d.GetAllocator());
-		bbMax.PushBack(30, d.GetAllocator());
-
-		jBoundingBox.AddMember("min", bbMin, d.GetAllocator());
-		jBoundingBox.AddMember("max", bbMax, d.GetAllocator());
-	}
+	Value jProjection(projection.c_str(), (rapidjson::SizeType)projection.size());
 
 	Value jSources(rapidjson::kObjectType);
 	jSources.SetArray();
@@ -236,6 +242,8 @@ void writeSources(string path, vector<string> sourceFilenames, vector<int> numPo
 		string &source = sourceFilenames[i];
 		int points = numPoints[i];
 		AABB boundingBox = boundingBoxes[i];
+
+		bb.update(boundingBox);
 
 		Value jSource(rapidjson::kObjectType);
 
@@ -268,7 +276,27 @@ void writeSources(string path, vector<string> sourceFilenames, vector<int> numPo
 		jSources.PushBack(jSource, d.GetAllocator());
 	}
 
+	Value jBoundingBox(rapidjson::kObjectType);
+	{
+		Value bbMin(rapidjson::kObjectType);	
+		Value bbMax(rapidjson::kObjectType);	
+
+		bbMin.SetArray();
+		bbMin.PushBack(bb.min.x, d.GetAllocator());
+		bbMin.PushBack(bb.min.y, d.GetAllocator());
+		bbMin.PushBack(bb.min.z, d.GetAllocator());
+
+		bbMax.SetArray();
+		bbMax.PushBack(bb.max.x, d.GetAllocator());
+		bbMax.PushBack(bb.max.y, d.GetAllocator());
+		bbMax.PushBack(bb.max.z, d.GetAllocator());
+
+		jBoundingBox.AddMember("min", bbMin, d.GetAllocator());
+		jBoundingBox.AddMember("max", bbMax, d.GetAllocator());
+	}
+
 	d.AddMember("bounds", jBoundingBox, d.GetAllocator());
+	d.AddMember("projection", jProjection, d.GetAllocator());
 	d.AddMember("sources", jSources, d.GetAllocator());
 
 	StringBuffer buffer;
@@ -318,12 +346,14 @@ void PotreeConverter::convert(){
 			fs::remove_all(workDir + "/temp");
 			fs::remove(workDir + "/cloud.js");
 			writer = new PotreeWriter(this->workDir, aabb, spacing, maxDepth, scale, outputFormat, pointAttributes);
+			writer->setProjection(this->projection);
 		}else if(storeOption == StoreOption::INCREMENTAL){
 			writer = new PotreeWriter(this->workDir);
 			writer->loadStateFromDisk();
 		}
 	}else{
 		writer = new PotreeWriter(this->workDir, aabb, spacing, maxDepth, scale, outputFormat, pointAttributes);
+		writer->setProjection(this->projection);
 	}
 
 	if(writer == NULL){
@@ -342,6 +372,12 @@ void PotreeConverter::convert(){
 		boundingBoxes.push_back(reader->getAABB());
 		numPoints.push_back(reader->numPoints());
 		sourceFilenames.push_back(fs::path(source).filename().string());
+
+		writeSources(this->workDir + "/sources.json", sourceFilenames, numPoints, boundingBoxes, this->projection);
+		if(this->sourceListingOnly){
+			cout << "sourceListingOnly" << endl;
+			continue;
+		}
 
 		while(reader->readNextPoint()){
 			pointsProcessed++;
@@ -388,14 +424,14 @@ void PotreeConverter::convert(){
 		reader->close();
 		delete reader;
 
-		writeSources(this->workDir + "/sources.json", sourceFilenames, numPoints, boundingBoxes);
+		
 	}
 	
 	cout << "closing writer" << endl;
 	writer->flush();
 	writer->close();
 
-	writeSources(this->workDir + "/sources.json", sourceFilenames, numPoints, boundingBoxes);
+	writeSources(this->workDir + "/sources.json", sourceFilenames, numPoints, boundingBoxes, this->projection);
 
 	float percent = (float)writer->numAccepted / (float)pointsProcessed;
 	percent = percent * 100;

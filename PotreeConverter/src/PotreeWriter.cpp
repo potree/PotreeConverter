@@ -513,6 +513,7 @@ void PotreeWriter::flush(){
 		cloudjs.hierarchyStepSize = hierarchyStepSize;
 		cloudjs.tightBoundingBox = tightAABB;
 		cloudjs.numAccepted = numAccepted;
+		cloudjs.projection = projection;
 
 		ofstream cloudOut(workDir + "/cloud.js", ios::out);
 		cloudOut << cloudjs.getString();
@@ -582,6 +583,10 @@ void PotreeWriter::flush(){
 	}
 }
 
+void PotreeWriter::setProjection(string projection){
+	this->projection = projection;
+}
+
 void PotreeWriter::loadStateFromDisk(){
 
 
@@ -604,6 +609,7 @@ void PotreeWriter::loadStateFromDisk(){
 		this->scale = cloudjs.scale;
 		this->aabb = cloudjs.boundingBox;
 		this->numAccepted = cloudjs.numAccepted;
+		
 	}
 
 	{// tree

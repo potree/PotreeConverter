@@ -64,7 +64,8 @@ struct Arguments{
 	string aabbValuesString;
 	vector<double> aabbValues;
 	string pageName = "";
-	string projection;
+	string projection = "";
+	bool sourceListingOnly = false;
 };
 
 Arguments parseArguments(int argc, char **argv){
@@ -87,6 +88,7 @@ Arguments parseArguments(int argc, char **argv){
 		("aabb", po::value<string>(&a.aabbValuesString), "Bounding cube as \"minX minY minZ maxX maxY maxZ\". If not provided it is automatically computed")
 		("incremental", "Add new points to existing conversion")
 		("overwrite", "Replace existing conversion at target directory")
+		("source-listing-only", "Create a sources.json but no octree.")
 		("projection", po::value<string>(&a.projection), "Specify projection in proj4 format.")
 		("source", po::value<std::vector<std::string> >(), "Source file. Can be LAS, LAZ, PTX or PLY");
 	po::positional_options_description p; 
@@ -109,6 +111,10 @@ Arguments parseArguments(int argc, char **argv){
 		a.storeOption = StoreOption::OVERWRITE;
 	}else{
 		a.storeOption = StoreOption::ABORT_IF_EXISTS;
+	}
+
+	if(vm.count("source-listing-only")){
+		a.sourceListingOnly = true;
 	}
 
 	if(vm.count("source")){
@@ -199,6 +205,7 @@ void printArguments(Arguments &a){
 		cout << "scale:             \t" << a.scale << endl;
 		cout << "pageName:          \t" << a.pageName << endl;
 		cout << "output-format:     \t" << a.outFormatString << endl;
+		cout << "projection:        \t" << a.projection << endl;
 		cout << endl;
 	}catch(exception &e){
 		cout << "ERROR: " << e.what() << endl;
@@ -230,6 +237,8 @@ int main(int argc, char **argv){
 		pc.aabbValues = a.aabbValues;
 		pc.pageName = a.pageName;
 		pc.storeOption = a.storeOption;
+		pc.projection = a.projection;
+		pc.sourceListingOnly = a.sourceListingOnly;
 
 		pc.convert();
 	}catch(exception &e){

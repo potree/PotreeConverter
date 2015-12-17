@@ -127,3 +127,12 @@ Examples:
     # points in new_data MUST fit into bounding box!
     ./PotreeConverter.exe C:/data -o C:/potree_converted -aabb "-0.748 -2.780 2.547 3.899 1.867 7.195"
     ./PotreeConverter.exe C:/new_data.las -o C:/potree_converted --incremental
+	
+	# tell the converter that coordinates are in a UTM zone 10N projection. Also, create output in LAZ format
+	./PotreeConverter.exe C:/data -o C:/potree_converted -p pageName --projection "+proj=utm +zone=10 +ellps=GRS80 +datum=NAD83 +units=m +no_defs" --overwrite --output-format LAZ
+	
+	# using a swiss projection. Use http://spatialreference.org/ to find projections in proj4 format
+	./PotreeConverter.exe C:/data -o C:/potree_converted -p pageName --projection "+proj=somerc +lat_0=46.95240555555556 +lon_0=7.439583333333333 +k_0=1 +x_0=600000 +y_0=200000 +ellps=bessel +towgs84=674.4,15.1,405.3,0,0,0,0 +units=m +no_defs" --overwrite
+	
+	
+	
