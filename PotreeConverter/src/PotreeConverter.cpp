@@ -151,13 +151,16 @@ AABB PotreeConverter::calculateAABB(){
 }
 
 void PotreeConverter::generatePage(string name){
+
+	string exePath = Potree::getExecutablePath();
+
 	string pagedir = this->workDir;
-	string templateSourcePath = "./resources/page_template/examples/viewer_template.html";
-	string mapTemplateSourcePath = "./resources/page_template/examples/lasmap_template.html";
+	string templateSourcePath = exePath + "/resources/page_template/examples/viewer_template.html";
+	string mapTemplateSourcePath = exePath + "/resources/page_template/examples/lasmap_template.html";
 	string templateTargetPath = pagedir + "/examples/" + name + ".html";
 	string mapTemplateTargetPath = pagedir + "/examples/lasmap_" + name + ".html";
 
-	Potree::copyDir(fs::path("./resources/page_template"), fs::path(pagedir));
+	Potree::copyDir(fs::path(exePath + "/resources/page_template"), fs::path(pagedir));
 	fs::remove(pagedir + "/examples/viewer_template.html");
 	fs::remove(pagedir + "/examples/lasmap_template.html");
 
