@@ -180,7 +180,22 @@ PWNode *PWNode::add(Point &point){
 
 		return this;
 	}else{
-		bool accepted = grid->add(point.position);
+
+		bool accepted = false;
+		if(potreeWriter->quality == ConversionQuality::FAST){
+			accepted = grid->add(point.position);
+		}else{
+			PWNode *node = this;
+			accepted = true;
+			while(accepted && node != NULL){
+				accepted = accepted && node->grid->willBeAccepted(point.position, grid->squaredSpacing);
+				node = node->parent;
+			}
+		
+			if(accepted){
+				grid->addWithoutCheck(point.position);
+			}
+		}
 
 		if(accepted){
 			cache.push_back(point);
@@ -401,17 +416,19 @@ PWNode* PWNode::findNode(string name){
 
 
 
-PotreeWriter::PotreeWriter(string workDir){
+PotreeWriter::PotreeWriter(string workDir, ConversionQuality quality){
 	this->workDir = workDir;
+	this->quality = quality;
 }
 
-PotreeWriter::PotreeWriter(string workDir, AABB aabb, float spacing, int maxDepth, double scale, OutputFormat outputFormat, PointAttributes pointAttributes){
+PotreeWriter::PotreeWriter(string workDir, AABB aabb, float spacing, int maxDepth, double scale, OutputFormat outputFormat, PointAttributes pointAttributes, ConversionQuality quality){
 	this->workDir = workDir;
 	this->aabb = aabb;
 	this->spacing = spacing;
 	this->scale = scale;
 	this->maxDepth = maxDepth;
 	this->outputFormat = outputFormat;
+	this->quality = quality;
 
 	this->pointAttributes = pointAttributes;
 

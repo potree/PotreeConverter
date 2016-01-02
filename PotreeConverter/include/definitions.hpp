@@ -16,6 +16,12 @@ enum class StoreOption{
 	INCREMENTAL
 };
 
+enum class ConversionQuality{
+	FAST,
+	DEFAULT,
+	NICE
+};
+
 }
 
 #endif

@@ -48,6 +48,7 @@ public:
 	StoreOption storeOption = StoreOption::ABORT_IF_EXISTS;
 	string projection = "";
 	bool sourceListingOnly = false;
+	ConversionQuality quality = ConversionQuality::DEFAULT;
 
 	PotreeConverter(string workDir, vector<string> sources);
 		

@@ -28,6 +28,7 @@ using std::chrono::duration_cast;
 using std::exception;
 using Potree::PotreeConverter;
 using Potree::StoreOption;
+using Potree::ConversionQuality;
 
 #define MAX_FLOAT std::numeric_limits<float>::max()
 
@@ -66,6 +67,9 @@ struct Arguments{
 	string pageName = "";
 	string projection = "";
 	bool sourceListingOnly = false;
+	string listOfFiles = "";
+	ConversionQuality conversionQuality = ConversionQuality::DEFAULT;
+	string conversionQualityString = "";
 };
 
 Arguments parseArguments(int argc, char **argv){
@@ -90,6 +94,8 @@ Arguments parseArguments(int argc, char **argv){
 		("overwrite", "Replace existing conversion at target directory")
 		("source-listing-only", "Create a sources.json but no octree.")
 		("projection", po::value<string>(&a.projection), "Specify projection in proj4 format.")
+		("quality,q", po::value<string>(&a.conversionQualityString), "Specify FAST, DEFAULT or NICE to trade-off between quality and conversion speed.")
+		("list-of-files", po::value<string>(&a.listOfFiles), "A text file containing a list of files to be converted.")
 		("source", po::value<std::vector<std::string> >(), "Source file. Can be LAS, LAZ, PTX or PLY");
 	po::positional_options_description p; 
 	p.add("source", -1); 
@@ -98,7 +104,7 @@ Arguments parseArguments(int argc, char **argv){
 	po::store(po::command_line_parser(argc, argv).options(desc).positional(p).run(), vm); 
 	po::notify(vm);
 
-	if(vm.count("help") || !vm.count("source")){
+	if(vm.count("help") || (!vm.count("source") && !vm.count("list-of-files"))){
 		printUsage(desc);
 		exit(0);
 	}
@@ -119,8 +125,34 @@ Arguments parseArguments(int argc, char **argv){
 
 	if(vm.count("source")){
 		a.source = vm["source"].as<std::vector<std::string> >();
+	}else if(vm.count("list-of-files")){
+		if(fs::exists(fs::path(a.listOfFiles))){
+			std::ifstream in(a.listOfFiles);
+			string line;
+			while( std::getline(in, line)){
+				string path;
+				if(fs::path(line).is_absolute()){
+					path = line;
+				}else{
+					fs::path absPath = fs::canonical(fs::path(a.listOfFiles));
+					fs::path lofDir = absPath.parent_path();
+					path = lofDir.string() + "/" + line;
+				}
+				
+				if(fs::exists(fs::path(path))){
+					a.source.push_back(path);
+				}else{
+					cerr << "ERROR: file not found: " << path << endl;
+					exit(1);
+				}
+			}
+			in.close();
+		}else{
+			cerr << "ERROR: specified list of files not found: '" << a.listOfFiles << "'" << endl;
+			exit(1);
+		}
 	}else{
-		cerr << "source file parameter is missing" << endl;
+		cerr << "ERROR: neither source file nor list-of-files parameters were specified!" << endl;
 		exit(1);
 	}
 
@@ -170,6 +202,7 @@ Arguments parseArguments(int argc, char **argv){
 	if(!vm.count("input-format")) a.format = "";
 	if(!vm.count("scale")) a.scale = 0;
 	if(!vm.count("output-format")) a.outFormatString = "BINARY";
+	if(!vm.count("output-format")) a.conversionQualityString = "DEFAULT";
 	
 	if(a.outFormatString == "BINARY"){
 		a.outFormat = Potree::OutputFormat::BINARY;
@@ -177,6 +210,14 @@ Arguments parseArguments(int argc, char **argv){
 		a.outFormat = Potree::OutputFormat::LAS;
 	}else if(a.outFormatString == "LAZ"){
 		a.outFormat = Potree::OutputFormat::LAZ;
+	}
+
+	if(a.conversionQualityString == "FAST"){
+		a.conversionQuality = ConversionQuality::FAST;
+	}else if(a.conversionQualityString == "DEFAULT"){
+		a.conversionQuality = ConversionQuality::DEFAULT;
+	}else if(a.conversionQualityString == "NICE"){
+		a.conversionQuality = ConversionQuality::NICE;
 	}
 	
 	if (a.diagonalFraction != 0) {
@@ -214,6 +255,50 @@ void printArguments(Arguments &a){
 	}
 }
 
+#include "Vector3.h"
+#include <random>
+
+//int main(int argc, char **argv){
+//
+//	auto start = high_resolution_clock::now();
+//
+//	int numPoints = 1'000'000;
+//
+//	std::default_random_engine generator;
+//	std::uniform_int_distribution<int> distribution(-10, 10);
+//
+//	vector<Potree::Vector3<double>> points;
+//
+//	for(int i = 0; i < numPoints; i++){
+//		double x = distribution(generator);
+//		double y = distribution(generator);
+//		double z = distribution(generator);
+//
+//		Potree::Vector3<double> point(x, y, z);
+//		points.push_back(point);
+//	}
+//
+//
+//	double minDistance = 1000.0;
+//	Potree::Vector3<double> pref(7, 3, 9);
+//	for(int j = 0; j < 100; j++){
+//		for(int i = 0; i < numPoints; i++){
+//			double distance = points[i].distanceTo(pref);
+//			minDistance = min(distance, minDistance);
+//		}
+//	}
+//
+//	cout << "min distance: " << minDistance << endl;
+//
+//
+//	auto end = high_resolution_clock::now();
+//	long long duration = duration_cast<milliseconds>(end-start).count();
+//	float seconds = duration / 1'000.0f;
+//
+//	cout << "duration: " << seconds << endl;
+//
+//}
+
 int main(int argc, char **argv){
 	cout.imbue(std::locale(""));
 	
@@ -239,6 +324,7 @@ int main(int argc, char **argv){
 		pc.storeOption = a.storeOption;
 		pc.projection = a.projection;
 		pc.sourceListingOnly = a.sourceListingOnly;
+		pc.quality = a.conversionQuality;
 
 		pc.convert();
 	}catch(exception &e){

@@ -348,14 +348,14 @@ void PotreeConverter::convert(){
 			fs::remove_all(workDir + "/data");
 			fs::remove_all(workDir + "/temp");
 			fs::remove(workDir + "/cloud.js");
-			writer = new PotreeWriter(this->workDir, aabb, spacing, maxDepth, scale, outputFormat, pointAttributes);
+			writer = new PotreeWriter(this->workDir, aabb, spacing, maxDepth, scale, outputFormat, pointAttributes, quality);
 			writer->setProjection(this->projection);
 		}else if(storeOption == StoreOption::INCREMENTAL){
-			writer = new PotreeWriter(this->workDir);
+			writer = new PotreeWriter(this->workDir, quality);
 			writer->loadStateFromDisk();
 		}
 	}else{
-		writer = new PotreeWriter(this->workDir, aabb, spacing, maxDepth, scale, outputFormat, pointAttributes);
+		writer = new PotreeWriter(this->workDir, aabb, spacing, maxDepth, scale, outputFormat, pointAttributes, quality);
 		writer->setProjection(this->projection);
 	}
 
