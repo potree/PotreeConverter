@@ -4,6 +4,7 @@
 #include <map>
 #include <string>
 #include <exception>
+#include <fstream>
 
 #include "AABB.h"
 #include "PotreeConverter.h"
