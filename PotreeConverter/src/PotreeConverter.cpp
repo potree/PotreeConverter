@@ -155,14 +155,14 @@ void PotreeConverter::generatePage(string name){
 	string exePath = Potree::getExecutablePath();
 
 	string pagedir = this->workDir;
-	string templateSourcePath = exePath + "/resources/page_template/examples/viewer_template.html";
-	string mapTemplateSourcePath = exePath + "/resources/page_template/examples/lasmap_template.html";
-	string templateTargetPath = pagedir + "/examples/" + name + ".html";
-	string mapTemplateTargetPath = pagedir + "/examples/lasmap_" + name + ".html";
+	string templateSourcePath = exePath + "/resources/page_template/viewer_template.html";
+	string mapTemplateSourcePath = exePath + "/resources/page_template/lasmap_template.html";
+	string templateTargetPath = pagedir + "/" + name + ".html";
+	string mapTemplateTargetPath = pagedir + "/lasmap_" + name + ".html";
 
 	Potree::copyDir(fs::path(exePath + "/resources/page_template"), fs::path(pagedir));
-	fs::remove(pagedir + "/examples/viewer_template.html");
-	fs::remove(pagedir + "/examples/lasmap_template.html");
+	fs::remove(pagedir + "/viewer_template.html");
+	fs::remove(pagedir + "/lasmap_template.html");
 
 	if(!this->sourceListingOnly){ // change viewer template
 		ifstream in( templateSourcePath );
@@ -171,13 +171,13 @@ void PotreeConverter::generatePage(string name){
 		string line;
 		while(getline(in, line)){
 			if(line.find("<!-- INCLUDE POINTCLOUD -->") != string::npos){
-				out << "\tviewer.addPointCloud(\"" << "../resources/pointclouds/" << name << "/cloud.js\");" << endl;
+				out << "\tviewer.addPointCloud(\"" << "resources/pointclouds/" << name << "/cloud.js\");" << endl;
 			}else if((outputFormat == Potree::OutputFormat::LAS || outputFormat == Potree::OutputFormat::LAZ) && 
 				line.find("<!-- INCLUDE ADDITIONAL DEPENDENCIES HERE -->") != string::npos){
 				
-				out << "\t<script src=\"../libs/plasio/js/laslaz.js\"></script>" << endl;
-				out << "\t<script src=\"../libs/plasio/vendor/bluebird.js\"></script>" << endl;
-				out << "\t<script src=\"../build/potree/laslaz.js\"></script>" << endl;
+				out << "\t<script src=\"libs/plasio/js/laslaz.js\"></script>" << endl;
+				out << "\t<script src=\"libs/plasio/vendor/bluebird.js\"></script>" << endl;
+				out << "\t<script src=\"libs/potree/laslaz.js\"></script>" << endl;
 			}else{
 				out << line << endl;
 			}
@@ -196,7 +196,7 @@ void PotreeConverter::generatePage(string name){
 		string line;
 		while(getline(in, line)){
 			if(line.find("<!-- INCLUDE SOURCE -->") != string::npos){
-				out << "\tvar source = \"" << "../resources/pointclouds/" << name << "/sources.json" << "\";";
+				out << "\tvar source = \"" << "resources/pointclouds/" << name << "/sources.json" << "\";";
 			}else{
 				out << line << endl;
 			}
