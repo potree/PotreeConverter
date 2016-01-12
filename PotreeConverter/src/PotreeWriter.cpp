@@ -182,20 +182,66 @@ PWNode *PWNode::add(Point &point){
 	}else{
 
 		bool accepted = false;
-		if(potreeWriter->quality == ConversionQuality::FAST){
+		//if(potreeWriter->quality == ConversionQuality::FAST){
 			accepted = grid->add(point.position);
-		}else{
-			PWNode *node = this;
-			accepted = true;
-			while(accepted && node != NULL){
-				accepted = accepted && node->grid->willBeAccepted(point.position, grid->squaredSpacing);
-				node = node->parent;
-			}
-		
-			if(accepted){
-				grid->addWithoutCheck(point.position);
-			}
-		}
+		//}else/* if(potreeWriter->quality == ConversionQuality::DEFAULT)*/{
+		//	PWNode *node = this;
+		//	accepted = true;
+		//	while(accepted && node != NULL){
+		//		accepted = accepted && node->grid->willBeAccepted(point.position, grid->squaredSpacing);
+		//		node = node->parent;
+		//	}
+		//
+		//	//node = this;
+		//	//while(accepted && node != NULL && node->children.size() > 0){
+		//	//	int childIndex = nodeIndex(node->aabb, point);
+		//	//
+		//	//	if(childIndex == -1){
+		//	//		break;
+		//	//	}
+		//	//
+		//	//	node = node->children[childIndex];
+		//	//
+		//	//	if(node == NULL){
+		//	//		break;
+		//	//	}
+		//	//
+		//	//	accepted = accepted && node->grid->willBeAccepted(point.position, grid->squaredSpacing);
+		//	//}
+		//
+		//	if(accepted){
+		//		grid->addWithoutCheck(point.position);
+		//	}
+		//}/*else if(potreeWriter->quality == ConversionQuality::NICE){
+		//	PWNode *node = this;
+		//	accepted = true;
+		//	while(accepted && node != NULL){
+		//		accepted = accepted && node->grid->willBeAccepted(point.position, grid->squaredSpacing);
+		//		node = node->parent;
+		//	}
+		//
+		//	node = this;
+		//	while(accepted && node != NULL && node->children.size() > 0){
+		//		int childIndex = nodeIndex(node->aabb, point);
+		//
+		//		if(childIndex == -1){
+		//			break;
+		//		}
+		//
+		//		node = node->children[childIndex];
+		//
+		//		if(node == NULL){
+		//			break;
+		//		}
+		//
+		//		accepted = accepted && node->grid->willBeAccepted(point.position, grid->squaredSpacing);
+		//	}
+		//	
+		//
+		//	if(accepted){
+		//		grid->addWithoutCheck(point.position);
+		//	}
+		//}*/
 
 		if(accepted){
 			cache.push_back(point);

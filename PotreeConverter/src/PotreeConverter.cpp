@@ -164,7 +164,7 @@ void PotreeConverter::generatePage(string name){
 	fs::remove(pagedir + "/examples/viewer_template.html");
 	fs::remove(pagedir + "/examples/lasmap_template.html");
 
-	{ // change viewer template
+	if(!this->sourceListingOnly){ // change viewer template
 		ifstream in( templateSourcePath );
 		ofstream out( templateTargetPath );
 
@@ -188,7 +188,8 @@ void PotreeConverter::generatePage(string name){
 		out.close();
 	}
 
-	if(!this->projection.empty()){ // change lasmap template
+	// change lasmap template
+	if(!this->projection.empty()){ 
 		ifstream in( mapTemplateSourcePath );
 		ofstream out( mapTemplateTargetPath );
 
@@ -306,8 +307,13 @@ void writeSources(string path, vector<string> sourceFilenames, vector<int> numPo
 	//PrettyWriter<StringBuffer> writer(buffer);
 	Writer<StringBuffer> writer(buffer);
 	d.Accept(writer);
+	
+	if(!boost::filesystem::exists(boost::filesystem::path(path))){
+		boost::filesystem::path pcdir(path);
+		fs::create_directories(pcdir);
+	}
 
-	ofstream sourcesOut(path, ios::out);
+	ofstream sourcesOut(path + "/sources.json", ios::out);
 	sourcesOut << buffer.GetString();
 	sourcesOut.close();
 }
@@ -376,7 +382,7 @@ void PotreeConverter::convert(){
 		numPoints.push_back(reader->numPoints());
 		sourceFilenames.push_back(fs::path(source).filename().string());
 
-		writeSources(this->workDir + "/sources.json", sourceFilenames, numPoints, boundingBoxes, this->projection);
+		writeSources(this->workDir, sourceFilenames, numPoints, boundingBoxes, this->projection);
 		if(this->sourceListingOnly){
 			cout << "sourceListingOnly" << endl;
 			continue;
