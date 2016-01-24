@@ -171,13 +171,20 @@ void PotreeConverter::generatePage(string name){
 		string line;
 		while(getline(in, line)){
 			if(line.find("<!-- INCLUDE POINTCLOUD -->") != string::npos){
-				out << "\tviewer.addPointCloud(\"" << "resources/pointclouds/" << name << "/cloud.js\");" << endl;
+				out << "\t\tviewer.addPointCloud(\"" << "pointclouds/" << name << "/cloud.js\");" << endl;
 			}else if((outputFormat == Potree::OutputFormat::LAS || outputFormat == Potree::OutputFormat::LAZ) && 
 				line.find("<!-- INCLUDE ADDITIONAL DEPENDENCIES HERE -->") != string::npos){
 				
 				out << "\t<script src=\"libs/plasio/js/laslaz.js\"></script>" << endl;
 				out << "\t<script src=\"libs/plasio/vendor/bluebird.js\"></script>" << endl;
 				out << "\t<script src=\"libs/potree/laslaz.js\"></script>" << endl;
+			}else if(line.find("<!-- INCLUDE SETTINGS HERE -->") != string::npos){
+				out << std::boolalpha;
+				out << "\t\t" << "document.title = \"" << title << "\";\n";
+				out << "\t\t" << "viewer.setEDLEnabled(" << edlEnabled << ");\n";
+				out << "\t\t" << "viewer.setShowSkybox(" << showSkybox << ");\n";
+				out << "\t\t" << "viewer.setMaterialID(Potree.PointColorType." << material << ");\n";
+				out << "\t\t" << "viewer.setDescription('" << boost::replace_all_copy(description, "'", "\"") << "');\n";
 			}else{
 				out << line << endl;
 			}
@@ -196,7 +203,7 @@ void PotreeConverter::generatePage(string name){
 		string line;
 		while(getline(in, line)){
 			if(line.find("<!-- INCLUDE SOURCE -->") != string::npos){
-				out << "\tvar source = \"" << "resources/pointclouds/" << name << "/sources.json" << "\";";
+				out << "\tvar source = \"" << "pointclouds/" << name << "/sources.json" << "\";";
 			}else{
 				out << line << endl;
 			}
@@ -337,7 +344,7 @@ void PotreeConverter::convert(){
 
 	if(pageName.size() > 0){
 		generatePage(pageName);
-		workDir = workDir + "/resources/pointclouds/" + pageName;
+		workDir = workDir + "/pointclouds/" + pageName;
 	}
 
 	PotreeWriter *writer = NULL;

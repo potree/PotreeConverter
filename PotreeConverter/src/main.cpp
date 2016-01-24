@@ -71,6 +71,11 @@ struct Arguments{
 	string listOfFiles = "";
 	ConversionQuality conversionQuality = ConversionQuality::DEFAULT;
 	string conversionQualityString = "";
+	string title = "PotreeViewer";
+	string description = "";
+	bool edlEnabled = false;
+	bool showSkybox = false;
+	string material = "RGB";
 };
 
 Arguments parseArguments(int argc, char **argv){
@@ -97,7 +102,12 @@ Arguments parseArguments(int argc, char **argv){
 		("projection", po::value<string>(&a.projection), "Specify projection in proj4 format.")
 		("quality,q", po::value<string>(&a.conversionQualityString), "Specify FAST, DEFAULT or NICE to trade-off between quality and conversion speed.")
 		("list-of-files", po::value<string>(&a.listOfFiles), "A text file containing a list of files to be converted.")
-		("source", po::value<std::vector<std::string> >(), "Source file. Can be LAS, LAZ, PTX or PLY");
+		("source", po::value<std::vector<std::string> >(), "Source file. Can be LAS, LAZ, PTX or PLY")
+		("title", po::value<string>(&a.title), "Page title")
+		("description", po::value<string>(&a.description), "Description to be shown in the page.")
+		("edl-enabled", "Enable Eye-Dome-Lighting.")
+		("show-skybox", "")
+		("material", po::value<string>(&a.material), "RGB, ELEVATION, INTENSITY, INTENSITY_GRADIENT, RETURN_NUMBER, SOURCE, LEVEL_OF_DETAIL");
 	po::positional_options_description p; 
 	p.add("source", -1); 
 
@@ -122,6 +132,26 @@ Arguments parseArguments(int argc, char **argv){
 
 	if(vm.count("source-listing-only")){
 		a.sourceListingOnly = true;
+	}
+
+	if(vm.count("edl-enabled")){
+		a.edlEnabled = true;
+	}else{
+		a.edlEnabled = false;
+	}
+
+	if(vm.count("show-skybox")){
+		a.showSkybox = true;
+	}else{
+		a.showSkybox = false;
+	}
+
+	vector<string> validMaterialNames{"RGB", "ELEVATION", "INTENSITY", "INTENSITY_GRADIENT", "RETURN_NUMBER", "SOURCE", "LEVEL_OF_DETAIL"};
+	if(std::find(validMaterialNames.begin(), validMaterialNames.end(), a.material) == validMaterialNames.end()){
+		printUsage(desc);
+		cout << endl;
+		cout << "ERROR: " << "invalid material name specified" << endl;
+		exit(1);
 	}
 
 	if(vm.count("source")){
@@ -326,6 +356,11 @@ int main(int argc, char **argv){
 		pc.projection = a.projection;
 		pc.sourceListingOnly = a.sourceListingOnly;
 		pc.quality = a.conversionQuality;
+		pc.title = a.title;
+		pc.description = a.description;
+		pc.edlEnabled = a.edlEnabled;
+		pc.material = a.material;
+		pc.showSkybox = a.showSkybox;
 
 		pc.convert();
 	}catch(exception &e){

@@ -49,6 +49,11 @@ public:
 	string projection = "";
 	bool sourceListingOnly = false;
 	ConversionQuality quality = ConversionQuality::DEFAULT;
+	string title = "PotreeViewer";
+	string description = "";
+	bool edlEnabled = false;
+	bool showSkybox = false;
+	string material = "RGB";
 
 	PotreeConverter(string workDir, vector<string> sources);
 		
