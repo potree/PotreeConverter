@@ -63,7 +63,7 @@ public:
 
 		if(intensityRange.size() == 2){
 			intensityOffset = (float)intensityRange[0];
-			intensityScale = (float)intensityRange[1];
+			intensityScale = (float)intensityRange[1]-(float)intensityRange[0];
 		}else if(intensityRange.size() == 1){
 			intensityOffset = 0.0f;
 			intensityScale = (float)intensityRange[0];
