@@ -391,7 +391,9 @@ void PotreeConverter::convert(){
 
 		writeSources(this->workDir, sourceFilenames, numPoints, boundingBoxes, this->projection);
 		if(this->sourceListingOnly){
-			cout << "sourceListingOnly" << endl;
+			reader->close();
+			delete reader;
+
 			continue;
 		}
 
