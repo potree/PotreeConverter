@@ -5,8 +5,8 @@ set(RAPIDJSON_INCLUDE_DIR lib/rapidjson/include)
 file(GLOB_RECURSE files src/*.cpp include/*.h include/*.hpp )
 file(GLOB_RECURSE lib_rapidjson_files ${RAPIDJSON_INCLUDE_DIR}/* )
 
-include_directories(include ${LASZIP_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS})
-include_directories(include ${RAPIDJSON_INCLUDE_DIR})
+include_directories(${LASZIP_DIR}/src ${LASZIP_DIR}/dll)
+include_directories(include ${Boost_INCLUDE_DIRS} ${RAPIDJSON_INCLUDE_DIR})
 
 SOURCE_GROUP("Header Files\\io" FILES 
 	include/BINPointReader.hpp 
@@ -33,6 +33,6 @@ SOURCE_GROUP("lib\\rapidjson" FILES ${lib_rapidjson_files})
 
 add_executable(PotreeConverter ${files} ${lib_rapidjson_files})
 
-target_link_libraries(PotreeConverter ${LASZIP_LIBRARY} ${Boost_SYSTEM_LIBRARY} ${Boost_THREAD_LIBRARY} ${Boost_REGEX_LIBRARY} ${Boost_FILESYSTEM_LIBRARY} ${Boost_PROGRAM_OPTIONS_LIBRARY})
+target_link_libraries(PotreeConverter Threads::Threads ${LASZIP_LIBRARY} ${Boost_SYSTEM_LIBRARY} ${Boost_THREAD_LIBRARY} ${Boost_REGEX_LIBRARY} ${Boost_FILESYSTEM_LIBRARY} ${Boost_PROGRAM_OPTIONS_LIBRARY})
 
 install(TARGETS PotreeConverter RUNTIME DESTINATION bin/ )
