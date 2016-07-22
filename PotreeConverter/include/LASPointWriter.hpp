@@ -51,6 +51,9 @@ public:
 		header.max_x = aabb.max.x;
 		header.max_y = aabb.max.y;
 		header.max_z = aabb.max.z;
+		header.x_offset = aabb.min.x;
+		header.y_offset = aabb.min.y;
+		header.z_offset = aabb.min.z;
 		header.x_scale_factor = scale;
 		header.y_scale_factor = scale;
 		header.z_scale_factor = scale;
