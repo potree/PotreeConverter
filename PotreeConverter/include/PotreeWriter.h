@@ -33,7 +33,7 @@ public:
 	unsigned int numAccepted = 0;
 	PWNode *parent = NULL;
 	vector<PWNode*> children;
-	bool addedSinceLastFlush = true;
+	bool hrcChangedSinceLastFlush = true;
 	bool addCalledSinceLastFlush = false;
 	PotreeWriter *potreeWriter;
 	vector<Point> cache;

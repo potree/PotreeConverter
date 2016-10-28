@@ -146,6 +146,7 @@ PWNode *PWNode::createChild(int childIndex ){
 	PWNode *child = new PWNode(potreeWriter, childIndex, cAABB, level+1);
 	child->parent = this;
 	children[childIndex] = child;
+	hrcChangedSinceLastFlush = true;
 
 	return child;
 }
@@ -173,8 +174,12 @@ PWNode *PWNode::add(Point &point){
 	}
 
 	if(isLeafNode()){
+		numAccepted++;
+		hrcChangedSinceLastFlush = true;
+
 		store.push_back(point);
 		if(int(store.size()) >= storeLimit){
+			numAccepted = 0;
 			split();
 		}
 
@@ -247,7 +252,7 @@ PWNode *PWNode::add(Point &point){
 			cache.push_back(point);
 			acceptedAABB.update(point.position);
 			numAccepted++;
-
+			hrcChangedSinceLastFlush = true;
 			return this;
 		}else{
 			// try adding point to higher level
@@ -266,6 +271,7 @@ PWNode *PWNode::add(Point &point){
 				// create child node if not existent
 				if(child == NULL){
 					child = createChild(childIndex);
+					hrcChangedSinceLastFlush = true;
 				}
 
 				return child->add(point);
@@ -279,7 +285,6 @@ PWNode *PWNode::add(Point &point){
 }
 
 void PWNode::flush(){
-
 	std::function<void(vector<Point> &points, bool append)> writeToDisk = [&](vector<Point> &points, bool append){
 		string filepath = workDir() + "/data/" + path();
 		PointWriter *writer = NULL;
@@ -557,10 +562,7 @@ void PotreeWriter::processStore(){
 
 void PotreeWriter::flush(){
 	processStore();
-
-	if(storeThread.joinable()){
-		storeThread.join();
-	}
+	waitUntilProcessed();
 
 	//auto start = high_resolution_clock::now();
 
@@ -606,9 +608,8 @@ void PotreeWriter::flush(){
 					stack.push_back(descendant);
 				}
 
-				needsFlush = needsFlush || descendant->addedSinceLastFlush;
+				needsFlush = needsFlush || descendant->hrcChangedSinceLastFlush;
 			}
-
 
 			if(needsFlush){
 				string dest = workDir + "/data/" + node->hierarchyPath() + "/" + node->name() + ".hrc";
@@ -633,7 +634,7 @@ void PotreeWriter::flush(){
 		}
 
 		root->traverse([](PWNode* node){
-			node->addedSinceLastFlush = false;
+			node->hrcChangedSinceLastFlush = false;
 		});
 
 		//cout << "hrcTotal: " << hrcTotal << "; " << "hrcFlushed: " << hrcFlushed << endl;
@@ -702,7 +703,7 @@ void PotreeWriter::loadStateFromDisk(){
 			PWNode *hrcRoot = root->findNode(hrcName);
 
 			PWNode *current = hrcRoot;
-			current->addedSinceLastFlush = false;
+			current->hrcChangedSinceLastFlush = false;
 			current->isInMemory = false;
 			vector<PWNode*> nodes;
 			nodes.push_back(hrcRoot);
@@ -730,7 +731,7 @@ void PotreeWriter::loadStateFromDisk(){
 							AABB cAABB = childAABB(current->aabb, j);
 							PWNode *child = new PWNode(this, j, cAABB, current->level + 1);
 							child->parent = current;
-							child->addedSinceLastFlush = false;
+							child->hrcChangedSinceLastFlush = false;
 							child->isInMemory = false;
 							current->children[j] = child;
 							nodes.push_back(child);
