@@ -153,6 +153,7 @@ PWNode *PWNode::createChild(int childIndex ){
 
 void PWNode ::split(){
 	children.resize(8, NULL);
+	becameInnerNodeSinceLastFlush = true;
 
 	string filepath = workDir() + "/data/" + path();
 	if(fs::exists(filepath)){
@@ -265,6 +266,7 @@ PWNode *PWNode::add(Point &point){
 			if(childIndex >= 0){
 				if(isLeafNode()){
 					children.resize(8, NULL);
+					becameInnerNodeSinceLastFlush = true;
 				}
 				PWNode *child = children[childIndex];
 
@@ -342,7 +344,7 @@ void PWNode::flush(){
 		}
 	}else{
 		if(addCalledSinceLastFlush){
-			writeToDisk(cache, true);
+			writeToDisk(cache, !becameInnerNodeSinceLastFlush);
 			//if(cache.size() != this->numAccepted){
 			//	cout << "cache " << cache.size() << " != " << this->numAccepted << " - " << this->name() << endl;
 			//
@@ -357,6 +359,7 @@ void PWNode::flush(){
 	}
 
 	addCalledSinceLastFlush = false;
+	becameInnerNodeSinceLastFlush = false;
 
 	for(PWNode *child : children){
 		if(child != NULL){

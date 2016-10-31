@@ -35,6 +35,7 @@ public:
 	vector<PWNode*> children;
 	bool hrcChangedSinceLastFlush = true;
 	bool addCalledSinceLastFlush = false;
+	bool becameInnerNodeSinceLastFlush = false;
 	PotreeWriter *potreeWriter;
 	vector<Point> cache;
 	int storeLimit = 20'000;
