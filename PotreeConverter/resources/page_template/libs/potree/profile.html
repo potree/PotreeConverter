@@ -1,7 +1,7 @@
 <div id="profile_window" style="position: absolute; width: 100%; height: 30%; bottom: 0px; border: 1px solid black; display: none; box-sizing: border-box;">
 	
 	<div id="profile_titlebar" class="pv-titlebar" style="display: flex; position: absolute; height: 30px; width: 100%; box-sizing: border-box;">
-		<span style="padding-right: 10px">Height Profile</span>
+		<span style="padding-right: 10px"><span data-i18n="profile.title"></span></span>
 		<span id="profileInfo" style="flex-grow: 1; flex-direction: row"> </span>
 		<span id="profile_toggle_size_button" class="ui-icon ui-icon-newwin profile-button"> </span>
 		<span id="closeProfileContainer" class="ui-icon ui-icon-close profile-button"> </span>
@@ -11,16 +11,22 @@
 		
 		<span class="pv-main-color" style="height: 100%; width: 100%; padding: 5px; display:flex; flex-direction: column; box-sizing: border-box;">
 			<div style=" width: 100%; color: #9d9d9d; margin: 5px; display: flex; flex-direction: row; box-sizing: border-box;">
-				<span>Points in profile: </span>
+				<span data-i18n="profile.nb_points"></span>: 
 				<span id="profile_num_points">-</span>
 				<!--<span id="profile_threshold" style="width: 300px">
 					Threshold: <span id="potree_profile_threshold_label">123</span> <div id="potree_profile_threshold_slider"></div>
 				</span>-->
 				<span style="flex-grow: 1;"></span>
 				<span>
-					<a id="potree_download_profile_link" href="#" download="profile.las">
-						<input id="potree_download_profile_button" type="button" value="save">
+				
+					<a id="potree_download_profile_ortho_link" href="#" download="profile.csv">
+						<input id="potree_download_profile_ortho_button" type="button" data-i18n="[value]profile.save_ortho">
 					</a>
+					
+					<a id="potree_download_profile_link" href="#" download="profile.las">
+						<input id="potree_download_profile_button" type="button" data-i18n="[value]profile.save_las">
+					</a>
+					
 				</span>
 			</div>
 			
@@ -66,25 +72,22 @@
 
 <script>
 
-
-//$( "#potree_profile_threshold_slider" ).slider({
-//		value: 20*1000,
-//		min: 5000,
-//		max: 100*1000,
-//		step: 100,
-//		slide: function( event, ui ) {viewer._2dprofile.setThreshold(ui.value);}
-//	});
+$('#potree_download_profile_ortho_button').click(function(){
+	let string = viewer._2dprofile.getPointsInProfileAsCSV();
+	let uri = "data:application/octet-stream;base64,"+btoa(string);
+	$('#potree_download_profile_ortho_link').attr("href", uri);
+});
 
 $('#potree_download_profile_button').click(function(){
-	var las = viewer._2dprofile.getLAS();
-	var u8view = new Uint8Array(las);
+	let las = viewer._2dprofile.getPointsInProfileAsLas();
+	let u8view = new Uint8Array(las);
 	
-	var binString = "";
-	for(var i = 0; i < u8view.length; i++){
+	let binString = "";
+	for(let i = 0; i < u8view.length; i++){
 		binString += String.fromCharCode(u8view[i]);
 	}
 	
-	var uri = "data:application/octet-stream;base64,"+btoa(binString);
+	let uri = "data:application/octet-stream;base64,"+btoa(binString);
 	$('#potree_download_profile_link').attr("href", uri);
 	//elDownloadProfileLink.href = uri;
 	

@@ -45,6 +45,8 @@
 		return results === null ? "" : decodeURIComponent(results[1].replace(/\+/g, " "));
 	}
 	
+	var source = getParameterByName("sources");
+	
 	<!-- INCLUDE SOURCE -->
 	
 	var sourceurl = source.substring(0, source.lastIndexOf("/") + 1) + "sources";
