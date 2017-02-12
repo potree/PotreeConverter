@@ -105,6 +105,8 @@ bool copyDir(fs::path source, fs::path destination);
 
 float psign(float value);
 
+string getExecutablePath();
+
 }
 
 #endif

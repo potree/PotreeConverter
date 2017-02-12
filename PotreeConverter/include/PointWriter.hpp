@@ -15,7 +15,7 @@ class PointWriter{
 
 public:
 	string file;
-	int numPoints;
+	int numPoints = 0;
 
 	virtual ~PointWriter(){};
 

@@ -123,6 +123,7 @@ PointWriter *PWNode::createWriter(string path){
 }
 
 void PWNode::loadFromDisk(){
+
 	PointReader *reader = createReader(workDir() + "/data/" + path());
 	while(reader->readNextPoint()){
 		Point p = reader->getPoint();
@@ -152,6 +153,11 @@ PWNode *PWNode::createChild(int childIndex ){
 void PWNode ::split(){
 	children.resize(8, NULL);
 
+	string filepath = workDir() + "/data/" + path();
+	if(fs::exists(filepath)){
+		fs::remove(filepath);
+	}
+
 	for(Point &point : store){
 		add(point);
 	}
@@ -174,16 +180,68 @@ PWNode *PWNode::add(Point &point){
 
 		return this;
 	}else{
-		bool accepted = grid->add(point.position);
 
-		//if(accepted){
-		//	PWNode *node = this->parent;
+		bool accepted = false;
+		//if(potreeWriter->quality == ConversionQuality::FAST){
+			accepted = grid->add(point.position);
+		//}else/* if(potreeWriter->quality == ConversionQuality::DEFAULT)*/{
+		//	PWNode *node = this;
+		//	accepted = true;
 		//	while(accepted && node != NULL){
-		//		accepted = accepted && node->grid->willBeAccepted(position);
-		//
+		//		accepted = accepted && node->grid->willBeAccepted(point.position, grid->squaredSpacing);
 		//		node = node->parent;
 		//	}
-		//}
+		//
+		//	//node = this;
+		//	//while(accepted && node != NULL && node->children.size() > 0){
+		//	//	int childIndex = nodeIndex(node->aabb, point);
+		//	//
+		//	//	if(childIndex == -1){
+		//	//		break;
+		//	//	}
+		//	//
+		//	//	node = node->children[childIndex];
+		//	//
+		//	//	if(node == NULL){
+		//	//		break;
+		//	//	}
+		//	//
+		//	//	accepted = accepted && node->grid->willBeAccepted(point.position, grid->squaredSpacing);
+		//	//}
+		//
+		//	if(accepted){
+		//		grid->addWithoutCheck(point.position);
+		//	}
+		//}/*else if(potreeWriter->quality == ConversionQuality::NICE){
+		//	PWNode *node = this;
+		//	accepted = true;
+		//	while(accepted && node != NULL){
+		//		accepted = accepted && node->grid->willBeAccepted(point.position, grid->squaredSpacing);
+		//		node = node->parent;
+		//	}
+		//
+		//	node = this;
+		//	while(accepted && node != NULL && node->children.size() > 0){
+		//		int childIndex = nodeIndex(node->aabb, point);
+		//
+		//		if(childIndex == -1){
+		//			break;
+		//		}
+		//
+		//		node = node->children[childIndex];
+		//
+		//		if(node == NULL){
+		//			break;
+		//		}
+		//
+		//		accepted = accepted && node->grid->willBeAccepted(point.position, grid->squaredSpacing);
+		//	}
+		//	
+		//
+		//	if(accepted){
+		//		grid->addWithoutCheck(point.position);
+		//	}
+		//}*/
 
 		if(accepted){
 			cache.push_back(point);
@@ -254,6 +312,12 @@ void PWNode::flush(){
 		for(const auto &e_c : points){
 			writer->write(e_c);
 		}
+
+		if(append && (writer->numPoints != this->numAccepted)){
+			cout << "writeToDisk " << writer->numPoints  << " != " << this->numAccepted << endl;
+			exit(1);
+		}
+
 		writer->close();
 		delete writer;
 	};
@@ -262,13 +326,23 @@ void PWNode::flush(){
 	if(isLeafNode()){
 		if(addCalledSinceLastFlush){
 			writeToDisk(store, false);		
+
+			//if(store.size() != this->numAccepted){
+			//	cout << "store " << store.size() << " != " << this->numAccepted << " - " << this->name() << endl;
+			//}
 		}else if(!addCalledSinceLastFlush && isInMemory){
 			store = vector<Point>();
+
 			isInMemory = false;
 		}
 	}else{
 		if(addCalledSinceLastFlush){
 			writeToDisk(cache, true);
+			//if(cache.size() != this->numAccepted){
+			//	cout << "cache " << cache.size() << " != " << this->numAccepted << " - " << this->name() << endl;
+			//
+			//	exit(1);
+			//}
 			cache = vector<Point>();
 		}else if(!addCalledSinceLastFlush && isInMemory){
 			delete grid;
@@ -388,17 +462,19 @@ PWNode* PWNode::findNode(string name){
 
 
 
-PotreeWriter::PotreeWriter(string workDir){
+PotreeWriter::PotreeWriter(string workDir, ConversionQuality quality){
 	this->workDir = workDir;
+	this->quality = quality;
 }
 
-PotreeWriter::PotreeWriter(string workDir, AABB aabb, float spacing, int maxDepth, double scale, OutputFormat outputFormat, PointAttributes pointAttributes){
+PotreeWriter::PotreeWriter(string workDir, AABB aabb, float spacing, int maxDepth, double scale, OutputFormat outputFormat, PointAttributes pointAttributes, ConversionQuality quality){
 	this->workDir = workDir;
 	this->aabb = aabb;
 	this->spacing = spacing;
 	this->scale = scale;
 	this->maxDepth = maxDepth;
 	this->outputFormat = outputFormat;
+	this->quality = quality;
 
 	this->pointAttributes = pointAttributes;
 
@@ -500,6 +576,7 @@ void PotreeWriter::flush(){
 		cloudjs.hierarchyStepSize = hierarchyStepSize;
 		cloudjs.tightBoundingBox = tightAABB;
 		cloudjs.numAccepted = numAccepted;
+		cloudjs.projection = projection;
 
 		ofstream cloudOut(workDir + "/cloud.js", ios::out);
 		cloudOut << cloudjs.getString();
@@ -569,6 +646,10 @@ void PotreeWriter::flush(){
 	}
 }
 
+void PotreeWriter::setProjection(string projection){
+	this->projection = projection;
+}
+
 void PotreeWriter::loadStateFromDisk(){
 
 
@@ -591,6 +672,7 @@ void PotreeWriter::loadStateFromDisk(){
 		this->scale = cloudjs.scale;
 		this->aabb = cloudjs.boundingBox;
 		this->numAccepted = cloudjs.numAccepted;
+		
 	}
 
 	{// tree

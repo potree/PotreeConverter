@@ -23,8 +23,6 @@ namespace Potree{
 class BINPointWriter : public PointWriter{
 
 public:
-	string file;
-	int numPoints;
 	PointAttributes attributes;
 	ofstream *writer;
 	AABB aabb;

@@ -112,11 +112,13 @@ public:
 	vector<Point> store;
 	thread storeThread;
 	int pointsInMemory = 0;
+	string projection = "";
+	ConversionQuality quality = ConversionQuality::DEFAULT;
 
 
-	PotreeWriter(string workDir);
+	PotreeWriter(string workDir, ConversionQuality quality);
 
-	PotreeWriter(string workDir, AABB aabb, float spacing, int maxDepth, double scale, OutputFormat outputFormat, PointAttributes pointAttributes);
+	PotreeWriter(string workDir, AABB aabb, float spacing, int maxDepth, double scale, OutputFormat outputFormat, PointAttributes pointAttributes, ConversionQuality quality);
 
 	~PotreeWriter(){
 		close();
@@ -138,7 +140,10 @@ public:
 		flush();
 	}
 
+	void setProjection(string projection);
+
 	void loadStateFromDisk();
+
 private:
 
 };

@@ -54,7 +54,7 @@ public:
 		laszip_BOOL request_reader = 1;
 		laszip_request_compatibility_mode(laszip_reader, request_reader);
 
-		{// read first 1000 points to find if color is 1 or 2 bytes
+		{// read first x points to find if color is 1 or 2 bytes
 			laszip_BOOL is_compressed = boost::iends_with(path, ".laz") ? 1 : 0;
 			laszip_open_reader(laszip_reader, path.c_str(), &is_compressed);
 
@@ -65,7 +65,7 @@ public:
 			laszip_get_point_pointer(laszip_reader, &point);
 
 			colorScale = 1;
-			for(int i = 0; i < 1000 && i < npoints; i++){
+			for(int i = 0; i < 100000 && i < npoints; i++){
 				laszip_read_point(laszip_reader);
 		
 				auto r = point->rgb[0];
@@ -75,9 +75,7 @@ public:
 				if(r > 255 || g > 255 || b > 255){
 					colorScale = 256;
 					break;
-				}
-		
-				i++;
+				};
 			}
 		}
 
