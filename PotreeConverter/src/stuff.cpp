@@ -35,7 +35,7 @@ using std::map;
 
 
 #ifdef BOOST_OS_WINDOWS
-#include <Windows.h>>
+#include <Windows.h>
 #elif BOOST_OS_LINUX
 
 #elif BOOST_OS_MACOS
