@@ -76,6 +76,7 @@ struct Arguments{
 	bool edlEnabled = false;
 	bool showSkybox = false;
 	string material = "RGB";
+    string executablePath;
 };
 
 Arguments parseArguments(int argc, char **argv){
@@ -257,6 +258,9 @@ Arguments parseArguments(int argc, char **argv){
 		a.diagonalFraction = 200;
 	}
 
+    auto absolutePath = fs::canonical(fs::system_complete(argv[0]));
+    a.executablePath = absolutePath.parent_path().string();
+
 	return a;
 }
 
@@ -339,7 +343,7 @@ int main(int argc, char **argv){
 		Arguments a = parseArguments(argc, argv);
 		printArguments(a);
 
-		PotreeConverter pc(a.outdir, a.source);
+        PotreeConverter pc(a.executablePath, a.outdir, a.source);
 
 		pc.spacing = a.spacing;
 		pc.diagonalFraction = a.diagonalFraction;

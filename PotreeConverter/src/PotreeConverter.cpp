@@ -79,7 +79,8 @@ PointReader *PotreeConverter::createPointReader(string path, PointAttributes poi
 	return reader;
 }
 
-PotreeConverter::PotreeConverter(string workDir, vector<string> sources){
+PotreeConverter::PotreeConverter(string executablePath, string workDir, vector<string> sources){
+    this->executablePath = executablePath;
 	this->workDir = workDir;
 	this->sources = sources;
 }
@@ -152,15 +153,13 @@ AABB PotreeConverter::calculateAABB(){
 
 void PotreeConverter::generatePage(string name){
 
-	string exePath = Potree::getExecutablePath();
-
 	string pagedir = this->workDir;
-	string templateSourcePath = exePath + "/resources/page_template/viewer_template.html";
-	string mapTemplateSourcePath = exePath + "/resources/page_template/lasmap_template.html";
+    string templateSourcePath = this->executablePath + "/resources/page_template/viewer_template.html";
+    string mapTemplateSourcePath = this->executablePath + "/resources/page_template/lasmap_template.html";
 	string templateTargetPath = pagedir + "/" + name + ".html";
 	string mapTemplateTargetPath = pagedir + "/lasmap_" + name + ".html";
 
-	Potree::copyDir(fs::path(exePath + "/resources/page_template"), fs::path(pagedir));
+    Potree::copyDir(fs::path(this->executablePath + "/resources/page_template"), fs::path(pagedir));
 	fs::remove(pagedir + "/viewer_template.html");
 	fs::remove(pagedir + "/lasmap_template.html");
 

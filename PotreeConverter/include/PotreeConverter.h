@@ -54,8 +54,9 @@ public:
 	bool edlEnabled = false;
 	bool showSkybox = false;
 	string material = "RGB";
+    string executablePath;
 
-	PotreeConverter(string workDir, vector<string> sources);
+    PotreeConverter(string executablePath, string workDir, vector<string> sources);
 		
 	void convert();
 
