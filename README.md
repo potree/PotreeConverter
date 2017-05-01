@@ -18,6 +18,7 @@ Builds a potree octree from las, laz, binary ply, xyz or ptx files.
 
 
 lastools (from fork with cmake)
+
 ```
 cd ~/dev/workspaces/lastools
 git clone https://github.com/m-schuetz/LAStools.git master
@@ -41,6 +42,21 @@ cmake -DCMAKE_BUILD_TYPE=Release -DLASZIP_INCLUDE_DIRS=~/dev/workspaces/lastools
 make
 
 # copy ./PotreeConverter/resources/page_template to your binary working directory.
+
+```
+
+### OS X
+
+Same as the linux instructions above, except:
+
+1. Give cmake absolute paths to the LASzip tools you just built. (Otherwise make might not be able to find them)
+2. LASZip library will be called `liblaszip.dylib`, not `liblaszip.so `
+
+```
+...
+
+cmake -DCMAKE_BUILD_TYPE=Release -DLASZIP_INCLUDE_DIRS=[ABSOLUTE_PATH_TO_LASTOOLS]/master/LASzip/dll -DLASZIP_LIBRARY=[ABSOLUTE_PATH_TO_LASTOOLS]/master/LASzip/build/src/liblaszip.dylib ..
+make
 
 ```
 
