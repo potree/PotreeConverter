@@ -1,4 +1,3 @@
-
 #include "stuff.h"
 
 #include <vector>
@@ -32,6 +31,7 @@ using std::endl;
 using std::vector;
 using std::binary_function;
 using std::map;
+
 
 namespace Potree{
 
