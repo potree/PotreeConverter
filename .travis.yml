@@ -14,5 +14,5 @@ addons:
     - gcc-6
     - g++-6
     - cmake
-    - boost
+    - libboost-all-dev
     - clang-4.0
