@@ -1,4 +1,4 @@
-install: cmake
+install: cmake boost
 script: make
 compiler:
   - clang
