@@ -2,9 +2,9 @@ language: cpp
 dist: trusty
 sudo: false
 script: make
-compiler:
-  - clang
-  - gcc
+env:
+  - CXX=clang++-4.0 CC=clang-4.0
+  - CXX=g++-6 CC=gcc-6
 addons:
   apt:
     sources:
