@@ -1,3 +1,4 @@
+language: cpp
 install: cmake boost
 script: make
 compiler:
