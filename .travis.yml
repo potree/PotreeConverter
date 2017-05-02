@@ -1,0 +1,5 @@
+install: cmake
+script: make
+compiler:
+  - clang
+  - gcc
