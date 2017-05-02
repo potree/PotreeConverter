@@ -1,5 +1,8 @@
 # Potree Converter
 
+Master: [![Build Status](https://travis-ci.org/potree/PotreeConverter.svg?branch=master)](https://travis-ci.org/potree/PotreeConverter)
+Develop: [![Build Status](https://travis-ci.org/potree/PotreeConverter.svg?branch=develop)](https://travis-ci.org/potree/PotreeConverter)
+
 Builds a potree octree from las, laz, binary ply, xyz or ptx files.
 
 ## Downloads
