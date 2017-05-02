@@ -1,4 +1,6 @@
 language: cpp
+dist: trusty
+sudo: false
 install: cmake boost
 script: make
 compiler:
