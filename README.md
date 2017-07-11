@@ -63,17 +63,17 @@ make
 
 ```
 
-### Windows / Microsoft Visual Studio 2015:
+### Windows / Microsoft Visual Studio 2017:
 
 lastools
 
 ```
 cd D:/dev/workspaces/lastools/
 git clone https://github.com/m-schuetz/LAStools.git master
-cd master
+cd master/LASzip
 mkdir build
 cd build
-cmake -G "Visual Studio 14 2015 Win64" ../
+cmake -G "Visual Studio 15 2017 Win64" ../
 ```
 
 PotreeConverter

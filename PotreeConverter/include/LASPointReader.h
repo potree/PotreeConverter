@@ -11,6 +11,7 @@
 
 #include "Point.h"
 #include "PointReader.h"
+#include "stuff.h"
 
 using std::string;
 
@@ -55,7 +56,7 @@ public:
 		laszip_request_compatibility_mode(laszip_reader, request_reader);
 
 		{// read first x points to find if color is 1 or 2 bytes
-			laszip_BOOL is_compressed = boost::iends_with(path, ".laz") ? 1 : 0;
+			laszip_BOOL is_compressed = iEndsWith(path, ".laz") ? 1 : 0;
 			laszip_open_reader(laszip_reader, path.c_str(), &is_compressed);
 
 			laszip_get_header_pointer(laszip_reader, &header);

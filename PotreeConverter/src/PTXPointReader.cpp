@@ -1,16 +1,14 @@
 #include <fstream>
 #include <sstream>
-#include <boost/lexical_cast.hpp>
-#include <boost/algorithm/string/split.hpp>
 
 #include "PTXPointReader.h"
+#include "stuff.h"
 
 using std::cout;
 using std::endl;
 using std::vector;
 using std::ios;
 using std::string;
-using namespace boost::algorithm;
 
 namespace Potree{
 
@@ -19,25 +17,31 @@ static const int INVALID_INTENSITY = 32767;
 std::map<string, AABB> PTXPointReader::aabbs = std::map<string, AABB>();
 std::map<string, long> PTXPointReader::counts = std::map<string, long>();
 
-inline void split(vector<double> &v, char (&str)[512]) {
-    vector<std::pair<string::const_iterator, string::const_iterator> > sp;
-    if (strlen(str) > 200) return;
-
-    string strstr(str);
-    split(sp, strstr, is_space(), token_compress_on);
-    for (auto beg = sp.begin(); beg != sp.end(); ++beg) {
-        string token(beg->first, beg->second);
-        if (!token.empty()) {
-            v.push_back(atof(token.c_str()));
-        }
-    }
-}
+//inline void split(vector<double> &v, char (&str)[512]) {
+//   // vector<std::pair<string::const_iterator, string::const_iterator> > sp;
+//    if (strlen(str) > 200) return;
+//
+//    //string strstr(str);
+//    //split(sp, strstr, is_space(), token_compress_on);
+//	vector<string> 
+//    for (auto beg = sp.begin(); beg != sp.end(); ++beg) {
+//        string token(beg->first, beg->second);
+//        if (!token.empty()) {
+//            v.push_back(atof(token.c_str()));
+//        }
+//    }
+//}
 
 inline void getlined(fstream &stream, vector<double> &result) {
     char str[512];
     result.clear();
     stream.getline(str, 512);
-    split(result, str);
+    //split(result, str);
+
+	vector<string> tokens = split(str, ' ');
+	for (auto &token : tokens) {
+		result.push_back(std::stod(token));
+	}
 }
 
 inline void skipline(fstream &stream) {
@@ -70,7 +74,7 @@ PTXPointReader::PTXPointReader(string path) {
         for (fs::directory_iterator it(path); it != fs::directory_iterator(); it++) {
             fs::path filepath = it->path();
             if (fs::is_regular_file(filepath)) {
-                if (iequals(fs::extension(filepath), ".ptx")) {
+                if (icompare(fs::path(filepath).extension().string(), ".ptx")) {
                     files.push_back(filepath.string());
                 }
             }

@@ -10,11 +10,10 @@
 #include "PotreeConverter.h"
 #include "PotreeException.h"
 
-#include "boost/program_options.hpp" 
-#include <boost/filesystem.hpp>
+#include "argparse.hpp"
+#include <experimental/filesystem>
 
-namespace po = boost::program_options; 
-namespace fs = boost::filesystem;
+namespace fs = std::experimental::filesystem;
 
 using std::string;
 using std::cout;
@@ -34,11 +33,6 @@ using Potree::ConversionQuality;
 #define MAX_FLOAT std::numeric_limits<float>::max()
 
 class SparseGrid;
-
-void printUsage(po::options_description &desc){
-	cout << "usage: PotreeConverter [OPTIONS] SOURCE" << endl;
-	cout << desc << endl;
-}
 
 // from http://stackoverflow.com/questions/15577107/sets-of-mutually-exclusive-options-in-boost-program-options
 void conflicting_options(const boost::program_options::variables_map & vm, const std::string & opt1, const std::string & opt2){
@@ -79,36 +73,35 @@ struct Arguments{
     string executablePath;
 };
 
-Arguments parseArguments(int argc, char **argv){
-	Arguments a;
+ArgumentParser parseArguments(int argc, char **argv){
+	ArgumentParser pa;
 
-	po::options_description desc("Options"); 
-	desc.add_options() 
-		("help,h", "prints usage")
-		("generate-page,p", po::value<string>(&a.pageName), "Generates a ready to use web page with the given name.")
-		("outdir,o", po::value<string>(&a.outdir), "output directory") 
-		("spacing,s", po::value<float>(&a.spacing), "Distance between points at root level. Distance halves each level.") 
-		("spacing-by-diagonal-fraction,d", po::value<int>(&a.diagonalFraction), "Maximum number of points on the diagonal in the first level (sets spacing). spacing = diagonal / value")
-		("levels,l", po::value<int>(&a.levels), "Number of levels that will be generated. 0: only root, 1: root and its children, ...")
-		("input-format,f", po::value<string>(&a.format), "Input format. xyz: cartesian coordinates as floats, rgb: colors as numbers, i: intensity as number")
-		("color-range", po::value<std::vector<double> >()->multitoken(), "")
-		("intensity-range", po::value<std::vector<double> >()->multitoken(), "")
-		("output-format", po::value<string>(&a.outFormatString), "Output format can be BINARY, LAS or LAZ. Default is BINARY")
-		("output-attributes,a", po::value<std::vector<std::string> >()->multitoken(), "can be any combination of RGB, INTENSITY and CLASSIFICATION. Default is RGB.")
-		("scale", po::value<double>(&a.scale), "Scale of the X, Y, Z coordinate in LAS and LAZ files.")
-		("aabb", po::value<string>(&a.aabbValuesString), "Bounding cube as \"minX minY minZ maxX maxY maxZ\". If not provided it is automatically computed")
-		("incremental", "Add new points to existing conversion")
-		("overwrite", "Replace existing conversion at target directory")
-		("source-listing-only", "Create a sources.json but no octree.")
-		("projection", po::value<string>(&a.projection), "Specify projection in proj4 format.")
-		("quality,q", po::value<string>(&a.conversionQualityString), "Specify FAST, DEFAULT or NICE to trade-off between quality and conversion speed.")
-		("list-of-files", po::value<string>(&a.listOfFiles), "A text file containing a list of files to be converted.")
-		("source", po::value<std::vector<std::string> >(), "Source file. Can be LAS, LAZ, PTX or PLY")
-		("title", po::value<string>(&a.title), "Page title")
-		("description", po::value<string>(&a.description), "Description to be shown in the page.")
-		("edl-enabled", "Enable Eye-Dome-Lighting.")
-		("show-skybox", "")
-		("material", po::value<string>(&a.material), "RGB, ELEVATION, INTENSITY, INTENSITY_GRADIENT, RETURN_NUMBER, SOURCE, LEVEL_OF_DETAIL");
+	pa.addArgument("-h", "--help"); // "prints usage");
+	pa.addArgument("-p", "--generate-page"); // , po::value<string>(&a.pageName), "Generates a ready to use web page with the given name.")
+	pa.addArgument("-o", "--outdir"); // , po::value<string>(&a.outdir), "output directory")
+	pa.addArgument("-s", "--spacing"); // , po::value<float>(&a.spacing), "Distance between points at root level. Distance halves each level.")
+	pa.addArgument("-d", "--spacing-by-diagonal-fraction"); // , po::value<int>(&a.diagonalFraction), "Maximum number of points on the diagonal in the first level (sets spacing). spacing = diagonal / value")
+	pa.addArgument("-l", "--levels"); // , l", po::value<int>(&a.levels), "Number of levels that will be generated. 0: only root, 1 : root and its children, ...")
+	pa.addArgument("-f", "--input-format"); // , f", po::value<string>(&a.format), "Input format.xyz: cartesian coordinates as floats, rgb : colors as numbers, i : intensity as number")
+	pa.addArgument("--color-range"); // , po::value<std::vector<double> >()->multitoken(), "")
+	pa.addArgument("--intensity-range"); // , po::value<std::vector<double> >()->multitoken(), "")
+	pa.addArgument("--output-format"); // , po::value<string>(&a.outFormatString), "Output format can be BINARY, LAS or LAZ. Default is BINARY")
+	pa.addArgument("-a", "--output-attributes"); // , a", po::value<std::vector<std::string> >()->multitoken(), "can be any combination of RGB, INTENSITY and CLASSIFICATION.Default is RGB.")
+	pa.addArgument("--scale"); // , po::value<double>(&a.scale), "Scale of the X, Y, Z coordinate in LAS and LAZ files.")
+	pa.addArgument("--aabb"); // , po::value<string>(&a.aabbValuesString), "Bounding cube as \"minX minY minZ maxX maxY maxZ\". If not provided it is automatically computed")
+	pa.addArgument("--incremental"); // , "Add new points to existing conversion")
+	pa.addArgument("--overwrite"); // , "Replace existing conversion at target directory")
+	pa.addArgument("--source-listing-only"); // , "Create a sources.json but no octree.")
+	pa.addArgument("--projection"); // , po::value<string>(&a.projection), "Specify projection in proj4 format.")
+	pa.addArgument("-q", "--quality"); //,q", po::value<string>(&a.conversionQualityString), "Specify FAST, DEFAULT or NICE to trade-off between quality and conversion speed.")
+	pa.addArgument("--list-of-files"); // , po::value<string>(&a.listOfFiles), "A text file containing a list of files to be converted.")
+	pa.addArgument("--source"); // , po::value<std::vector<std::string> >(), "Source file. Can be LAS, LAZ, PTX or PLY")
+	pa.addArgument("--title"); // , po::value<string>(&a.title), "Page title")
+	pa.addArgument("--description"); // , po::value<string>(&a.description), "Description to be shown in the page.")
+	pa.addArgument("--edl-enabled"); // , "Enable Eye-Dome-Lighting.")
+	pa.addArgument("--show-skybox"); // , "")
+	pa.addArgument("--material"); // , po::value<string>(&a.material), "RGB, ELEVATION, INTENSITY, INTENSITY_GRADIENT, RETURN_NUMBER, SOURCE, LEVEL_OF_DETAIL");
+	
 	po::positional_options_description p; 
 	p.add("source", -1); 
 

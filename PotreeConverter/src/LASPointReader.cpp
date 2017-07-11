@@ -4,20 +4,19 @@
 #include <iostream>
 #include <vector>
 
-#include "boost/filesystem.hpp"
-#include <boost/algorithm/string.hpp>
+#include <experimental/filesystem>
 #include "laszip_dll.h"
 
 #include "LASPointReader.h"
+#include "stuff.h"
 
 
-namespace fs = boost::filesystem;
+namespace fs = std::experimental::filesystem;
 
 using std::ifstream;
 using std::cout;
 using std::endl;
 using std::vector;
-using boost::iequals;
 using std::ios;
 
 namespace Potree{
@@ -43,7 +42,7 @@ LASPointReader::LASPointReader(string path){
 		for(fs::directory_iterator it(path); it != fs::directory_iterator(); it++){
 			fs::path filepath = it->path();
 			if(fs::is_regular_file(filepath)){
-				if(iequals(fs::extension(filepath), ".las") || iequals(fs::extension(filepath), ".laz")){
+				if(icompare(fs::path(filepath).extension().string(), ".las") || icompare(fs::path(filepath).extension().string(), ".laz")){
 					files.push_back(filepath.string());
 				}
 			}
