@@ -1,15 +1,15 @@
 project(PotreeConverter)
 
 set(RAPIDJSON_INCLUDE_DIR lib/rapidjson/include)
-set(ARGPARSE_INCLUDE_DIR lib/argparse/include)
+set(ARGUMENTS_INCLUDE_DIR lib/arguments)
 
 file(GLOB_RECURSE files src/*.cpp include/*.h include/*.hpp )
 file(GLOB_RECURSE lib_rapidjson_files ${RAPIDJSON_INCLUDE_DIR}/* )
-file(GLOB_RECURSE lib_argparse_files ${ARGPARSE_INCLUDE_DIR}/* )
+file(GLOB_RECURSE lib_argument_files ${ARGUMENTS_INCLUDE_DIR}/* )
 
 include_directories(include ${LASZIP_INCLUDE_DIRS})
 include_directories(include ${RAPIDJSON_INCLUDE_DIR})
-include_directories(include ${ARGPARSE_INCLUDE_DIR})
+include_directories(include ${ARGUMENTS_INCLUDE_DIR})
 
 SOURCE_GROUP("Header Files\\io" FILES 
 	include/BINPointReader.hpp 
@@ -31,9 +31,9 @@ SOURCE_GROUP("Source Files\\io" FILES
 )
 
 SOURCE_GROUP("lib\\rapidjson" FILES ${lib_rapidjson_files})
-SOURCE_GROUP("lib\\argparse" FILES ${lib_rapidjson_files})
+SOURCE_GROUP("lib\\arguments" FILES ${lib_argument_files})
 
-add_executable(PotreeConverter ${files} ${lib_rapidjson_files} ${lib_argparse_files})
+add_executable(PotreeConverter ${files} ${lib_rapidjson_files} ${lib_argument_files})
 
 target_link_libraries(PotreeConverter ${LASZIP_LIBRARY})
 
