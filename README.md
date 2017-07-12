@@ -13,7 +13,6 @@ Builds a potree octree from las, laz, binary ply, xyz or ptx files.
 ## Dependencies
 
 * [lastools(LASzip)](https://github.com/LAStools/LAStools) or [fork of lastools with cmake for LASzip](https://github.com/m-schuetz/LAStools)
-* [boost](http://www.boost.org/)
 
 ## Build
 
@@ -82,12 +81,7 @@ PotreeConverter
 # make sure you've got these environment variables set with your directory structure
 set LASZIP_INCLUDE_DIRS=D:\dev\workspaces\lastools\master\LASzip\dll
 set LASZIP_LIBRARY=D:\dev\workspaces\lastools\master\LASzip\build\src\Release\laszip.lib
-set BOOST_ROOT=D:\dev\lib\boost_1_58_0
-set BOOST_LIBRARYDIR=D:\dev\lib\boost\1.58_x64_msvc2015
 
-# compile boost
-cd boostDir
-b2 toolset=msvc-14.0 address-model=64 link=static link=shared threading=multi --build-type=complete stage --width-system --with-thread --with-filesystem --with-program_options --with-regex
 
 # checkout PotreeConverter
 cd D:/dev/workspaces/PotreeConverter
@@ -96,8 +90,8 @@ cd master
 mkdir build
 cd build
 
-# VS2015 64bit project
-cmake -G "Visual Studio 14 2015 Win64" -DBoost_USE_STATIC_LIBS=ON -DBOOST_ROOT=%BOOST_ROOT% -DBOOST_LIBRARYDIR=%BOOST_LIBRARYDIR% -DLASZIP_INCLUDE_DIRS=%LASZIP_INCLUDE_DIRS% -DLASZIP_LIBRARY=%LASZIP_LIBRARY%  ..\
+# VS2017 64bit project
+cmake -G "Visual Studio 15 2017 Win64" -DLASZIP_INCLUDE_DIRS=%LASZIP_INCLUDE_DIRS% -DLASZIP_LIBRARY=%LASZIP_LIBRARY%  ..\
 
 # copy ./PotreeConverter/resources/page_template to your binary working directory.
 
@@ -121,8 +115,6 @@ Options:
                                         Maximum number of points on the diagonal in the first level (sets spacing). spacing = diagonal / value
 -l [ --levels ] arg                     Number of levels that will be generated. 0: only root, 1: root and its children, ...
 -f [ --input-format ] arg               Input format. xyz: cartesian coordinates as floats, rgb: colors as numbers, i: intensity as number
---color-range arg
---intensity-range arg
 --output-format arg                     Output format can be BINARY, LAS or LAZ. Default is BINARY
 -a [ --output-attributes ] arg          can be any combination of RGB, INTENSITY, CLASSIFICATION and NORMAL. Default is RGB.
 --scale arg                             Scale of the X, Y, Z coordinate in LAS and LAZ files.
