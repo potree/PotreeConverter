@@ -53,7 +53,7 @@ void BINPointReader::close(){
 	}
 }
 
-long BINPointReader::numPoints(){
+long long BINPointReader::numPoints(){
 	//TODO
 
 	return 0;

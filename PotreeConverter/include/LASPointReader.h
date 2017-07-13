@@ -7,7 +7,7 @@
 #include <iostream>
 #include <vector>
 
-#include "laszip_dll.h"
+#include "laszip_api.h"
 
 #include "Point.h"
 #include "PointReader.h"
@@ -83,13 +83,21 @@ public:
 		laszip_seek_point(laszip_reader, 0);
     }
 
+	long long numPoints() {
+		if (header->version_major >= 1 && header->version_minor >= 4) {
+			return header->extended_number_of_point_records;
+		} else {
+			return header->number_of_point_records;
+		}
+	}
+
 	~LIBLASReader(){
 		laszip_close_reader(laszip_reader);
 		laszip_destroy(laszip_reader);
 	}
 
 	bool readPoint(){
-		if(pointsRead < header->number_of_point_records){
+		if(pointsRead < numPoints()){
 			laszip_read_point(laszip_reader);
 			pointsRead++;
 
@@ -144,7 +152,7 @@ public:
 
 	AABB getAABB();
 
-	long numPoints();
+	long long numPoints();
 
 	void close();
 

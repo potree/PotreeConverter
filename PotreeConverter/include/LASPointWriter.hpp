@@ -6,7 +6,7 @@
 #include <iostream>
 #include <fstream>
 
-#include "laszip_dll.h"
+#include "laszip_api.h"
 
 #include "AABB.h"
 #include "PointWriter.hpp"

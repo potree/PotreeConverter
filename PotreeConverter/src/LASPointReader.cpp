@@ -5,7 +5,7 @@
 #include <vector>
 
 #include <experimental/filesystem>
-#include "laszip_dll.h"
+#include "laszip_api.h"
 
 #include "LASPointReader.h"
 #include "stuff.h"
@@ -81,8 +81,12 @@ void LASPointReader::close(){
 	}
 }
 
-long LASPointReader::numPoints(){
-	return reader->header->number_of_point_records;
+long long LASPointReader::numPoints(){
+	if (reader->header->version_major >= 1 && reader->header->version_minor >= 4) {
+		return reader->header->extended_number_of_point_records;
+	} else {
+		return reader->header->number_of_point_records;
+	}
 }
 
 bool LASPointReader::readNextPoint(){

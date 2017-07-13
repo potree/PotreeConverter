@@ -246,16 +246,6 @@ public:
 		}
 
 		return false;
-
-		//if (!arg->shortname().empty() && map.find(arg->shortname()) != map.end()) {
-		//	return true;
-		//}
-		//
-		//if (!arg->fullname().empty() && map.find(arg->fullname()) != map.end()) {
-		//	return true;
-		//}
-
-		return false;
 	}
 
 	AValue get(string name) {
@@ -266,30 +256,6 @@ public:
 				return AValue(entry.second);
 			}
 		}
-
-		//if (arg == nullptr) {
-		//	return AValue({});
-		//} else if (arg->id == "") {
-		//	if (map.find("") != map.end()) {
-		//		return AValue(map[""]);
-		//	} else {
-		//		return AValue({});
-		//	}
-		//} else {
-		//	vector<string> result;
-		//
-		//	if (!arg->shortname().empty() && map.find(arg->shortname()) != map.end()) {
-		//		auto tokens = map[arg->shortname()];
-		//		result.insert(result.end(), tokens.begin(), tokens.end());
-		//	}
-		//
-		//	if (!arg->fullname().empty() && map.find(arg->fullname()) != map.end()) {
-		//		auto tokens = map[arg->fullname()];
-		//		result.insert(result.end(), tokens.begin(), tokens.end());
-		//	}
-		//
-		//	return AValue(result);
-		//}
 
 		return AValue({});
 	}

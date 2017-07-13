@@ -213,7 +213,7 @@ public:
 	AABB getAABB(){
 		return aabb;
 	}
-	long numPoints(){
+	long long numPoints(){
 		return pointCount;
 	}
 	void close(){
