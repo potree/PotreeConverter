@@ -1,22 +1,19 @@
 
-
 #include <fstream>
 #include <iostream>
 #include <vector>
 
-#include "boost/filesystem.hpp"
-#include <boost/algorithm/string.hpp>
+#include <experimental/filesystem>
 
 #include "BINPointReader.hpp"
 #include "stuff.h"
 
-namespace fs = boost::filesystem;
+namespace fs = std::experimental::filesystem;
 
 using std::ifstream;
 using std::cout;
 using std::endl;
 using std::vector;
-using boost::iequals;
 using std::ios;
 
 namespace Potree{
@@ -56,7 +53,7 @@ void BINPointReader::close(){
 	}
 }
 
-long BINPointReader::numPoints(){
+long long BINPointReader::numPoints(){
 	//TODO
 
 	return 0;

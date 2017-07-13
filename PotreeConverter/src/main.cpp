@@ -10,11 +10,10 @@
 #include "PotreeConverter.h"
 #include "PotreeException.h"
 
-#include "boost/program_options.hpp" 
-#include <boost/filesystem.hpp>
+#include "arguments.hpp"
+#include <experimental/filesystem>
 
-namespace po = boost::program_options; 
-namespace fs = boost::filesystem;
+namespace fs = std::experimental::filesystem;
 
 using std::string;
 using std::cout;
@@ -35,19 +34,7 @@ using Potree::ConversionQuality;
 
 class SparseGrid;
 
-void printUsage(po::options_description &desc){
-	cout << "usage: PotreeConverter [OPTIONS] SOURCE" << endl;
-	cout << desc << endl;
-}
-
-// from http://stackoverflow.com/questions/15577107/sets-of-mutually-exclusive-options-in-boost-program-options
-void conflicting_options(const boost::program_options::variables_map & vm, const std::string & opt1, const std::string & opt2){
-    if (vm.count(opt1) && !vm[opt1].defaulted() && vm.count(opt2) && !vm[opt2].defaulted()){
-        throw std::logic_error(std::string("Conflicting options '") + opt1 + "' and '" + opt2 + "'.");
-    }
-}
-
-struct Arguments{
+struct PotreeArguments {
 	bool help = false;
 	StoreOption storeOption = StoreOption::ABORT_IF_EXISTS;
 	vector<string> source;
@@ -55,7 +42,6 @@ struct Arguments{
 	float spacing;
 	int levels;
 	string format;
-	string outFormatString;
 	double scale;
 	int diagonalFraction;
 	Potree::OutputFormat outFormat;
@@ -63,7 +49,6 @@ struct Arguments{
 	vector<double> intensityRange;
 	vector<string> outputAttributes;
 	bool generatePage;
-	string aabbValuesString;
 	vector<double> aabbValues;
 	string pageName = "";
 	string projection = "";
@@ -79,178 +64,159 @@ struct Arguments{
     string executablePath;
 };
 
-Arguments parseArguments(int argc, char **argv){
-	Arguments a;
+PotreeArguments parseArguments(int argc, char **argv){
+	Arguments args(argc, argv);
 
-	po::options_description desc("Options"); 
-	desc.add_options() 
-		("help,h", "prints usage")
-		("generate-page,p", po::value<string>(&a.pageName), "Generates a ready to use web page with the given name.")
-		("outdir,o", po::value<string>(&a.outdir), "output directory") 
-		("spacing,s", po::value<float>(&a.spacing), "Distance between points at root level. Distance halves each level.") 
-		("spacing-by-diagonal-fraction,d", po::value<int>(&a.diagonalFraction), "Maximum number of points on the diagonal in the first level (sets spacing). spacing = diagonal / value")
-		("levels,l", po::value<int>(&a.levels), "Number of levels that will be generated. 0: only root, 1: root and its children, ...")
-		("input-format,f", po::value<string>(&a.format), "Input format. xyz: cartesian coordinates as floats, rgb: colors as numbers, i: intensity as number")
-		("color-range", po::value<std::vector<double> >()->multitoken(), "")
-		("intensity-range", po::value<std::vector<double> >()->multitoken(), "")
-		("output-format", po::value<string>(&a.outFormatString), "Output format can be BINARY, LAS or LAZ. Default is BINARY")
-		("output-attributes,a", po::value<std::vector<std::string> >()->multitoken(), "can be any combination of RGB, INTENSITY and CLASSIFICATION. Default is RGB.")
-		("scale", po::value<double>(&a.scale), "Scale of the X, Y, Z coordinate in LAS and LAZ files.")
-		("aabb", po::value<string>(&a.aabbValuesString), "Bounding cube as \"minX minY minZ maxX maxY maxZ\". If not provided it is automatically computed")
-		("incremental", "Add new points to existing conversion")
-		("overwrite", "Replace existing conversion at target directory")
-		("source-listing-only", "Create a sources.json but no octree.")
-		("projection", po::value<string>(&a.projection), "Specify projection in proj4 format.")
-		("quality,q", po::value<string>(&a.conversionQualityString), "Specify FAST, DEFAULT or NICE to trade-off between quality and conversion speed.")
-		("list-of-files", po::value<string>(&a.listOfFiles), "A text file containing a list of files to be converted.")
-		("source", po::value<std::vector<std::string> >(), "Source file. Can be LAS, LAZ, PTX or PLY")
-		("title", po::value<string>(&a.title), "Page title")
-		("description", po::value<string>(&a.description), "Description to be shown in the page.")
-		("edl-enabled", "Enable Eye-Dome-Lighting.")
-		("show-skybox", "")
-		("material", po::value<string>(&a.material), "RGB, ELEVATION, INTENSITY, INTENSITY_GRADIENT, RETURN_NUMBER, SOURCE, LEVEL_OF_DETAIL");
-	po::positional_options_description p; 
-	p.add("source", -1); 
+	args.addArgument("source,i,", "input files");
+	args.addArgument("help,h", "prints usage");
+	args.addArgument("generate-page,p", "Generates a ready to use web page with the given name.");
+	args.addArgument("outdir,o", "output directory");
+	args.addArgument("spacing,s", "Distance between points at root level. Distance halves each level.");
+	args.addArgument("spacing-by-diagonal-fraction,d", "Maximum number of points on the diagonal in the first level (sets spacing). spacing = diagonal / value");
+	args.addArgument("levels,l", "Number of levels that will be generated. 0: only root, 1: root and its children, ...");
+	args.addArgument("input-format,f", "Input format. xyz: cartesian coordinates as floats, rgb: colors as numbers, i: intensity as number");
+	args.addArgument("color-range", "");
+	args.addArgument("intensity-range", "");
+	args.addArgument("output-format", "Output format can be BINARY, LAS or LAZ. Default is BINARY");
+	args.addArgument("output-attributes,a", "can be any combination of RGB, INTENSITY and CLASSIFICATION. Default is RGB.");
+	args.addArgument("scale", "Scale of the X, Y, Z coordinate in LAS and LAZ files.");
+	args.addArgument("aabb", "Bounding cube as \"minX minY minZ maxX maxY maxZ\". If not provided it is automatically computed");
+	args.addArgument("incremental", "Add new points to existing conversion");
+	args.addArgument("overwrite", "Replace existing conversion at target directory");
+	args.addArgument("source-listing-only", "Create a sources.json but no octree.");
+	args.addArgument("projection", "Specify projection in proj4 format.");
+	args.addArgument("list-of-files", "A text file containing a list of files to be converted.");
+	args.addArgument("source", "Source file. Can be LAS, LAZ, PTX or PLY");
+	args.addArgument("title", "Page title");
+	args.addArgument("description", "Description to be shown in the page.");
+	args.addArgument("edl-enabled", "Enable Eye-Dome-Lighting.");
+	args.addArgument("show-skybox", "");
+	args.addArgument("material", "RGB, ELEVATION, INTENSITY, INTENSITY_GRADIENT, RETURN_NUMBER, SOURCE, LEVEL_OF_DETAIL");
 
-	po::variables_map vm; 
-	po::store(po::command_line_parser(argc, argv).options(desc).positional(p).run(), vm); 
-	po::notify(vm);
+	PotreeArguments a;
 
-	if(vm.count("help") || (!vm.count("source") && !vm.count("list-of-files"))){
-		printUsage(desc);
+	if (args.has("help")){
+		cout << args.usage() << endl;
 		exit(0);
+	} else if (!args.has("source") && !args.has("list-of-files")){
+		cout << args.usage() << endl;
+		exit(1);
 	}
 
-	conflicting_options(vm, "incremental", "overwrite");
+	if (args.has("incremental") && args.has("overwrite")) {
+		cout << "cannot have --incremental and --overwrite at the same time";
+		exit(1);
+	}
 
-	if(vm.count("incremental")){
+	a.source = args.get("source").as<vector<string>>();
+	a.generatePage = args.has("generate-page");
+	a.outdir = args.get("outdir").as<string>();
+	a.spacing = args.get("spacing").as<double>(0.0);
+	a.diagonalFraction = args.get("d").as<double>(0.0);
+	a.levels = args.get("levels").as<int>(-1);
+	a.format = args.get("input-format").as<string>();
+	a.colorRange = args.get("color-range").as<vector<double>>();
+	a.intensityRange = args.get("intensity-range").as<vector<double>>();
+	
+	if (args.has("output-format")) {
+		string of = args.get("output-format").as<string>("BINARY");
+
+		if (of == "BINARY") {
+			a.outFormat = Potree::OutputFormat::BINARY;
+		} else if (of == "LAS") {
+			a.outFormat = Potree::OutputFormat::LAS;
+		} else if (of == "LAZ") {
+			a.outFormat = Potree::OutputFormat::LAZ;
+		} else {
+			a.outFormat = Potree::OutputFormat::BINARY;
+		}
+	} else {
+		a.outFormat = Potree::OutputFormat::BINARY;
+	}
+
+	if (args.has("output-attributes")) {
+		a.outputAttributes = args.get("output-attributes").as<vector<string>>();
+	} else {
+		a.outputAttributes = { "RGB" };
+	}
+
+	a.scale = args.get("scale").as<double>(0.0);
+	
+	if (args.has("aabb")) {
+		string strAABB = args.get("aabb").as<string>();
+		vector<double> aabbValues;
+		char sep = ' ';
+		for (size_t p = 0, q = 0; p != strAABB.npos; p = q)
+			aabbValues.push_back(atof(strAABB.substr(p + (p != 0), (q = strAABB.find(sep, p + 1)) - p - (p != 0)).c_str()));
+
+		if (aabbValues.size() != 6) {
+			cerr << "AABB requires 6 arguments" << endl;
+			exit(1);
+		}
+
+		a.aabbValues = aabbValues;
+	}
+
+	if(args.has("incremental")){
 		a.storeOption = StoreOption::INCREMENTAL;
-	}else if(vm.count("overwrite")){
+	}else if(args.has("overwrite")){
 		a.storeOption = StoreOption::OVERWRITE;
 	}else{
 		a.storeOption = StoreOption::ABORT_IF_EXISTS;
 	}
 
-	if(vm.count("source-listing-only")){
-		a.sourceListingOnly = true;
-	}
+	a.sourceListingOnly = args.has("source-listing-only");
+	a.projection = args.get("projection").as<string>();
 
-	if(vm.count("edl-enabled")){
-		a.edlEnabled = true;
-	}else{
-		a.edlEnabled = false;
-	}
+	if (args.has("source")) {
+		a.source = args.get("source").as<vector<string>>();
+	} else if (args.has("list-of-files")) {
+		string lof = args.get("list-of-files").as<string>();
+		a.listOfFiles = lof;
 
-	if(vm.count("show-skybox")){
-		a.showSkybox = true;
-	}else{
-		a.showSkybox = false;
-	}
-
-	vector<string> validMaterialNames{"RGB", "ELEVATION", "INTENSITY", "INTENSITY_GRADIENT", "RETURN_NUMBER", "SOURCE", "LEVEL_OF_DETAIL"};
-	if(std::find(validMaterialNames.begin(), validMaterialNames.end(), a.material) == validMaterialNames.end()){
-		printUsage(desc);
-		cout << endl;
-		cout << "ERROR: " << "invalid material name specified" << endl;
-		exit(1);
-	}
-
-	if(vm.count("source")){
-		a.source = vm["source"].as<std::vector<std::string> >();
-	}else if(vm.count("list-of-files")){
-		if(fs::exists(fs::path(a.listOfFiles))){
+		if (fs::exists(fs::path(a.listOfFiles))) {
 			std::ifstream in(a.listOfFiles);
 			string line;
-			while( std::getline(in, line)){
+			while (std::getline(in, line)) {
 				string path;
-				if(fs::path(line).is_absolute()){
+				if (fs::path(line).is_absolute()) {
 					path = line;
-				}else{
+				} else {
 					fs::path absPath = fs::canonical(fs::path(a.listOfFiles));
 					fs::path lofDir = absPath.parent_path();
 					path = lofDir.string() + "/" + line;
 				}
-				
-				if(fs::exists(fs::path(path))){
+
+				if (fs::exists(fs::path(path))) {
 					a.source.push_back(path);
-				}else{
+				} else {
 					cerr << "ERROR: file not found: " << path << endl;
 					exit(1);
 				}
 			}
 			in.close();
-		}else{
+		} else {
 			cerr << "ERROR: specified list of files not found: '" << a.listOfFiles << "'" << endl;
 			exit(1);
 		}
-	}else{
-		cerr << "ERROR: neither source file nor list-of-files parameters were specified!" << endl;
+	}
+
+	a.title = args.get("title").as<string>();
+	a.description = args.get("description").as<string>();
+	a.edlEnabled = args.has("edl-enabled");
+	a.showSkybox = args.has("show-skybox");
+
+	vector<string> validMaterialNames = {"RGB", "ELEVATION", "INTENSITY", "INTENSITY_GRADIENT", "RETURN_NUMBER", "SOURCE", "LEVEL_OF_DETAIL"};
+	if(std::find(validMaterialNames.begin(), validMaterialNames.end(), a.material) == validMaterialNames.end()){
+		cout << args.usage();
+		cout << endl;
+		cout << "ERROR: " << "invalid material name specified" << endl;
 		exit(1);
-	}
-
-	if(vm.count("color-range")){
-		a.colorRange = vm["color-range"].as< vector<double> >();
-
-		if(a.colorRange.size() > 2){
-			cerr << "color-range only takes 0 - 2 arguments" << endl;
-			exit(1);
-		}
-	}
-
-	if(vm.count("intensity-range")){
-		a.intensityRange = vm["intensity-range"].as< vector<double> >();
-
-		if(a.intensityRange.size() > 2){
-			cerr << "intensity-range only takes 0 - 2 arguments" << endl;
-			exit(1);
-		}
-	}
-
-	if(vm.count("output-attributes")){
-		a.outputAttributes = vm["output-attributes"].as< vector<string> >();
-	}else{
-		a.outputAttributes.push_back("RGB");
-	}
-
-
-	if(vm.count("aabb")){
-		char sep = ' '; 
-		for(size_t p=0, q=0; p!= a.aabbValuesString.npos; p=q)
-    		a.aabbValues.push_back(atof(a.aabbValuesString.substr(p+(p!=0), (q = a.aabbValuesString.find(sep, p+1))-p-(p!=0)).c_str())); 
-
-		if(a.aabbValues.size() != 6){
-			cerr << "AABB requires 6 arguments" << endl;
-			exit(1);
-		}
 	}
 
 	// set default parameters 
 	fs::path pSource(a.source[0]);
-	a.outdir = vm.count("outdir") ? vm["outdir"].as<string>() : pSource.generic_string() + "_converted";
-	if(!vm.count("spacing")) a.spacing = 0;
-	a.generatePage = (!vm.count("generate-page")) ? false : true;
-	if(!vm.count("spacing-by-diagonal-fraction")) a.diagonalFraction = 0;
-	if(!vm.count("levels")) a.levels = -1;
-	if(!vm.count("input-format")) a.format = "";
-	if(!vm.count("scale")) a.scale = 0;
-	if(!vm.count("output-format")) a.outFormatString = "BINARY";
-	if(!vm.count("output-format")) a.conversionQualityString = "DEFAULT";
-	
-	if(a.outFormatString == "BINARY"){
-		a.outFormat = Potree::OutputFormat::BINARY;
-	}else if(a.outFormatString == "LAS"){
-		a.outFormat = Potree::OutputFormat::LAS;
-	}else if(a.outFormatString == "LAZ"){
-		a.outFormat = Potree::OutputFormat::LAZ;
-	}
-
-	if(a.conversionQualityString == "FAST"){
-		a.conversionQuality = ConversionQuality::FAST;
-	}else if(a.conversionQualityString == "DEFAULT"){
-		a.conversionQuality = ConversionQuality::DEFAULT;
-	}else if(a.conversionQualityString == "NICE"){
-		a.conversionQuality = ConversionQuality::NICE;
-	}
+	a.outdir = args.has("outdir") ? args.get("outdir").as<string>() : pSource.generic_string() + "_converted";
 	
 	if (a.diagonalFraction != 0) {
 		a.spacing = 0;
@@ -264,7 +230,7 @@ Arguments parseArguments(int argc, char **argv){
 	return a;
 }
 
-void printArguments(Arguments &a){
+void printArguments(PotreeArguments &a){
 	try{
 
 		cout << "== params ==" << endl;
@@ -280,7 +246,6 @@ void printArguments(Arguments &a){
 		cout << "format:            \t" << a.format << endl;
 		cout << "scale:             \t" << a.scale << endl;
 		cout << "pageName:          \t" << a.pageName << endl;
-		cout << "output-format:     \t" << a.outFormatString << endl;
 		cout << "projection:        \t" << a.projection << endl;
 		cout << endl;
 	}catch(exception &e){
@@ -293,54 +258,12 @@ void printArguments(Arguments &a){
 #include "Vector3.h"
 #include <random>
 
-//int main(int argc, char **argv){
-//
-//	auto start = high_resolution_clock::now();
-//
-//	int numPoints = 1'000'000;
-//
-//	std::default_random_engine generator;
-//	std::uniform_int_distribution<int> distribution(-10, 10);
-//
-//	vector<Potree::Vector3<double>> points;
-//
-//	for(int i = 0; i < numPoints; i++){
-//		double x = distribution(generator);
-//		double y = distribution(generator);
-//		double z = distribution(generator);
-//
-//		Potree::Vector3<double> point(x, y, z);
-//		points.push_back(point);
-//	}
-//
-//
-//	double minDistance = 1000.0;
-//	Potree::Vector3<double> pref(7, 3, 9);
-//	for(int j = 0; j < 100; j++){
-//		for(int i = 0; i < numPoints; i++){
-//			double distance = points[i].distanceTo(pref);
-//			minDistance = min(distance, minDistance);
-//		}
-//	}
-//
-//	cout << "min distance: " << minDistance << endl;
-//
-//
-//	auto end = high_resolution_clock::now();
-//	long long duration = duration_cast<milliseconds>(end-start).count();
-//	float seconds = duration / 1'000.0f;
-//
-//	cout << "duration: " << seconds << endl;
-//
-//}
 
 int main(int argc, char **argv){
 	cout.imbue(std::locale(""));
 	
-	
-	
 	try{
-		Arguments a = parseArguments(argc, argv);
+		PotreeArguments a = parseArguments(argc, argv);
 		printArguments(a);
 
         PotreeConverter pc(a.executablePath, a.outdir, a.source);

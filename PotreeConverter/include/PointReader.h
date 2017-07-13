@@ -3,15 +3,12 @@
 #ifndef POINTREADER_H
 #define POINTREADER_H
 
-#include "boost/filesystem.hpp"
-#include <boost/algorithm/string.hpp>
+#include <experimental/filesystem>
 
 #include "Point.h"
 #include "AABB.h"
 
-namespace fs = boost::filesystem;
-
-using boost::iequals;
+namespace fs = std::experimental::filesystem;
 
 namespace Potree{
 
@@ -26,7 +23,7 @@ public:
 
 	virtual AABB getAABB() = 0;
 
-	virtual long numPoints() = 0;
+	virtual long long numPoints() = 0;
 
 	virtual void close() = 0;
 };

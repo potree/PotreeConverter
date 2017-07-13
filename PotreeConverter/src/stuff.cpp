@@ -114,17 +114,17 @@ long filesize(string filename){
 }
 
 
-/**
- * from http://stackoverflow.com/questions/874134/find-if-string-endswith-another-string-in-c
- */
-bool endsWith (std::string const &fullString, std::string const &ending)
-{
-    if (fullString.length() >= ending.length()) {
-        return (0 == fullString.compare (fullString.length() - ending.length(), ending.length(), ending));
-    } else {
-        return false;
-    }
-}
+///**
+// * from http://stackoverflow.com/questions/874134/find-if-string-endswith-another-string-in-c
+// */
+//bool endsWith (std::string const &fullString, std::string const &ending)
+//{
+//    if (fullString.length() >= ending.length()) {
+//        return (0 == fullString.compare (fullString.length() - ending.length(), ending.length(), ending));
+//    } else {
+//        return false;
+//    }
+//}
 
 /**
  * see http://stackoverflow.com/questions/735204/convert-a-string-in-c-to-upper-case
@@ -172,7 +172,7 @@ bool copyDir(fs::path source, fs::path destination){
                 }
             }else{
                 // Found file: Copy
-                fs::copy_file(current,destination / current.filename(), fs::copy_option::overwrite_if_exists);
+				fs::copy_file(current, destination / current.filename(), fs::copy_options::overwrite_existing);
             }
         }catch(fs::filesystem_error const & e){
             std:: cerr << e.what() << '\n';
@@ -190,6 +190,111 @@ float psign(float value){
 	}else{
 		return 1.0;
 	}
+}
+
+
+// see https://stackoverflow.com/questions/23943728/case-insensitive-standard-string-comparison-in-c
+bool icompare_pred(unsigned char a, unsigned char b) {
+	return std::tolower(a) == std::tolower(b);
+}
+
+// see https://stackoverflow.com/questions/23943728/case-insensitive-standard-string-comparison-in-c
+bool icompare(std::string const& a, std::string const& b) {
+	if (a.length() == b.length()) {
+		return std::equal(b.begin(), b.end(), a.begin(), icompare_pred);
+	}
+	else {
+		return false;
+	}
+}
+
+//bool endsWith(const std::string &str, const std::string &suffix) {
+//	return str.size() >= suffix.size() && str.compare(str.size() - suffix.size(), suffix.size(), suffix) == 0;
+//}
+
+bool endsWith(const string &str, const string &suffix) {
+
+	if (str.size() < suffix.size()) {
+		return false;
+	}
+
+	auto tstr = str.substr(str.size() - suffix.size());
+
+	return tstr.compare(suffix) == 0;
+}
+
+bool iEndsWith(const std::string &str, const std::string &suffix) {
+
+	if (str.size() < suffix.size()) {
+		return false;
+	}
+
+	auto tstr = str.substr(str.size() - suffix.size());
+
+	return icompare(tstr, suffix) == 0;
+}
+
+vector<string> split(string str, vector<char> delimiters) {
+
+	vector<string> tokens;
+
+	auto isDelimiter = [&delimiters](char ch) {
+		for (auto &delimiter : delimiters) {
+			if (ch == delimiter) {
+				return true;
+			}
+		}
+
+		return false;
+	};
+
+	int start = 0;
+	for (int i = 0; i < str.size(); i++) {
+		if (isDelimiter(str[i])) {
+			if (start < i) {
+				auto token = str.substr(start, i - start);
+				tokens.push_back(token);
+			}
+
+			start = i + 1;
+		}
+	}
+
+	if (start < str.size()) {
+		tokens.push_back(str.substr(start));
+	}
+
+	return tokens;
+}
+
+vector<string> split(string str, char delimiter) {
+	return split(str, { delimiter });
+}
+
+// see https://stackoverflow.com/questions/216823/whats-the-best-way-to-trim-stdstring
+string ltrim(string s) {
+	s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](unsigned char ch) {
+		return !std::isspace(ch);
+	}));
+
+	return s;
+}
+
+// see https://stackoverflow.com/questions/216823/whats-the-best-way-to-trim-stdstring
+string rtrim(string s) {
+	s.erase(std::find_if(s.rbegin(), s.rend(), [](unsigned char ch) {
+		return !std::isspace(ch);
+	}).base(), s.end());
+
+	return s;
+}
+
+// see https://stackoverflow.com/questions/216823/whats-the-best-way-to-trim-stdstring
+string trim(string s) {
+	s = ltrim(s);
+	s = rtrim(s);
+
+	return s;
 }
 
 }

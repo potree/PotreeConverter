@@ -7,10 +7,7 @@
 #include <fstream>
 #include <iomanip>
 
-
-
-#include <boost/filesystem.hpp>
-
+#include <experimental/filesystem>
 
 #include "AABB.h"
 #include "SparseGrid.h"
@@ -34,7 +31,7 @@ using std::chrono::high_resolution_clock;
 using std::chrono::milliseconds;
 using std::chrono::duration_cast;
 
-namespace fs = boost::filesystem;
+namespace fs = std::experimental::filesystem;
 
 namespace Potree{
 
@@ -521,8 +518,8 @@ void PotreeWriter::waitUntilProcessed(){
 
 void PotreeWriter::add(Point &p){
 	if(numAdded == 0){
-		boost::filesystem::path dataDir(workDir + "/data");
-		boost::filesystem::path tempDir(workDir + "/temp");
+		fs::path dataDir(workDir + "/data");
+		fs::path tempDir(workDir + "/temp");
 
 		fs::create_directories(dataDir);
 		fs::create_directories(tempDir);
@@ -681,7 +678,7 @@ void PotreeWriter::loadStateFromDisk(){
 		for (fs::recursive_directory_iterator iter(rootDir), end; iter != end; ++iter){
 			fs::path path = iter->path();
 			if(fs::is_regular_file(path)){
-				if(boost::iends_with(path.extension().string(), ".hrc")){
+				if(iEndsWith(path.extension().string(), ".hrc")){
 					hrcPaths.push_back(path.string());
 				}else{
 			

@@ -1,7 +1,6 @@
 
 
-#include <boost/filesystem.hpp>
-#include <boost/algorithm/string/predicate.hpp>
+#include <experimental/filesystem>
 
 #include "rapidjson/document.h"
 #include "rapidjson/prettywriter.h"
@@ -45,25 +44,22 @@ using std::chrono::high_resolution_clock;
 using std::chrono::milliseconds;
 using std::chrono::duration_cast;
 using std::fstream;
-using boost::iends_with;
-using boost::filesystem::is_directory;
-using boost::filesystem::directory_iterator;
-using boost::filesystem::is_regular_file;
-using boost::filesystem::path;
+
+namespace fs = std::experimental::filesystem;
 
 namespace Potree{
 
 PointReader *PotreeConverter::createPointReader(string path, PointAttributes pointAttributes){
 	PointReader *reader = NULL;
-	if(boost::iends_with(path, ".las") || boost::iends_with(path, ".laz")){
+	if(iEndsWith(path, ".las") || iEndsWith(path, ".laz")){
 		reader = new LASPointReader(path);
-	}else if(boost::iends_with(path, ".ptx")){
+	}else if(iEndsWith(path, ".ptx")){
 		reader = new PTXPointReader(path);
-	}else if(boost::iends_with(path, ".ply")){
+	}else if(iEndsWith(path, ".ply")){
 		reader = new PlyPointReader(path);
-	}else if(boost::iends_with(path, ".xyz") || boost::iends_with(path, ".txt")){
+	}else if(iEndsWith(path, ".xyz") || iEndsWith(path, ".txt")){
 		reader = new XYZPointReader(path, format, colorRange, intensityRange);
-	}else if(boost::iends_with(path, ".pts")){
+	}else if(iEndsWith(path, ".pts")){
 		vector<double> intensityRange;
 
 		if(this->intensityRange.size() == 0){
@@ -72,7 +68,7 @@ PointReader *PotreeConverter::createPointReader(string path, PointAttributes poi
 		}
 
 		reader = new XYZPointReader(path, format, colorRange, intensityRange);
- 	}else if(boost::iends_with(path, ".bin")){
+ 	}else if(iEndsWith(path, ".bin")){
 		reader = new BINPointReader(path, aabb, scale, pointAttributes);
 	}
 
@@ -90,24 +86,24 @@ void PotreeConverter::prepare(){
 	// if sources contains directories, use files inside the directory instead
 	vector<string> sourceFiles;
 	for (const auto &source : sources) {
-		path pSource(source);
-		if(boost::filesystem::is_directory(pSource)){
-			boost::filesystem::directory_iterator it(pSource);
-			for(;it != boost::filesystem::directory_iterator(); it++){
-				path pDirectoryEntry = it->path();
-				if(boost::filesystem::is_regular_file(pDirectoryEntry)){
+		fs::path pSource(source);
+		if(fs::is_directory(pSource)){
+			fs::directory_iterator it(pSource);
+			for(;it != fs::directory_iterator(); it++){
+				fs::path pDirectoryEntry = it->path();
+				if(fs::is_regular_file(pDirectoryEntry)){
 					string filepath = pDirectoryEntry.string();
-					if(boost::iends_with(filepath, ".las") 
-						|| boost::iends_with(filepath, ".laz") 
-						|| boost::iends_with(filepath, ".xyz")
-						|| boost::iends_with(filepath, ".pts")
-						|| boost::iends_with(filepath, ".ptx")
-						|| boost::iends_with(filepath, ".ply")){
+					if(iEndsWith(filepath, ".las") 
+						|| iEndsWith(filepath, ".laz") 
+						|| iEndsWith(filepath, ".xyz")
+						|| iEndsWith(filepath, ".pts")
+						|| iEndsWith(filepath, ".ptx")
+						|| iEndsWith(filepath, ".ply")){
 						sourceFiles.push_back(filepath);
 					}
 				}
 			}
-		}else if(boost::filesystem::is_regular_file(pSource)){
+		}else if(fs::is_regular_file(pSource)){
 			sourceFiles.push_back(source);
 		}
 	}
@@ -184,9 +180,12 @@ void PotreeConverter::generatePage(string name){
 				}else{
 					out << "\t\t" << "viewer.setBackground(\"gradient\"); // [\"skybox\", \"gradient\", \"black\", \"white\"];\n";
 				}
-				//out << "\t\t" << "viewer.setShowSkybox(" << showSkybox << ");\n";
+				
+				string descriptionEscaped = string(description);
+				std::replace(descriptionEscaped.begin(), descriptionEscaped.end(), '`', '\'');
+
 				out << "\t\t" << "viewer.setMaterialID(Potree.PointColorType." << material << "); // any Potree.PointColorType.XXXX \n";
-				out << "\t\t" << "viewer.setDescription('" << boost::replace_all_copy(description, "'", "\"") << "');\n";
+				out << "\t\t" << "viewer.setDescription(`" << descriptionEscaped << "`);\n";
 			}else{
 				out << line << endl;
 			}
@@ -317,8 +316,8 @@ void writeSources(string path, vector<string> sourceFilenames, vector<int> numPo
 	Writer<StringBuffer> writer(buffer);
 	d.Accept(writer);
 	
-	if(!boost::filesystem::exists(boost::filesystem::path(path))){
-		boost::filesystem::path pcdir(path);
+	if(!fs::exists(fs::path(path))){
+		fs::path pcdir(path);
 		fs::create_directories(pcdir);
 	}
 
