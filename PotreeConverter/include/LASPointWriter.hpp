@@ -5,6 +5,8 @@
 #include <string>
 #include <iostream>
 #include <fstream>
+#include <stdio.h>
+#include <string.h>
 
 #include "laszip_api.h"
 
@@ -32,7 +34,7 @@ public:
 		this->file = file;
 		this->aabb = aabb;
 		numPoints = 0;
-		
+
 
 		memset(&header, 0, sizeof(laszip_header));
 		strcpy(header.generating_software, "potree");
@@ -100,5 +102,3 @@ public:
 }
 
 #endif
-
-
