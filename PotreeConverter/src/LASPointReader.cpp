@@ -35,7 +35,7 @@ AABB LIBLASReader::getAABB(){
 LASPointReader::LASPointReader(string path){
 	this->path = path;
 
-	
+
 	if(fs::is_directory(path)){
 		// if directory is specified, find all las and laz files inside directory
 
@@ -50,13 +50,13 @@ LASPointReader::LASPointReader(string path){
 	}else{
 		files.push_back(path);
 	}
-	
+
 
 	// read bounding box
 	for (const auto &file : files) {
 		LIBLASReader aabbReader(file);
 		AABB lAABB = aabbReader.getAABB();
-		
+
 		aabb.update(lAABB.min);
 		aabb.update(lAABB.max);
 
@@ -112,6 +112,7 @@ bool LASPointReader::readNextPoint(){
 
 Point LASPointReader::getPoint(){
 	Point const p = reader->GetPoint();
+  //cout << p.position.x << ", " << p.position.y << ", " << p.position.z << endl;
     return p;
 }
 
