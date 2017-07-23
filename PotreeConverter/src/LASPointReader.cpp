@@ -4,20 +4,19 @@
 #include <iostream>
 #include <vector>
 
-#include "boost/filesystem.hpp"
-#include <boost/algorithm/string.hpp>
-#include "laszip_dll.h"
+#include <experimental/filesystem>
+#include "laszip_api.h"
 
 #include "LASPointReader.h"
+#include "stuff.h"
 
 
-namespace fs = boost::filesystem;
+namespace fs = std::experimental::filesystem;
 
 using std::ifstream;
 using std::cout;
 using std::endl;
 using std::vector;
-using boost::iequals;
 using std::ios;
 
 namespace Potree{
@@ -36,14 +35,14 @@ AABB LIBLASReader::getAABB(){
 LASPointReader::LASPointReader(string path){
 	this->path = path;
 
-	
+
 	if(fs::is_directory(path)){
 		// if directory is specified, find all las and laz files inside directory
 
 		for(fs::directory_iterator it(path); it != fs::directory_iterator(); it++){
 			fs::path filepath = it->path();
 			if(fs::is_regular_file(filepath)){
-				if(iequals(fs::extension(filepath), ".las") || iequals(fs::extension(filepath), ".laz")){
+				if(icompare(fs::path(filepath).extension().string(), ".las") || icompare(fs::path(filepath).extension().string(), ".laz")){
 					files.push_back(filepath.string());
 				}
 			}
@@ -51,13 +50,13 @@ LASPointReader::LASPointReader(string path){
 	}else{
 		files.push_back(path);
 	}
-	
+
 
 	// read bounding box
 	for (const auto &file : files) {
 		LIBLASReader aabbReader(file);
 		AABB lAABB = aabbReader.getAABB();
-		
+
 		aabb.update(lAABB.min);
 		aabb.update(lAABB.max);
 
@@ -82,8 +81,12 @@ void LASPointReader::close(){
 	}
 }
 
-long LASPointReader::numPoints(){
-	return reader->header->number_of_point_records;
+long long LASPointReader::numPoints(){
+	if (reader->header->version_major >= 1 && reader->header->version_minor >= 4) {
+		return reader->header->extended_number_of_point_records;
+	} else {
+		return reader->header->number_of_point_records;
+	}
 }
 
 bool LASPointReader::readNextPoint(){
@@ -109,6 +112,7 @@ bool LASPointReader::readNextPoint(){
 
 Point LASPointReader::getPoint(){
 	Point const p = reader->GetPoint();
+  //cout << p.position.x << ", " << p.position.y << ", " << p.position.z << endl;
     return p;
 }
 

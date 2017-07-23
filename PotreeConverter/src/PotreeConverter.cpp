@@ -1,7 +1,6 @@
 
 
-#include <boost/filesystem.hpp>
-#include <boost/algorithm/string/predicate.hpp>
+#include <experimental/filesystem>
 
 #include "rapidjson/document.h"
 #include "rapidjson/prettywriter.h"
@@ -45,25 +44,22 @@ using std::chrono::high_resolution_clock;
 using std::chrono::milliseconds;
 using std::chrono::duration_cast;
 using std::fstream;
-using boost::iends_with;
-using boost::filesystem::is_directory;
-using boost::filesystem::directory_iterator;
-using boost::filesystem::is_regular_file;
-using boost::filesystem::path;
+
+namespace fs = std::experimental::filesystem;
 
 namespace Potree{
 
 PointReader *PotreeConverter::createPointReader(string path, PointAttributes pointAttributes){
 	PointReader *reader = NULL;
-	if(boost::iends_with(path, ".las") || boost::iends_with(path, ".laz")){
+	if(iEndsWith(path, ".las") || iEndsWith(path, ".laz")){
 		reader = new LASPointReader(path);
-	}else if(boost::iends_with(path, ".ptx")){
+	}else if(iEndsWith(path, ".ptx")){
 		reader = new PTXPointReader(path);
-	}else if(boost::iends_with(path, ".ply")){
+	}else if(iEndsWith(path, ".ply")){
 		reader = new PlyPointReader(path);
-	}else if(boost::iends_with(path, ".xyz") || boost::iends_with(path, ".txt")){
+	}else if(iEndsWith(path, ".xyz") || iEndsWith(path, ".txt")){
 		reader = new XYZPointReader(path, format, colorRange, intensityRange);
-	}else if(boost::iends_with(path, ".pts")){
+	}else if(iEndsWith(path, ".pts")){
 		vector<double> intensityRange;
 
 		if(this->intensityRange.size() == 0){
@@ -72,14 +68,15 @@ PointReader *PotreeConverter::createPointReader(string path, PointAttributes poi
 		}
 
 		reader = new XYZPointReader(path, format, colorRange, intensityRange);
- 	}else if(boost::iends_with(path, ".bin")){
+ 	}else if(iEndsWith(path, ".bin")){
 		reader = new BINPointReader(path, aabb, scale, pointAttributes);
 	}
 
 	return reader;
 }
 
-PotreeConverter::PotreeConverter(string workDir, vector<string> sources){
+PotreeConverter::PotreeConverter(string executablePath, string workDir, vector<string> sources){
+    this->executablePath = executablePath;
 	this->workDir = workDir;
 	this->sources = sources;
 }
@@ -89,24 +86,24 @@ void PotreeConverter::prepare(){
 	// if sources contains directories, use files inside the directory instead
 	vector<string> sourceFiles;
 	for (const auto &source : sources) {
-		path pSource(source);
-		if(boost::filesystem::is_directory(pSource)){
-			boost::filesystem::directory_iterator it(pSource);
-			for(;it != boost::filesystem::directory_iterator(); it++){
-				path pDirectoryEntry = it->path();
-				if(boost::filesystem::is_regular_file(pDirectoryEntry)){
+		fs::path pSource(source);
+		if(fs::is_directory(pSource)){
+			fs::directory_iterator it(pSource);
+			for(;it != fs::directory_iterator(); it++){
+				fs::path pDirectoryEntry = it->path();
+				if(fs::is_regular_file(pDirectoryEntry)){
 					string filepath = pDirectoryEntry.string();
-					if(boost::iends_with(filepath, ".las") 
-						|| boost::iends_with(filepath, ".laz") 
-						|| boost::iends_with(filepath, ".xyz")
-						|| boost::iends_with(filepath, ".pts")
-						|| boost::iends_with(filepath, ".ptx")
-						|| boost::iends_with(filepath, ".ply")){
+					if(iEndsWith(filepath, ".las") 
+						|| iEndsWith(filepath, ".laz") 
+						|| iEndsWith(filepath, ".xyz")
+						|| iEndsWith(filepath, ".pts")
+						|| iEndsWith(filepath, ".ptx")
+						|| iEndsWith(filepath, ".ply")){
 						sourceFiles.push_back(filepath);
 					}
 				}
 			}
-		}else if(boost::filesystem::is_regular_file(pSource)){
+		}else if(fs::is_regular_file(pSource)){
 			sourceFiles.push_back(source);
 		}
 	}
@@ -152,15 +149,13 @@ AABB PotreeConverter::calculateAABB(){
 
 void PotreeConverter::generatePage(string name){
 
-	string exePath = Potree::getExecutablePath();
-
 	string pagedir = this->workDir;
-	string templateSourcePath = exePath + "/resources/page_template/viewer_template.html";
-	string mapTemplateSourcePath = exePath + "/resources/page_template/lasmap_template.html";
+    string templateSourcePath = this->executablePath + "/resources/page_template/viewer_template.html";
+    string mapTemplateSourcePath = this->executablePath + "/resources/page_template/lasmap_template.html";
 	string templateTargetPath = pagedir + "/" + name + ".html";
 	string mapTemplateTargetPath = pagedir + "/lasmap_" + name + ".html";
 
-	Potree::copyDir(fs::path(exePath + "/resources/page_template"), fs::path(pagedir));
+    Potree::copyDir(fs::path(this->executablePath + "/resources/page_template"), fs::path(pagedir));
 	fs::remove(pagedir + "/viewer_template.html");
 	fs::remove(pagedir + "/lasmap_template.html");
 
@@ -171,9 +166,17 @@ void PotreeConverter::generatePage(string name){
 		string line;
 		while(getline(in, line)){
 			if(line.find("<!-- INCLUDE POINTCLOUD -->") != string::npos){
-				//out << "\t\tviewer.addPointCloud(\"" << "pointclouds/" << name << "/cloud.js\");" << endl;
 				out << "\t\tPotree.loadPointCloud(\"pointclouds/" << name << "/cloud.js\", \"" << name << "\", e => {" << endl;
-				out << "\t\t\tviewer.scene.addPointCloud(e.pointcloud);" << endl;
+				out << "\t\t\tlet pointcloud = e.pointcloud;\n";
+				out << "\t\t\tlet material = pointcloud.material;\n";
+
+				out << "\t\t\tviewer.scene.addPointCloud(pointcloud);" << endl;
+
+				out << "\t\t\t" << "material.pointColorType = Potree.PointColorType." << material << "; // any Potree.PointColorType.XXXX \n";
+				out << "\t\t\tmaterial.size = 1;\n";
+				out << "\t\t\tmaterial.pointSizeType = Potree.PointSizeType.ADAPTIVE;\n";
+				out << "\t\t\tmaterial.shape = Potree.PointShape.SQUARE;\n";
+
 				out << "\t\t\tviewer.fitToScreen();" << endl;
 				out << "\t\t});" << endl;
 			}else if(line.find("<!-- INCLUDE SETTINGS HERE -->") != string::npos){
@@ -185,9 +188,11 @@ void PotreeConverter::generatePage(string name){
 				}else{
 					out << "\t\t" << "viewer.setBackground(\"gradient\"); // [\"skybox\", \"gradient\", \"black\", \"white\"];\n";
 				}
-				//out << "\t\t" << "viewer.setShowSkybox(" << showSkybox << ");\n";
-				out << "\t\t" << "viewer.setMaterialID(Potree.PointColorType." << material << "); // any Potree.PointColorType.XXXX \n";
-				out << "\t\t" << "viewer.setDescription('" << boost::replace_all_copy(description, "'", "\"") << "');\n";
+				
+				string descriptionEscaped = string(description);
+				std::replace(descriptionEscaped.begin(), descriptionEscaped.end(), '`', '\'');
+
+				out << "\t\t" << "viewer.setDescription(`" << descriptionEscaped << "`);\n";
 			}else{
 				out << line << endl;
 			}
@@ -318,8 +323,8 @@ void writeSources(string path, vector<string> sourceFilenames, vector<int> numPo
 	Writer<StringBuffer> writer(buffer);
 	d.Accept(writer);
 	
-	if(!boost::filesystem::exists(boost::filesystem::path(path))){
-		boost::filesystem::path pcdir(path);
+	if(!fs::exists(fs::path(path))){
+		fs::path pcdir(path);
 		fs::create_directories(pcdir);
 	}
 

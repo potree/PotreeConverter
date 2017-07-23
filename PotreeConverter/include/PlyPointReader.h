@@ -6,10 +6,7 @@
 #include <string>
 #include <fstream>
 #include <iostream>
-
-#include <boost/regex.hpp>
-#include "boost/assign.hpp"
-#include "boost/algorithm/string.hpp"
+#include <regex>
 
 #include "Point.h"
 #include "PointReader.h"
@@ -20,9 +17,6 @@ using std::vector;
 using std::map;
 using std::cout;
 using std::endl;
-using namespace boost::assign;
-using boost::split;
-using boost::is_any_of;
 
 namespace Potree{
 
@@ -67,28 +61,28 @@ struct PlyElement{
 	}
 };
 
+unordered_map<string, PlyPropertyType> plyPropertyTypes = { 
+	{ "char", PlyPropertyType("char", 1) }, 
+	{ "int8", PlyPropertyType("char", 1) },
+	{ "uchar", PlyPropertyType("uchar", 1) },
+	{ "uint8", PlyPropertyType("uchar", 1) },
+	{ "short", PlyPropertyType("short", 2) },
+	{ "int16", PlyPropertyType("short", 2) },
+	{ "ushort", PlyPropertyType("ushort", 2) },
+	{ "uint16", PlyPropertyType("ushort", 2) },
+	{ "int", PlyPropertyType("int", 4) },
+	{ "int32", PlyPropertyType("int", 4) },
+	{ "uint", PlyPropertyType("uint", 4) },
+	{ "uint32", PlyPropertyType("uint", 4) },
+	{ "float", PlyPropertyType("float", 4) },
+	{ "float32", PlyPropertyType("float", 4) },
+	{ "double", PlyPropertyType("double", 8) },
+	{ "float64", PlyPropertyType("double", 8) }
+};
 
-map<string, PlyPropertyType> plyPropertyTypes = map_list_of
-	("char", PlyPropertyType("char", 1))
-	("int8", PlyPropertyType("char", 1))
-	("uchar", PlyPropertyType("uchar", 1))
-	("uint8", PlyPropertyType("uchar", 1))
-	("short", PlyPropertyType("short", 2))
-	("int16", PlyPropertyType("short", 2))
-	("ushort", PlyPropertyType("ushort", 2))
-	("uint16", PlyPropertyType("ushort", 2))
-	("int", PlyPropertyType("int", 4))
-	("int32", PlyPropertyType("int", 4))
-	("uint", PlyPropertyType("uint", 4))
-	("uint32", PlyPropertyType("uint", 4))
-	("float", PlyPropertyType("float", 4))
-	("float32", PlyPropertyType("float", 4))
-	("double", PlyPropertyType("double", 8))
-	("float64", PlyPropertyType("double", 8));
-
-vector<string> plyRedNames = list_of("r")("red")("diffuse_red");
-vector<string> plyGreenNames = list_of("g")("green")("diffuse_green");
-vector<string> plyBlueNames = list_of("b")("blue")("diffuse_blue");
+vector<string> plyRedNames = { "r", "red", "diffuse_red" };
+vector<string> plyGreenNames = { "g", "green", "diffuse_green" };
+vector<string> plyBlueNames = { "b", "blue", "diffuse_blue" };
 
 class PlyPointReader : public PointReader{
 private:
@@ -115,20 +109,20 @@ public:
 		aabb = NULL;
 		this->file = file;
 
-		boost::regex rEndHeader("^end_header.*");
-		boost::regex rFormat("^format (ascii|binary_little_endian).*");
-		boost::regex rElement("^element (\\w*) (\\d*)");
-		boost::regex rProperty("^property (char|int8|uchar|uint8|short|int16|ushort|uint16|int|int32|uint|uint32|float|float32|double|float64) (\\w*)");
+		std::regex rEndHeader("^end_header.*");
+		std::regex rFormat("^format (ascii|binary_little_endian).*");
+		std::regex rElement("^element (\\w*) (\\d*)");
+		std::regex rProperty("^property (char|int8|uchar|uint8|short|int16|ushort|uint16|int|int32|uint|uint32|float|float32|double|float64) (\\w*)");
 		
 		string line;
 		while(std::getline(stream, line)){
-			boost::trim(line);
+			line = trim(line);
 
-			boost::cmatch sm;
-			if(boost::regex_match(line, rEndHeader)){
+			std::cmatch sm;
+			if(std::regex_match(line, rEndHeader)){
 				// stop line parsing when end_header is encountered
 				break;
-			}else if(boost::regex_match(line.c_str(), sm, rFormat)){
+			}else if(std::regex_match(line.c_str(), sm, rFormat)){
 				// parse format
 				string f = sm[1];
 				if(f == "ascii"){
@@ -136,7 +130,7 @@ public:
 				}else if(f == "binary_little_endian"){
 					format = PLY_FILE_FORMAT_BINARY_LITTLE_ENDIAN;
 				}
-			}else if(boost::regex_match(line.c_str(), sm, rElement)){
+			}else if(std::regex_match(line.c_str(), sm, rElement)){
 				// parse vertex element declaration
 				string name = sm[1];
 				long count = atol(string(sm[2]).c_str());
@@ -149,8 +143,8 @@ public:
 				while(true){
 					std::streamoff len = stream.tellg();
 					getline(stream, line);
-					boost::trim(line);
-					if(boost::regex_match(line.c_str(), sm, rProperty)){
+					line = trim(line);
+					if(std::regex_match(line.c_str(), sm, rProperty)){
 						string name = sm[2];
 						PlyPropertyType type = plyPropertyTypes[sm[1]];
 						PlyProperty property(name, type);
@@ -185,10 +179,11 @@ public:
 		if(format == PLY_FILE_FORMAT_ASCII){
 			string line;
 			getline(stream, line);
-			boost::trim(line);
+			line = trim(line);
 
-			vector<string> tokens;
-			split(tokens, line, is_any_of("\t "));
+			//vector<string> tokens;
+			//split(tokens, line, is_any_of("\t "));
+			vector<string> tokens = split(line, {'\t', ' '});
 			int i = 0;
 			for(const auto &prop : vertexElement.properties){
 				string token = tokens[i++];
@@ -289,7 +284,7 @@ public:
 		return *aabb;
 	}
 
-	long numPoints(){
+	long long numPoints(){
 		return pointCount;
 	}
 

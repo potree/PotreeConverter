@@ -7,10 +7,7 @@
 #include <fstream>
 #include <iomanip>
 
-
-
-#include <boost/filesystem.hpp>
-
+#include <experimental/filesystem>
 
 #include "AABB.h"
 #include "SparseGrid.h"
@@ -34,7 +31,7 @@ using std::chrono::high_resolution_clock;
 using std::chrono::milliseconds;
 using std::chrono::duration_cast;
 
-namespace fs = boost::filesystem;
+namespace fs = std::experimental::filesystem;
 
 namespace Potree{
 
@@ -92,7 +89,7 @@ string PWNode::hierarchyPath(){
 }
 
 string PWNode::path(){
-	string path = hierarchyPath() + "/" + name() + potreeWriter->getExtension();
+	string path = hierarchyPath() + name() + potreeWriter->getExtension();
 	return path;
 }
 
@@ -119,7 +116,7 @@ PointWriter *PWNode::createWriter(string path){
 
 	return writer;
 
-	
+
 }
 
 void PWNode::loadFromDisk(){
@@ -129,7 +126,7 @@ void PWNode::loadFromDisk(){
 		Point p = reader->getPoint();
 
 		if(isLeafNode()){
-			store.push_back(p);		
+			store.push_back(p);
 		}else{
 			grid->addWithoutCheck(p.position);
 		}
@@ -236,7 +233,7 @@ PWNode *PWNode::add(Point &point){
 		//
 		//		accepted = accepted && node->grid->willBeAccepted(point.position, grid->squaredSpacing);
 		//	}
-		//	
+		//
 		//
 		//	if(accepted){
 		//		grid->addWithoutCheck(point.position);
@@ -305,7 +302,9 @@ void PWNode::flush(){
 				fs::remove(temppath);
 			}
 		}else{
-			fs::remove(filepath);
+			if(fs::exists(filepath)){
+				fs::remove(filepath);
+			}
 			writer = createWriter(filepath);
 		}
 
@@ -325,7 +324,7 @@ void PWNode::flush(){
 
 	if(isLeafNode()){
 		if(addCalledSinceLastFlush){
-			writeToDisk(store, false);		
+			writeToDisk(store, false);
 
 			//if(store.size() != this->numAccepted){
 			//	cout << "store " << store.size() << " != " << this->numAccepted << " - " << this->name() << endl;
@@ -363,18 +362,18 @@ void PWNode::flush(){
 vector<PWNode*> PWNode::getHierarchy(int levels){
 
 	vector<PWNode*> hierarchy;
-	
+
 	list<PWNode*> stack;
 	stack.push_back(this);
 	while(!stack.empty()){
 		PWNode *node = stack.front();
 		stack.pop_front();
-	
+
 		if(node->level >= this->level + levels){
 			break;
 		}
 		hierarchy.push_back(node);
-	
+
 		for(PWNode *child : node->children){
 			if(child != NULL){
 				stack.push_back(child);
@@ -480,9 +479,9 @@ PotreeWriter::PotreeWriter(string workDir, AABB aabb, float spacing, int maxDept
 
 	if(this->scale == 0){
 		if(aabb.size.length() > 1'000'000){
-			this->scale = 0.1;
-		}else if(aabb.size.length() > 1000){
 			this->scale = 0.01;
+		}else if(aabb.size.length() > 100'000){
+			this->scale = 0.001;
 		}else if(aabb.size.length() > 1){
 			this->scale = 0.001;
 		}else{
@@ -521,8 +520,8 @@ void PotreeWriter::waitUntilProcessed(){
 
 void PotreeWriter::add(Point &p){
 	if(numAdded == 0){
-		boost::filesystem::path dataDir(workDir + "/data");
-		boost::filesystem::path tempDir(workDir + "/temp");
+		fs::path dataDir(workDir + "/data");
+		fs::path tempDir(workDir + "/temp");
 
 		fs::create_directories(dataDir);
 		fs::create_directories(tempDir);
@@ -583,8 +582,8 @@ void PotreeWriter::flush(){
 		cloudOut.close();
 	}
 
-		
-	
+
+
 	{// write hierarchy
 		//auto start = high_resolution_clock::now();
 
@@ -596,9 +595,9 @@ void PotreeWriter::flush(){
 		while(!stack.empty()){
 			PWNode *node = stack.front();
 			stack.pop_front();
-	
+
 			hrcTotal++;
-			
+
 			vector<PWNode*> hierarchy = node->getHierarchy(hierarchyStepSize + 1);
 			bool needsFlush = false;
 			for(const auto &descendant : hierarchy){
@@ -637,12 +636,12 @@ void PotreeWriter::flush(){
 		});
 
 		//cout << "hrcTotal: " << hrcTotal << "; " << "hrcFlushed: " << hrcFlushed << endl;
-	
+
 		//auto end = high_resolution_clock::now();
 		//long long duration = duration_cast<milliseconds>(end-start).count();
 		//float seconds = duration / 1'000.0f;
 		//cout << "writing hierarchy: " << seconds << "s" << endl;
-	
+
 	}
 }
 
@@ -672,22 +671,22 @@ void PotreeWriter::loadStateFromDisk(){
 		this->scale = cloudjs.scale;
 		this->aabb = cloudjs.boundingBox;
 		this->numAccepted = cloudjs.numAccepted;
-		
+
 	}
 
 	{// tree
 		vector<string> hrcPaths;
-		fs::path rootDir(workDir + "/data/r"); 
+		fs::path rootDir(workDir + "/data/r");
 		for (fs::recursive_directory_iterator iter(rootDir), end; iter != end; ++iter){
 			fs::path path = iter->path();
 			if(fs::is_regular_file(path)){
-				if(boost::iends_with(path.extension().string(), ".hrc")){
+				if(iEndsWith(path.extension().string(), ".hrc")){
 					hrcPaths.push_back(path.string());
 				}else{
-			
+
 				}
 			}else if(fs::is_directory(path)){
-		
+
 			}
 		}
 		std::sort(hrcPaths.begin(), hrcPaths.end(), [](string &a, string &b){
@@ -706,7 +705,7 @@ void PotreeWriter::loadStateFromDisk(){
 			current->isInMemory = false;
 			vector<PWNode*> nodes;
 			nodes.push_back(hrcRoot);
-		
+
 			ifstream fin(hrcPath, ios::in | ios::binary);
 			std::vector<char> buffer((std::istreambuf_iterator<char>(fin)), (std::istreambuf_iterator<char>()));
 
@@ -755,7 +754,7 @@ void PotreeWriter::loadStateFromDisk(){
 		//	}
 		//
 		//	numNodes++;
-		//	
+		//
 		//});
 	}
 

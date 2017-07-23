@@ -43,7 +43,7 @@ public:
 
 	AABB getAABB();
 
-	long numPoints();
+	long long numPoints();
 
 	void close();
 

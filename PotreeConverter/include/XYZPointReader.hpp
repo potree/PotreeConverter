@@ -13,9 +13,6 @@
 #include <sstream>
 #include <algorithm>
 
-#include "boost/assign.hpp"
-#include "boost/algorithm/string.hpp"
-
 using std::getline;
 using std::ifstream;
 using std::string;
@@ -23,12 +20,6 @@ using std::vector;
 using std::cout;
 using std::endl;
 using std::stringstream;
-using namespace boost::assign;
-using boost::split;
-using boost::token_compress_on;
-using boost::is_any_of;
-using boost::trim;
-using boost::erase_all;
 
 namespace Potree{
 
@@ -63,7 +54,7 @@ public:
 
 		if(intensityRange.size() == 2){
 			intensityOffset = (float)intensityRange[0];
-			intensityScale = (float)intensityRange[1];
+			intensityScale = (float)intensityRange[1]-(float)intensityRange[0];
 		}else if(intensityRange.size() == 1){
 			intensityOffset = 0.0f;
 			intensityScale = (float)intensityRange[0];
@@ -87,8 +78,7 @@ public:
 			string line;
 			while(getline(stream, line) && j < 1000){
 				trim(line);
-				vector<string> tokens;
-				split(tokens, line, is_any_of("\t ,"), token_compress_on); 
+				vector<string> tokens = split(line, { '\t', ' ', ',' });
 
 				if(this->format == "" && tokens.size() >= 3){
 					string f(tokens.size(), 's');
@@ -164,8 +154,7 @@ public:
 		string line;
 		while(getline(stream, line)){
 			trim(line);
-			vector<string> tokens;
-			split(tokens, line, is_any_of("\t ,"), token_compress_on); 
+			vector<string> tokens = split(line, {'\t', ' ', ','});
 			if(tokens.size() != format.size()){
 				//throw PotreeException("Not enough tokens for the given format");
 
@@ -224,7 +213,7 @@ public:
 	AABB getAABB(){
 		return aabb;
 	}
-	long numPoints(){
+	long long numPoints(){
 		return pointCount;
 	}
 	void close(){

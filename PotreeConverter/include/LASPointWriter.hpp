@@ -5,18 +5,19 @@
 #include <string>
 #include <iostream>
 #include <fstream>
+#include <stdio.h>
+#include <string.h>
 
-#include "laszip_dll.h"
-#include <boost/algorithm/string/predicate.hpp>
+#include "laszip_api.h"
 
 #include "AABB.h"
 #include "PointWriter.hpp"
 #include "Point.h"
+#include "stuff.h"
 
 using std::string;
 using std::fstream;
 using std::ios;
-using boost::algorithm::iends_with;
 
 namespace Potree{
 
@@ -33,7 +34,7 @@ public:
 		this->file = file;
 		this->aabb = aabb;
 		numPoints = 0;
-		
+
 
 		memset(&header, 0, sizeof(laszip_header));
 		strcpy(header.generating_software, "potree");
@@ -61,7 +62,7 @@ public:
 
 		laszip_create(&writer);
 
-		laszip_BOOL compress = iends_with(file, ".laz") ? 1 : 0;
+		laszip_BOOL compress = iEndsWith(file, ".laz") ? 1 : 0;
 		if(compress){
 			laszip_BOOL request_writer = 1;
 			laszip_request_compatibility_mode(writer, request_writer);
@@ -101,5 +102,3 @@ public:
 }
 
 #endif
-
-

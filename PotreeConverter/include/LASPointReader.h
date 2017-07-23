@@ -7,10 +7,11 @@
 #include <iostream>
 #include <vector>
 
-#include "laszip_dll.h"
+#include "laszip_api.h"
 
 #include "Point.h"
 #include "PointReader.h"
+#include "stuff.h"
 
 using std::string;
 
@@ -55,7 +56,7 @@ public:
 		laszip_request_compatibility_mode(laszip_reader, request_reader);
 
 		{// read first x points to find if color is 1 or 2 bytes
-			laszip_BOOL is_compressed = boost::iends_with(path, ".laz") ? 1 : 0;
+			laszip_BOOL is_compressed = iEndsWith(path, ".laz") ? 1 : 0;
 			laszip_open_reader(laszip_reader, path.c_str(), &is_compressed);
 
 			laszip_get_header_pointer(laszip_reader, &header);
@@ -82,13 +83,21 @@ public:
 		laszip_seek_point(laszip_reader, 0);
     }
 
+	long long numPoints() {
+		if (header->version_major >= 1 && header->version_minor >= 4) {
+			return header->extended_number_of_point_records;
+		} else {
+			return header->number_of_point_records;
+		}
+	}
+
 	~LIBLASReader(){
 		laszip_close_reader(laszip_reader);
 		laszip_destroy(laszip_reader);
 	}
 
 	bool readPoint(){
-		if(pointsRead < header->number_of_point_records){
+		if(pointsRead < numPoints()){
 			laszip_read_point(laszip_reader);
 			pointsRead++;
 
@@ -143,7 +152,7 @@ public:
 
 	AABB getAABB();
 
-	long numPoints();
+	long long numPoints();
 
 	void close();
 
