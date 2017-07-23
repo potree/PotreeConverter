@@ -479,9 +479,9 @@ PotreeWriter::PotreeWriter(string workDir, AABB aabb, float spacing, int maxDept
 
 	if(this->scale == 0){
 		if(aabb.size.length() > 1'000'000){
-			this->scale = 0.1;
-		}else if(aabb.size.length() > 1000){
 			this->scale = 0.01;
+		}else if(aabb.size.length() > 100'000){
+			this->scale = 0.001;
 		}else if(aabb.size.length() > 1){
 			this->scale = 0.001;
 		}else{

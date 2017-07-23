@@ -166,9 +166,17 @@ void PotreeConverter::generatePage(string name){
 		string line;
 		while(getline(in, line)){
 			if(line.find("<!-- INCLUDE POINTCLOUD -->") != string::npos){
-				//out << "\t\tviewer.addPointCloud(\"" << "pointclouds/" << name << "/cloud.js\");" << endl;
 				out << "\t\tPotree.loadPointCloud(\"pointclouds/" << name << "/cloud.js\", \"" << name << "\", e => {" << endl;
-				out << "\t\t\tviewer.scene.addPointCloud(e.pointcloud);" << endl;
+				out << "\t\t\tlet pointcloud = e.pointcloud;\n";
+				out << "\t\t\tlet material = pointcloud.material;\n";
+
+				out << "\t\t\tviewer.scene.addPointCloud(pointcloud);" << endl;
+
+				out << "\t\t\t" << "material.pointColorType = Potree.PointColorType." << material << "; // any Potree.PointColorType.XXXX \n";
+				out << "\t\t\tmaterial.size = 1;\n";
+				out << "\t\t\tmaterial.pointSizeType = Potree.PointSizeType.ADAPTIVE;\n";
+				out << "\t\t\tmaterial.shape = Potree.PointShape.SQUARE;\n";
+
 				out << "\t\t\tviewer.fitToScreen();" << endl;
 				out << "\t\t});" << endl;
 			}else if(line.find("<!-- INCLUDE SETTINGS HERE -->") != string::npos){
@@ -184,7 +192,6 @@ void PotreeConverter::generatePage(string name){
 				string descriptionEscaped = string(description);
 				std::replace(descriptionEscaped.begin(), descriptionEscaped.end(), '`', '\'');
 
-				out << "\t\t" << "viewer.setMaterialID(Potree.PointColorType." << material << "); // any Potree.PointColorType.XXXX \n";
 				out << "\t\t" << "viewer.setDescription(`" << descriptionEscaped << "`);\n";
 			}else{
 				out << line << endl;

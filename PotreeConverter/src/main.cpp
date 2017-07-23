@@ -110,6 +110,9 @@ PotreeArguments parseArguments(int argc, char **argv){
 
 	a.source = args.get("source").as<vector<string>>();
 	a.generatePage = args.has("generate-page");
+	if (a.generatePage) {
+		a.pageName = args.get("generate-page").as<string>();
+	}
 	a.outdir = args.get("outdir").as<string>();
 	a.spacing = args.get("spacing").as<double>(0.0);
 	a.diagonalFraction = args.get("d").as<double>(0.0);
