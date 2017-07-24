@@ -101,6 +101,9 @@ PotreeArguments parseArguments(int argc, char **argv){
 	} else if (!args.has("source") && !args.has("list-of-files")){
 		cout << args.usage() << endl;
 		exit(1);
+	} else if (argc == 1) {
+		cout << args.usage() << endl;
+		exit(0);
 	}
 
 	if (args.has("incremental") && args.has("overwrite")) {
@@ -208,6 +211,7 @@ PotreeArguments parseArguments(int argc, char **argv){
 	a.description = args.get("description").as<string>();
 	a.edlEnabled = args.has("edl-enabled");
 	a.showSkybox = args.has("show-skybox");
+	a.material = args.get("material").as<string>();
 
 	vector<string> validMaterialNames = {"RGB", "ELEVATION", "INTENSITY", "INTENSITY_GRADIENT", "RETURN_NUMBER", "SOURCE", "LEVEL_OF_DETAIL"};
 	if(std::find(validMaterialNames.begin(), validMaterialNames.end(), a.material) == validMaterialNames.end()){
