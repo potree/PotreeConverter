@@ -3,6 +3,7 @@
 #include <vector>
 #include <unordered_map>
 #include <iostream>
+#include <algorithm>
 
 using std::unordered_map;
 using std::vector;
@@ -229,7 +230,39 @@ public:
 	}
 
 	string usage() {
-		return "TODO";
+		std::stringstream ss;
+
+		vector<string> keys;
+		
+		for (auto argdef : argdefs) {
+			stringstream ssKey;
+			if (!argdef.shortname().empty()) {
+				ssKey << "  -" << argdef.shortname();
+
+				if (!argdef.fullname().empty()) {
+					ssKey << " [ --" << argdef.fullname() << " ]";
+				}
+
+			} else if(!argdef.fullname().empty()) {
+				ssKey << "  --" << argdef.fullname();
+			}
+
+			keys.push_back(ssKey.str());
+		}
+
+		int keyColumnLength = 0;
+		for (auto key : keys) {
+			keyColumnLength = std::max(int(key.size()), keyColumnLength);
+		}
+		keyColumnLength = keyColumnLength + 2;
+
+		for (int i = 0; i < argdefs.size(); i++) {
+			keys[i].resize(keyColumnLength, ' ');
+			ss << keys[i] << argdefs[i].description << endl;
+		}
+
+
+		return ss.str();
 	}
 
 	bool has(string name) {
