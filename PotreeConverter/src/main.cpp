@@ -91,7 +91,7 @@ PotreeArguments parseArguments(int argc, char **argv){
 	args.addArgument("description", "Description to be shown in the page.");
 	args.addArgument("edl-enabled", "Enable Eye-Dome-Lighting.");
 	args.addArgument("show-skybox", "");
-	args.addArgument("material", "RGB, ELEVATION, INTENSITY, INTENSITY_GRADIENT, RETURN_NUMBER, SOURCE, LEVEL_OF_DETAIL");
+	args.addArgument("material", "RGB, ELEVATION, INTENSITY, INTENSITY_GRADIENT, CLASSIFICATION, RETURN_NUMBER, SOURCE, LEVEL_OF_DETAIL");
 
 	PotreeArguments a;
 
@@ -211,9 +211,9 @@ PotreeArguments parseArguments(int argc, char **argv){
 	a.description = args.get("description").as<string>();
 	a.edlEnabled = args.has("edl-enabled");
 	a.showSkybox = args.has("show-skybox");
-	a.material = args.get("material").as<string>();
+	a.material = args.get("material").as<string>("RGB");
 
-	vector<string> validMaterialNames = {"RGB", "ELEVATION", "INTENSITY", "INTENSITY_GRADIENT", "RETURN_NUMBER", "SOURCE", "LEVEL_OF_DETAIL"};
+	vector<string> validMaterialNames = {"RGB", "ELEVATION", "INTENSITY", "INTENSITY_GRADIENT", "CLASSIFICATION", "RETURN_NUMBER", "SOURCE", "LEVEL_OF_DETAIL"};
 	if(std::find(validMaterialNames.begin(), validMaterialNames.end(), a.material) == validMaterialNames.end()){
 		cout << args.usage();
 		cout << endl;
