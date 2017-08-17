@@ -3,11 +3,11 @@ default: build
 
 .PHONY: LAStools
 LAStools:
-	[ -d $@ ] || git clone https://github.com/m-schuetz/LAStools.git
-	cd LAStools/LASzip && \
-	mkdir -p build && cd build && \
-	cmake -DCMAKE_BUILD_TYPE=Release .. && \
-	make -j$(nproc)
+	git submodule update --checkout
+	mkdir -p LAStools/LASzip/build && \
+	cd LAStools/LASzip/build && \
+	cmake --verbose -DCMAKE_BUILD_TYPE=Release ../src && \
+	make VERBOSE=1 -j$(nproc)
 
 .PHONY: build
 build: LAStools

@@ -1,0 +1,3 @@
+[submodule "LAStools"]
+	path = LAStools
+	url = https://github.com/m-schuetz/LAStools.git
