@@ -6,6 +6,7 @@
 #include <string>
 #include <thread>
 #include <vector>
+#include <functional>
 
 #include "AABB.h"
 #include "SparseGrid.h"
