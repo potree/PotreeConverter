@@ -5,6 +5,7 @@ default: build
 LAStools:
 	[ -d $@ ] || git clone https://github.com/m-schuetz/LAStools.git
 	cd LAStools/LASzip && \
+	git checkout 8065ce39d50d09907691b5feda0267279428e586 .. && \
 	mkdir -p build && cd build && \
 	cmake -DCMAKE_BUILD_TYPE=Release .. && \
 	make -j$(nproc)
