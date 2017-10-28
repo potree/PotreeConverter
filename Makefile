@@ -34,4 +34,4 @@ build: LAStools
 
 .PHONY: clean
 clean:
-	rm -rf LAStools build
+	rm -rf build
