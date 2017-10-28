@@ -3,8 +3,8 @@
 #COPTS    = -g -Wall -Wno-deprecated -DDEBUG 
 COPTS     = -O3 -Wall -Wno-deprecated -DNDEBUG 
 #COMPILER  = CC
-COMPILER  = g++
-LINKER  = g++
+COMPILER  = ${CXX}
+LINKER  = ${CXX}
 #BITS     = -64
 
 #LIBS     = -L/usr/lib64
