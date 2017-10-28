@@ -1,12 +1,15 @@
 .PHONY: default
 default: build
 
+
+# OLD
+#	[ -d $@ ] || git clone https://github.com/m-schuetz/LAStools.git
+#	# Patch it	
+#	cp LAStools/LASlib/src/Makefile LAStools/LASlib/src/Makefile.old && \
+#	sed 's/COMPILER  = g++$$/COMPILER  = ${CXX}/g' < LAStools/LASlib/src/Makefile.old > LAStools/LASlib/src/Makefile
+
 .PHONY: LAStools
 LAStools:
-	[ -d $@ ] || git clone https://github.com/m-schuetz/LAStools.git
-	# Patch it	
-	cp LAStools/LASlib/src/Makefile LAStools/LASlib/src/Makefile.old && \
-	sed 's/COMPILER  = g++$$/COMPILER  = ${CXX}/g' < LAStools/LASlib/src/Makefile.old > LAStools/LASlib/src/Makefile
 	cd LAStools/LASzip && \
 	mkdir -p build && cd build && \
 	CC=$(CC) CXX=$(CXX) cmake -DCMAKE_BUILD_TYPE=Release .. && \
