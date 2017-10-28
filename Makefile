@@ -5,7 +5,8 @@ default: build
 LAStools:
 	[ -d $@ ] || git clone https://github.com/m-schuetz/LAStools.git
 	# Patch it	
-	cp LASlib/src/Makefile LASlib/src/Makefile.old | sed 's/COMPILER  = g++/COMPILER  = ${CXX}/g' < LASlib/src/Makefile.old > LASlib/src/Makefile
+	cp LAStools/LASlib/src/Makefile LAStools/LASlib/src/Makefile.old && \
+	sed 's/COMPILER  = g++$$/COMPILER  = ${CXX}/g' < LAStools/LASlib/src/Makefile.old > LAStools/LASlib/src/Makefile
 	cd LAStools/LASzip && \
 	mkdir -p build && cd build && \
 	CC=$(CC) CXX=$(CXX) cmake -DCMAKE_BUILD_TYPE=Release .. && \
