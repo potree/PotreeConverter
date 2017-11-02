@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="description" content="">
+    <meta name="author" content="">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Potree Viewer</title>
+
+	<link rel="stylesheet" type="text/css" href="libs/potree/potree.css">
+	<link rel="stylesheet" type="text/css" href="libs/jquery-ui/jquery-ui.min.css">
+	<link rel="stylesheet" type="text/css" href="libs/perfect-scrollbar/css/perfect-scrollbar.css">
+	<link rel="stylesheet" href="libs/openlayers3/ol.css" type="text/css">
+	<link rel="stylesheet" href="libs/spectrum/spectrum.css" type="text/css">
+
+   <!-- START - FLIP BUTTON IN POTREE
+   - Add style and functions for a button for flipping clouds in potree
+   - Copyright (c) 2017, Gabriele Facciolo 
+   -->
+   <style>
+   .potree_flip_toggle{
+      position:      absolute;
+      float:         left;
+      margin:        8px 8px;
+      background:    none;
+      width:         2.5em;
+      height:        2.5em;
+      z-index:    100;
+      top:        calc(2.5em + 8px);
+      cursor:     pointer;
+   }
+   </style>
+   <script>
+      // FLIP FUNCTION
+      // finds the first checked point cloud and switches it to the next one
+      function potree_flipCloud(viewer) {
+         var len = viewer.scene.pointclouds.length
+         var index, cur, next;
+         for (index = 0; index < len; ++index) {
+            if (document.getElementById('scene_list_item_pointcloud_' + index).checked) {
+               cur = index;
+            }
+         }
+         next = (cur+1)%len;
+         viewer.setDescription(viewer.scene.pointclouds[next].name)
+         let x1 = document.getElementById('scene_list_item_pointcloud_' + cur)
+         let x2 = document.getElementById('scene_list_item_pointcloud_' + next)
+         x2.click()
+         x1.click()
+      }
+      // ADD A CUSTOM FLIP BUTTON TO THE POTREE INTERFACE
+      // finds the menu toggle button and adds a new button
+      function potree_add_flipButton(viewer) {
+         //
+         let imgMenuToggle = document.createElement("img");
+         imgMenuToggle.title = "flip between point clouds";
+         imgMenuToggle.src = 'data:image/svg+xml,%3Csvg%20fill%3D%27%23ffffff%27%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20xmlns%3Axlink%3D%27http%3A%2F%2Fwww.w3.org%2F1999%2Fxlink%27%20version%3D%271.1%27%20x%3D%270px%27%20y%3D%270px%27%20viewBox%3D%270%200%2027%2024.5%27%20style%3D%27enable-background%3Anew%200%200%2027%2024.5%3B%27%20xml%3Aspace%3D%27preserve%27%3E%3Cg%3E%3Cpath%20d%3D%27M13.276%2C24.447c0.071%2C0.035%2C0.147%2C0.053%2C0.224%2C0.053c0.077%2C0%2C0.153-0.018%2C0.224-0.053c1.566-0.783%2C4.255-1.197%2C7.776-1.197%20%20%20c2.688%2C0%2C4.922%2C0.245%2C4.945%2C0.247c0.142%2C0.017%2C0.282-0.029%2C0.389-0.125C26.939%2C23.278%2C27%2C23.142%2C27%2C23V6%20%20%20c0-0.234-0.163-0.438-0.392-0.488C26.572%2C5.504%2C26.351%2C5.456%2C26%2C5.387V19.5c0%2C0.827-0.673%2C1.5-1.5%2C1.5%20%20%20c-0.066%2C0-6.709%2C0.031-10.329%2C1.842c-0.054%2C0.027-0.114%2C0.042-0.171%2C0.061v0c-0.075%2C0.027-0.151%2C0.048-0.229%2C0.066%20%20%20C13.682%2C22.985%2C13.591%2C23%2C13.5%2C23c-0.146%2C0-0.288-0.028-0.427-0.07c-0.083-0.025-0.167-0.05-0.244-0.088%20%20%20C9.208%2C21.031%2C2.566%2C21%2C2.5%2C21C1.673%2C21%2C1%2C20.327%2C1%2C19.5V5.387C0.649%2C5.456%2C0.428%2C5.504%2C0.392%2C5.512C0.163%2C5.563%2C0%2C5.766%2C0%2C6v17%20%20%20c0%2C0.142%2C0.06%2C0.278%2C0.167%2C0.373c0.106%2C0.095%2C0.247%2C0.141%2C0.389%2C0.125C0.578%2C23.495%2C2.812%2C23.25%2C5.5%2C23.25%20%20%20C9.021%2C23.25%2C11.71%2C23.664%2C13.276%2C24.447z%27%2F%3E%3Cpath%20d%3D%27M15.834%2C21.145C19.653%2C20.02%2C24.442%2C20%2C24.5%2C20c0.276%2C0%2C0.5-0.224%2C0.5-0.5v-17C25%2C2.224%2C24.776%2C2%2C24.5%2C2%20%20%20c-0.106%2C0-1.096%2C0.005-2.5%2C0.109V17.5c0%2C0.823-0.67%2C1.496-1.493%2C1.5C20.399%2C19.002%2C18.051%2C19.091%2C15.834%2C21.145z%27%2F%3E%3Cpath%20d%3D%27M2.5%2C20c0.069%2C0%2C6.93%2C0.024%2C10.776%2C1.947c0.013%2C0.007%2C0.029%2C0.004%2C0.042%2C0.01c0.009%2C0.004%2C0.014%2C0.014%2C0.023%2C0.017%20%20%20C13.394%2C21.992%2C13.447%2C22%2C13.5%2C22c0.077%2C0%2C0.153-0.018%2C0.222-0.052c0%2C0%2C0.001%2C0%2C0.001%2C0l0-0.001%20%20%20c0.067-0.034%2C0.128-0.083%2C0.176-0.146c0.033-0.044%2C0.067-0.081%2C0.1-0.123C16.791%2C18.068%2C20.464%2C18%2C20.501%2C18%20%20%20C20.776%2C17.999%2C21%2C17.775%2C21%2C17.5v-17C21%2C0.224%2C20.776%2C0%2C20.5%2C0c-0.157%2C0-3.547%2C0.05-6.5%2C3.148V9.5h2v1h-2v5h-1v-5H9v2L6%2C10l3-2.5%20%20%20v2h4v-5V3.731C8.898%2C2.026%2C2.774%2C2%2C2.5%2C2C2.224%2C2%2C2%2C2.224%2C2%2C2.5v17C2%2C19.776%2C2.224%2C20%2C2.5%2C20z%20M13%2C16.5h1v1h-1V16.5z%20M13%2C18.5h1v1%20%20%20h-1V18.5z%27%2F%3E%3Crect%20x%3D%2713%27%20y%3D%279.5%27%20width%3D%271%27%20height%3D%271%27%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E';
+         imgMenuToggle.onclick = function (){ potree_flipCloud(viewer);};
+         imgMenuToggle.classList.add("potree_flip_toggle");
+         viewer.renderArea.insertBefore(imgMenuToggle, viewer.renderArea.children[0]);
+         // 
+         // END ADD A CUSTOM FLIP BUTTON
+      }
+   </script>
+   <!-- END - FLIP BUTTON IN POTREE -->
+
+
+  </head>
+
+  <body>
+  
+	<script src="libs/jquery/jquery-3.1.1.js"></script>
+	<script src="libs/spectrum/spectrum.js"></script>
+	
+	<script src="libs/perfect-scrollbar/js/perfect-scrollbar.jquery.js"></script>
+	<script src="libs/jquery-ui/jquery-ui.min.js"></script>
+	<script src="libs/three.js/build/three.js"></script>
+	<script src="libs/other/stats.min.js"></script>
+	<script src="libs/other/BinaryHeap.js"></script>
+	<script src="libs/tween/tween.min.js"></script>
+	<script src="libs/d3/d3.js"></script>
+	<script src="libs/proj4/proj4.js"></script>
+	<script src="libs/openlayers3/ol.js"></script>
+    <script src="libs/i18next/i18next.js"></script>
+	
+	<script src="libs/potree/potree.js"></script>
+	
+	<script src="libs/plasio/js/laslaz.js"></script>
+	<script src="libs/plasio/vendor/bluebird.js"></script>
+
+    <div class="potree_container" style="position: absolute; width: 100%; height: 100%; left: 0px; top: 0px; ">
+		<div id="potree_render_area"></div>
+		<div id="potree_sidebar_container"> </div>
+    </div>
+	
+	<script>
+	
+		window.viewer = new Potree.Viewer(document.getElementById("potree_render_area"));
+		
+		viewer.setEDLEnabled(true);
+		viewer.setFOV(60);
+		viewer.setPointBudget(1*1000*1000);
+		<!-- INCLUDE SETTINGS HERE -->
+		viewer.loadSettingsFromURL();
+		
+		viewer.loadGUI(() => {
+			viewer.setLanguage('en');
+			//$("#menu_tools").next().show();
+         $("#menu_scene").next().show();
+			//viewer.toggleSidebar();
+
+         //// UNCOMMENT TO SET THE SAME RANGE FOR ALL THE CLOUDS
+         // var index;
+         // for (index = 0; index < viewer.scene.pointclouds.length; ++index) {
+         //    viewer.scene.pointclouds[index].material.pointColorType = Potree.PointColorType.ELEVATION;
+         //    viewer.scene.pointclouds[index].material.pointSizeType = Potree.PointSizeType.ATTENUATED;
+         //    viewer.scene.pointclouds[index].material.elevationRange=[18,45];
+         // }
+         
+         // ADD A CUSTOM FLIP BUTTON
+         potree_add_flipButton(viewer);
+
+		});
+		
+		<!-- INCLUDE POINTCLOUD -->
+		
+	</script>
+	
+	
+  </body>
+</html>
