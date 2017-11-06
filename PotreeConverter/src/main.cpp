@@ -114,7 +114,7 @@ PotreeArguments parseArguments(int argc, char **argv){
 		exit(1);
 	}
 
-	a.source = args.get("source").as<vector<string>>();
+	///a.source = args.get("source").as<vector<string>>();
 	a.generatePage = args.has("generate-page");
 	if (a.generatePage) {
 		a.pageName = args.get("generate-page").as<string>();
@@ -183,7 +183,8 @@ PotreeArguments parseArguments(int argc, char **argv){
 
 	if (args.has("source")) {
 		a.source = args.get("source").as<vector<string>>();
-	} else if (args.has("list-of-files")) {
+	}
+	if (a.source.size() == 0 && args.has("list-of-files")) {
 		string lof = args.get("list-of-files").as<string>();
 		a.listOfFiles = lof;
 
