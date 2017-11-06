@@ -152,10 +152,18 @@ void PotreeConverter::generatePage(string name){
 	string pagedir = this->workDir;
     string templateSourcePath = this->executablePath + "/resources/page_template/viewer_template.html";
     string mapTemplateSourcePath = this->executablePath + "/resources/page_template/lasmap_template.html";
+    string templateDir = this->executablePath + "/resources/page_template";
+
+        if(!this->pageTemplatePath.empty()) {
+		templateSourcePath = this->pageTemplatePath + "/viewer_template.html";
+		mapTemplateSourcePath = this->pageTemplatePath + "/lasmap_template.html";
+		templateDir = this->pageTemplatePath;
+	}
+
 	string templateTargetPath = pagedir + "/" + name + ".html";
 	string mapTemplateTargetPath = pagedir + "/lasmap_" + name + ".html";
 
-    Potree::copyDir(fs::path(this->executablePath + "/resources/page_template"), fs::path(pagedir));
+    Potree::copyDir(fs::path(templateDir), fs::path(pagedir));
 	fs::remove(pagedir + "/viewer_template.html");
 	fs::remove(pagedir + "/lasmap_template.html");
 
