@@ -49,6 +49,8 @@ struct PotreeArguments {
 	vector<double> intensityRange;
 	vector<string> outputAttributes;
 	bool generatePage;
+	bool pageTemplate;
+	string pageTemplatePath = "";
 	vector<double> aabbValues;
 	string pageName = "";
 	string projection = "";
@@ -70,6 +72,7 @@ PotreeArguments parseArguments(int argc, char **argv){
 	args.addArgument("source,i,", "input files");
 	args.addArgument("help,h", "prints usage");
 	args.addArgument("generate-page,p", "Generates a ready to use web page with the given name.");
+	args.addArgument("page-template", "directory where the web page template is located.");
 	args.addArgument("outdir,o", "output directory");
 	args.addArgument("spacing,s", "Distance between points at root level. Distance halves each level.");
 	args.addArgument("spacing-by-diagonal-fraction,d", "Maximum number of points on the diagonal in the first level (sets spacing). spacing = diagonal / value");
@@ -111,10 +114,14 @@ PotreeArguments parseArguments(int argc, char **argv){
 		exit(1);
 	}
 
-	a.source = args.get("source").as<vector<string>>();
+	///a.source = args.get("source").as<vector<string>>();
 	a.generatePage = args.has("generate-page");
 	if (a.generatePage) {
 		a.pageName = args.get("generate-page").as<string>();
+	}
+	a.pageTemplate = args.has("page-template");
+	if (a.pageTemplate) {
+		a.pageTemplatePath = args.get("page-template").as<string>();
 	}
 	a.outdir = args.get("outdir").as<string>();
 	a.spacing = args.get("spacing").as<double>(0.0);
@@ -176,7 +183,8 @@ PotreeArguments parseArguments(int argc, char **argv){
 
 	if (args.has("source")) {
 		a.source = args.get("source").as<vector<string>>();
-	} else if (args.has("list-of-files")) {
+	}
+	if (a.source.size() == 0 && args.has("list-of-files")) {
 		string lof = args.get("list-of-files").as<string>();
 		a.listOfFiles = lof;
 
@@ -231,8 +239,12 @@ PotreeArguments parseArguments(int argc, char **argv){
 		a.diagonalFraction = 200;
 	}
 
+   try {
     auto absolutePath = fs::canonical(fs::system_complete(argv[0]));
     a.executablePath = absolutePath.parent_path().string();
+   } catch (const fs::filesystem_error &e) {
+     // do nothing
+   }
 
 	return a;
 }
@@ -286,6 +298,7 @@ int main(int argc, char **argv){
 		pc.outputAttributes = a.outputAttributes;
 		pc.aabbValues = a.aabbValues;
 		pc.pageName = a.pageName;
+		pc.pageTemplatePath = a.pageTemplatePath;
 		pc.storeOption = a.storeOption;
 		pc.projection = a.projection;
 		pc.sourceListingOnly = a.sourceListingOnly;

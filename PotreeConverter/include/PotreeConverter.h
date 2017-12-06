@@ -45,6 +45,7 @@ public:
 	int diagonalFraction = 250;
 	vector<double> aabbValues;
 	string pageName = "";
+	string pageTemplatePath = "";
 	StoreOption storeOption = StoreOption::ABORT_IF_EXISTS;
 	string projection = "";
 	bool sourceListingOnly = false;
