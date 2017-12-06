@@ -231,7 +231,7 @@ bool iEndsWith(const std::string &str, const std::string &suffix) {
 
 	auto tstr = str.substr(str.size() - suffix.size());
 
-	return icompare(tstr, suffix) == 0;
+	return icompare(tstr, suffix);
 }
 
 vector<string> split(string str, vector<char> delimiters) {
