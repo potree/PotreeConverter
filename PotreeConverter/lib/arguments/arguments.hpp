@@ -187,7 +187,6 @@ public:
 		}
 
 		string currentKey = "";
-		map.insert({ currentKey, {} });
 		for (string token : tokens) {
 			if(startsWith(token, "---")) {
 				cerr << "Invalid argument: " << token << endl;
