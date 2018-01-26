@@ -46,6 +46,20 @@ make
 
 ```
 
+### Docker
+
+Running in a Docker container might be convenient as the entire environment is inside one container.
+
+1. Build the container:
+```docker build -t potreeconverter .```
+
+2. The following command executes PotreeConverter and mounts ~/pointclouds on your machine to /in inside the container. 
+```
+export WORKDIR="/home/$USER/pointclouds/"
+docker run --rm -it -v $WORKDIR:/work potreeconverter -i /work/file.xyz
+```
+
+
 ### OS X
 
 Same as the linux instructions above, except:

@@ -17,5 +17,5 @@ ADD . /data/PotreeConverter
 RUN mkdir build
 RUN cd build && cmake -DCMAKE_BUILD_TYPE=Release -DLASZIP_INCLUDE_DIRS=/data/LAStools/LASzip/dll -DLASZIP_LIBRARY=/data/LAStools/LASzip/build/src/liblaszip.so .. 
 RUN cd build && make
-RUN cp -R /data/PotreeConverter/PotreeConverter/resources/ /data
+RUN cp -R /data/PotreeConverter/PotreeConverter/resources/ /data/PotreeConverter/build/PotreeConverter/resources
 ENTRYPOINT ["build/PotreeConverter/PotreeConverter"]
