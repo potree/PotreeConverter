@@ -53,7 +53,9 @@ public:
 
 	void write(const Point &point){
 		for(int i = 0; i < attributes.size(); i++){
+
 			PointAttribute attribute = attributes[i];
+
 			if(attribute == PointAttribute::POSITION_CARTESIAN){
 				//float pos[3] = {(float) point.x,(float)  point.y,(float)  point.z};
 				int x = (int)((point.position.x - aabb.min.x) / scale);
@@ -68,7 +70,15 @@ public:
 				writer->write((const char*)&point.intensity, sizeof(unsigned short));
 			}else if(attribute == PointAttribute::CLASSIFICATION){
 				writer->write((const char*)&point.classification, sizeof(unsigned char));
-			}else if(attribute == PointAttribute::NORMAL_SPHEREMAPPED){
+			} else if (attribute == PointAttribute::RETURN_NUMBER) {
+				writer->write((const char*)&point.returnNumber, sizeof(unsigned char));
+			} else if (attribute == PointAttribute::NUMBER_OF_RETURNS) {
+				writer->write((const char*)&point.numberOfReturns, sizeof(unsigned char));
+			} else if (attribute == PointAttribute::SOURCE_ID) {
+				writer->write((const char*)&point.pointSourceID, sizeof(unsigned short));
+			} else if (attribute == PointAttribute::GPS_TIME) {
+				writer->write((const char*)&point.gpsTime, sizeof(double));
+			} else if(attribute == PointAttribute::NORMAL_SPHEREMAPPED){
 				// see http://aras-p.info/texts/CompactNormalStorage.html
 				float nx = point.normal.x;
 				float ny = point.normal.y;

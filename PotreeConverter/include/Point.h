@@ -21,6 +21,7 @@ public:
 	unsigned char returnNumber = 0;
 	unsigned char numberOfReturns = 0;
 	unsigned short pointSourceID = 0;
+	double gpsTime = 0.0;
 
 
 	Point() = default;

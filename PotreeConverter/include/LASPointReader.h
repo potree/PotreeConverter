@@ -122,6 +122,7 @@ public:
 		p.returnNumber = point->return_number;
 		p.numberOfReturns = point->number_of_returns;
 		p.pointSourceID = point->point_source_ID;
+		p.gpsTime = point->gps_time;
 
         return p;
     }

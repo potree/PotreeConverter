@@ -116,9 +116,17 @@ void PotreeConverter::prepare(){
 			pointAttributes.add(PointAttribute::COLOR_PACKED);
 		}else if(attribute == "INTENSITY"){
 			pointAttributes.add(PointAttribute::INTENSITY);
-		}else if(attribute == "CLASSIFICATION"){
+		} else if (attribute == "CLASSIFICATION") {
 			pointAttributes.add(PointAttribute::CLASSIFICATION);
-		}else if(attribute == "NORMAL"){
+		} else if (attribute == "RETURN_NUMBER") {
+			pointAttributes.add(PointAttribute::RETURN_NUMBER);
+		} else if (attribute == "NUMBER_OF_RETURNS") {
+			pointAttributes.add(PointAttribute::NUMBER_OF_RETURNS);
+		} else if (attribute == "SOURCE_ID") {
+			pointAttributes.add(PointAttribute::SOURCE_ID);
+		} else if (attribute == "GPS_TIME") {
+			pointAttributes.add(PointAttribute::GPS_TIME);
+		} else if(attribute == "NORMAL"){
 			pointAttributes.add(PointAttribute::NORMAL_OCT16);
 		}
 	}

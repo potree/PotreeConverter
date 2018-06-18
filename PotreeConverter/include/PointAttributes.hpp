@@ -17,6 +17,10 @@ public:
 	static const PointAttribute COLOR_PACKED;
 	static const PointAttribute INTENSITY;
 	static const PointAttribute CLASSIFICATION;
+	static const PointAttribute RETURN_NUMBER;
+	static const PointAttribute NUMBER_OF_RETURNS;
+	static const PointAttribute SOURCE_ID;
+	static const PointAttribute GPS_TIME;
 	static const PointAttribute NORMAL_SPHEREMAPPED;
 	static const PointAttribute NORMAL_OCT16;
 	static const PointAttribute NORMAL;
