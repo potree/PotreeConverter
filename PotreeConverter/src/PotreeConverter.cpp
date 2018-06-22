@@ -417,8 +417,6 @@ void PotreeConverter::convert(){
 	vector<AABB> boundingBoxes;
 	vector<int> numPoints;
 	vector<string> sourceFilenames;
-  writeSources(this->workDir, sourceFilenames, numPoints, boundingBoxes, this->projection);
-
 
 	for (const auto &source : sources) {
 		cout << "READING:  " << source << endl;
