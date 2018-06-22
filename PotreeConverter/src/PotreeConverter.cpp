@@ -155,6 +155,20 @@ AABB PotreeConverter::calculateAABB(){
 	return aabb;
 }
 
+AABB PotreeConverter::calculateAABB(vector<Point> pointVec){
+  auto minMaxX = std::minmax_element(pointVec.begin(), pointVec.end(), 
+      [](const Point& lhs, const Point& rhs) {return lhs.position.x < rhs.position.x;});
+  auto minMaxY = std::minmax_element(pointVec.begin(), pointVec.end(), 
+      [](const Point& lhs, const Point& rhs) {return lhs.position.y < rhs.position.y;});
+  auto minMaxZ = std::minmax_element(pointVec.begin(), pointVec.end(), 
+      [](const Point& lhs, const Point& rhs) {return lhs.position.z < rhs.position.z;});
+	
+  Vector3<double> userMin(minMaxX.first->position.x, minMaxX.first->position.y, minMaxX.first->position.z);
+	Vector3<double> userMax(minMaxX.second->position.x, minMaxX.second->position.y, minMaxX.second->position.z);
+	aabb = AABB(userMin, userMax);
+  return aabb;
+}
+
 void PotreeConverter::generatePage(string name){
 
 	string pagedir = this->workDir;
@@ -498,7 +512,7 @@ void PotreeConverter::convert(vector<Point> &pointVec){
 
 	long long pointsProcessed = 0;
 
-	AABB aabb = calculateAABB();
+	AABB aabb = calculateAABB(pointVec);
 	cout << "AABB: " << endl << aabb << endl;
 	aabb.makeCubic();
 	cout << "cubic AABB: " << endl << aabb << endl;

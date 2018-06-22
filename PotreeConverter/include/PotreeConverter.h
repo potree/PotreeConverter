@@ -31,6 +31,7 @@ private:
 	PointReader *createPointReader(string source, PointAttributes pointAttributes);
 	void prepare();
 	AABB calculateAABB();
+	AABB calculateAABB(vector<Point> pointVec);
 	void generatePage(string name);
 
 public:
