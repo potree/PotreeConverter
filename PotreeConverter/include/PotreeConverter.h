@@ -60,6 +60,7 @@ public:
     PotreeConverter(string executablePath, string workDir, vector<string> sources);
 		
 	void convert();
+	void convert(vector<Point> &pointVec);
 
 };
 
