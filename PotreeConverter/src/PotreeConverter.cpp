@@ -93,8 +93,8 @@ void PotreeConverter::prepare(){
 				fs::path pDirectoryEntry = it->path();
 				if(fs::is_regular_file(pDirectoryEntry)){
 					string filepath = pDirectoryEntry.string();
-					if(iEndsWith(filepath, ".las") 
-						|| iEndsWith(filepath, ".laz") 
+					if(iEndsWith(filepath, ".las")
+						|| iEndsWith(filepath, ".laz")
 						|| iEndsWith(filepath, ".xyz")
 						|| iEndsWith(filepath, ".pts")
 						|| iEndsWith(filepath, ".ptx")
@@ -142,7 +142,7 @@ AABB PotreeConverter::calculateAABB(){
 		for(string source : sources){
 
 			PointReader *reader = createPointReader(source, pointAttributes);
-			
+
 			AABB lAABB = reader->getAABB();
 			aabb.update(lAABB.min);
 			aabb.update(lAABB.max);
@@ -156,15 +156,15 @@ AABB PotreeConverter::calculateAABB(){
 }
 
 AABB PotreeConverter::calculateAABB(vector<Point> pointVec){
-  auto minMaxX = std::minmax_element(pointVec.begin(), pointVec.end(), 
+  auto minMaxX = std::minmax_element(pointVec.begin(), pointVec.end(),
       [](const Point& lhs, const Point& rhs) {return lhs.position.x < rhs.position.x;});
-  auto minMaxY = std::minmax_element(pointVec.begin(), pointVec.end(), 
+  auto minMaxY = std::minmax_element(pointVec.begin(), pointVec.end(),
       [](const Point& lhs, const Point& rhs) {return lhs.position.y < rhs.position.y;});
-  auto minMaxZ = std::minmax_element(pointVec.begin(), pointVec.end(), 
+  auto minMaxZ = std::minmax_element(pointVec.begin(), pointVec.end(),
       [](const Point& lhs, const Point& rhs) {return lhs.position.z < rhs.position.z;});
-	
-  Vector3<double> userMin(minMaxX.first->position.x, minMaxX.first->position.y, minMaxX.first->position.z);
-	Vector3<double> userMax(minMaxX.second->position.x, minMaxX.second->position.y, minMaxX.second->position.z);
+
+  Vector3<double> userMin(minMaxX.first->position.x, minMaxY.first->position.y, minMaxZ.first->position.z);
+	Vector3<double> userMax(minMaxX.second->position.x, minMaxY.second->position.y, minMaxZ.second->position.z);
 	aabb = AABB(userMin, userMax);
   return aabb;
 }
@@ -218,7 +218,7 @@ void PotreeConverter::generatePage(string name){
 				}else{
 					out << "\t\t" << "viewer.setBackground(\"gradient\"); // [\"skybox\", \"gradient\", \"black\", \"white\"];\n";
 				}
-				
+
 				string descriptionEscaped = string(description);
 				std::replace(descriptionEscaped.begin(), descriptionEscaped.end(), '`', '\'');
 
@@ -226,7 +226,7 @@ void PotreeConverter::generatePage(string name){
 			}else{
 				out << line << endl;
 			}
-			
+
 		}
 
 		in.close();
@@ -234,7 +234,7 @@ void PotreeConverter::generatePage(string name){
 	}
 
 	// change lasmap template
-	if(!this->projection.empty()){ 
+	if(!this->projection.empty()){
 		ifstream in( mapTemplateSourcePath );
 		ofstream out( mapTemplateTargetPath );
 
@@ -245,7 +245,7 @@ void PotreeConverter::generatePage(string name){
 			}else{
 				out << line << endl;
 			}
-			
+
 		}
 
 		in.close();
@@ -301,8 +301,8 @@ void writeSources(string path, vector<string> sourceFilenames, vector<int> numPo
 		Value jBounds(rapidjson::kObjectType);
 
 		{
-			Value bbMin(rapidjson::kObjectType);	
-			Value bbMax(rapidjson::kObjectType);	
+			Value bbMin(rapidjson::kObjectType);
+			Value bbMax(rapidjson::kObjectType);
 
 			bbMin.SetArray();
 			bbMin.PushBack(boundingBox.min.x, d.GetAllocator());
@@ -327,8 +327,8 @@ void writeSources(string path, vector<string> sourceFilenames, vector<int> numPo
 
 	Value jBoundingBox(rapidjson::kObjectType);
 	{
-		Value bbMin(rapidjson::kObjectType);	
-		Value bbMax(rapidjson::kObjectType);	
+		Value bbMin(rapidjson::kObjectType);
+		Value bbMax(rapidjson::kObjectType);
 
 		bbMin.SetArray();
 		bbMin.PushBack(bb.min.x, d.GetAllocator());
@@ -352,7 +352,7 @@ void writeSources(string path, vector<string> sourceFilenames, vector<int> numPo
 	//PrettyWriter<StringBuffer> writer(buffer);
 	Writer<StringBuffer> writer(buffer);
 	d.Accept(writer);
-	
+
 	if(!fs::exists(fs::path(path))){
 		fs::path pcdir(path);
 		fs::create_directories(pcdir);
@@ -461,15 +461,15 @@ void PotreeConverter::convert(){
 			}
 			if((pointsProcessed % (10'000'000)) == 0){
 				cout << "FLUSHING: ";
-			
+
 				auto start = high_resolution_clock::now();
-			
+
 				writer->flush();
-			
+
 				auto end = high_resolution_clock::now();
 				long long duration = duration_cast<milliseconds>(end-start).count();
 				float seconds = duration / 1'000.0f;
-			
+
 				cout << seconds << "s" << endl;
 			}
 
@@ -480,9 +480,9 @@ void PotreeConverter::convert(){
 		reader->close();
 		delete reader;
 
-		
+
 	}
-	
+
 	cout << "closing writer" << endl;
 	writer->flush();
 	writer->close();
@@ -495,7 +495,7 @@ void PotreeConverter::convert(){
 	auto end = high_resolution_clock::now();
 	long long duration = duration_cast<milliseconds>(end-start).count();
 
-	
+
 	cout << endl;
 	cout << "conversion finished" << endl;
 	cout << pointsProcessed << " points were processed and " << writer->numAccepted << " points ( " << percent << "% ) were written to the output. " << endl;
@@ -590,15 +590,15 @@ void PotreeConverter::convert(vector<Point> &pointVec){
     }
     if((pointsProcessed % (10'000'000)) == 0){
       cout << "FLUSHING: ";
-    
+
       auto start = high_resolution_clock::now();
-    
+
       writer->flush();
-    
+
       auto end = high_resolution_clock::now();
       long long duration = duration_cast<milliseconds>(end-start).count();
       float seconds = duration / 1'000.0f;
-    
+
       cout << seconds << "s" << endl;
     }
 
@@ -606,7 +606,7 @@ void PotreeConverter::convert(vector<Point> &pointVec){
     //	break;
     //}
   }
-	
+
 	cout << "closing writer" << endl;
 	writer->flush();
 	writer->close();
@@ -619,7 +619,7 @@ void PotreeConverter::convert(vector<Point> &pointVec){
 	auto end = high_resolution_clock::now();
 	long long duration = duration_cast<milliseconds>(end-start).count();
 
-	
+
 	cout << endl;
 	cout << "conversion finished" << endl;
 	cout << pointsProcessed << " points were processed and " << writer->numAccepted << " points ( " << percent << "% ) were written to the output. " << endl;
