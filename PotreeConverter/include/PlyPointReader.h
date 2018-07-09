@@ -176,6 +176,10 @@ public:
 		unsigned char g = 0;
 		unsigned char b = 0;
 
+		//add by siyuan
+		short intensity = 0;
+		//add end
+
 		if(format == PLY_FILE_FORMAT_ASCII){
 			string line;
 			getline(stream, line);
@@ -199,7 +203,15 @@ public:
 					y = stod(token);
 				}else if(prop.name == "z" && prop.type.name == plyPropertyTypes["double"].name){
 					z = stod(token);
-				}else if(std::find(plyRedNames.begin(), plyRedNames.end(), prop.name) != plyRedNames.end() && prop.type.name == plyPropertyTypes["uchar"].name){
+				}
+				//add by siyuan
+				else if (prop.name == "intensity"){
+					intensity = stoi(token); 
+				}
+
+				//add end
+				
+				else if(std::find(plyRedNames.begin(), plyRedNames.end(), prop.name) != plyRedNames.end() && prop.type.name == plyPropertyTypes["uchar"].name){
 					r = (unsigned char)stof(token);
 				}else if(std::find(plyGreenNames.begin(), plyGreenNames.end(), prop.name) != plyGreenNames.end() && prop.type.name == plyPropertyTypes["uchar"].name){
 					g = (unsigned char)stof(token);
@@ -257,6 +269,9 @@ public:
 		point.normal.x = nx;
 		point.normal.y = ny;
 		point.normal.z = nz;
+		//add by siyuan
+		point.intensity = intensity;
+		//add end
 		pointsRead++;
 		return true;
 	}

@@ -1,5 +1,7 @@
 project(PotreeConverter)
 
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -Wall")
+
 set(RAPIDJSON_INCLUDE_DIR lib/rapidjson/include)
 set(ARGUMENTS_INCLUDE_DIR lib/arguments)
 
