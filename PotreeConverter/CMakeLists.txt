@@ -21,6 +21,7 @@ SOURCE_GROUP("Header Files\\io" FILES
 	include/PointWriter.hpp
 	include/PTXPointReader.h
 	include/XYZPointReader.hpp
+	include/LocbPointReader.hpp
 )
 
 SOURCE_GROUP("Source Files\\io" FILES 
@@ -28,6 +29,7 @@ SOURCE_GROUP("Source Files\\io" FILES
 	src/LASPointReader.cpp
 	src/LASPointWriter.cpp
 	src/PTXPointReader.cpp
+	src/LOCBPointReader.cpp
 )
 
 SOURCE_GROUP("lib\\rapidjson" FILES ${lib_rapidjson_files})

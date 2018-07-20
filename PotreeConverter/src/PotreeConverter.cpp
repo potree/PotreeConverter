@@ -17,6 +17,7 @@
 #include "BINPointReader.hpp"
 #include "PlyPointReader.h"
 #include "XYZPointReader.hpp"
+#include "LocbPointReader.h"
 
 #include <chrono>
 #include <sstream>
@@ -70,6 +71,8 @@ PointReader *PotreeConverter::createPointReader(string path, PointAttributes poi
 		reader = new XYZPointReader(path, format, colorRange, intensityRange);
  	}else if(iEndsWith(path, ".bin")){
 		reader = new BINPointReader(path, aabb, scale, pointAttributes);
+	}else if(iEndsWith(path, ".locb")){
+		reader = new LOCBPointReader(path);
 	}
 
 	return reader;
@@ -98,7 +101,8 @@ void PotreeConverter::prepare(){
 						|| iEndsWith(filepath, ".xyz")
 						|| iEndsWith(filepath, ".pts")
 						|| iEndsWith(filepath, ".ptx")
-						|| iEndsWith(filepath, ".ply")){
+						|| iEndsWith(filepath, ".ply")
+						|| iEndsWith(filepath, ".locb")){
 						sourceFiles.push_back(filepath);
 					}
 				}

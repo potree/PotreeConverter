@@ -69,7 +69,7 @@ struct PotreeArguments {
 PotreeArguments parseArguments(int argc, char **argv){
 	Arguments args(argc, argv);
 
-	args.addArgument("source,i,", "input files");
+	args.addArgument("source,i", "input files");
 	args.addArgument("help,h", "prints usage");
 	args.addArgument("generate-page,p", "Generates a ready to use web page with the given name.");
 	args.addArgument("page-template", "directory where the web page template is located.");
@@ -142,7 +142,7 @@ PotreeArguments parseArguments(int argc, char **argv){
 			a.outFormat = Potree::OutputFormat::LAZ;
 		} else {
 			a.outFormat = Potree::OutputFormat::BINARY;
-		}
+		} 
 	} else {
 		a.outFormat = Potree::OutputFormat::BINARY;
 	}
