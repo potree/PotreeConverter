@@ -8,11 +8,7 @@ Builds a potree octree from las, laz, binary ply, xyz or ptx files.
 The remaining branches follow the typical NextDroid branching workflow, i.e.:
  - `master` is the stable release branch
  - `develop` is the pre-release branch
-
-
-## Downloads
-
-* [Source Code and windows 64bit releases](https://github.com/potree/PotreeConverter/releases)
+ - feature branches as needed
 
 ## Dependencies
 
