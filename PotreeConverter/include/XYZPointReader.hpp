@@ -39,6 +39,7 @@ private:
 
 	float intensityOffset;
 	float intensityScale;
+    double gpsTimeOffset;
 
 	int linesSkipped;
 
@@ -51,6 +52,7 @@ public:
 		linesSkipped = 0;
 		pointCount = 0;
 		colorScale = -1;
+        gpsTimeOffset = 0;
 
 		if(intensityRange.size() == 2){
 			intensityOffset = (float)intensityRange[0];
@@ -150,6 +152,7 @@ public:
 		unsigned char b = 255;
 		// unsigned char a = 255;  // unused variable
 		unsigned short intensity = 0;
+        double gpsTime = 0.0;
 
 		string line;
 		while(getline(stream, line)){
@@ -191,7 +194,16 @@ public:
 					ny = stof(token);
 				}else if(f == 'Z'){
 					nz = stof(token);
-				}
+				}else if (f == 't') {
+                    if (pointsRead == 0) {
+                        gpsTimeOffset = stold(token);
+                    }
+					auto tmp = stold(token);
+                    gpsTime = tmp - gpsTimeOffset;
+					if (pointsRead % 1'000'000 == 0) {
+						std::cout << "Point Number: " << pointsRead << "\tGPSTIME: " << gpsTime << std::endl;
+					}
+                }
 			}
 
 			point = Point(x,y,z,r,g,b);
@@ -199,6 +211,7 @@ public:
 			point.normal.y = ny;
 			point.normal.z = nz;
 			point.intensity = intensity;
+            point.gpsTime = gpsTime;
 			pointsRead++;
 			return true;
 		}

@@ -78,6 +78,7 @@ public:
 				writer->write((const char*)&point.pointSourceID, sizeof(unsigned short));
 			} else if (attribute == PointAttribute::GPS_TIME) {
 				writer->write((const char*)&point.gpsTime, sizeof(double));
+				std::cout << printf("%x\t%f", (char) point.gpsTime, point.gpsTime) << std::endl;
 			} else if(attribute == PointAttribute::NORMAL_SPHEREMAPPED){
 				// see http://aras-p.info/texts/CompactNormalStorage.html
 				float nx = point.normal.x;
