@@ -10,6 +10,25 @@ The remaining branches follow the typical NextDroid branching workflow, i.e.:
  - `develop` is the pre-release branch
  - feature branches as needed
 
+## Gotcha's
+Converting csv files: 
+ - file extension must be changed to `.xyz`
+ 
+Formatting:
+ - The following tokens specify the column type: 
+   - `x`, `y`, `z` for x,y,z position coordinates
+   - `X`, `Y`, `Z` for x,y,z values of normal vector
+   - `r`, `g` `b` for r,g,b values 
+   - `i` for intensity 
+   - `t` for timestamp (not implemented yet)
+   - 'c' for classification type (not implemented yet)
+   - `s` to ignore (skip) column
+ 
+ Example: for a file with the column order `[x, y, z, intensity, timestamp, class, unknown, r, g, b]` use the format flag: 
+ ```
+ -f xyzitcsrgb
+ ```
+
 ## Dependencies
 
 * [lastools(LASzip)](https://github.com/LAStools/LAStools) or [fork of lastools with cmake for LASzip](https://github.com/m-schuetz/LAStools)
