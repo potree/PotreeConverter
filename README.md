@@ -5,6 +5,14 @@ Develop: [![Build Status](https://travis-ci.org/potree/PotreeConverter.svg?branc
 
 Builds a potree octree from las, laz, binary ply, xyz or ptx files.
 
+## NextDroid Branching Guidelines
+`upstream-master` will remain the as the working upstream branch where we can pull changes down or push suggested changes up.
+
+The remaining branches follow the typical NextDroid branching workflow, i.e.:
+ - `master` is the stable release branch
+ - `develop` is the pre-release branch
+
+
 ## Downloads
 
 * [Source Code and windows 64bit releases](https://github.com/potree/PotreeConverter/releases)
@@ -15,7 +23,7 @@ Builds a potree octree from las, laz, binary ply, xyz or ptx files.
 
 ## Build
 
-### linux / gcc 4.9
+### linux / gcc 4.9+
 
 
 lastools (from fork with cmake)
