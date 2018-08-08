@@ -42,6 +42,7 @@ lastools (from fork with cmake)
 
 ```
 export VeritasRepo=/path/to/Veritas/Repository
+
 cd ${VeritasRepo}/GroundTruthVisualization/external
 git clone https://github.com/m-schuetz/LAStools.git 
 cd LAStools/LASzip
@@ -55,8 +56,8 @@ PotreeConverter
 
 ```
 export LAStoolsDir=${VeritasRepo}/GroundTruthVisualization/external/LAStools
-cd ${VeritasRepo}/GroundTruthVisualization/external/PotreeConverter
 
+cd ${VeritasRepo}/GroundTruthVisualization/external/PotreeConverter 
 mkdir build && cd build
 cmake -DCMAKE_BUILD_TYPE=Release -DLASZIP_INCLUDE_DIRS=${LAStoolsDir}/LASzip/dll -DLASZIP_LIBRARY=${LAStoolsDir}/LASzip/build/src/liblaszip.so ..
 make -j7
