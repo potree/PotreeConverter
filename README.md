@@ -41,29 +41,27 @@ Formatting:
 lastools (from fork with cmake)
 
 ```
-cd ~/dev/workspaces/lastools
-git clone https://github.com/m-schuetz/LAStools.git master
-cd master/LASzip
-mkdir build
-cd build
+export VeritasRepo=/path/to/Veritas/Repository
+cd ${VeritasRepo}/GroundTruthVisualization/external
+git clone https://github.com/m-schuetz/LAStools.git 
+cd LAStools/LASzip
+mkdir build && cd build
 cmake -DCMAKE_BUILD_TYPE=Release ..
-make
+make -j7
 
 ```
 
 PotreeConverter
 
 ```
-cd ~/dev/workspaces/PotreeConverter
-git clone https://github.com/potree/PotreeConverter.git master
-cd master
-mkdir build
-cd build
-cmake -DCMAKE_BUILD_TYPE=Release -DLASZIP_INCLUDE_DIRS=~/dev/workspaces/lastools/master/LASzip/dll -DLASZIP_LIBRARY=~/dev/workspaces/lastools/master/LASzip/build/src/liblaszip.so ..
-make
+export LAStoolsDir=${VeritasRepo}/GroundTruthVisualization/external/LAStools
+cd ${VeritasRepo}/GroundTruthVisualization/external/PotreeConverter
 
-# copy ./PotreeConverter/resources/page_template to your binary working directory.
+mkdir build && cd build
+cmake -DCMAKE_BUILD_TYPE=Release -DLASZIP_INCLUDE_DIRS=${LAStoolsDir}/LASzip/dll -DLASZIP_LIBRARY=${LAStoolsDir}/LASzip/build/src/liblaszip.so ..
+make -j7
 
+# NOTE: resources folder must be in the same directory as the PotreeConverter executable
 ```
 
 ### OS X
