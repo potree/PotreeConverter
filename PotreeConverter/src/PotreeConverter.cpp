@@ -57,7 +57,7 @@ PointReader *PotreeConverter::createPointReader(string path, PointAttributes poi
 		reader = new PTXPointReader(path);
 	}else if(iEndsWith(path, ".ply")){
 		reader = new PlyPointReader(path);
-	}else if(iEndsWith(path, ".xyz") || iEndsWith(path, ".txt") || ifEndsWith(path, ".csv")){
+	}else if(iEndsWith(path, ".xyz") || iEndsWith(path, ".txt") || iEndsWith(path, ".csv")){
 		reader = new XYZPointReader(path, format, colorRange, intensityRange);
 	}else if(iEndsWith(path, ".pts")){
 		vector<double> intensityRange;
