@@ -43,3 +43,4 @@ if(UNIX)
 endif()
 
 install(TARGETS PotreeConverter RUNTIME DESTINATION bin/ )
+add_custom_command(TARGET PotreeConverter POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/PotreeConverter/resources $<TARGET_FILE_DIR:PotreeConverter>/resources)
