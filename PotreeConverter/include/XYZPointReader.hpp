@@ -76,7 +76,7 @@ public:
 
 			// try to find color range by evaluating the first x points.
 			float max = 0;
-			int j = 0; 
+			int j = 0;
 			string line;
 			while(getline(stream, line) && j < 1000){
 				trim(line);
@@ -110,7 +110,7 @@ public:
 					}
 				}
 
-				
+
 
 				j++;
 			}
@@ -179,11 +179,11 @@ public:
 				}else if(f == 'z'){
 					z = stod(token);
 				}else if(f == 'r'){
-					r = (unsigned char)(255.0f * (stof(token) - colorOffset) / colorScale); 
+					r = (unsigned char)(255.0f * (stof(token) - colorOffset) / colorScale);
 				}else if(f == 'g'){
-					g = (unsigned char)(255.0f * (stof(token) - colorOffset) / colorScale); 
+					g = (unsigned char)(255.0f * (stof(token) - colorOffset) / colorScale);
 				}else if(f == 'b'){
-					b = (unsigned char)(255.0f * (stof(token) - colorOffset) / colorScale); 
+					b = (unsigned char)(255.0f * (stof(token) - colorOffset) / colorScale);
 				}else if(f == 'i'){
 					intensity = (unsigned short)( 65535 * (stof(token) - intensityOffset) / intensityScale);
 				}else if(f == 's'){
@@ -195,11 +195,7 @@ public:
 				}else if(f == 'Z'){
 					nz = stof(token);
 				}else if (f == 't') {
-                    if (pointsRead == 0) {
-                        gpsTimeOffset = stold(token);
-                    }
 					auto tmp = stold(token);
-                    gpsTime = tmp - gpsTimeOffset;
 					if (pointsRead % 1'000'000 == 0) {
 						std::cout << "Point Number: " << pointsRead << "\tGPSTIME: " << gpsTime << std::endl;
 					}
