@@ -195,7 +195,7 @@ public:
 				}else if(f == 'Z'){
 					nz = stof(token);
 				}else if (f == 't') {
-					auto gpsTime = stold(token);
+					gpsTime = stold(token);
 					if (pointsRead % 1'000'000 == 0) {
 						std::cout << "Point Number: " << pointsRead << "\tGPSTIME: " << gpsTime << std::endl;
 					}
