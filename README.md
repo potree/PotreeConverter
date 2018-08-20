@@ -20,7 +20,7 @@ Builds a potree octree from las, laz, binary ply, xyz or ptx files.
 
 lastools (from fork with cmake)
 
-```
+```bash
 cd ~/dev/workspaces/lastools
 git clone https://github.com/m-schuetz/LAStools.git master
 cd master/LASzip
@@ -33,7 +33,7 @@ make
 
 PotreeConverter
 
-```
+```bash
 cd ~/dev/workspaces/PotreeConverter
 git clone https://github.com/potree/PotreeConverter.git master
 cd master
@@ -53,7 +53,7 @@ Same as the linux instructions above, except:
 1. Give cmake absolute paths to the LASzip tools you just built. (Otherwise make might not be able to find them)
 2. LASZip library will be called `liblaszip.dylib`, not `liblaszip.so `
 
-```
+```bash
 ...
 
 cmake -DCMAKE_BUILD_TYPE=Release -DLASZIP_INCLUDE_DIRS=[ABSOLUTE_PATH_TO_LASTOOLS]/master/LASzip/dll -DLASZIP_LIBRARY=[ABSOLUTE_PATH_TO_LASTOOLS]/master/LASzip/build/src/liblaszip.dylib ..
@@ -76,7 +76,7 @@ cmake -G "Visual Studio 15 2017 Win64" ../
 
 PotreeConverter
 
-```
+```bash
 # make sure you've got these environment variables set with your directory structure
 set LASZIP_INCLUDE_DIRS=D:\dev\workspaces\lastools\master\LASzip\dll
 set LASZIP_LIBRARY=D:\dev\workspaces\lastools\master\LASzip\build\src\Release\laszip.lib
@@ -95,6 +95,34 @@ cmake -G "Visual Studio 15 2017 Win64" -DLASZIP_INCLUDE_DIRS=%LASZIP_INCLUDE_DIR
 
 ```
 
+### Work with docker
+
+Build the image
+
+
+```bash
+docker build . -t potree/potreeconverter
+```
+
+Run the image to convert your data with a mounted volume in read only containing your original data and a volume in read-write which will contain the result.
+
+```bash
+# Put your data in the input folder
+mkdir -p $HOME/potree/input
+mkdir -p $HOME/potree/output
+# Use a container to generate the data, USER_ID and GROUP_ID will make sure you can directly read the data result
+docker run \
+       -e USER_ID=`id -u` \
+       -e GROUP_ID=`id -g` \
+       -v $HOME/potree/input:/input:ro \
+       -v $HOME/potree/output:/output:rw \
+       potree/potreeconverter \
+       /data/PotreeConverter/build/PotreeConverter/PotreeConverter /input/data.las -o /output
+# Get the result
+ls -la $HOME/potree/output/
+```
+
+
 ## PotreeConverter Usage
 
 Converts las files to the potree file format.
@@ -104,8 +132,8 @@ inside the directory will be converted.
 Options:
 
 
-```
-$ PotreeConverter -h                                      
+```bash
+$ PotreeConverter -h
   -i [ --source ]                        input files
   -h [ --help ]                          prints usage
   -p [ --generate-page ]                 Generates a ready to use web page with the given name.
@@ -149,8 +177,8 @@ Examples:
     ./PotreeConverter.exe C:/data -o C:/potree_converted -aabb "-0.748 -2.780 2.547 3.899 1.867 7.195"
     ./PotreeConverter.exe C:/new_data.las -o C:/potree_converted --incremental
 
-	# tell the converter that coordinates are in a UTM zone 10N projection. Also, create output in LAZ format
-	./PotreeConverter.exe C:/data -o C:/potree_converted -p pageName --projection "+proj=utm +zone=10 +ellps=GRS80 +datum=NAD83 +units=m +no_defs" --overwrite --output-format LAZ
+    # tell the converter that coordinates are in a UTM zone 10N projection. Also, create output in LAZ format
+    ./PotreeConverter.exe C:/data -o C:/potree_converted -p pageName --projection "+proj=utm +zone=10 +ellps=GRS80 +datum=NAD83 +units=m +no_defs" --overwrite --output-format LAZ
 
-	# using a swiss projection. Use http://spatialreference.org/ to find projections in proj4 format
-	./PotreeConverter.exe C:/data -o C:/potree_converted -p pageName --projection "+proj=somerc +lat_0=46.95240555555556 +lon_0=7.439583333333333 +k_0=1 +x_0=600000 +y_0=200000 +ellps=bessel +towgs84=674.4,15.1,405.3,0,0,0,0 +units=m +no_defs" --overwrite
+    # using a swiss projection. Use http://spatialreference.org/ to find projections in proj4 format
+    ./PotreeConverter.exe C:/data -o C:/potree_converted -p pageName --projection "+proj=somerc +lat_0=46.95240555555556 +lon_0=7.439583333333333 +k_0=1 +x_0=600000 +y_0=200000 +ellps=bessel +towgs84=674.4,15.1,405.3,0,0,0,0 +units=m +no_defs" --overwrite
