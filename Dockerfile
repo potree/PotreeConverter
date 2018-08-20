@@ -1,4 +1,4 @@
-FROM ubuntu:15.10
+FROM ubuntu:18.04
 
 RUN apt-get update && apt-get install -y g++ git cmake libboost-all-dev
 RUN mkdir /data
@@ -18,4 +18,3 @@ RUN mkdir build
 RUN cd build && cmake -DCMAKE_BUILD_TYPE=Release -DLASZIP_INCLUDE_DIRS=/data/LAStools/LASzip/dll -DLASZIP_LIBRARY=/data/LAStools/LASzip/build/src/liblaszip.so .. 
 RUN cd build && make
 RUN cp -R /data/PotreeConverter/PotreeConverter/resources/ /data
-
