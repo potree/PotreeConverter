@@ -3,6 +3,7 @@
 #include <iostream>
 #include <vector>
 
+
 #include <experimental/filesystem>
 
 #include "BINPointReader.hpp"
@@ -18,12 +19,12 @@ using std::ios;
 
 namespace Potree{
 
-BINPointReader::BINPointReader(string path,  AABB aabb, double scale, PointAttributes pointAttributes){
+BINPointReader::BINPointReader(string path, AABB aabb, double scale, PointAttributes pointAttributes) : endOfFile(false) {
 	this->path = path;
 	this->aabb = aabb;
 	this->scale = scale;
 	this->attributes = pointAttributes;
-	
+
 	if(fs::is_directory(path)){
 		// if directory is specified, find all las and laz files inside directory
 
@@ -39,6 +40,27 @@ BINPointReader::BINPointReader(string path,  AABB aabb, double scale, PointAttri
 
 	currentFile = files.begin();
 	reader = new ifstream(*currentFile, ios::in | ios::binary);
+	archivePtr = std::unique_ptr<boost::archive::binary_iarchive>(new boost::archive::binary_iarchive(*reader));
+
+	// Calculate AABB:
+	if (false) {
+		pointCount = 0;
+		while(readNextPoint()){
+			Point p = getPoint();
+			if (pointCount == 0) {
+				this->aabb = AABB(p.position);
+			} else {
+				this->aabb.update(p.position);
+			}
+			pointCount++;
+		}
+		reader->clear();
+		reader->seekg(0, reader->beg);
+
+		reader = new ifstream(*currentFile, ios::in | ios::binary);
+		archivePtr = std::unique_ptr<boost::archive::binary_iarchive>(new boost::archive::binary_iarchive(*reader));
+	}
+
 }
 
 BINPointReader::~BINPointReader(){
@@ -46,6 +68,8 @@ BINPointReader::~BINPointReader(){
 }
 
 void BINPointReader::close(){
+	archivePtr.reset();
+
 	if(reader != NULL){
 		reader->close();
 		delete reader;
@@ -54,13 +78,12 @@ void BINPointReader::close(){
 }
 
 long long BINPointReader::numPoints(){
-	//TODO
-
-	return 0;
+	return pointCount;
 }
 
 bool BINPointReader::readNextPoint(){
 	bool hasPoints = reader->good();
+
 
 	if(!hasPoints){
 		// try to open next file, if available
@@ -75,16 +98,44 @@ bool BINPointReader::readNextPoint(){
 		}
 	}
 
-	if(hasPoints){
-		point = Point();
+	if(hasPoints && !endOfFile){
+		this->point = Point();
 		char* buffer = new char[attributes.byteSize];
-		reader->read(buffer, attributes.byteSize);
+		// reader->read(buffer, attributes.byteSize);
+
+		try {
+			LidarScan scan = {};
+			*archivePtr >> scan;
+
+			// std::cout << "SCAN: " << scan << std::endl;
+
+			point.position.x = scan.easting;
+			point.position.y = scan.northing;
+			point.position.z = scan.altitude;
+			point.intensity = scan.intensity;
+			point.gpsTime = scan.gpsTime;
+
+			// std::cout << "POINT: "
+			// 					<< point.position.x << " >< "
+			// 					<< point.position.y << " >< "
+			// 					<< point.position.z << " >< "
+			// 					<< point.intensity << " >< "
+			// 					<< point.gpsTime
+			// 					<< std::endl;
+			return true;
+
+		} catch (std::exception& e) {
+			endOfFile = false;
+			std::cout << "END OF FILE REACHED" << std::endl;
+			return false;
+		}
+
 
 		if(!reader->good()){
             delete [] buffer;
 			return false;
 		}
-		
+
 		int offset = 0;
 		for(int i = 0; i < attributes.size(); i++){
 			const PointAttribute attribute = attributes[i];
@@ -183,7 +234,15 @@ bool BINPointReader::readNextPoint(){
 
 			offset += attribute.byteSize;
 		}
-		
+
+		// std::cout << "POINT: "
+		// 					<< point.position.x << " >< "
+		// 					<< point.position.y << " >< "
+		// 					<< point.position.z << " >< "
+		// 					<< point.intensity << " >< "
+		// 					<< point.gpsTime
+		// 					<< std::endl;
+
 		delete [] buffer;
 	}
 
@@ -195,16 +254,7 @@ Point BINPointReader::getPoint(){
 }
 
 AABB BINPointReader::getAABB(){
-	AABB aabb;
-	//TODO
-
 	return aabb;
 }
 
 }
-
-
-
-
-
-

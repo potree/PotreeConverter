@@ -28,6 +28,12 @@ public:
 		size = Vector3<double>(std::numeric_limits<float>::max());
 	}
 
+	AABB(const Vector3<double> &p) {
+		min = p;
+		max = p;
+		size = max-min;
+	}
+
 	AABB(Vector3<double> min, Vector3<double> max){
 		this->min = min;
 		this->max = max;
@@ -68,11 +74,11 @@ public:
 		size = max - min;
 	}
 
-	friend ostream &operator<<( ostream &output,  const AABB &value ){ 
+	friend ostream &operator<<( ostream &output,  const AABB &value ){
 		output << "min: " << value.min << endl;
 		output << "max: " << value.max << endl;
 		output << "size: " << value.size << endl;
-		return output;            
+		return output;
 	}
 
 };

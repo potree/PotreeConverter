@@ -11,8 +11,8 @@ include_directories(include ${LASZIP_INCLUDE_DIRS})
 include_directories(include ${RAPIDJSON_INCLUDE_DIR})
 include_directories(include ${ARGUMENTS_INCLUDE_DIR})
 
-SOURCE_GROUP("Header Files\\io" FILES 
-	include/BINPointReader.hpp 
+SOURCE_GROUP("Header Files\\io" FILES
+	include/BINPointReader.hpp
 	include/BINPointWriter.hpp
 	include/LASPointReader.h
 	include/LASPointWriter.hpp
@@ -23,7 +23,7 @@ SOURCE_GROUP("Header Files\\io" FILES
 	include/XYZPointReader.hpp
 )
 
-SOURCE_GROUP("Source Files\\io" FILES 
+SOURCE_GROUP("Source Files\\io" FILES
 	src/BINPointReader.cpp
 	src/LASPointReader.cpp
 	src/LASPointWriter.cpp
@@ -36,6 +36,10 @@ SOURCE_GROUP("lib\\arguments" FILES ${lib_argument_files})
 add_executable(PotreeConverter ${files} ${lib_rapidjson_files} ${lib_argument_files})
 
 target_link_libraries(PotreeConverter ${LASZIP_LIBRARY})
+
+# Find Boost for serialization
+find_package(Boost COMPONENTS serialization REQUIRED)
+target_link_libraries(PotreeConverter ${Boost_LIBRARIES})
 
 if(UNIX)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -std=c++14 -pthread -lstdc++ -lm")
