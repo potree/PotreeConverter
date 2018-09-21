@@ -6,6 +6,7 @@
 #include <string>
 #include <iostream>
 #include <vector>
+#include <cstring>
 
 #include "laszip_api.h"
 
@@ -90,6 +91,20 @@ public:
 			return header->number_of_point_records;
 		}
 	}
+	
+	string getProjection() {
+		for (unsigned i = 0; i < header->number_of_variable_length_records; i++) {
+			laszip_vlr_struct* vlr = &header->vlrs[i];
+			string user_id(vlr->user_id);
+			
+			if ((user_id == "liblas" || user_id == "LASF_Projection") && vlr->record_id == 2112) {
+				char* wkt = (char*) vlr->data;
+				size_t len = strnlen(wkt, vlr->record_length_after_header);
+				return string(wkt, len);
+			}
+		}
+		return string("");
+	}
 
 	~LIBLASReader(){
 		laszip_close_reader(laszip_reader);
@@ -152,6 +167,8 @@ public:
 	Point getPoint();
 
 	AABB getAABB();
+	
+	string getProjection() { return reader->getProjection(); }
 
 	long long numPoints();
 

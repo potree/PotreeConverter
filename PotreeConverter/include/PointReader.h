@@ -4,6 +4,7 @@
 #define POINTREADER_H
 
 #include <experimental/filesystem>
+#include <string>
 
 #include "Point.h"
 #include "AABB.h"
@@ -22,7 +23,9 @@ public:
 	virtual Point getPoint() = 0;
 
 	virtual AABB getAABB() = 0;
-
+	
+	virtual std::string getProjection() { return ""; }
+	
 	virtual long long numPoints() = 0;
 
 	virtual void close() = 0;

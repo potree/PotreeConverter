@@ -412,6 +412,17 @@ void PotreeConverter::convert(){
 		boundingBoxes.push_back(reader->getAABB());
 		numPoints.push_back(reader->numPoints());
 		sourceFilenames.push_back(fs::path(source).filename().string());
+		
+		string readerProjection = reader->getProjection();
+		if (!readerProjection.empty()) {
+			if (this->projection.empty()) {
+				cout << "Using projection: " << readerProjection << std::endl;
+				this->projection = readerProjection;
+				writer->setProjection(readerProjection);
+			} else if (this->projection != readerProjection) {
+				cout << "Ignoring projection: " << readerProjection << std::endl;
+			}
+		}
 
 		writeSources(this->workDir, sourceFilenames, numPoints, boundingBoxes, this->projection);
 		if(this->sourceListingOnly){
