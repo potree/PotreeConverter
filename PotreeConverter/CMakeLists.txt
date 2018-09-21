@@ -12,6 +12,7 @@ include_directories(include ${RAPIDJSON_INCLUDE_DIR})
 include_directories(include ${ARGUMENTS_INCLUDE_DIR})
 
 SOURCE_GROUP("Header Files\\io" FILES
+	include/BoostBINPointReader.hpp
 	include/BINPointReader.hpp
 	include/BINPointWriter.hpp
 	include/LASPointReader.h
@@ -24,6 +25,7 @@ SOURCE_GROUP("Header Files\\io" FILES
 )
 
 SOURCE_GROUP("Source Files\\io" FILES
+	src/BoostBINPointReader.cpp
 	src/BINPointReader.cpp
 	src/LASPointReader.cpp
 	src/LASPointWriter.cpp

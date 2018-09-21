@@ -14,6 +14,7 @@
 #include "PotreeWriter.h"
 #include "LASPointWriter.hpp"
 #include "BINPointWriter.hpp"
+#include "BoostBINPointReader.hpp"
 #include "BINPointReader.hpp"
 #include "PlyPointReader.h"
 #include "XYZPointReader.hpp"
@@ -70,6 +71,10 @@ PointReader *PotreeConverter::createPointReader(string path, PointAttributes poi
 		reader = new XYZPointReader(path, format, colorRange, intensityRange);
  	}else if(iEndsWith(path, ".bin")){
 		reader = new BINPointReader(path, aabb, scale, pointAttributes);
+	} else if(iEndsWith(path, ".csv_bin")) {
+		reader = new BoostBINPointReader(path, aabb, scale, pointAttributes);
+	} else {
+		std::cerr << "Unrecognized File Extension, could not create reader" << std::endl;
 	}
 
 	return reader;
@@ -449,7 +454,7 @@ void PotreeConverter::convert(){
 
 				cout << ssMessage.str() << endl;
 			}
-			if((pointsProcessed % (10'000'000)) == 0){
+			if((pointsProcessed % (2'000'000)) == 0){
 				cout << "FLUSHING: ";
 
 				auto start = high_resolution_clock::now();

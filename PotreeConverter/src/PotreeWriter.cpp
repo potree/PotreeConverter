@@ -17,6 +17,7 @@
 #include "PointReader.h"
 #include "PointWriter.hpp"
 #include "LASPointReader.h"
+#include "BoostBINPointReader.hpp"
 #include "BINPointReader.hpp"
 #include "LASPointWriter.hpp"
 #include "BINPointWriter.hpp"
