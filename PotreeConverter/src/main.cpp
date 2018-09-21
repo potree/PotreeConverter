@@ -69,7 +69,7 @@ struct PotreeArguments {
 PotreeArguments parseArguments(int argc, char **argv){
 	Arguments args(argc, argv);
 
-	args.addArgument("source,i,", "input files");
+	args.addArgument("source,i,", "Source file. Can be LAS, LAZ, PTX or PLY");
 	args.addArgument("help,h", "prints usage");
 	args.addArgument("generate-page,p", "Generates a ready to use web page with the given name.");
 	args.addArgument("page-template", "directory where the web page template is located.");
@@ -89,7 +89,6 @@ PotreeArguments parseArguments(int argc, char **argv){
 	args.addArgument("source-listing-only", "Create a sources.json but no octree.");
 	args.addArgument("projection", "Specify projection in proj4 format.");
 	args.addArgument("list-of-files", "A text file containing a list of files to be converted.");
-	args.addArgument("source", "Source file. Can be LAS, LAZ, PTX or PLY");
 	args.addArgument("title", "Page title");
 	args.addArgument("description", "Description to be shown in the page.");
 	args.addArgument("edl-enabled", "Enable Eye-Dome-Lighting.");
@@ -213,6 +212,11 @@ PotreeArguments parseArguments(int argc, char **argv){
 			cerr << "ERROR: specified list of files not found: '" << a.listOfFiles << "'" << endl;
 			exit(1);
 		}
+	}
+	
+	if (a.source.empty()) {
+		cerr << "No input files specified" << endl;
+		exit(1);
 	}
 
 	a.title = args.get("title").as<string>();
