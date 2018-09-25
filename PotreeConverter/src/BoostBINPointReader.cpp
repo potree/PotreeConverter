@@ -123,11 +123,13 @@ bool BoostBINPointReader::readNextPoint(){
 			// 					<< point.intensity << " >< "
 			// 					<< point.gpsTime
 			// 					<< std::endl;
+			delete [] buffer;
 			return true;
 
 		} catch (std::exception& e) {
 			endOfFile = false;
 			std::cout << "END OF FILE REACHED" << std::endl;
+			delete [] buffer;
 			return false;
 		}
 
