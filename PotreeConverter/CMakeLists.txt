@@ -43,6 +43,11 @@ target_link_libraries(PotreeConverter ${LASZIP_LIBRARY})
 find_package(Boost COMPONENTS serialization REQUIRED)
 target_link_libraries(PotreeConverter ${Boost_LIBRARIES})
 
+# Find and include LASzip
+find_package(LASzip REQUIRED)
+target_include_directories(PotreeConverter PRIVATE ${LASzip_INCLUDE_DIRS})
+target_link_libraries(PotreeConverter PRIVATE ${LASzip_LIBRARIES})
+
 if(UNIX)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -std=c++14 -pthread -lstdc++ -lm")
     target_link_libraries(PotreeConverter -lstdc++fs)
