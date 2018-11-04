@@ -56,6 +56,8 @@ public:
 	bool showSkybox = false;
 	string material = "RGB";
     string executablePath;
+	int storeSize = 20'000;
+	int flushLimit = 10'000'000;
 
     PotreeConverter(string executablePath, string workDir, vector<string> sources);
 		

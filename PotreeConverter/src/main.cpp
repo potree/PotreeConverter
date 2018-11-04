@@ -64,6 +64,8 @@ struct PotreeArguments {
 	bool showSkybox = false;
 	string material = "RGB";
     string executablePath;
+	int storeSize;
+	int flushLimit;
 };
 
 PotreeArguments parseArguments(int argc, char **argv){
@@ -95,6 +97,8 @@ PotreeArguments parseArguments(int argc, char **argv){
 	args.addArgument("edl-enabled", "Enable Eye-Dome-Lighting.");
 	args.addArgument("show-skybox", "");
 	args.addArgument("material", "RGB, ELEVATION, INTENSITY, INTENSITY_GRADIENT, CLASSIFICATION, RETURN_NUMBER, SOURCE, LEVEL_OF_DETAIL");
+	args.addArgument("store-size", "A node is split once more than store-size points are added. Reduce for better results at cost of performance. Default is 20000");
+	args.addArgument("flush-limit", "Flush after X points. Default is 10000000");
 
 	PotreeArguments a;
 
@@ -125,6 +129,8 @@ PotreeArguments parseArguments(int argc, char **argv){
 	}
 	a.outdir = args.get("outdir").as<string>();
 	a.spacing = args.get("spacing").as<double>(0.0);
+	a.storeSize = args.get("store-size").as<int>(20'000);
+	a.flushLimit= args.get("flush-limit").as<int>(10'000'000);
 	a.diagonalFraction = args.get("d").as<double>(0.0);
 	a.levels = args.get("levels").as<int>(-1);
 	a.format = args.get("input-format").as<string>();
@@ -308,6 +314,8 @@ int main(int argc, char **argv){
 		pc.edlEnabled = a.edlEnabled;
 		pc.material = a.material;
 		pc.showSkybox = a.showSkybox;
+		pc.storeSize = a.storeSize;
+		pc.flushLimit = a.flushLimit;
 
 		pc.convert();
 	}catch(exception &e){

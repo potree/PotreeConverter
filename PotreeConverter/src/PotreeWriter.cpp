@@ -171,7 +171,7 @@ PWNode *PWNode::add(Point &point){
 
 	if(isLeafNode()){
 		store.push_back(point);
-		if(int(store.size()) >= storeLimit){
+		if(int(store.size()) >= potreeWriter->storeSize){
 			split();
 		}
 

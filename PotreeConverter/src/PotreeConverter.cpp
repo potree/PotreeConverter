@@ -400,6 +400,8 @@ void PotreeConverter::convert(){
 		return;
 	}
 
+	writer->storeSize = storeSize;
+
 	vector<AABB> boundingBoxes;
 	vector<int> numPoints;
 	vector<string> sourceFilenames;
@@ -445,7 +447,7 @@ void PotreeConverter::convert(){
 
 				cout << ssMessage.str() << endl;
 			}
-			if((pointsProcessed % (10'000'000)) == 0){
+			if((pointsProcessed % (flushLimit)) == 0){
 				cout << "FLUSHING: ";
 			
 				auto start = high_resolution_clock::now();
