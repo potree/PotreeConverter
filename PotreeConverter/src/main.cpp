@@ -12,6 +12,8 @@
 
 #include "arguments.hpp"
 #include <experimental/filesystem>
+#include <DataSchemas/Lidar_generated.h>
+
 
 namespace fs = std::experimental::filesystem;
 

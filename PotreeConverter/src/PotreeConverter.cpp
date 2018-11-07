@@ -26,8 +26,7 @@
 #include <vector>
 #include <math.h>
 #include <fstream>
-
-
+#include "FlatBufferReader.hpp"
 
 
 using rapidjson::Document;
@@ -73,8 +72,10 @@ PointReader *PotreeConverter::createPointReader(string path, PointAttributes poi
 		reader = new BINPointReader(path, aabb, scale, pointAttributes);
 	} else if(iEndsWith(path, ".csv_bin")) {
 		reader = new BoostBINPointReader(path, aabb, scale, pointAttributes);
+	} else if(iEndsWith(path, ".lidar")) {
+		reader = new FlatBufferReader(path, aabb, scale, pointAttributes);
 	} else {
-		std::cerr << "Unrecognized File Extension, could not create reader" << std::endl;
+		std::cerr << "Unrecognized File Extension, could not create reader" << path<<std::endl;
 	}
 
 	return reader;
@@ -139,6 +140,7 @@ void PotreeConverter::prepare(){
 
 AABB PotreeConverter::calculateAABB(){
 	AABB aabb;
+
 	if(aabbValues.size() == 6){
 		Vector3<double> userMin(aabbValues[0],aabbValues[1],aabbValues[2]);
 		Vector3<double> userMax(aabbValues[3],aabbValues[4],aabbValues[5]);
@@ -154,9 +156,12 @@ AABB PotreeConverter::calculateAABB(){
 
 			reader->close();
 			delete reader;
+
+
+
 		}
 	}
-
+    std::cout<<"End aabb function   "<<std::endl ;
 	return aabb;
 }
 
@@ -242,30 +247,6 @@ void PotreeConverter::generatePage(string name){
 		in.close();
 		out.close();
 	}
-
-	//{ // write settings
-	//	stringstream ssSettings;
-	//
-	//	ssSettings << "var sceneProperties = {" << endl;
-	//	ssSettings << "\tpath: \"" << "../resources/pointclouds/" << name << "/cloud.js\"," << endl;
-	//	ssSettings << "\tcameraPosition: null, 		// other options: cameraPosition: [10,10,10]," << endl;
-	//	ssSettings << "\tcameraTarget: null, 		// other options: cameraTarget: [0,0,0]," << endl;
-	//	ssSettings << "\tfov: 60, 					// field of view in degrees," << endl;
-	//	ssSettings << "\tsizeType: \"Adaptive\",	// other options: \"Fixed\", \"Attenuated\"" << endl;
-	//	ssSettings << "\tquality: null, 			// other options: \"Circles\", \"Interpolation\", \"Splats\"" << endl;
-	//	ssSettings << "\tmaterial: \"RGB\", 		// other options: \"Height\", \"Intensity\", \"Classification\"" << endl;
-	//	ssSettings << "\tpointLimit: 1,				// max number of points in millions" << endl;
-	//	ssSettings << "\tpointSize: 1,				// " << endl;
-	//	ssSettings << "\tnavigation: \"Orbit\",		// other options: \"Orbit\", \"Flight\"" << endl;
-	//	ssSettings << "\tuseEDL: false,				" << endl;
-	//	ssSettings << "};" << endl;
-	//
-	//
-	//	ofstream fSettings;
-	//	fSettings.open(pagedir + "/examples/" + name + ".js", ios::out);
-	//	fSettings << ssSettings.str();
-	//	fSettings.close();
-	//}
 }
 
 void writeSources(string path, vector<string> sourceFilenames, vector<int> numPoints, vector<AABB> boundingBoxes, string projection){
@@ -356,16 +337,19 @@ void writeSources(string path, vector<string> sourceFilenames, vector<int> numPo
 
 // THIS IS THE MAIN FUNCTION:
 void PotreeConverter::convert(){
+    std::cout<<"entering main function:" <<std::endl;
+
 	auto start = high_resolution_clock::now();
 
 	prepare();
 
 	long long pointsProcessed = 0;
-
+    std::cout<<"points processed"<<pointsProcessed;
 	AABB aabb = calculateAABB();
 	cout << "AABB: " << endl << aabb << endl;
 	aabb.makeCubic();
 	cout << "cubic AABB: " << endl << aabb << endl;
+
 
 	if (diagonalFraction != 0) {
 		spacing = (float)(aabb.size.length() / diagonalFraction);
@@ -375,6 +359,7 @@ void PotreeConverter::convert(){
 	if(pageName.size() > 0){
 		generatePage(pageName);
 		workDir = workDir + "/pointclouds/" + pageName;
+		std::cout<<"working directory= "<<workDir<<std::endl;
 	}
 
 	PotreeWriter *writer = NULL;
@@ -427,9 +412,9 @@ void PotreeConverter::convert(){
 			continue;
 		}
 
-		while(reader->readNextPoint()){
+	while(reader->readNextPoint()){
 			pointsProcessed++;
-			if (pointsProcessed % 100'000 == 0) {
+			if (pointsProcessed % 500'000 == 0) {
 				std::cout << "Point Number: " << pointsProcessed << std::endl;
 			}
 
