@@ -69,7 +69,7 @@ namespace Potree{
             while(readNextPoint()) {
 
                 p = getPoint();
-                std::cout << pointCount << std::endl;
+//                std::cout << pointCount << std::endl;
 //            std::cout<<"x=   "<<point.position.x<<"y=   "<<point.position.y<<"z =   "<<point.position.z<<std::endl;
                 if (pointCount == 0) {
                     this->aabb = AABB(p.position);
@@ -85,6 +85,7 @@ namespace Potree{
             reader->seekg(0, reader->beg);
 //            currentFile = files.begin();
             reader = new ifstream(*currentFile, ios::in | ios::binary);
+            std::cout <<"The Total Available points in the File  =  "<< pointCount << std::endl;
         }
 
     }
@@ -180,7 +181,7 @@ namespace Potree{
 
                 auto fbPoints = pos->Get(count);
                 count++;
-                //      std::cout<<count<<std::endl;
+
                 point.position.x = fbPoints->x();
                 point.position.y = fbPoints->y();
                 point.position.z = fbPoints->z();

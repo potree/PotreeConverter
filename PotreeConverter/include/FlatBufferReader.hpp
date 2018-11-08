@@ -60,7 +60,7 @@ namespace Potree{
         int32_t numbytes;
 
         long long numPoints();
-        //LIDAR::PointCloud pointcloud;
+
         int count;
         int pos_len;
         double filesize;
