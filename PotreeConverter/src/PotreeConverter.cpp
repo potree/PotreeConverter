@@ -73,7 +73,7 @@ PointReader *PotreeConverter::createPointReader(string path, PointAttributes poi
 	} else if(iEndsWith(path, ".csv_bin")) {
 		reader = new BoostBINPointReader(path, aabb, scale, pointAttributes);
 	} else if(iEndsWith(path, ".lidar")) {
-		reader = new FlatBufferReader(path, aabb, scale, pointAttributes);
+		reader = new FlatBufferReader(path, aabb, scale, pointAttributes,  flat_buffer);
 	} else {
 		std::cerr << "Unrecognized File Extension, could not create reader" << path<<std::endl;
 	}

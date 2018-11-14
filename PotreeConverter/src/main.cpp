@@ -13,6 +13,7 @@
 #include "arguments.hpp"
 #include <experimental/filesystem>
 #include <DataSchemas/Lidar_generated.h>
+#include <jmorecfg.h>
 
 
 namespace fs = std::experimental::filesystem;
@@ -41,6 +42,7 @@ struct PotreeArguments {
 	StoreOption storeOption = StoreOption::ABORT_IF_EXISTS;
 	vector<string> source;
 	string outdir;
+	bool flat_buffer;
 	float spacing;
 	int levels;
 	string format;
@@ -97,7 +99,7 @@ PotreeArguments parseArguments(int argc, char **argv){
 	args.addArgument("edl-enabled", "Enable Eye-Dome-Lighting.");
 	args.addArgument("show-skybox", "");
 	args.addArgument("material", "RGB, ELEVATION, INTENSITY, INTENSITY_GRADIENT, CLASSIFICATION, RETURN_NUMBER, SOURCE, LEVEL_OF_DETAIL");
-
+    args.addArgument("flat_buffer,b", "FlatBuffer file type,  points ||   Lanes");
 	PotreeArguments a;
 
 	if (args.has("help")){
@@ -122,17 +124,19 @@ PotreeArguments parseArguments(int argc, char **argv){
 		a.pageName = args.get("generate-page").as<string>();
 	}
 	a.pageTemplate = args.has("page-template");
+
 	if (a.pageTemplate) {
 		a.pageTemplatePath = args.get("page-template").as<string>();
 	}
 	a.outdir = args.get("outdir").as<string>();
+	a.flat_buffer= args.has("flat_buffer");
 	a.spacing = args.get("spacing").as<double>(0.0);
 	a.diagonalFraction = args.get("d").as<double>(0.0);
 	a.levels = args.get("levels").as<int>(-1);
 	a.format = args.get("input-format").as<string>();
 	a.colorRange = args.get("color-range").as<vector<double>>();
 	a.intensityRange = args.get("intensity-range").as<vector<double>>();
-	
+
 	if (args.has("output-format")) {
 		string of = args.get("output-format").as<string>("BINARY");
 
@@ -310,6 +314,7 @@ int main(int argc, char **argv){
 		pc.edlEnabled = a.edlEnabled;
 		pc.material = a.material;
 		pc.showSkybox = a.showSkybox;
+		pc.flat_buffer = a.flat_buffer;
 
 		pc.convert();
 	}catch(exception &e){

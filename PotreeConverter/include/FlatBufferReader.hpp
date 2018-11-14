@@ -17,6 +17,7 @@
 #include <boost/archive/binary_iarchive.hpp>
 #include <boost/archive/binary_oarchive.hpp>
 #include <DataSchemas/LidarWorld_generated.h>
+#include <DataSchemas/GroundTruth_generated.h>
 
 
 using std::string;
@@ -42,17 +43,20 @@ namespace Potree{
         long pointCount;
 
         bool endOfFile;
-       std::unique_ptr<boost::archive::binary_iarchive> archivePtr;
 
     public:
 
-        FlatBufferReader(string path, AABB aabb, double scale, PointAttributes pointAttributes);
+        FlatBufferReader(string path, AABB aabb, double scale, PointAttributes pointAttributes, bool flat_buffer);
+
 
         ~FlatBufferReader();
+        bool bboxPoint();
 
         bool readNextPoint();
 
         bool populatePointCloud();
+        bool bboxReader();
+        bool bboxState();
 
         Point getPoint();
 
@@ -60,13 +64,23 @@ namespace Potree{
         int32_t numbytes;
 
         long long numPoints();
-
-        int count;
-        int pos_len;
+        bool flat;
+        int count, i=0,j=0,pointCounts = 0;
+        int pos_len, vec_len,states_len ;
         double filesize;
-        double total_points_count;
+        double total_points_count, total_vec_count, ts;
         Point p;
         void close();
+
+        const flatbuffers::Vector<const LIDARWORLD::Point *> *pos;
+        const LIDARWORLD::PointCloud *pointcloud;
+        const Flatbuffer::GroundTruth::State *states;
+        char *buf2;
+        ifstream **pointer;
+        const flatbuffers::Vector<const Flatbuffer::GroundTruth::Vec3 *> *vec;
+        const flatbuffers::Vector<const Flatbuffer::GroundTruth::Vec3 *> *bbox;
+
+        const flatbuffers::Vector<flatbuffers::Offset<Flatbuffer::GroundTruth::State>> *statesFb;
 
         unsigned char *buffer;
        // unsigned char *buf2;

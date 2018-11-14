@@ -9,6 +9,8 @@
 
 #include <experimental/filesystem>
 #include <DataSchemas/LidarWorld_generated.h>
+#include <DataSchemas/GroundTruth_generated.h>
+
 
 
 #include "FlatBufferReader.hpp"
@@ -19,6 +21,7 @@
 #include "PointAttributes.hpp"
 #include "BoostBINPointReader.hpp"
 
+const Flatbuffer::GroundTruth::Track *track;
 using std::ifstream;
 using std::cout;
 using std::endl;
@@ -26,19 +29,18 @@ using std::vector;
 using std::ios;
 
 
-const flatbuffers::Vector<const LIDARWORLD::Point *> *pos;
-const LIDARWORLD::PointCloud *pointcloud;
-char *buf2;
-ifstream **pointer;
+
 namespace Potree{
 
 
-    FlatBufferReader::FlatBufferReader(string path, AABB aabb, double scale, PointAttributes pointAttributes) : endOfFile(false), count(1), pos_len(0), numbytes(0), filesize(0), total_points_count(0){
+    FlatBufferReader::FlatBufferReader(string path, AABB aabb, double scale, PointAttributes pointAttributes, bool flat_buffer ) : endOfFile(false), count(1), pos_len(0), numbytes(0), filesize(0), total_points_count(0){
         this->path = path;
         this->aabb = aabb;
         this->scale = scale;
         this->attributes = pointAttributes;
-
+        flat= flat_buffer;
+        std::cout<<"file type    " <<flat <<std::endl;
+        std::cout << "Filepath = " << path << std::endl;
 
         if(fs::is_directory(path)){
             // if directory is specified, find all las and laz files inside directory
@@ -57,6 +59,7 @@ namespace Potree{
 
 
         reader = new ifstream(*currentFile, ios::in | ios::binary);
+
         bool firstCloudPopulated = populatePointCloud();
 
         if (!firstCloudPopulated) {
@@ -64,13 +67,13 @@ namespace Potree{
         }
 
         // Calculate AABB:
-        if (true) {
+        if (true ) {
             pointCount = 0;
+            std::cout<<"AABB function is running now "<<std::endl;
             while(readNextPoint()) {
 
                 p = getPoint();
-//                std::cout << pointCount << std::endl;
-//            std::cout<<"x=   "<<point.position.x<<"y=   "<<point.position.y<<"z =   "<<point.position.z<<std::endl;
+//                std::cout<<"p values ==  "<<p<<std::endl;
                 if (pointCount == 0) {
                     this->aabb = AABB(p.position);
                 } else {
@@ -79,27 +82,26 @@ namespace Potree{
                 pointCount++;
 
 
-            }
+            }}
 
-            reader->clear();
-            reader->seekg(0, reader->beg);
-//            currentFile = files.begin();
-            reader = new ifstream(*currentFile, ios::in | ios::binary);
-            std::cout <<"The Total Available points in the File  =  "<< pointCount << std::endl;
-        }
+
+
+        reader->clear();
+        reader->seekg(0, reader->beg);
+        currentFile = files.begin();
+        reader = new ifstream(*currentFile, ios::in | ios::binary);
+        std::cout <<"The Total Available points in the File  =  "<< pointCount << std::endl;
+
 
     }
 
     FlatBufferReader::~FlatBufferReader(){
-//        delete [] buffer;
-//        delete [] buf2;
         close();
 
     }
 
     void FlatBufferReader::close(){
 
-        //  delete reader, buffer, buf2;
         if(reader != NULL){
             reader->close();
             delete reader;
@@ -139,13 +141,22 @@ namespace Potree{
                     return false;
                 }
                 reader->read(buf2, numbytes);
-                pointcloud = LIDARWORLD::GetPointCloud(buf2);
-                pos = pointcloud->points();
-                pos_len = pos->Length();
-                if(pos_len == 0)
-                    total_points_count += pos_len;
-                //   std::cout<<"total poslength"<<total_points_count<<std::endl;
-                return true;}
+                if (!flat){
+                    pointcloud = LIDARWORLD::GetPointCloud(buf2);
+                    pos = pointcloud->points();
+                    pos_len = pos->Length();
+                    if(pos_len == 0)
+                        total_points_count += pos_len;
+                    return true;}
+                else if (flat){
+                    track = flatbuffers::GetRoot<Flatbuffer::GroundTruth::Track>(buf2);
+
+                    statesFb = track->states();
+                    states_len = statesFb->Length();
+                    return  true;}
+
+
+            }
         }
         catch (std::exception& e) {
             endOfFile = false;
@@ -155,14 +166,49 @@ namespace Potree{
 
     }
 
+
+    bool FlatBufferReader::bboxPoint() {
+        point.position.x = bbox->Get(j)->x();
+        point.position.y = bbox->Get(j)->y();
+        point.position.z = bbox->Get(j)->z();
+        point.gpsTime = ts;
+        return true;
+    }
+    bool FlatBufferReader::bboxReader() {
+        if (j < vec_len) {
+            bboxPoint();
+            j++;
+            std::cout << point.position.x << " " << point.position.y << " " << point.position.z
+                      << std::endl;
+
+        } else { j = 0;
+            i++;
+            bboxState();
+            bboxPoint();
+        }
+    }
+    bool FlatBufferReader::bboxState() {
+        auto &state = *statesFb;
+        if (i < states_len) {
+            ts = state[i]->timestamps();
+            bbox = state[i]->bbox();
+            vec_len = bbox->Length();
+            bboxReader();
+
+
+        } else { i = 0;j=0;
+            populatePointCloud();
+            bboxState();}
+    }
+
     bool FlatBufferReader::readNextPoint() {
         bool hasPoints = reader->good();
 
 
-        if(!hasPoints ){
+        if (!hasPoints) {
             currentFile++;
 
-            if(currentFile != files.end()){
+            if (currentFile != files.end()) {
                 // try to open next file, if available
                 reader->close();
 
@@ -192,7 +238,7 @@ namespace Potree{
                 return true;
             } else if (count == pos_len) {
                 count = 1;
-                if( populatePointCloud()){
+                if (populatePointCloud()) {
                     auto fbPoints = pos->Get(count);
                     count++;
 
@@ -205,17 +251,14 @@ namespace Potree{
 
                     return true;
                 }
-
-
-                else {
-                    endOfFile = false;
-
-                    std::cout << "END OF FILE REACHED (in READ NEXT POINT)" << std::endl;
-
-
-                    return false;
-                }
             }
+            else if (flat ) {
+
+                bboxState();
+
+                return true;
+            }
+
 
         }
         return hasPoints;
@@ -233,6 +276,5 @@ namespace Potree{
 
 
 }
-
 
 
