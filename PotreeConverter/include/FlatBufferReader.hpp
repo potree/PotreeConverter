@@ -12,12 +12,15 @@
 #include "BoostBINPointReader.hpp"
 
 #include <memory>
+#include <eigen3/Eigen/Core>
+#include <eigen3/Eigen/Eigen>
 #include <fstream>
 #include <boost/serialization/serialization.hpp>
 #include <boost/archive/binary_iarchive.hpp>
 #include <boost/archive/binary_oarchive.hpp>
 #include <DataSchemas/LidarWorld_generated.h>
 #include <DataSchemas/GroundTruth_generated.h>
+
 
 
 using std::string;
@@ -57,6 +60,8 @@ namespace Potree{
         bool populatePointCloud();
         bool bboxReader();
         bool bboxState();
+        bool centroid();
+        bool Rotation();
 
         Point getPoint();
 
@@ -65,17 +70,19 @@ namespace Potree{
 
         long long numPoints();
         bool flat;
-        int count, i=0,j=0,pointCounts = 0;
+        int count=0, i=0,j=0,pointCounts = 0;
         int pos_len, vec_len,states_len ;
         double filesize;
-        double total_points_count, total_vec_count, ts;
+        double total_points_count, ya, ts;
+        Vector3<double> q;
         Point p;
+        double centroid_x=0,centroid_y=0,centroid_z=0;
+        double centerX=0,centerY=0,centerZ=0, newX=0, newY=0,newZ=0;
         void close();
 
         const flatbuffers::Vector<const LIDARWORLD::Point *> *pos;
         const LIDARWORLD::PointCloud *pointcloud;
         const Flatbuffer::GroundTruth::State *states;
-        char *buf2;
         ifstream **pointer;
         const flatbuffers::Vector<const Flatbuffer::GroundTruth::Vec3 *> *vec;
         const flatbuffers::Vector<const Flatbuffer::GroundTruth::Vec3 *> *bbox;
@@ -83,8 +90,11 @@ namespace Potree{
         const flatbuffers::Vector<flatbuffers::Offset<Flatbuffer::GroundTruth::State>> *statesFb;
 
         unsigned char *buffer;
+        std::vector<char> buf2;
        // unsigned char *buf2;
         Vector3<double> getScale();
+        Eigen::Vector4d New;
+        Eigen::Vector3d Yaw;
     };
 }
 #endif //VERITAS_FLATBUFFERREADER_H

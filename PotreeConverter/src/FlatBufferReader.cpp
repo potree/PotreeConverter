@@ -20,6 +20,9 @@
 #include "PointReader.h"
 #include "PointAttributes.hpp"
 #include "BoostBINPointReader.hpp"
+#include <eigen3/Eigen/Core>
+#include <eigen3/Eigen/Eigen>
+
 
 const Flatbuffer::GroundTruth::Track *track;
 using std::ifstream;
@@ -38,6 +41,7 @@ namespace Potree{
         this->aabb = aabb;
         this->scale = scale;
         this->attributes = pointAttributes;
+        buffer = new unsigned char[4];
         flat= flat_buffer;
         std::cout<<"file type    " <<flat <<std::endl;
         std::cout << "Filepath = " << path << std::endl;
@@ -73,7 +77,8 @@ namespace Potree{
             while(readNextPoint()) {
 
                 p = getPoint();
-//                std::cout<<"p values ==  "<<p<<std::endl;
+                if (pointCount > 446900000 && pointCount < 446909598){
+                    std::cout<<"p values ==  "<<pointCount << "   "<< p<<std::endl;}
                 if (pointCount == 0) {
                     this->aabb = AABB(p.position);
                 } else {
@@ -96,14 +101,16 @@ namespace Potree{
     }
 
     FlatBufferReader::~FlatBufferReader(){
+
         close();
 
     }
 
     void FlatBufferReader::close(){
-
+//    delete[] buffer;
         if(reader != NULL){
             reader->close();
+            delete[] buffer;
             delete reader;
             reader = NULL;
 
@@ -117,7 +124,7 @@ namespace Potree{
     bool FlatBufferReader::populatePointCloud()  {
         try{
             std::cout.precision(std::numeric_limits<double>::max_digits10);
-            buffer = new unsigned char[4];
+//            buffer = new unsigned char[4];
 
             reader->read(reinterpret_cast<char *>(buffer), 4);
 
@@ -134,22 +141,25 @@ namespace Potree{
                 return false;
             }
             else{
-                char *buf2 = new char[numbytes];
-                if (reader->eof()) {
+//                char *buf2 = new char[numbytes];
+                buf2.clear();
+                buf2.reserve(numbytes);
+                if (reader->eof()){
                     std::cerr << "Reader is at end of file" << std::endl;
                     endOfFile = false;
                     return false;
                 }
-                reader->read(buf2, numbytes);
+                reader->read(&buf2[0], numbytes);
                 if (!flat){
-                    pointcloud = LIDARWORLD::GetPointCloud(buf2);
+                    pointcloud = LIDARWORLD::GetPointCloud(&buf2[0]);
                     pos = pointcloud->points();
                     pos_len = pos->Length();
                     if(pos_len == 0)
                         total_points_count += pos_len;
-                    return true;}
+                    return true;
+                }
                 else if (flat){
-                    track = flatbuffers::GetRoot<Flatbuffer::GroundTruth::Track>(buf2);
+                    track = flatbuffers::GetRoot<Flatbuffer::GroundTruth::Track>(&buf2[0]);
 
                     statesFb = track->states();
                     states_len = statesFb->Length();
@@ -166,8 +176,60 @@ namespace Potree{
 
     }
 
+    Eigen::Quaterniond
+    euler2Quaternion( const double roll,
+                      const double pitch,
+                      const double yaw ) {
+        // TODO check yaw pitch roll order required in use case
+        Eigen::AngleAxisd rollAngle(roll, Eigen::Vector3d::UnitX());
+        Eigen::AngleAxisd pitchAngle(pitch, Eigen::Vector3d::UnitY());
+        Eigen::AngleAxisd yawAngle(yaw, Eigen::Vector3d::UnitZ());
 
+        Eigen::Quaterniond q = yawAngle *pitchAngle *rollAngle;
+        return q;
+    }
+
+    Eigen::Matrix4d getTxMat(Eigen::Vector4d dx, Eigen::Vector3d dTheta){
+        Eigen::Matrix3d rot_mat = euler2Quaternion(dTheta.x(),dTheta.y(),dTheta.z()).toRotationMatrix();
+        Eigen::Matrix4d Trans; // Transformation matrix
+        Trans.setIdentity();
+        Trans.block<3,3>(0,0) = rot_mat;
+        Trans.rightCols<1>() = dx;
+        std::cout<<Trans;
+        return Trans;
+    }
+
+    bool FlatBufferReader::centroid() {
+        auto &state = *statesFb;
+        for (int ii =0; ii <states_len;ii++) {
+            ts = state[ii]->timestamps();
+            ya = state[ii]->yaw();
+            bbox = state[ii]->bbox();
+//            q.x= cos(ya/2)+(sin(ya/2)*0);
+//            q.y= cos(ya/2)+(sin(ya/2)*0);
+//            q.z= cos(ya/2)+(sin(ya/2)*1);
+            vec_len = bbox->Length();
+            for(int jj=0;jj<vec_len;jj++){
+                centroid_x= centroid_x+bbox->Get(jj)->x();
+                centroid_y= centroid_y+bbox->Get(jj)->y();
+                centroid_z= centroid_z+bbox->Get(jj)->z();
+            }
+            centerX= centroid_x/8;centerY= centroid_y/8;centerZ= centroid_z/8;
+            std::cout<<"Calculating the centroid =  "<<centerX<<" "<<centerY<<" "<<centerZ<<" YEAH YA=  "<<q<<std::endl;
+            centroid_x=centroid_y=centroid_z=0;
+            for (int kk=0;kk<vec_len;kk++)
+            {
+                New(0)= centerX - bbox->Get(kk)->x();
+                New(1)= centerY - bbox->Get(kk)->y();
+                New(2)= centerZ - bbox->Get(kk)->z();
+                New(3)=1;
+                std::cout<<New<<std::endl;
+                Yaw(0)=0; Yaw(1)=0; Yaw(2)=ya;
+                getTxMat(New,Yaw);
+            }
+        }    }
     bool FlatBufferReader::bboxPoint() {
+        centroid();
         point.position.x = bbox->Get(j)->x();
         point.position.y = bbox->Get(j)->y();
         point.position.z = bbox->Get(j)->z();
@@ -178,8 +240,8 @@ namespace Potree{
         if (j < vec_len) {
             bboxPoint();
             j++;
-            std::cout << point.position.x << " " << point.position.y << " " << point.position.z
-                      << std::endl;
+//            std::cout << point.position.x << " " << point.position.y << " " << point.position.z << "  YAW - YEAH !! = "<<ya
+//                      << std::endl;
 
         } else { j = 0;
             i++;
@@ -191,8 +253,10 @@ namespace Potree{
         auto &state = *statesFb;
         if (i < states_len) {
             ts = state[i]->timestamps();
+            ya = state[i]->yaw();
             bbox = state[i]->bbox();
             vec_len = bbox->Length();
+
             bboxReader();
 
 
@@ -233,13 +297,14 @@ namespace Potree{
                 point.position.z = fbPoints->z();
                 point.gpsTime = fbPoints->timestamp();
                 point.intensity = fbPoints->intensity();
-
+                //delete[] buffer;
 
                 return true;
             } else if (count == pos_len) {
-                count = 1;
+                count = 0;
                 if (populatePointCloud()) {
                     auto fbPoints = pos->Get(count);
+
                     count++;
 
                     point.position.x = fbPoints->x();
@@ -248,16 +313,22 @@ namespace Potree{
                     point.gpsTime = fbPoints->timestamp();
                     point.intensity = fbPoints->intensity();
 
-
                     return true;
+
                 }
+                else{endOfFile = false;
+                    std::cout << "I think its the end of file" << std::endl;
+                    return false;}
             }
             else if (flat ) {
-
+//                centroid();
                 bboxState();
 
                 return true;
             }
+            else{endOfFile = false;
+                std::cout << "I think its the end of file" << std::endl;
+                return false;}
 
 
         }
