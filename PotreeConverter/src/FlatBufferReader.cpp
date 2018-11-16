@@ -60,12 +60,8 @@ namespace Potree{
         }
 
         currentFile = files.begin();
-
-
         reader = new ifstream(*currentFile, ios::in | ios::binary);
-
         bool firstCloudPopulated = populatePointCloud();
-
         if (!firstCloudPopulated) {
             std::cerr << "Could not populate first cloud" << std::endl;
         }
@@ -77,26 +73,20 @@ namespace Potree{
             while(readNextPoint()) {
 
                 p = getPoint();
-                if (pointCount > 446900000 && pointCount < 446909598){
-                    std::cout<<"p values ==  "<<pointCount << "   "<< p<<std::endl;}
+
                 if (pointCount == 0) {
                     this->aabb = AABB(p.position);
                 } else {
                     this->aabb.update(p.position);
                 }
                 pointCount++;
-
-
             }}
-
-
 
         reader->clear();
         reader->seekg(0, reader->beg);
         currentFile = files.begin();
         reader = new ifstream(*currentFile, ios::in | ios::binary);
         std::cout <<"The Total Available points in the File  =  "<< pointCount << std::endl;
-
 
     }
 
@@ -195,72 +185,68 @@ namespace Potree{
         Trans.setIdentity();
         Trans.block<3,3>(0,0) = rot_mat;
         Trans.rightCols<1>() = dx;
-        std::cout<<Trans;
+
         return Trans;
     }
 
-    bool FlatBufferReader::centroid() {
-        auto &state = *statesFb;
-        for (int ii =0; ii <states_len;ii++) {
-            ts = state[ii]->timestamps();
-            ya = state[ii]->yaw();
-            bbox = state[ii]->bbox();
-//            q.x= cos(ya/2)+(sin(ya/2)*0);
-//            q.y= cos(ya/2)+(sin(ya/2)*0);
-//            q.z= cos(ya/2)+(sin(ya/2)*1);
-            vec_len = bbox->Length();
-            for(int jj=0;jj<vec_len;jj++){
-                centroid_x= centroid_x+bbox->Get(jj)->x();
-                centroid_y= centroid_y+bbox->Get(jj)->y();
-                centroid_z= centroid_z+bbox->Get(jj)->z();
-            }
-            centerX= centroid_x/8;centerY= centroid_y/8;centerZ= centroid_z/8;
-            std::cout<<"Calculating the centroid =  "<<centerX<<" "<<centerY<<" "<<centerZ<<" YEAH YA=  "<<q<<std::endl;
-            centroid_x=centroid_y=centroid_z=0;
-            for (int kk=0;kk<vec_len;kk++)
-            {
-                New(0)= centerX - bbox->Get(kk)->x();
-                New(1)= centerY - bbox->Get(kk)->y();
-                New(2)= centerZ - bbox->Get(kk)->z();
-                New(3)=1;
-                std::cout<<New<<std::endl;
-                Yaw(0)=0; Yaw(1)=0; Yaw(2)=ya;
-                getTxMat(New,Yaw);
-            }
-        }    }
+    Vector3<double> FlatBufferReader::centroid() {
+
+        for(int jj=0;jj<vec_len;jj++){
+            centroid_x= centroid_x+bbox->Get(jj)->x();
+            centroid_y= centroid_y+bbox->Get(jj)->y();
+            centroid_z= centroid_z+bbox->Get(jj)->z();
+        }
+        Centroidbbox.x= centroid_x/8;Centroidbbox.y= centroid_y/8;Centroidbbox.z= centroid_z/8;
+        centroid_x=centroid_y=centroid_z=0;
+
+    }
     bool FlatBufferReader::bboxPoint() {
-        centroid();
-        point.position.x = bbox->Get(j)->x();
-        point.position.y = bbox->Get(j)->y();
-        point.position.z = bbox->Get(j)->z();
+
+        New(0)= Centroidbbox.x-bbox->Get(bboxidx)->x();
+        New(1)= Centroidbbox.y-bbox->Get(bboxidx)->y();
+        New(2)= Centroidbbox.z-bbox->Get(bboxidx)->z();
+        New(3)=1;
+        Yaw(0)=0; Yaw(1)=0; Yaw(2)=ya;
+        auto RotationMatrix=  getTxMat(New,Yaw);
+        RotatedPoint= (RotationMatrix * New);
+        newX=RotatedPoint(0)+Centroidbbox.x;
+        newY=RotatedPoint(1)+Centroidbbox.y;
+        newZ=RotatedPoint(2)+Centroidbbox.z;
+
+        point.position.x = newX;
+        point.position.y = newY;
+        point.position.z = newZ;
         point.gpsTime = ts;
+        newX=0 , newY=0,newZ=0;
         return true;
     }
     bool FlatBufferReader::bboxReader() {
-        if (j < vec_len) {
-            bboxPoint();
-            j++;
-//            std::cout << point.position.x << " " << point.position.y << " " << point.position.z << "  YAW - YEAH !! = "<<ya
-//                      << std::endl;
 
-        } else { j = 0;
-            i++;
+
+        if (bboxidx < vec_len) {
+            if(bboxidx==0){centroid();}
+            bboxPoint();
+            bboxidx++;
+
+
+        } else { bboxidx = 0;
+            statesidx++;
             bboxState();
             bboxPoint();
         }
     }
     bool FlatBufferReader::bboxState() {
         auto &state = *statesFb;
-        if (i < states_len) {
-            ts = state[i]->timestamps();
-            ya = state[i]->yaw();
-            bbox = state[i]->bbox();
+        if (statesidx < states_len) {
+            ts = state[statesidx]->timestamps();
+            ya = state[statesidx]->yaw();
+            bbox = state[statesidx]->bbox();
             vec_len = bbox->Length();
 
             bboxReader();
 
 
-        } else { i = 0;j=0;
+        } else { statesidx = 0;bboxidx=0;
             populatePointCloud();
             bboxState();}
     }
@@ -321,10 +307,9 @@ namespace Potree{
                     return false;}
             }
             else if (flat ) {
-//                centroid();
+
                 bboxState();
 
-                return true;
             }
             else{endOfFile = false;
                 std::cout << "I think its the end of file" << std::endl;
