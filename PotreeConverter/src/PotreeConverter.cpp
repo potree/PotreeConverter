@@ -161,7 +161,7 @@ AABB PotreeConverter::calculateAABB(){
 
 		}
 	}
-    std::cout<<"End aabb function   "<<std::endl ;
+    std::cout<<"AABB function is done and the calculated dimensions are :   "<<std::endl ;
 	return aabb;
 }
 
@@ -337,7 +337,7 @@ void writeSources(string path, vector<string> sourceFilenames, vector<int> numPo
 
 // THIS IS THE MAIN FUNCTION:
 void PotreeConverter::convert(){
-    std::cout<<"entering main function:" <<std::endl;
+    std::cout<<"Entering the Main function:" <<std::endl;
 
 	auto start = high_resolution_clock::now();
 

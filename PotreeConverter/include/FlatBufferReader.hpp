@@ -58,7 +58,8 @@ namespace Potree{
         bool populatePointCloud();
         bool bboxReader();
         bool bboxState();
-        Vector3<double> centroid();
+
+        bool centroid();
 
 
         Point getPoint();
@@ -68,7 +69,7 @@ namespace Potree{
 
         long long numPoints();
         bool flat;
-        int count=0, statesidx=0,bboxidx=0,pointCounts = 0;
+        int count=0, statesidx=0,bboxidx=0,pointCounts = 0,counter=0;
         int pos_len, vec_len,states_len ;
         double filesize;
         double total_points_count, ya, ts;
@@ -76,6 +77,7 @@ namespace Potree{
         Point p;
         double centroid_x=0,centroid_y=0,centroid_z=0;
         double newX=0, newY=0,newZ=0;
+        double center=0;
         void close();
 
         const flatbuffers::Vector<const LIDARWORLD::Point *> *pos;
@@ -84,16 +86,15 @@ namespace Potree{
         ifstream **pointer;
         const flatbuffers::Vector<const Flatbuffer::GroundTruth::Vec3 *> *vec;
         const flatbuffers::Vector<const Flatbuffer::GroundTruth::Vec3 *> *bbox;
-
+        const Flatbuffer::GroundTruth::Track *track;
         const flatbuffers::Vector<flatbuffers::Offset<Flatbuffer::GroundTruth::State>> *statesFb;
 
         unsigned char *buffer;
         std::vector<char> buf2;
-
-        Eigen::Vector4d New,RotatedPoint;
-        Eigen::Vector3d Yaw;
+        std::vector< double>x,y,z,x1,y1,z1;
+        Eigen::Vector4d New;
         Vector3<double>Centroidbbox;
-        Vector3<double>TransformedPoint;
+
     };
 }
 #endif //VERITAS_FLATBUFFERREADER_H
