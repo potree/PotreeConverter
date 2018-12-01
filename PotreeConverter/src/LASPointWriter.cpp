@@ -23,6 +23,7 @@ void LASPointWriter::write(const Point &point){
 	this->point->return_number = point.returnNumber;
 	this->point->number_of_returns = point.numberOfReturns;
 	this->point->point_source_ID = point.pointSourceID;
+	this->point->gps_time = point.gpsTime;
 	
 	laszip_set_point(writer, this->point);
 	laszip_write_point(writer);

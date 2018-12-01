@@ -400,6 +400,7 @@ void PotreeConverter::convert(){
 		return;
 	}
 
+	
 	writer->storeSize = storeSize;
 
 	vector<AABB> boundingBoxes;

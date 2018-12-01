@@ -35,7 +35,6 @@ public:
 		this->aabb = aabb;
 		numPoints = 0;
 
-
 		memset(&header, 0, sizeof(laszip_header));
 		strcpy(header.generating_software, "potree");
 
@@ -43,7 +42,7 @@ public:
 		header.version_minor = 2;
 		header.header_size = 227;
 		header.offset_to_point_data = 227;
-		header.point_data_format = 2;
+		header.point_data_format = 3;//zjj: 2->3
 		header.min_x = aabb.min.x;
 		header.min_y = aabb.min.y;
 		header.min_z = aabb.min.z;
@@ -56,7 +55,7 @@ public:
 		header.x_scale_factor = scale;
 		header.y_scale_factor = scale;
 		header.z_scale_factor = scale;
-		header.point_data_record_length = 26;
+		header.point_data_record_length = 34;// zjj: 26->34 
 		header.number_of_point_records = 111;
 
 
