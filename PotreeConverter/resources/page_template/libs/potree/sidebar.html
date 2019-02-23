@@ -24,13 +24,13 @@
 				<li><span data-i18n="appearance.nb_max_pts"></span>: <span id="lblPointBudget"></span> <div id="sldPointBudget"></div></li>
 				<li><span data-i18n="appearance.field_view"></span>: <span id="lblFOV"></span><div id="sldFOV"></div></li>
 
-				<div class="divider"><span>Eye-Dome-Lighting</span></div>
+				<div class="divider"><span data-i18n="appearance.eye_dome_lighting">Eye-Dome-Lighting</span></div>
 
 				<li><label><input type="checkbox" id="chkEDLEnabled"/><span data-i18n="appearance.edl_enable"></span></label></li>
 				<li><span data-i18n="appearance.edl_radius"></span>: <span id="lblEDLRadius"></span><div id="sldEDLRadius"></div></li>
 				<li><span data-i18n="appearance.edl_strength"></span>: <span id="lblEDLStrength"></span><div id="sldEDLStrength"></div></li>
 				
-				<div class="divider"><span>Background</span></div>
+				<div class="divider"><span data-i18n="appearance.background">Background</span></div>
 
 				<li>
 					<selectgroup id="background_options">
@@ -42,12 +42,12 @@
 					</selectgroup>
 				</li>
 
-				<div class="divider"><span>Other</span></div>
+				<div class="divider"><span data-i18n="appearance.other">Other</span></div>
 
 				<li>
 					<selectgroup id="splat_quality_options">
-						<option id="splat_quality_options_standard" value="standard">Standard</option>
-						<option id="splat_quality_options_hq" value="hq">High Quality</option>
+						<option id="splat_quality_options_standard" value="standard"  data-i18n="appearance.standard">Standard</option>
+						<option id="splat_quality_options_hq" value="hq" data-i18n="appearance.high_quality">High Quality</option>
 					</selectgroup>
 				</li>
 				
@@ -62,31 +62,31 @@
 		<h3 id="menu_tools"><span data-i18n="tb.tools_opt"></span></h3>
 		<div class="pv-menu-list">
 
-			<div class="divider" style="padding: 10px 0px 15px 0px"><span>Measurement</span></div>
+			<div class="divider" style="padding: 10px 0px 15px 0px"><span  data-i18n="appearance.measurement">Measurement</span></div>
 
 			<li id="tools"></li>
 
-			<div class="divider" style="padding: 10px 0px 15px 0px"><span>Clipping</span></div>
+			<div class="divider" style="padding: 10px 0px 15px 0px"><span data-i18n="appearance.clipping">Clipping</span></div>
 
 			<li id="clipping_tools"></li>
 
 			<li>
 				<selectgroup id="cliptask_options">
-					<option id="cliptask_options_none" value="NONE">None</option>
-					<option id="cliptask_options_highlight" value="HIGHLIGHT">Highlight</option>
-					<option id="cliptask_options_show_inside" value="SHOW_INSIDE">Inside</option>
-					<option id="cliptask_options_show_outside" value="SHOW_OUTSIDE">Outside</option>
+					<option id="cliptask_options_none" value="NONE" data-i18n="appearance.none">None</option>
+					<option id="cliptask_options_highlight" value="HIGHLIGHT" data-i18n="appearance.highlight">Highlight</option>
+					<option id="cliptask_options_show_inside" value="SHOW_INSIDE" data-i18n="appearance.inside">Inside</option>
+					<option id="cliptask_options_show_outside" value="SHOW_OUTSIDE" data-i18n="appearance.outside">Outside</option>
 				</selectgroup>
 			</li>
 
 			<li>
 				<selectgroup id="clipmethod_options">
-					<option id="clipmethod_options_any" value="INSIDE_ANY">Inside Any</option>
-					<option id="clipmethod_options_all" value="INSIDE_ALL">Inside All</option>
+					<option id="clipmethod_options_any" value="INSIDE_ANY" data-i18n="appearance.inside_any">Inside Any</option>
+					<option id="clipmethod_options_all" value="INSIDE_ALL" data-i18n="appearance.inside_all">Inside All</option>
 				</selectgroup>
 			</li>
 			
-			<div class="divider" style="padding: 10px 0px 15px 0px"><span>Navigation</span></div>
+			<div class="divider" style="padding: 10px 0px 15px 0px"><span data-i18n="appearance.navigation">Navigation</span></div>
 
 			<li id="navigation"></li>
 
@@ -99,11 +99,11 @@
 
 			<div id="scene_export"></div>
 
-			<div class="divider" style="padding: 10px 0px 15px 0px"><span>Objects</span></div>
+			<div class="divider" style="padding: 10px 0px 15px 0px"><span data-i18n="scene.objects">Objects</span></div>
 
 			<div id="scene_objects"></div>
 
-			<div class="divider" style="padding: 10px 0px 15px 0px"><span>Properties</span></div>
+			<div class="divider" style="padding: 10px 0px 15px 0px"><span data-i18n="scene.properties">Properties</span></div>
 
 			<div id="scene_object_properties"></div>
 		</div>
@@ -118,12 +118,12 @@
 		<h3 id="menu_about"><span data-i18n="tb.about_opt"></span></h3>
 		<div>
 			<ul class="pv-menu-list">
-				<li><a href="http://potree.org" target="_blank">Potree</a> is a viewer for large point cloud / LIDAR data sets, developed at the Vienna University of Technology. 
+				<li><a href="http://potree.org" target="_blank">Potree</a> <span data-i18n="about.info">is a viewer for large point cloud / LIDAR data sets, developed at the Vienna University of Technology.</span> 
 				<a href="https://github.com/potree/potree" target="_blank">(github)</a>
 				</li>
-				<li>Author: <a href="mailto:mschuetz@potree.org">Markus Sch&uuml;tz</a></li>
-				<li>License: <a target="_blank" href="http://potree.org/wp/potree_license/">FreeBSD (2-clause BSD)<a></li>
-				<li>Libraries:
+				<li><span data-i18n="about.author">Author:</span> <a href="mailto:mschuetz@potree.org">Markus Sch&uuml;tz</a></li>
+				<li><span data-i18n="about.license">License:</span> <a target="_blank" href="http://potree.org/wp/potree_license/">FreeBSD (2-clause BSD)</a></li>
+				<li><span data-i18n="about.libraries">Libraries:</span>
 					<ul>
 						<li><a target="_blank" href="http://threejs.org/">three.js</a></li>
 						<li><a target="_blank" href="https://jquery.com/">Jquery</a></li>
@@ -135,7 +135,7 @@
 						<li><a target="_blank" href="https://github.com/i18next/i18next/">i18next</a></li>
 					</ul>
 				</li>
-				<li>Donators:
+				<li><span data-i18n="about.donators">Donators:</span>
 					<ul>
 						<li><a target="_blank" href="http://rapidlasso.com/">rapidlasso</a></li>
 						<li><a target="_blank" href="https://georepublic.info/en/">georepublic</a></li>
@@ -145,7 +145,7 @@
 						<li><a target="_blank" href="http://archpro.lbg.ac.at/">LBI ArchPro</a></li>
 					</ul>
 				</li>
-				<li>Credits:
+				<li><span data-i18n="about.credits">Credits:</span>
 					<ul>
 						<li><a target="_blank" href="https://www.cg.tuwien.ac.at/staff/MichaelWimmer.html">Michael Wimmer</a> & 
 							<a target="_blank" href="https://www.cg.tuwien.ac.at/staff/ClausScheiblauer.html">Claus Scheiblauer</a></li>

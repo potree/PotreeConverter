@@ -882,6 +882,7 @@ Potree.XHRFactory = {
 			let rootID = elGroup.prop("id");
 			let groupID = `${rootID}`;
 			let groupTitle = (args.title !== undefined) ? args.title : "";
+			let groupTitleLangId = (args['titleLangId'] && args['titleLangId'] !== undefined) ? args.titleLangId : "";
 
 			let elButtons = [];
 			elGroup.find("option").each((index, value) => {
@@ -891,7 +892,7 @@ Potree.XHRFactory = {
 
 				let elButton = $(`
 					<span style="flex-grow: 1; display: inherit">
-					<label for="${buttonID}" class="ui-button" style="width: 100%; padding: .4em .1em">${label}</label>
+					<label for="${buttonID}" data-i18n="label.${buttonID}" class="ui-button" style="width: 100%; padding: .4em .1em">${label}</label>
 					<input type="radio" name="${groupID}" id="${buttonID}" value="${optionValue}" style="display: none"/>
 					</span>
 				`);
@@ -911,9 +912,11 @@ Potree.XHRFactory = {
 				elButtons.push(elButton);
 			});
 
+			let elFieldsetLegendString = groupTitleLangId ? `<legend data-i18n="legend.${groupTitleLangId}">${groupTitle}</legend>` :  `<legend>${groupTitle}</legend>`;
+
 			let elFieldset = $(`
 				<fieldset style="border: none; margin: 0px; padding: 0px">
-					<legend>${groupTitle}</legend>
+					${elFieldsetLegendString}
 					<span style="display: flex">
 
 					</span>
@@ -21907,7 +21910,7 @@ initSidebar = (viewer) => {
 			let dxfIcon = `${Potree.resourcePath}/icons/file_dxf.svg`;
 
 			elExport.append(`
-				Export: <br>
+				<span data-i18n="scene.export_title">Export</span>: <br>
 				<a href="#" download="measure.json"><img name="geojson_export_button" src="${geoJSONIcon}" class="button-icon" style="height: 24px" /></a>
 				<a href="#" download="measure.dxf"><img name="dxf_export_button" src="${dxfIcon}" class="button-icon" style="height: 24px" /></a>
 			`);
@@ -21978,10 +21981,10 @@ initSidebar = (viewer) => {
 			return nodeID;
 		}
 
-		let pcID = tree.jstree('create_node', "#", { "text": "<b>Point Clouds</b>", "id": "pointclouds"}, "last", false, false);
-		let measurementID = tree.jstree('create_node', "#", { "text": "<b>Measurements</b>", "id": "measurements" }, "last", false, false);
-		let annotationsID = tree.jstree('create_node', "#", { "text": "<b>Annotations</b>", "id": "annotations" }, "last", false, false);
-		let otherID = tree.jstree('create_node', "#", { "text": "<b>Other</b>", "id": "other" }, "last", false, false);
+		let pcID = tree.jstree('create_node', "#", { "text": "<b data-i18n='scene.obj_pointclouds'>Point Clouds</b>", "id": "pointclouds"}, "last", false, false);
+		let measurementID = tree.jstree('create_node', "#", { "text": "<b data-i18n='scene.obj_measurements'>Measurements</b>", "id": "measurements" }, "last", false, false);
+		let annotationsID = tree.jstree('create_node', "#", { "text": "<b data-i18n='scene.obj_annotations'>Annotations</b>", "id": "annotations" }, "last", false, false);
+		let otherID = tree.jstree('create_node', "#", { "text": "<b data-i18n='scene.obj_other'>Other</b>", "id": "other" }, "last", false, false);
 
 		tree.jstree("check_node", pcID);
 		tree.jstree("check_node", measurementID);
@@ -22249,7 +22252,7 @@ initSidebar = (viewer) => {
 
 		{
 			let elClipTask = $("#cliptask_options");
-			elClipTask.selectgroup({title: "Clip Task"});
+			elClipTask.selectgroup({title: "Clip Task", titleLangId: 'selectgroup.clip_task'});
 
 			elClipTask.find("input").click( (e) => {
 				viewer.setClipTask(Potree.ClipTask[e.target.value]);
@@ -22262,7 +22265,7 @@ initSidebar = (viewer) => {
 
 		{
 			let elClipMethod = $("#clipmethod_options");
-			elClipMethod.selectgroup({title: "Clip Method"});
+			elClipMethod.selectgroup({title: "Clip Method", titleLangId: 'selectgroup.clip_method'});
 
 			elClipMethod.find("input").click( (e) => {
 				viewer.setClipMethod(Potree.ClipMethod[e.target.value]);
@@ -22401,7 +22404,7 @@ initSidebar = (viewer) => {
 		let elLanguages = $('#potree_languages');
 		for(let i = 0; i < languages.length; i++){
 			let [key, value] = languages[i];
-			let element = $(`<a>${key}</a>`);
+			let element = $(`<a href="#">${key}</a>`);
 			element.click(() => viewer.setLanguage(value));
 
 			if(i === 0){
@@ -22603,7 +22606,7 @@ initSidebar = (viewer) => {
 			</selectgroup>
 		`);
 		elNavigation.append(elCameraProjection);
-		elCameraProjection.selectgroup({title: "Camera Projection"});
+		elCameraProjection.selectgroup({title: "Camera Projection", titleLangId: 'selectgroup.camera_projection'});
 		elCameraProjection.find("input").click( (e) => {
 			viewer.setCameraMode(Potree.CameraMode[e.target.value]);
 		});
@@ -22658,7 +22661,7 @@ initSidebar = (viewer) => {
 
 		{
 			let elSplatQuality = $("#splat_quality_options");
-			elSplatQuality.selectgroup({title: "Splat Quality"});
+			elSplatQuality.selectgroup({title: "Splat Quality", titleLangId: 'selectgroup.splat_quality'});
 
 			elSplatQuality.find("input").click( (e) => {
 				if(e.target.value === "standard"){

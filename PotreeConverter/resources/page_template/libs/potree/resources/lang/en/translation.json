@@ -9,6 +9,7 @@
 		"materials_opt": "Materials",
 		"scene_opt": "Scene",
 		"classification_filter_opt": "Classification filter",
+		"filters_opt": "Filters",
 		"parameters_opt": "Other settings",
 		"about_opt": "About"
 	},
@@ -64,7 +65,21 @@
 		"box": "Box",
 		"length_unit": "Length unit",
 		"freeze": "Lock view",
-		"language": "Language"
+		"language": "Language",
+		"eye_dome_lighting": "Eye-Dome-Lighting",
+		"background": "Background",
+		"other": "Other",
+		"standard": "Standard",
+		"high_quality": "High Quality",
+		"measurement": "Measurement",
+		"clipping": "Clipping",
+		"none": "None",
+		"highlight": "Highlight",
+		"inside": "Inside",
+		"outside": "Outside",
+		"inside_any": "Inside Any",
+		"inside_all": "Inside All",
+		"navigation": "Navigation"
 	},
 	"measurements": {
 		"clip": "clip",
@@ -82,9 +97,32 @@
 	},
 	"scene": {
 		"camera_position": "Camera Position",
-		"camera_target": "Camera Target"
+		"camera_target": "Camera Target",
+		"objects": "Objects",
+		"properties": "Properties",
+		"export_title": "Export",
+		"obj_pointclouds": "Point Clouds",
+		"obj_measurements": "Measurements",
+		"obj_annotations": "Annotations",
+		"obj_other": "Other"
 	},
 	"settings": {
 		"language": "Language"
+	}, 
+	"legend": {
+		"selectgroup": {
+			"clip_task": "Clip Task"
+			, "clip_method": "Clip Method"
+			, "camera_projection": "Camera Projection"
+			, "splat_quality": "Splat Quality"
+		}
+	},
+	"about": {
+		"info": "is a viewer for large point cloud / LIDAR data sets, developed at the Vienna University of Technology.",
+		"author": "Author:",
+		"license": "License:",
+		"libraries": "Libraries:",
+		"donators": "Donators:",
+		"credits": "Credits:"
 	}
 }

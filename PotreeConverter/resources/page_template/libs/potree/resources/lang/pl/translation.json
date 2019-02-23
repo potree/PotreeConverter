@@ -1,0 +1,146 @@
+{
+	"tb": {
+		"navigation_opt": "Nawigacja",
+		"rendering_opt": "Wygląd",
+		"tools_opt": "Narzędzia",
+		"measurments_opt": "Pomiary",
+		"clipping_opt": "Wycinanie",
+		"annotations_opt": "Adnotacje",
+		"materials_opt": "Materiały",
+		"scene_opt": "Sceny",
+		"classification_filter_opt": "Klasyfikacja",
+		"filters_opt": "Filtry",
+		"parameters_opt": "Inne ustawienia",
+		"about_opt": "O programie"
+	},
+	"tt": {
+		"angle_measurement": "Pomiar kąta",
+		"point_measurement": "Pomiar punktu",
+		"distance_measurement": "Pomiar odległości",
+		"height_measurement": "Pomiar wysokości",
+		"area_measurement": "Pomiar powierzchni",
+		"volume_measurement": "Pomiar objętości",
+		"height_profile": "Profil wysokościowy",
+		"clip_volume": "Wycinanie bryłą",
+		"clip_polygon": "Wycinanie wielokątem",
+		"screen_clip_box": "Narysuj obszar zaznaczenia . Wymaga widoku ortogonalnego kamery!",
+		"clip_plane_x": "Wytnij płaszczyznę na osi X",
+		"clip_plane_y": "Wytnij płaszczyznę na osi Y",
+		"clip_plane_z": "Wytnij płaszczyznę na osi Z",
+		"remove_all_measurement": "Wyczyść wszystkie pomiary",
+		"left_view_control": "Widok z prawej",
+		"right_view_control": "Widok z lewej",
+		"front_view_control": "Widok z przodu",
+		"back_view_control": "Widok z tyłu",
+		"top_view_control": "Widok z góry",
+		"bottom_view_control": "Widok z dołu",
+		"focus_control": "Pokaż wszystko",
+		"orbit_control": "Kontrola obrotu widoku",
+		"flight_control": "Kontrola obrotu kamery",
+		"heli_control": "Kontrola helikoptera",
+		"earth_control": "Przesuwanie nad 'ziemią'",
+		"perspective_camera_control": "Widok perspektywy",
+		"orthographic_camera_control": "Widok ortogonalny",
+		"navigation_cube_control": "Kostka nawigacji",
+		"remove_all_clipping_volumes": "Wyczyść wszystkie obiekty wycinające"
+	},
+	"appearance": {
+		"nb_max_pts": "Maksymalnie punktów", 
+		"point_size": "Wielkość punktu",
+		"point_opacity": "Przeźroczystość",
+		"field_view": "Pole widzenia",
+		"point_size_type": "Typ wielkości punktu",
+		"point_material": "Materiały",
+		"elevation_range": "Zakres wysokości",
+		"point_quality": "Jakość",
+		"point_shape": "Kształt punktu",
+		"edl_radius": "Promień",
+		"edl_strength": "Siła",
+		"edl_enable": "Aktywny",
+		"min_node_size": "Minimalna wielkość węzła",
+		"clip_mode": "Tryb wycinania",
+		"move_speed": "Prędkość",
+		"skybox": "Niebo",
+		"bottom_lock": "Utzrymuj nad powierzchnią",
+		"box": "Box",
+		"length_unit": "Jednostka długości",
+		"freeze": "Zablokuj widok",
+		"language": "Język",
+		"eye_dome_lighting": "Oświetlenie",
+		"background": "Tło",
+		"other": "Inne",
+		"standard": "Standardowe",
+		"high_quality": "Wysoka jakość",
+		"measurement": "Pomiary",
+		"clipping": "Wycinanie",
+		"none": "Nic",
+		"highlight": "Podświetlenie",
+		"inside": "W środku",
+		"outside": "Na zewnątrz",
+		"inside_any": "w którymś",
+		"inside_all": "w każdym",
+		"navigation": "Nawigacja"
+	},
+	"measurements": {
+		"clip": "wytnij",
+		"show": "pokaż objętość"
+	},
+	"annotations": {
+		"show3D": "pokaż w 3D",
+		"showMap": "pokaż na mapie"
+	}, 
+	"profile": {
+		"nb_points": "Liczba punktów",
+		"title": "Profil wysokościowy",
+		"save_las": "Zapisz LAS(3D)",
+		"save_ortho": "Zapisz CSV(2D)"
+	},
+	"scene": {
+		"camera_position": "Pozycja kamery",
+		"camera_target": "Cel kamery",
+		"objects": "Obiekty",
+		"properties": "Właściwości",
+		"export_title": "Eksport",
+		"obj_pointclouds": "Chmura punktów",
+		"obj_measurements": "Pomiary",
+		"obj_annotations": "Adnotacje",
+		"obj_other": "Inne"
+	},
+	"settings": {
+		"language": "Język"
+	},
+	"label": {
+		"clipmethod_options_any": "w dowolnym",
+		"clipmethod_options_all": "w każdym",
+		"cliptask_options_none": "brak",
+		"cliptask_options_highlight": "oznacz",
+		"cliptask_options_show_inside": "w środku",
+		"cliptask_options_show_outside": "na zewnątrz",
+		"camera_projection_options_perspective": "Perspektywa",
+		"camera_projection_options_orthigraphic": "Ortogonalna",
+		"splat_quality_options_standard": "Standardowa",
+		"splat_quality_options_hq": "Wysoka",
+		"background_options_skybox": "Niebo",
+		"background_options_gradient": "Gradient",
+		"background_options_black": "Czarne",
+		"background_options_white": "Białe",
+		"background_options_none": "Brak"
+	}, 
+	"legend": {
+		"selectgroup": {
+			"clip_task": "Podgląd wycinania"
+			, "clip_method": "Metoda wycinania"
+			, "camera_projection": "Projekcja kamery"
+			, "splat_quality": "Jakość wyświetlania"
+		}
+	},
+	"about": {
+		"info": "jest przeglądarką chmur punktów (LIDAR), stworzoną w Vienna University of Technology.",
+		"author": "Autor:",
+		"license": "Licencja:",
+		"libraries": "Biblioteki:",
+		"donators": "Wspierający:",
+		"credits": "Przypisy:"
+	}
+
+}
