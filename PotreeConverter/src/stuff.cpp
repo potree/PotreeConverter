@@ -268,7 +268,9 @@ vector<string> split(string str, vector<char> delimiters) {
 }
 
 vector<string> split(string str, char delimiter) {
-	return split(str, { delimiter });
+    vector<char> delimiters;
+    delimiters.push_back(delimiter);
+	return split(str, delimiters);
 }
 
 // see https://stackoverflow.com/questions/216823/whats-the-best-way-to-trim-stdstring
