@@ -255,7 +255,7 @@ void printArguments(PotreeArguments &a){
 		cout << "== params ==" << endl;
 		int i = 0;
 		for(const auto &s : a.source) {
-			cout << "source[" << i << "]:         \t" << a.source[i] << endl;
+			cout << "source[" << i << "]:         \t" << s << endl; //a.source[i] << endl;
 			++i;
 		}
 		cout << "outdir:            \t" << a.outdir << endl;

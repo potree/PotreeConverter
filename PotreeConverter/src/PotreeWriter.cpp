@@ -312,7 +312,7 @@ void PWNode::flush(){
 			writer->write(e_c);
 		}
 
-		if(append && (writer->numPoints != this->numAccepted)){
+		if(append && ((unsigned int)writer->numPoints != this->numAccepted)){
 			cout << "writeToDisk " << writer->numPoints  << " != " << this->numAccepted << endl;
 			exit(1);
 		}

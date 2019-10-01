@@ -249,7 +249,7 @@ vector<string> split(string str, vector<char> delimiters) {
 	};
 
 	int start = 0;
-	for (int i = 0; i < str.size(); i++) {
+	for (int i = 0; (unsigned int)i < str.size(); i++) {
 		if (isDelimiter(str[i])) {
 			if (start < i) {
 				auto token = str.substr(start, i - start);
@@ -260,7 +260,7 @@ vector<string> split(string str, vector<char> delimiters) {
 		}
 	}
 
-	if (start < str.size()) {
+	if ((unsigned int)start < str.size()) {
 		tokens.push_back(str.substr(start));
 	}
 

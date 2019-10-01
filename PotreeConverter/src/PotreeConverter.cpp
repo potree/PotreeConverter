@@ -265,7 +265,7 @@ void writeSources(string path, vector<string> sourceFilenames, vector<int> numPo
 
 	Value jSources(rapidjson::kObjectType);
 	jSources.SetArray();
-	for(int i = 0; i < sourceFilenames.size(); i++){
+	for(int i = 0; (unsigned int)i < sourceFilenames.size(); i++){
 		string &source = sourceFilenames[i];
 		int points = numPoints[i];
 		AABB boundingBox = boundingBoxes[i];
