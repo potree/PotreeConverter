@@ -17,6 +17,7 @@
 #include "BINPointReader.hpp"
 #include "PlyPointReader.h"
 #include "XYZPointReader.hpp"
+#include "ExtraBytes.hpp"
 
 #include <chrono>
 #include <sstream>
@@ -81,6 +82,63 @@ PotreeConverter::PotreeConverter(string executablePath, string workDir, vector<s
 	this->sources = sources;
 }
 
+vector<PointAttribute> parseExtraAttributes(string file) {
+
+	vector<PointAttribute> attributes;
+
+	bool isLas = iEndsWith(file, ".las") || iEndsWith(file, ".laz");
+	if(!isLas) {
+		return attributes;
+	}
+
+	laszip_POINTER laszip_reader;
+	laszip_header* header;
+
+	laszip_create(&laszip_reader);
+
+	laszip_BOOL request_reader = 1;
+	laszip_request_compatibility_mode(laszip_reader, request_reader);
+
+	laszip_BOOL is_compressed = iEndsWith(file, ".laz") ? 1 : 0;
+	laszip_open_reader(laszip_reader, file.c_str(), &is_compressed);
+
+	laszip_get_header_pointer(laszip_reader, &header);
+
+	{ // read extra bytes
+
+		for (int i = 0; i < header->number_of_variable_length_records; i++) {
+			laszip_vlr_struct vlr = header->vlrs[i];
+
+			cout << "record id: " << vlr.record_id << endl;
+			cout << "record_length_after_header: " << vlr.record_length_after_header << endl;
+
+			int numExtraBytes = vlr.record_length_after_header / sizeof(ExtraBytesRecord);
+
+			ExtraBytesRecord* extraBytes = reinterpret_cast<ExtraBytesRecord*>(vlr.data);
+
+			for (int j = 0; j < numExtraBytes; j++) {
+				ExtraBytesRecord extraAttribute = extraBytes[j];
+
+				string name = string(extraAttribute.name);
+
+				cout << "name: " << name << endl;
+
+				//ExtraType type = extraTypeFromID(extraAttribute.data_type);
+				ExtraType type = typeToExtraType.at(extraAttribute.data_type);
+				int byteSize = type.size;
+				PointAttribute attribute(123, name, type.type, type.numElements, byteSize);
+
+				attributes.push_back(attribute);
+			}
+		}
+	}
+
+	laszip_close_reader(laszip_reader);
+	laszip_destroy(laszip_reader);
+
+	return attributes;
+}
+
 void PotreeConverter::prepare(){
 
 	// if sources contains directories, use files inside the directory instead
@@ -128,6 +186,17 @@ void PotreeConverter::prepare(){
 			pointAttributes.add(PointAttribute::GPS_TIME);
 		} else if(attribute == "NORMAL"){
 			pointAttributes.add(PointAttribute::NORMAL_OCT16);
+		}
+	}
+
+	{ // extra attributes
+		string file = sourceFiles[0];
+
+		vector<PointAttribute> extraAttributes = parseExtraAttributes(file);
+		for (PointAttribute attribute : extraAttributes) {
+			pointAttributes.add(attribute);
+		
+			cout << attribute.name << ", " << attribute.byteSize << endl;
 		}
 	}
 }

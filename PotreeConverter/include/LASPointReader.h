@@ -12,6 +12,7 @@
 #include "Point.h"
 #include "PointReader.h"
 #include "stuff.h"
+#include "ExtraBytes.hpp"
 
 using std::string;
 
@@ -54,6 +55,7 @@ public:
 
 		laszip_BOOL request_reader = 1;
 		laszip_request_compatibility_mode(laszip_reader, request_reader);
+		
 
 		{// read first x points to find if color is 1 or 2 bytes
 			laszip_BOOL is_compressed = iEndsWith(path, ".laz") ? 1 : 0;
@@ -66,7 +68,7 @@ public:
 			laszip_get_point_pointer(laszip_reader, &point);
 
 			colorScale = 1;
-			for(int i = 0; i < 100000 && i < npoints; i++){
+			for(int i = 0; i < 100'000 && i < npoints; i++){
 				laszip_read_point(laszip_reader);
 		
 				auto r = point->rgb[0];
@@ -79,6 +81,30 @@ public:
 				};
 			}
 		}
+
+		//{ // read extra bytes
+		//	
+		//	for (int i = 0; i < header->number_of_variable_length_records; i++) {
+		//		laszip_vlr_struct vlr = header->vlrs[i];
+
+		//		cout << "record id: " << vlr.record_id << endl;
+		//		cout << "record_length_after_header: " << vlr.record_length_after_header << endl;
+
+		//		int numExtraBytes = vlr.record_length_after_header / sizeof(ExtraBytesRecord);
+
+		//		ExtraBytesRecord* extraBytes = reinterpret_cast<ExtraBytesRecord*>(vlr.data);
+
+		//		for (int j = 0; j < numExtraBytes; j++) {
+		//			ExtraBytesRecord extraAttribute = extraBytes[j];
+
+		//			string name = string(extraAttribute.name);
+
+		//			cout << "name: " << name << endl;
+		//		}
+		//	}
+		//}
+
+		//exit(0);
 
 		laszip_seek_point(laszip_reader, 0);
     }
@@ -124,6 +150,10 @@ public:
 		p.pointSourceID = point->point_source_ID;
 		p.gpsTime = point->gps_time;
 
+		if (point->num_extra_bytes > 0) {
+			p.extraBytes = vector<uint8_t>(point->extra_bytes, point->extra_bytes + point->num_extra_bytes);
+		}	
+
         return p;
     }
 	void close(){
@@ -132,7 +162,6 @@ public:
 
 	AABB getAABB();
 };
-
 
 class LASPointReader : public PointReader{
 private:

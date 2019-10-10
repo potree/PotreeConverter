@@ -308,7 +308,7 @@ void PWNode::flush(){
 			writer = createWriter(filepath);
 		}
 
-		for(const auto &e_c : points){
+		for(auto &e_c : points){
 			writer->write(e_c);
 		}
 

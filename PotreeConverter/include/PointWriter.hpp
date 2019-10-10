@@ -19,7 +19,7 @@ public:
 
 	virtual ~PointWriter(){};
 
-	virtual void write(const Point &point) = 0;
+	virtual void write(Point &point) = 0;
 
 	virtual void close() = 0;
 

@@ -78,7 +78,7 @@ public:
 		close();
 	}
 
-	void write(const Point &point);
+	void write(Point &point);
 
 	void close(){
 
