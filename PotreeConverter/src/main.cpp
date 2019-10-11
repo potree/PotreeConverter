@@ -156,7 +156,7 @@ PotreeArguments parseArguments(int argc, char **argv){
 	if (args.has("output-attributes")) {
 		a.outputAttributes = args.get("output-attributes").as<vector<string>>();
 	} else {
-		a.outputAttributes = { "RGB" };
+		//a.outputAttributes = { "RGB" };
 	}
 
 	a.scale = args.get("scale").as<double>(0.0);

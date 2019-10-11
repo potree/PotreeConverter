@@ -82,6 +82,83 @@ PotreeConverter::PotreeConverter(string executablePath, string workDir, vector<s
 	this->sources = sources;
 }
 
+vector<PointAttribute> checkAvailableStandardAttributes(string file) {
+
+	vector<PointAttribute> attributes;
+
+	bool isLas = iEndsWith(file, ".las") || iEndsWith(file, ".laz");
+	if (!isLas) {
+		return attributes;
+	}
+
+	laszip_POINTER laszip_reader;
+	laszip_header* header;
+
+	laszip_create(&laszip_reader);
+
+	laszip_BOOL request_reader = 1;
+	laszip_request_compatibility_mode(laszip_reader, request_reader);
+
+	bool hasClassification = false;
+	bool hasGpsTime = false;
+	bool hasIntensity = false;
+	bool hasNumberOfReturns = false;
+	bool hasReturnNumber = false;
+	bool hasPointSourceId = false;
+
+	{
+		laszip_BOOL is_compressed = iEndsWith(file, ".laz") ? 1 : 0;
+		laszip_open_reader(laszip_reader, file.c_str(), &is_compressed);
+
+		laszip_get_header_pointer(laszip_reader, &header);
+
+		long long npoints = (header->number_of_point_records ? header->number_of_point_records : header->extended_number_of_point_records);
+
+		laszip_point* point;
+		laszip_get_point_pointer(laszip_reader, &point);
+
+		for (int i = 0; i < 1'000'000 && i < npoints; i++) {
+			laszip_read_point(laszip_reader);
+
+			hasClassification |= point->classification != 0;
+			hasGpsTime |= point->gps_time != 0;
+			hasIntensity |= point->intensity != 0;
+			hasNumberOfReturns |= point->number_of_returns != 0;
+			hasReturnNumber |= point->return_number != 0;
+			hasPointSourceId |= point->point_source_ID != 0;
+		}
+	}
+
+	laszip_close_reader(laszip_reader);
+	laszip_destroy(laszip_reader);
+
+	if (hasClassification) {
+		attributes.push_back(PointAttribute::CLASSIFICATION);
+	}
+
+	if (hasGpsTime) {
+		attributes.push_back(PointAttribute::GPS_TIME);
+	}
+
+	if (hasIntensity) {
+		attributes.push_back(PointAttribute::INTENSITY);
+	}
+
+	if (hasNumberOfReturns) {
+		attributes.push_back(PointAttribute::NUMBER_OF_RETURNS);
+	}
+
+	if (hasReturnNumber) {
+		attributes.push_back(PointAttribute::RETURN_NUMBER);
+	}
+
+	if (hasPointSourceId) {
+		attributes.push_back(PointAttribute::SOURCE_ID);
+	}
+
+	return attributes;
+}
+
 vector<PointAttribute> parseExtraAttributes(string file) {
 
 	vector<PointAttribute> attributes;
@@ -169,36 +246,64 @@ void PotreeConverter::prepare(){
 
 	pointAttributes = PointAttributes();
 	pointAttributes.add(PointAttribute::POSITION_CARTESIAN);
-	for(const auto &attribute : outputAttributes){
-		if(attribute == "RGB"){
-			pointAttributes.add(PointAttribute::COLOR_PACKED);
-		}else if(attribute == "INTENSITY"){
-			pointAttributes.add(PointAttribute::INTENSITY);
-		} else if (attribute == "CLASSIFICATION") {
-			pointAttributes.add(PointAttribute::CLASSIFICATION);
-		} else if (attribute == "RETURN_NUMBER") {
-			pointAttributes.add(PointAttribute::RETURN_NUMBER);
-		} else if (attribute == "NUMBER_OF_RETURNS") {
-			pointAttributes.add(PointAttribute::NUMBER_OF_RETURNS);
-		} else if (attribute == "SOURCE_ID") {
-			pointAttributes.add(PointAttribute::SOURCE_ID);
-		} else if (attribute == "GPS_TIME") {
-			pointAttributes.add(PointAttribute::GPS_TIME);
-		} else if(attribute == "NORMAL"){
-			pointAttributes.add(PointAttribute::NORMAL_OCT16);
+
+	bool addExtraAttributes = false;
+
+	if(outputAttributes.size() > 0){
+		for(const auto &attribute : outputAttributes){
+			if(attribute == "RGB"){
+				pointAttributes.add(PointAttribute::COLOR_PACKED);
+			}else if(attribute == "INTENSITY"){
+				pointAttributes.add(PointAttribute::INTENSITY);
+			} else if (attribute == "CLASSIFICATION") {
+				pointAttributes.add(PointAttribute::CLASSIFICATION);
+			} else if (attribute == "RETURN_NUMBER") {
+				pointAttributes.add(PointAttribute::RETURN_NUMBER);
+			} else if (attribute == "NUMBER_OF_RETURNS") {
+				pointAttributes.add(PointAttribute::NUMBER_OF_RETURNS);
+			} else if (attribute == "SOURCE_ID") {
+				pointAttributes.add(PointAttribute::SOURCE_ID);
+			} else if (attribute == "GPS_TIME") {
+				pointAttributes.add(PointAttribute::GPS_TIME);
+			} else if(attribute == "NORMAL"){
+				pointAttributes.add(PointAttribute::NORMAL_OCT16);
+			} else if (attribute == "EXTRA") {
+				addExtraAttributes = true;
+			}
+		} 
+	} else {
+		string file = sourceFiles[0];
+
+		// always add colors?
+		pointAttributes.add(PointAttribute::COLOR_PACKED);
+
+		vector<PointAttribute> attributes = checkAvailableStandardAttributes(file);
+
+		for (PointAttribute attribute : attributes) {
+			pointAttributes.add(attribute);
+
+			//cout << attribute.name << ", " << attribute.byteSize << endl;
 		}
+
+		addExtraAttributes = true;
 	}
 
-	{ // extra attributes
+	if(addExtraAttributes){
 		string file = sourceFiles[0];
 
 		vector<PointAttribute> extraAttributes = parseExtraAttributes(file);
 		for (PointAttribute attribute : extraAttributes) {
 			pointAttributes.add(attribute);
 		
-			cout << attribute.name << ", " << attribute.byteSize << endl;
+			//cout << attribute.name << ", " << attribute.byteSize << endl;
 		}
 	}
+
+	cout << "processing following attributes: " << endl;
+	for (PointAttribute& attribute : pointAttributes.attributes) {
+		cout << attribute.name << endl;
+	}
+	cout << endl;
 }
 
 AABB PotreeConverter::calculateAABB(){

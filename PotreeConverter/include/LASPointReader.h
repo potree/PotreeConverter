@@ -82,30 +82,6 @@ public:
 			}
 		}
 
-		//{ // read extra bytes
-		//	
-		//	for (int i = 0; i < header->number_of_variable_length_records; i++) {
-		//		laszip_vlr_struct vlr = header->vlrs[i];
-
-		//		cout << "record id: " << vlr.record_id << endl;
-		//		cout << "record_length_after_header: " << vlr.record_length_after_header << endl;
-
-		//		int numExtraBytes = vlr.record_length_after_header / sizeof(ExtraBytesRecord);
-
-		//		ExtraBytesRecord* extraBytes = reinterpret_cast<ExtraBytesRecord*>(vlr.data);
-
-		//		for (int j = 0; j < numExtraBytes; j++) {
-		//			ExtraBytesRecord extraAttribute = extraBytes[j];
-
-		//			string name = string(extraAttribute.name);
-
-		//			cout << "name: " << name << endl;
-		//		}
-		//	}
-		//}
-
-		//exit(0);
-
 		laszip_seek_point(laszip_reader, 0);
     }
 
