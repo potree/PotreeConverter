@@ -288,6 +288,7 @@ void PWNode::flush(){
 		if(append){
 			string temppath = workDir() + "/temp/prepend" + potreeWriter->getExtension();
 			if(fs::exists(filepath)){
+				//cout << filepath << " >> " << temppath << endl;
 				fs::rename(fs::path(filepath), fs::path(temppath));
 			}
 
@@ -464,6 +465,9 @@ PWNode* PWNode::findNode(string name){
 PotreeWriter::PotreeWriter(string workDir, ConversionQuality quality){
 	this->workDir = workDir;
 	this->quality = quality;
+
+	initialize();
+	createProcessingThread();
 }
 
 PotreeWriter::PotreeWriter(string workDir, AABB aabb, float spacing, int maxDepth, double scale, OutputFormat outputFormat, PointAttributes pointAttributes, ConversionQuality quality){
@@ -498,6 +502,17 @@ PotreeWriter::PotreeWriter(string workDir, AABB aabb, float spacing, int maxDept
 	cloudjs.pointAttributes = pointAttributes;
 
 	root = new PWNode(this, aabb);
+
+	initialize();
+	createProcessingThread();
+}
+
+void PotreeWriter::initialize() {
+	fs::path dataDir(workDir + "/data");
+	fs::path tempDir(workDir + "/temp");
+
+	fs::create_directories(dataDir);
+	fs::create_directories(tempDir);
 }
 
 string PotreeWriter::getExtension(){
@@ -518,57 +533,85 @@ void PotreeWriter::waitUntilProcessed(){
 	}
 }
 
-void PotreeWriter::add(Point &p){
-	if(numAdded == 0){
-		fs::path dataDir(workDir + "/data");
-		fs::path tempDir(workDir + "/temp");
+void PotreeWriter::addBatch(vector<Point> points){
 
-		fs::create_directories(dataDir);
-		fs::create_directories(tempDir);
-	}
+	std::lock_guard<std::mutex> guard(mtx_batches);
+	backlog.push_back(points);
 
-	store.push_back(p);
-	numAdded++;
-
-	if(store.size() > 10'000){
-		processStore();
-	}
 }
 
-void PotreeWriter::processStore(){
-	vector<Point> st = store;
-	store = vector<Point>();
+int PotreeWriter::numBatches() {
 
-	waitUntilProcessed();
+	std::lock_guard<std::mutex> guard(mtx_batches);
+	
+	return backlog.size();
+}
 
-	storeThread = thread([this, st]{
-		for(Point p : st){
-			PWNode *acceptedBy = root->add(p);
-			if(acceptedBy != NULL){
-				tightAABB.update(p.position);
+void PotreeWriter::createProcessingThread(){
 
-				pointsInMemory++;
-				numAccepted++;
+	using namespace std::chrono_literals;
+
+	storeThread = thread([this]{
+
+		// GET BATCH
+		// PROCESS BATCH
+		// SLEEP FOR A MILLISECOND
+
+		auto finished = [this]() {
+			std::lock_guard<std::mutex> guard(this->mtx_batches);
+
+			bool isFinished = this->closed&& this->backlog.size() == 0;
+
+			return isFinished;
+		};
+
+		while (!finished()) {
+
+
+			std::this_thread::sleep_for(10ms);
+
+			// retrieve a batch if available, or continue to top of loop, sleep, and try again
+
+			vector<Point> batch;
+			{
+				std::lock_guard<std::mutex> guard(mtx_batches);
+
+				if (backlog.size() > 0) {
+					batch = backlog.back();
+					backlog.pop_back();
+				} else {
+					continue;
+				}
 			}
+			
+			// we get a batch! now process it
+			cout << "processing batch!" << endl;
+			for (Point& point : batch) {
+
+				PWNode* acceptedBy = root->add(point);
+
+				if (acceptedBy != nullptr) {
+					tightAABB.update(point.position);
+
+					pointsInMemory++;
+					numAccepted++;
+				}
+			}
+
+			// flush after adding a batch
+			cout << "flushing batch!" << endl;
+			flush();
+
+			// repeat until writer is closed
+
 		}
+		
 	});
 }
 
 void PotreeWriter::flush(){
-	processStore();
-
-	if(storeThread.joinable()){
-		storeThread.join();
-	}
-
-	//auto start = high_resolution_clock::now();
 
 	root->flush();
-
-	//auto end = high_resolution_clock::now();
-	//long long duration = duration_cast<milliseconds>(end-start).count();
-	//float seconds = duration / 1'000.0f;
-	//cout << "flush nodes: " << seconds << "s" << endl;
 
 	{// update cloud.js
 		cloudjs.hierarchy = vector<CloudJS::Node>();
@@ -581,8 +624,6 @@ void PotreeWriter::flush(){
 		cloudOut << cloudjs.getString();
 		cloudOut.close();
 	}
-
-
 
 	{// write hierarchy
 		//auto start = high_resolution_clock::now();
@@ -634,14 +675,6 @@ void PotreeWriter::flush(){
 		root->traverse([](PWNode* node){
 			node->addedSinceLastFlush = false;
 		});
-
-		//cout << "hrcTotal: " << hrcTotal << "; " << "hrcFlushed: " << hrcFlushed << endl;
-
-		//auto end = high_resolution_clock::now();
-		//long long duration = duration_cast<milliseconds>(end-start).count();
-		//float seconds = duration / 1'000.0f;
-		//cout << "writing hierarchy: " << seconds << "s" << endl;
-
 	}
 }
 

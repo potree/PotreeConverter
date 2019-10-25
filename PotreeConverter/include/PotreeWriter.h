@@ -5,6 +5,7 @@
 
 #include <string>
 #include <thread>
+#include <mutex>
 #include <vector>
 #include <functional>
 
@@ -15,6 +16,7 @@
 
 using std::string;
 using std::thread;
+using std::mutex;
 using std::vector;
 
 namespace Potree{
@@ -110,12 +112,16 @@ public:
 	OutputFormat outputFormat;
 	PointAttributes pointAttributes;
 	int hierarchyStepSize = 5;
-	vector<Point> store;
 	thread storeThread;
 	int pointsInMemory = 0;
 	string projection = "";
 	ConversionQuality quality = ConversionQuality::DEFAULT;
 	int storeSize = 20'000;
+
+	vector<vector<Point>> backlog;
+
+	mutex mtx_batches;
+	bool closed = false;
 
 
 	PotreeWriter(string workDir, ConversionQuality quality);
@@ -128,18 +134,24 @@ public:
 		delete root;
 	}
 
+	void initialize();
+
 	string getExtension();
 
-	void processStore();
+	void createProcessingThread();
 
 	void waitUntilProcessed();
 
-	void add(Point &p);
+	void addBatch(vector<Point> points);
+
+	int numBatches();
 
 	void flush();
 
 	void close(){
-		flush();
+		closed = true;
+
+		storeThread.join();
 	}
 
 	void setProjection(string projection);

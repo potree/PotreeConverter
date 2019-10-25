@@ -26,6 +26,7 @@
 #include <vector>
 #include <math.h>
 #include <fstream>
+#include <thread>
 
 
 
@@ -626,56 +627,33 @@ void PotreeConverter::convert(){
 			continue;
 		}
 
+		int batchSize = 5'000'000;
+		vector<Point> batch;
+		batch.reserve(batchSize);
+
+		using namespace std::chrono_literals;
+
 		while(reader->readNextPoint()){
+			batch.push_back(reader->getPoint());
+
 			pointsProcessed++;
 
-			Point p = reader->getPoint();
-			writer->add(p);
+			if(batch.size() >= batchSize){
+				writer->addBatch(batch);
 
-			if((pointsProcessed % (1'000'000)) == 0){
-				writer->processStore();
-				writer->waitUntilProcessed();
+				// don't load too much points into memory, if the writer has enough backlog
+				while (writer->numBatches() > 2) {
+					std::this_thread::sleep_for(10ms);
+				}
 
-				auto end = high_resolution_clock::now();
-				long long duration = duration_cast<milliseconds>(end-start).count();
-				float seconds = duration / 1'000.0f;
-
-				stringstream ssMessage;
-
-				ssMessage.imbue(std::locale(""));
-
-				//ssMessage << "INDEXING: ";
-				//ssMessage << pointsProcessed << " points processed; ";
-				//ssMessage << writer->numAccepted << " points written; ";
-				//ssMessage << seconds << " seconds passed";
-
-				int percent = 100.0f * float(pointsProcessed) / float(infos.numPoints);
-
-				ssMessage << "INDEXING: ";
-				ssMessage << pointsProcessed << " of " << infos.numPoints << " processed (" << percent << "%); ";
-				ssMessage << writer->numAccepted << " written; ";
-				ssMessage << seconds << " seconds passed";
-
-				cout << ssMessage.str() << endl;
+				batch = vector<Point>();
+				batch.reserve(batchSize);
+				cout << "added batch" << endl;
 			}
-			if((pointsProcessed % (flushLimit)) == 0){
-				cout << "FLUSHING: ";
-			
-				auto start = high_resolution_clock::now();
-			
-				writer->flush();
-			
-				auto end = high_resolution_clock::now();
-				long long duration = duration_cast<milliseconds>(end-start).count();
-				float seconds = duration / 1'000.0f;
-			
-				cout << seconds << "s" << endl;
-			}
-
-			//if(pointsProcessed >= 10'000'000){
-			//	break;
-			//}
 		}
+
+		writer->addBatch(batch);
+
 		reader->close();
 		delete reader;
 
@@ -683,7 +661,6 @@ void PotreeConverter::convert(){
 	}
 	
 	cout << "closing writer" << endl;
-	writer->flush();
 	writer->close();
 
 	writeSources(this->workDir + "/sources.json", sourceFilenames, numPoints, boundingBoxes, this->projection);
