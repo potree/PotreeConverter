@@ -19,6 +19,11 @@ namespace Potree{
 
 class SparseGrid;
 
+struct FileInfos {
+	AABB aabb;
+	uint64_t numPoints = 0;
+};
+
 class PotreeConverter{
 
 private:
@@ -30,7 +35,7 @@ private:
 
 	PointReader *createPointReader(string source, PointAttributes pointAttributes);
 	void prepare();
-	AABB calculateAABB();
+	FileInfos computeInfos();
 	void generatePage(string name);
 
 public:

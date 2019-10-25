@@ -186,6 +186,10 @@ vector<PointAttribute> parseExtraAttributes(string file) {
 		for (int i = 0; i < header->number_of_variable_length_records; i++) {
 			laszip_vlr_struct vlr = header->vlrs[i];
 
+			if (vlr.record_id != 4) {
+				continue;
+			}
+
 			cout << "record id: " << vlr.record_id << endl;
 			cout << "record_length_after_header: " << vlr.record_length_after_header << endl;
 
@@ -306,8 +310,12 @@ void PotreeConverter::prepare(){
 	cout << endl;
 }
 
-AABB PotreeConverter::calculateAABB(){
+FileInfos PotreeConverter::computeInfos(){
+
+
 	AABB aabb;
+	uint64_t numPoints = 0;
+
 	if(aabbValues.size() == 6){
 		Vector3<double> userMin(aabbValues[0],aabbValues[1],aabbValues[2]);
 		Vector3<double> userMax(aabbValues[3],aabbValues[4],aabbValues[5]);
@@ -316,6 +324,8 @@ AABB PotreeConverter::calculateAABB(){
 		for(string source : sources){
 
 			PointReader *reader = createPointReader(source, pointAttributes);
+
+			numPoints += reader->numPoints();
 			
 			AABB lAABB = reader->getAABB();
 			aabb.update(lAABB.min);
@@ -326,7 +336,9 @@ AABB PotreeConverter::calculateAABB(){
 		}
 	}
 
-	return aabb;
+	FileInfos infos = {aabb, numPoints};
+
+	return infos;
 }
 
 void PotreeConverter::generatePage(string name){
@@ -530,10 +542,27 @@ void PotreeConverter::convert(){
 
 	long long pointsProcessed = 0;
 
-	AABB aabb = calculateAABB();
-	cout << "AABB: " << endl << aabb << endl;
-	aabb.makeCubic();
-	cout << "cubic AABB: " << endl << aabb << endl;
+	FileInfos infos = computeInfos();
+	AABB aabb = infos.aabb;
+
+	{
+		cout << "AABB: {" << endl;
+		cout << "\t\"min\": " << aabb.min << "," << endl;
+		cout << "\t\"max\": " << aabb.max << "," << endl;
+		cout << "\t\"size\": " << aabb.size << endl;
+		cout << "}" << endl << endl;
+
+		aabb.makeCubic();
+		
+		cout << "cubicAABB: {" << endl;
+		cout << "\t\"min\": " << aabb.min << "," << endl;
+		cout << "\t\"max\": " << aabb.max << "," << endl;
+		cout << "\t\"size\": " << aabb.size << endl;
+		cout << "}" << endl << endl;
+	}
+
+	cout << "total number of points: " << infos.numPoints << endl;
+	
 
 	if (diagonalFraction != 0) {
 		spacing = (float)(aabb.size.length() / diagonalFraction);
@@ -614,9 +643,17 @@ void PotreeConverter::convert(){
 				stringstream ssMessage;
 
 				ssMessage.imbue(std::locale(""));
+
+				//ssMessage << "INDEXING: ";
+				//ssMessage << pointsProcessed << " points processed; ";
+				//ssMessage << writer->numAccepted << " points written; ";
+				//ssMessage << seconds << " seconds passed";
+
+				int percent = 100.0f * float(pointsProcessed) / float(infos.numPoints);
+
 				ssMessage << "INDEXING: ";
-				ssMessage << pointsProcessed << " points processed; ";
-				ssMessage << writer->numAccepted << " points written; ";
+				ssMessage << pointsProcessed << " of " << infos.numPoints << " processed (" << percent << "%); ";
+				ssMessage << writer->numAccepted << " written; ";
 				ssMessage << seconds << " seconds passed";
 
 				cout << ssMessage.str() << endl;

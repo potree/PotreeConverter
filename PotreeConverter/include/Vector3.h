@@ -4,6 +4,8 @@
 
 #include <math.h>
 #include <iostream>
+#include <iomanip>
+#include <sstream>
 
 using std::ostream;
 #ifndef _MSC_VER
@@ -79,7 +81,12 @@ public:
 	}
 
 	friend ostream &operator<<( ostream &output,  const Vector3<T> &value ){ 
-		output << "[" << value.x << ", " << value.y << ", " << value.z << "]" ;
+		std::stringstream ss;
+		ss << std::setprecision(6) << std::fixed;
+		ss << "[" << value.x << ", " << value.y << ", " << value.z << "]";
+
+		output << ss.str();
+
 		return output;            
 	}
 };
