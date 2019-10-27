@@ -311,33 +311,70 @@ void PotreeConverter::prepare(){
 	cout << endl;
 }
 
-FileInfos PotreeConverter::computeInfos(){
+ConversionInfos PotreeConverter::computeInfos(){
 
+	// retrieve infos for each file and compute totals over all files
 
 	AABB aabb;
 	uint64_t numPoints = 0;
 
-	if(aabbValues.size() == 6){
-		Vector3<double> userMin(aabbValues[0],aabbValues[1],aabbValues[2]);
-		Vector3<double> userMax(aabbValues[3],aabbValues[4],aabbValues[5]);
+	vector<AABB> allBoundingBoxes;
+	vector<uint64_t> allNumPoints;
+	vector<string> allSourceFilenames;
+
+	for (string source : sources) {
+
+		PointReader* reader = createPointReader(source, pointAttributes);
+
+		AABB lAABB = reader->getAABB();
+		aabb.update(lAABB.min);
+		aabb.update(lAABB.max);
+
+		allBoundingBoxes.push_back(reader->getAABB());
+		allNumPoints.push_back(reader->numPoints());
+		allSourceFilenames.push_back(fs::path(source).filename().string());
+
+		reader->close();
+		delete reader;
+	}
+
+	// override aabb with optionally user defined AABB
+	if (aabbValues.size() == 6) {
+		Vector3<double> userMin(aabbValues[0], aabbValues[1], aabbValues[2]);
+		Vector3<double> userMax(aabbValues[3], aabbValues[4], aabbValues[5]);
+
 		aabb = AABB(userMin, userMax);
-	}else{
-		for(string source : sources){
+	}
 
-			PointReader *reader = createPointReader(source, pointAttributes);
+	double scale = this->scale;
 
-			numPoints += reader->numPoints();
-			
-			AABB lAABB = reader->getAABB();
-			aabb.update(lAABB.min);
-			aabb.update(lAABB.max);
-
-			reader->close();
-			delete reader;
+	if (scale == 0) {
+		if (aabb.size.length() > 1'000'000) {
+			scale = 0.01;
+		}
+		else if (aabb.size.length() > 100'000) {
+			scale = 0.001;
+		}
+		else if (aabb.size.length() > 1) {
+			scale = 0.001;
+		}
+		else {
+			scale = 0.0001;
 		}
 	}
 
-	FileInfos infos = {aabb, numPoints};
+
+	ConversionInfos infos;
+	infos.aabb = aabb;
+	infos.numPoints = numPoints;
+	infos.sources = sources;
+
+	infos.aabbs = allBoundingBoxes;
+	infos.pointCounts = allNumPoints;
+	infos.sourceFilenames = allSourceFilenames;
+
+	infos.attributes = pointAttributes;
+	infos.scale = scale;
 
 	return infos;
 }
@@ -450,7 +487,7 @@ void PotreeConverter::generatePage(string name){
 	//}
 }
 
-void writeSources(string path, vector<string> sourceFilenames, vector<int> numPoints, vector<AABB> boundingBoxes, string projection){
+void writeSources(string path, vector<string> sourceFilenames, vector<uint64_t> numPoints, vector<AABB> boundingBoxes, string projection){
 	Document d(rapidjson::kObjectType);
 
 	AABB bb;
@@ -536,6 +573,170 @@ void writeSources(string path, vector<string> sourceFilenames, vector<int> numPo
 	sourcesOut.close();
 }
 
+vector<Batch*> PotreeConverter::pass1_createBatches(ConversionInfos infos) {
+
+	uint32_t splits = uint32_t(log(infos.numPoints) / log(4.0) - 10.0);
+
+	// limit to 1 and 8 splits
+	splits = splits < 1 ? 1 : splits;
+	splits = splits > 8 ? 8 : splits;
+
+	uint32_t cells = pow(2, splits);
+
+	vector<Batch*> batches(cells * cells * cells, nullptr);
+
+	vector<string> sources = infos.sources;
+	AABB aabb = infos.aabb;
+	double scale = infos.scale;
+
+	for (const auto& source : sources) {
+		cout << "READING:  " << source << endl;
+
+		PointReader* reader = createPointReader(source, pointAttributes);
+
+		//writeSources(this->workDir, sourceFilenames, numPoints, boundingBoxes, this->projection);
+
+		if (this->sourceListingOnly) {
+			reader->close();
+			delete reader;
+
+			continue;
+		}
+
+		int batchSize = 5'000'000;
+		vector<Point> batch;
+		batch.reserve(batchSize);
+
+		using namespace std::chrono_literals;
+
+		double tStart = now();
+
+		while (reader->readNextPoint()) {
+
+			Point point = reader->getPoint();
+
+			double u = (point.position.x - aabb.min.x) / aabb.size.x;
+			double v = (point.position.y - aabb.min.y) / aabb.size.y;
+			double w = (point.position.z - aabb.min.z) / aabb.size.z;
+
+			uint32_t ix = u * cells;
+			uint32_t iy = v * cells;
+			uint32_t iz = w * cells;
+
+			ix = ix >= cells ? (cells - 1) : ix;
+			iy = iy >= cells ? (cells - 1) : iy;
+			iz = iz >= cells ? (cells - 1) : iz;
+
+			uint32_t index = ix | (iy << splits) | (iz << splits);
+
+			Batch* batch = batches[index];
+
+			if (batch == nullptr) {
+				batch = new Batch();
+
+				batch->x = ix;
+				batch->y = iy;
+				batch->z = iz;
+				batch->index = index;
+				batch->level = splits;
+				batch->filename = "batch_" + std::to_string(index) + ".batch";
+
+				batches[index] = batch;
+			}
+
+			batch->points.push_back(point);
+
+		}
+
+		int sum = 0;
+		for (int i = 0; i < batches.size(); i++) {
+			Batch* batch = batches[i];
+
+			if (batch == nullptr) {
+				continue;
+			}
+
+			auto attributes = infos.attributes;
+
+			int pointsize = attributes.byteSize;
+			int numBytes = batch->points.size() * pointsize;
+
+			string directory = this->workDir + "/temp/batches";
+			string path = directory + "/" + batch->filename;
+			batch->path = path;
+			batch->numPoints = batch->points.size();
+
+			fs::create_directories(directory);
+
+			uint8_t* data = reinterpret_cast<uint8_t*>(malloc(numBytes));
+			uint8_t* pointdata = reinterpret_cast<uint8_t*>(malloc(pointsize));
+
+			for (int j = 0; j < batch->points.size(); j++) {
+				int offset = j * pointsize;
+				Point point = batch->points[j];
+
+				memset(pointdata, 0, pointsize);
+
+				// POSITION
+				uint32_t ux = (point.position.x - aabb.min.x) / scale;
+				uint32_t uy = (point.position.y - aabb.min.y) / scale;
+				uint32_t uz = (point.position.z - aabb.min.z) / scale;
+
+				reinterpret_cast<uint32_t*>(pointdata)[0] = ux;
+				reinterpret_cast<uint32_t*>(pointdata)[1] = uy;
+				reinterpret_cast<uint32_t*>(pointdata)[2] = uz;
+
+				// COLOR
+				pointdata[12] = point.color.x;
+				pointdata[13] = point.color.y;
+				pointdata[14] = point.color.z;
+				pointdata[15] = 255;
+
+				memcpy(data + offset, pointdata, pointsize);
+			}
+
+			auto myfile = std::fstream(path, std::ios::out | std::ios::binary);
+			myfile.write(reinterpret_cast<const char*>(data), numBytes);
+			myfile.close();
+
+			delete data;
+			delete pointdata;
+
+			sum++;
+		}
+
+		cout << "num batches: " << sum << endl;
+
+		double tEnd = now();
+		cout << "duration: " << (tEnd - tStart) << "s" << endl;
+
+		//writer->addBatch(batch);
+
+		reader->close();
+		delete reader;
+	}
+
+	vector<Batch*> nonemptyBatches;
+
+	for (Batch* batch : batches) {
+		if (batch != nullptr) {
+			nonemptyBatches.push_back(batch);
+		}
+	}
+
+	return nonemptyBatches;
+}
+
+void PotreeConverter::pass2_indexBatches(ConversionInfos infos, vector<Batch*> batches) {
+
+	for (Batch* batch : batches) {
+
+		BatchIndexer indexer(infos, batch);
+		indexer.run();
+	}
+
+}
+
 void PotreeConverter::convert(){
 	auto start = high_resolution_clock::now();
 
@@ -543,7 +744,7 @@ void PotreeConverter::convert(){
 
 	long long pointsProcessed = 0;
 
-	FileInfos infos = computeInfos();
+	ConversionInfos infos = computeInfos();
 	AABB aabb = infos.aabb;
 
 	{
@@ -606,64 +807,16 @@ void PotreeConverter::convert(){
 
 	writer->storeSize = storeSize;
 
-	vector<AABB> boundingBoxes;
-	vector<int> numPoints;
-	vector<string> sourceFilenames;
+	vector<Batch*> batches = pass1_createBatches(infos);
+	pass2_indexBatches(infos, batches);
+	//pass3_merge();
 
-	for (const auto &source : sources) {
-		cout << "READING:  " << source << endl;
 
-		PointReader *reader = createPointReader(source, pointAttributes);
-
-		boundingBoxes.push_back(reader->getAABB());
-		numPoints.push_back(reader->numPoints());
-		sourceFilenames.push_back(fs::path(source).filename().string());
-
-		writeSources(this->workDir, sourceFilenames, numPoints, boundingBoxes, this->projection);
-		if(this->sourceListingOnly){
-			reader->close();
-			delete reader;
-
-			continue;
-		}
-
-		int batchSize = 5'000'000;
-		vector<Point> batch;
-		batch.reserve(batchSize);
-
-		using namespace std::chrono_literals;
-
-		while(reader->readNextPoint()){
-			batch.push_back(reader->getPoint());
-
-			pointsProcessed++;
-
-			if(batch.size() >= batchSize){
-				writer->addBatch(batch);
-
-				// don't load too much points into memory, if the writer has enough backlog
-				while (writer->numBatches() > 2) {
-					std::this_thread::sleep_for(10ms);
-				}
-
-				batch = vector<Point>();
-				batch.reserve(batchSize);
-				cout << "added batch" << endl;
-			}
-		}
-
-		writer->addBatch(batch);
-
-		reader->close();
-		delete reader;
-
-		
-	}
 	
 	cout << "closing writer" << endl;
 	writer->close();
 
-	writeSources(this->workDir + "/sources.json", sourceFilenames, numPoints, boundingBoxes, this->projection);
+	writeSources(this->workDir + "/sources.json", infos.sourceFilenames, infos.pointCounts, infos.aabbs, this->projection);
 
 	float percent = (float)writer->numAccepted / (float)pointsProcessed;
 	percent = percent * 100;

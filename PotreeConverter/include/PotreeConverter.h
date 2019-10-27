@@ -7,6 +7,8 @@
 #include "CloudJS.hpp"
 #include "definitions.hpp"
 #include "PointReader.h"
+#include "ConversionInfos.h"
+#include "BatchIndexer.h"
 
 #include <string>
 #include <vector>
@@ -19,11 +21,6 @@ namespace Potree{
 
 class SparseGrid;
 
-struct FileInfos {
-	AABB aabb;
-	uint64_t numPoints = 0;
-};
-
 class PotreeConverter{
 
 private:
@@ -35,8 +32,11 @@ private:
 
 	PointReader *createPointReader(string source, PointAttributes pointAttributes);
 	void prepare();
-	FileInfos computeInfos();
+	ConversionInfos computeInfos();
 	void generatePage(string name);
+
+	vector<Batch*> pass1_createBatches(ConversionInfos infos);
+	void pass2_indexBatches(ConversionInfos infos, vector<Batch*> batches);
 
 public:
 	float spacing;

@@ -40,6 +40,8 @@ namespace fs = std::experimental::filesystem;
 
 namespace Potree {
 
+	double now();
+
 	AABB readAABB(string fIn, int numPoints);
 
 	AABB readAABB(string fIn);

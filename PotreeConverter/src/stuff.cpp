@@ -35,6 +35,17 @@ using std::map;
 
 namespace Potree{
 
+	static long long start_time = std::chrono::high_resolution_clock::now().time_since_epoch().count();
+
+	double now() {
+		auto now = std::chrono::high_resolution_clock::now();
+		long long nanosSinceStart = now.time_since_epoch().count() - start_time;
+
+		double secondsSinceStart = double(nanosSinceStart) / 1'000'000'000;
+
+		return secondsSinceStart;
+	}
+
 /**
  *   y 
  *   |-z
