@@ -27,6 +27,8 @@
 #include <math.h>
 #include <fstream>
 #include <thread>
+#include <mutex>
+#include <atomic>
 
 
 
@@ -729,11 +731,52 @@ vector<Batch*> PotreeConverter::pass1_createBatches(ConversionInfos infos) {
 
 void PotreeConverter::pass2_indexBatches(ConversionInfos infos, vector<Batch*> batches) {
 
-	for (Batch* batch : batches) {
+	std::atomic<long> numRunning(0);
+	int maxRunning = 3;
+	int next = 0;
 
-		BatchIndexer indexer(infos, batch);
-		indexer.run();
+	mutex mtx_numRunning;
+
+	using namespace std::literals::chrono_literals;
+
+	while(next < batches.size()){
+		
+		if (numRunning > maxRunning) {
+			std::this_thread::sleep_for(10ms);
+			continue;
+		}
+		
+		Batch* batch = batches[next];
+
+		next++;
+		numRunning++;
+
+		thread t([&numRunning, infos, batch]() {
+			
+
+			BatchIndexer indexer(infos, batch);
+			indexer.run();
+
+			numRunning--;
+		});
+
+		t.detach();
 	}
+
+	while(numRunning > 0) {
+		std::this_thread::sleep_for(10ms);
+	}
+
+	cout << "done" << endl;
+
+
+
+
+	//for (Batch* batch : batches) {
+
+	//	BatchIndexer indexer(infos, batch);
+	//	indexer.run();
+	//}
 
 }
 
@@ -755,6 +798,7 @@ void PotreeConverter::convert(){
 		cout << "}" << endl << endl;
 
 		aabb.makeCubic();
+		infos.aabb.makeCubic();
 		
 		cout << "cubicAABB: {" << endl;
 		cout << "\t\"min\": " << aabb.min << "," << endl;

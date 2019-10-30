@@ -45,7 +45,7 @@ namespace Potree {
 
 		ConversionInfos infos;
 		Batch* batch;
-		uint64_t maxLevel = 5;
+		uint64_t maxLevel = 18;
 
 		BatchIndexer(ConversionInfos infos, Batch* batch) {
 			this->infos = infos;
@@ -118,22 +118,25 @@ namespace Potree {
 					continue;
 				}
 
-				uint64_t cells = pow(2, level);
+				double cells = pow(2.0, level);
 				auto& nodesOnLevel = nodes[level];
 
 				for (auto& it : grid) {
 					Candidate& c = it.second;
 
-					double x = double(c.x) * infos.scale;// + infos.aabb.min.x;
-					double y = double(c.y) * infos.scale;// + infos.aabb.min.y;
-					double z = double(c.z) * infos.scale;// + infos.aabb.min.z;
+					double x = double(c.x) * infos.scale;
+					double y = double(c.y) * infos.scale;
+					double z = double(c.z) * infos.scale;
 
-					uint64_t ix = cells * uint64_t(c.x) / unitCount;
-					uint64_t iy = cells * uint64_t(c.y) / unitCount;
-					uint64_t iz = cells * uint64_t(c.z) / unitCount;
+					uint64_t ix = cells * (x / infos.aabb.size.x);
+					uint64_t iy = cells * (y / infos.aabb.size.y);
+					uint64_t iz = cells * (z / infos.aabb.size.z);
 
-					//uint64_t nodeid = (ix << (2 * level)) | (iy << level) << iz;
-					uint64_t nodeid = (ix << (2 * level)) | (iy << level) << iz;
+					uint64_t tix = ix >= cells ? cells - 1 : ix;
+					uint64_t tiy = iy >= cells ? cells - 1 : iy;
+					uint64_t tiz = iz >= cells ? cells - 1 : iz;
+
+					uint64_t nodeid = (tix << (2 * maxLevel)) | (tiy << maxLevel) | tiz;
 
 					Node* node = nullptr;
 
@@ -145,23 +148,17 @@ namespace Potree {
 						string name = "r";
 
 						for (int i = 0; i < level; i++) {
-
-							//uint64_t cells = pow(2, i);
-							//uint64_t cix = cells * uint64_t(c.x) / unitCount;
-							//uint64_t ciy = cells * uint64_t(c.y) / unitCount;
-							//uint64_t ciz = cells * uint64_t(c.z) / unitCount;
-
 							int shift = (level - i) - 1;
 
-							int cix = (ix >> shift) & 1;
-							int ciy = (iy >> shift) & 1;
-							int ciz = (iz >> shift) & 1;
+							int cix = (tix >> shift) & 1;
+							int ciy = (tiy >> shift) & 1;
+							int ciz = (tiz >> shift) & 1;
 
 							int index = (cix << 2) | (ciy << 1) | ciz;
 
 							name = name + std::to_string(index);
 
-							if (name == "r20") {
+							if (batch->index == 2 && name == "r1") {
 								cout << "wait" << endl;
 							}
 						}
@@ -173,6 +170,9 @@ namespace Potree {
 						node = it->second;
 					}
 
+					//if (node->name == "r0657") {
+					//	cout << "wait" << endl;
+					//}
 					node->points.push_back(c);
 				}
 
@@ -304,8 +304,14 @@ namespace Potree {
 
 
 
+
+			// Print tree
 			std::function<void(Node*)> traverse;
 			traverse = [&traverse](Node* node) {
+
+				if (node->name.size() > 2) {
+					return;
+				}
 
 				for (int i = 0; i < node->name.size(); i++) {
 					cout << "\t";
@@ -318,22 +324,68 @@ namespace Potree {
 				}
 				
 			};
-
 			traverse(root);
 
 
 
 
-			//string debugBatchDir = "C:/temp/" + std::to_string(batch->index) + "/";
-			//fs::create_directories(debugBatchDir);
+
+
+			string debugBatchDir = "C:/temp/";
+			fs::create_directories(debugBatchDir);
+
+			Batch* batch = this->batch;
+			ConversionInfos infos = this->infos;
+			std::function<void(Node*)> saveRecursive;
+			saveRecursive = [debugBatchDir, batch, &saveRecursive, infos, data, pointsize](Node* node) {
+
+				if (node->name.size() > 2) {
+					return;
+				}
+
+				ofstream debugFile;
+				string debugPath = debugBatchDir + std::to_string(batch->index) + "_" + node->name + ".csv";
+				debugFile.open(debugPath);
+
+				for (auto& c : node->points) {
+					double x = double(c.x) * infos.scale;// + infos.aabb.min.x;
+					double y = double(c.y) * infos.scale;// + infos.aabb.min.y;
+					double z = double(c.z) * infos.scale;// + infos.aabb.min.z;
+
+					int pointOffset = c.index * pointsize;
+					int r = data[pointOffset + 12];
+					int g = data[pointOffset + 13];
+					int b = data[pointOffset + 14];
+
+					debugFile << x << ", " << y << ", " << z << ", " << r << ", " << g << ", " << b << endl;
+				}
+
+
+				debugFile.close();
+
+				for (Node* child : node->children) {
+					saveRecursive(child);
+				}
+
+			};
+			saveRecursive(root);
+
+
+
 
 			//for (auto& nodesOnLevel : nodes) {
 
 			//	for (auto it : nodesOnLevel) {
 			//		Node* node = it.second;
 
+			//		if (node->name.size() > 2) {
+			//			continue;
+			//		}
+
+
 			//		ofstream debugFile;
-			//		string debugPath = debugBatchDir + node->name + ".csv";
+			//		string debugPath = debugBatchDir + std::to_string(batch->index) + "_" + node->name + ".csv";
+
 
 			//		debugFile.open(debugPath);
 
