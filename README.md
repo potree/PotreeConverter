@@ -61,7 +61,9 @@ make
 
 ```
 
-### Windows / Microsoft Visual Studio 2017:
+### Windows / Microsoft Visual Studio 2019:
+
+Use the cmd command line. Power Shell might now work.
 
 lastools
 
@@ -71,15 +73,15 @@ git clone https://github.com/m-schuetz/LAStools.git master
 cd master/LASzip
 mkdir build
 cd build
-cmake -G "Visual Studio 15 2017 Win64" ../
+cmake ../
 ```
 
 PotreeConverter
 
 ```
 # make sure you've got these environment variables set with your directory structure
-set LASZIP_INCLUDE_DIRS=D:\dev\workspaces\lastools\master\LASzip\dll
-set LASZIP_LIBRARY=D:\dev\workspaces\lastools\master\LASzip\build\src\Release\laszip.lib
+set LASZIP_INCLUDE_DIRS=C:\dev\workspaces\lastools\master\LASzip\dll
+set LASZIP_LIBRARY=C:\dev\workspaces\lastools\master\LASzip\build\src\Release\laszip.lib
 
 # checkout PotreeConverter
 cd D:/dev/workspaces/PotreeConverter
@@ -88,8 +90,8 @@ cd master
 mkdir build
 cd build
 
-# VS2017 64bit project
-cmake -G "Visual Studio 15 2017 Win64" -DLASZIP_INCLUDE_DIRS=%LASZIP_INCLUDE_DIRS% -DLASZIP_LIBRARY=%LASZIP_LIBRARY%  ..\
+# Visual Studio project
+cmake -DLASZIP_INCLUDE_DIRS=%LASZIP_INCLUDE_DIRS% -DLASZIP_LIBRARY=%LASZIP_LIBRARY%  ../
 
 # copy ./PotreeConverter/resources/page_template to your binary working directory.
 
