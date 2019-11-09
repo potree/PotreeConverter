@@ -11,7 +11,7 @@
 #include "PotreeException.h"
 
 #include "arguments.hpp"
-#include <experimental/filesystem>
+#include <filesystem>
 
 namespace fs = std::experimental::filesystem;
 
@@ -237,7 +237,12 @@ PotreeArguments parseArguments(int argc, char **argv){
 
 	// set default parameters 
 	fs::path pSource(a.source[0]);
-	a.outdir = args.has("outdir") ? args.get("outdir").as<string>() : pSource.generic_string() + "_converted";
+	if (args.has("outdir")) {
+		a.outdir = args.get("outdir").as<string>();
+	} else {
+		string name = fs::canonical(pSource).filename().string();
+		a.outdir = name + "_converted";	
+	}
 	
 	if (a.diagonalFraction != 0) {
 		a.spacing = 0;
