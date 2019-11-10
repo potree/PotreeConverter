@@ -308,7 +308,7 @@ void PWNode::flush(){
 			writer = createWriter(filepath);
 		}
 
-		for(const auto &e_c : points){
+		for(auto &e_c : points){
 			writer->write(e_c);
 		}
 
@@ -493,7 +493,7 @@ PotreeWriter::PotreeWriter(string workDir, AABB aabb, float spacing, int maxDept
 	cloudjs.boundingBox = aabb;
 	cloudjs.octreeDir = "data";
 	cloudjs.spacing = spacing;
-	cloudjs.version = "1.7";
+	cloudjs.version = "1.8";
 	cloudjs.scale = this->scale;
 	cloudjs.pointAttributes = pointAttributes;
 

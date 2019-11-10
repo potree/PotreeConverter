@@ -51,7 +51,7 @@ public:
 		close();
 	}
 
-	void write(const Point &point){
+	void write(Point &point){
 		for(int i = 0; i < attributes.size(); i++){
 
 			PointAttribute attribute = attributes[i];
@@ -128,6 +128,8 @@ public:
 				writer->write((const char*)&point.normal.z, sizeof(float));
 			}
 		}
+
+		writer->write(reinterpret_cast<const char*>(point.extraBytes.data()), point.extraBytes.size());
 
 		numPoints++;
 	}

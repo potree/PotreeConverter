@@ -7,7 +7,7 @@ using std::vector;
 
 namespace Potree{
 
-void LASPointWriter::write(const Point &point){
+void LASPointWriter::write(Point &point){
 
 	coordinates[0] = point.position.x;
 	coordinates[1] = point.position.y;
@@ -23,6 +23,8 @@ void LASPointWriter::write(const Point &point){
 	this->point->return_number = point.returnNumber;
 	this->point->number_of_returns = point.numberOfReturns;
 	this->point->point_source_ID = point.pointSourceID;
+	this->point->extra_bytes = reinterpret_cast<laszip_U8*>(&point.extraBytes[0]);
+	this->point->num_extra_bytes = point.extraBytes.size();
 	
 	laszip_set_point(writer, this->point);
 	laszip_write_point(writer);
