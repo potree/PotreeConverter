@@ -8,33 +8,152 @@
 
 #include <filesystem>
 
+#include "Metadata.h"
 #include "LASLoader.hpp"
+#include "Chunker.h"
+#include "Vector3.h"
+#include "ChunkProcessor.h"
 
 using namespace std::experimental;
-
 
 namespace fs = std::experimental::filesystem;
 
 
+void saveChunks(Chunker* chunker) {
+
+	//std::ios_base::sync_with_stdio(false);
+
+	int64_t sum = 0;
+
+	for (int i = 0; i < chunker->cells.size(); i++) {
+		Cell& cell = chunker->cells[i];
+
+		if (cell.count == 0) {
+			continue;
+		}
+
+		string chunkDirectory = chunker->targetDirectory + "/chunks/";
+		string path = chunkDirectory + "chunk_" + std::to_string(i) + ".bin";
+
+		fs::create_directory(chunkDirectory);
+
+		auto file = std::fstream(path, std::ios::out | std::ios::binary);
+
+		//file.write((char*)& data[0], bytes);
+
+		for (Points* batch : cell.batches) {
+
+			sum += batch->count;
+
+			{
+				const char* data = reinterpret_cast<const char*>(batch->attributes[0].data->dataU8);
+				int64_t size = batch->attributes[0].data->size;
+
+				file.write(data, size);
+			}
+
+			{
+				const char* data = reinterpret_cast<const char*>(batch->attributes[1].data->dataU8);
+				int64_t size = batch->attributes[1].data->size;
+
+				file.write(data, size);
+			}
+		}
+
+		file.close();
+
+
+
+	}
+
+	cout << "sum: " << sum << endl;
+
+}
+
+int gridSizeFromPointCount(uint64_t pointCount) {
+	if (pointCount < 100'000'000) {
+		return 4;
+	} else if (pointCount < 1'000'000'000) {
+		return 8;
+	} else if (pointCount < 10'000'000'000) {
+		return 16;
+	} else if (pointCount < 100'000'000'000) {
+		return 32;
+	} else{
+		return 64;
+	}
+}
+
+
+future<Chunker*> chunking(LASLoader* loader, Metadata metadata) {
+
+	Chunker* chunker = new Chunker(metadata.targetDirectory, metadata.chunkGridSize);
+	chunker->min = metadata.min;
+	chunker->max = metadata.max;
+
+	int batchNumber = 0;
+	Points* batch = co_await loader->nextBatch();
+	while (batch != nullptr) {
+		cout << "batch loaded: " << batchNumber << endl;
+
+		chunker->add(batch);
+
+		batch = co_await loader->nextBatch();
+
+		batchNumber++;
+	}
+
+	saveChunks(chunker);
+
+	return chunker;
+}
+
+ChunkProcessor* processChunks(Metadata metadata) {
+
+	ChunkProcessor* processor = new ChunkProcessor(metadata);
+
+
+	return processor;
+}
+
 future<void> run() {
+
+	//string path = "D:/dev/pointclouds/Riegl/Retz_Airborne_Terrestrial_Combined_1cm.las";
+	string path = "D:/dev/pointclouds/archpro/heidentor.las";
+	//string path = "D:/dev/pointclouds/mschuetz/lion.las";
+	//string path = "D:/dev/pointclouds/Riegl/Retz_Airborne_Terrestrial_Combined_1cm.las";
+	string targetDirectory = "D:/temp/test";
 
 	auto tStart = now();
 
-	string path = "D:/dev/pointclouds/mschuetz/lion.las";
-	//string path = "D:/dev/pointclouds/Riegl/Retz_Airborne_Terrestrial_Combined_1cm.las";
 	LASLoader* loader = new LASLoader(path);
 
-	
-	Points* batch = co_await loader->nextBatch();
-	while (batch != nullptr) {
-		cout << "batch loaded" << endl;
+	Metadata metadata;
+	metadata.targetDirectory = targetDirectory;
+	metadata.min = loader->min;
+	metadata.max = loader->max;
+	metadata.numPoints = loader->numPoints;
+	metadata.chunkGridSize = gridSizeFromPointCount(metadata.numPoints);
 
-		batch = co_await loader->nextBatch();
-	}
+	Chunker* chunker = co_await chunking(loader, metadata);
+
+	ChunkProcessor* chunkProcessor = processChunks(metadata);
+
+
+
+
+
 
 	auto tEnd = now();
 	auto duration = tEnd - tStart;
 	cout << "duration: " << duration << endl;
+
+
+
+
+
+
+
 
 }
 

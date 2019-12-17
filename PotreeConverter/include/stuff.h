@@ -5,6 +5,19 @@
 
 using std::string;
 
+string stringReplace(string str, string search, string replacement) {
+
+	auto index = str.find(search);
+
+	if (index == str.npos) {
+		return str;
+	}
+
+	string strCopy = str;
+	strCopy.replace(index, search.length(), replacement);
+
+	return strCopy;
+}
 
 // see https://stackoverflow.com/questions/23943728/case-insensitive-standard-string-comparison-in-c
 bool icompare_pred(unsigned char a, unsigned char b) {

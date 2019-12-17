@@ -11,7 +11,9 @@
 
 #include "laszip_api.h"
 
+#include "Points.h"
 #include "stuff.h"
+#include "Vector3.h"
 
 using std::string;
 using std::cout;
@@ -23,59 +25,7 @@ using std::mutex;
 using std::lock_guard;
 using std::unique_lock;
 
-struct Buffer {
-	void* data = nullptr;
-	uint8_t* dataU8 = nullptr;
-	uint16_t* dataU16 = nullptr;
-	uint32_t* dataU32 = nullptr;
-	int8_t* dataI8 = nullptr;
-	int16_t* dataI16 = nullptr;
-	int32_t* dataI32 = nullptr;
-	float* dataF = nullptr;
-	double* dataD = nullptr;
 
-	uint64_t size = 0;
-
-	Buffer(uint64_t size) {
-
-		this->data = malloc(size);
-
-		this->dataU8 = reinterpret_cast<uint8_t*>(this->data);
-		this->dataU16 = reinterpret_cast<uint16_t*>(this->data);
-		this->dataU32 = reinterpret_cast<uint32_t*>(this->data);
-		this->dataI8 = reinterpret_cast<int8_t*>(this->data);
-		this->dataI16 = reinterpret_cast<int16_t*>(this->data);
-		this->dataI32 = reinterpret_cast<int32_t*>(this->data);
-		this->dataF = reinterpret_cast<float*>(this->data);
-		this->dataD = reinterpret_cast<double*>(this->data);
-
-		this->size = size;
-	}
-
-	~Buffer() {
-		free(this->data);
-	}
-
-};
-
-struct Attribute {
-
-	string name = "undefined";
-	Buffer* data = nullptr;
-	uint64_t byteOffset = 0;
-	uint64_t bytes = 0;
-
-	Attribute() {
-
-	}
-
-};
-
-struct Points {
-
-	vector<Attribute> attributes;
-
-};
 
 class LASLoader {
 
@@ -88,6 +38,11 @@ public:
 	uint64_t batchSize = 1'000'000;
 	vector<Points*> batches;
 	bool finishedLoading = false;
+
+	uint64_t numPoints = 0;
+	Vector3<double> min = { 0.0, 0.0, 0.0 };
+	Vector3<double> max = { 0.0, 0.0, 0.0 };
+
 
 	mutex mtx_batches;
 	mutex mtx_finishedLoading;
@@ -104,6 +59,12 @@ public:
 
 		laszip_get_header_pointer(laszip_reader, &header);
 
+		this->min = {header->min_x, header->min_y, header->min_z};
+		this->max = {header->max_x, header->max_y, header->max_z};
+
+		uint64_t npoints = (header->number_of_point_records ? header->number_of_point_records : header->extended_number_of_point_records);
+
+		this->numPoints = npoints;
 		
 		spawnLoadThread();
 
@@ -171,19 +132,22 @@ public:
 					batches.push_back(points);
 				}
 
+				uint64_t currentBatchSize = std::min(npoints - i, batchSize);
+
 				Attribute aPosition;
 				aPosition.byteOffset = 0;
-				aPosition.bytes = 12;
+				aPosition.bytes = 24;
 				aPosition.name = "position";
-				aPosition.data = new Buffer(batchSize * aPosition.bytes);
+				aPosition.data = new Buffer(currentBatchSize * aPosition.bytes);
 
 				Attribute aColor;
 				aColor.byteOffset = 12;
 				aColor.bytes = 4;
 				aColor.name = "color";
-				aColor.data = new Buffer(batchSize * aColor.bytes);
+				aColor.data = new Buffer(currentBatchSize * aColor.bytes);
 
 				points = new Points();
+				points->count = currentBatchSize;
 				points->attributes.push_back(aPosition);
 				points->attributes.push_back(aColor);
 			}
@@ -198,9 +162,9 @@ public:
 
 			uint64_t reli = i % batchSize;
 
-			points->attributes[0].data->dataU32[3 * reli + 0] = point->X;
-			points->attributes[0].data->dataU32[3 * reli + 1] = point->Y;
-			points->attributes[0].data->dataU32[3 * reli + 2] = point->Z;
+			points->attributes[0].data->dataD[3 * reli + 0] = coordinates[0];
+			points->attributes[0].data->dataD[3 * reli + 1] = coordinates[1];
+			points->attributes[0].data->dataD[3 * reli + 2] = coordinates[2];
 
 			points->attributes[1].data->dataU8[4 * reli + 0] = r;
 			points->attributes[1].data->dataU8[4 * reli + 1] = g;
