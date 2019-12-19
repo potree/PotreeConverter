@@ -138,18 +138,20 @@ public:
 				aPosition.byteOffset = 0;
 				aPosition.bytes = 24;
 				aPosition.name = "position";
-				aPosition.data = new Buffer(currentBatchSize * aPosition.bytes);
+				Buffer* posData = new Buffer(currentBatchSize * aPosition.bytes);
 
 				Attribute aColor;
 				aColor.byteOffset = 12;
 				aColor.bytes = 4;
 				aColor.name = "color";
-				aColor.data = new Buffer(currentBatchSize * aColor.bytes);
+				Buffer* colorData = new Buffer(currentBatchSize * aColor.bytes);
 
 				points = new Points();
 				points->count = currentBatchSize;
 				points->attributes.push_back(aPosition);
 				points->attributes.push_back(aColor);
+				points->data.push_back(posData);
+				points->data.push_back(colorData);
 			}
 
 			laszip_read_point(laszip_reader);
@@ -162,28 +164,23 @@ public:
 
 			uint64_t reli = i % batchSize;
 
-			points->attributes[0].data->dataD[3 * reli + 0] = coordinates[0];
-			points->attributes[0].data->dataD[3 * reli + 1] = coordinates[1];
-			points->attributes[0].data->dataD[3 * reli + 2] = coordinates[2];
+			points->data[0]->dataD[3 * reli + 0] = coordinates[0];
+			points->data[0]->dataD[3 * reli + 1] = coordinates[1];
+			points->data[0]->dataD[3 * reli + 2] = coordinates[2];
 
-			points->attributes[1].data->dataU8[4 * reli + 0] = r;
-			points->attributes[1].data->dataU8[4 * reli + 1] = g;
-			points->attributes[1].data->dataU8[4 * reli + 2] = b;
-			points->attributes[1].data->dataU8[4 * reli + 3] = 0;
+			points->data[0]->dataU8[4 * reli + 0] = r;
+			points->data[0]->dataU8[4 * reli + 1] = g;
+			points->data[0]->dataU8[4 * reli + 2] = b;
+			points->data[0]->dataU8[4 * reli + 3] = 0;
 		}
 
 		{
-			lock_guard<mutex> guard(mtx_batches);
+			lock_guard<mutex> guard1(mtx_batches);
+			lock_guard<mutex> guard2(mtx_finishedLoading);
 
 			batches.push_back(points);
-		}
-
-		{
-			lock_guard<mutex> guard(mtx_finishedLoading);
-
 			finishedLoading = true;
 		}
-		
 
 		cout << "#points: " << npoints << endl;
 

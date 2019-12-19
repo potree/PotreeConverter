@@ -54,9 +54,9 @@ public:
 		vector<int> cells_numNew(gridSize * gridSize * gridSize);
 		for (int64_t i = 0; i < batch->count; i++) {
 
-			double x = batch->attributes[0].data->dataD[3 * i + 0];
-			double y = batch->attributes[0].data->dataD[3 * i + 1];
-			double z = batch->attributes[0].data->dataD[3 * i + 2];
+			double x = batch->data[0]->dataD[3 * i + 0];
+			double y = batch->data[0]->dataD[3 * i + 1];
+			double z = batch->data[0]->dataD[3 * i + 2];
 
 			int32_t ux = int32_t(cellsD.x * (x - min.x) / size.x);
 			int32_t uy = int32_t(cellsD.y * (y - min.y) / size.y);
@@ -86,27 +86,29 @@ public:
 			aPosition.byteOffset = 0;
 			aPosition.bytes = 24;
 			aPosition.name = "position";
-			aPosition.data = new Buffer(numNew * aPosition.bytes);
+			Buffer* posData = new Buffer(numNew * aPosition.bytes);
 
 			Attribute aColor;
 			aColor.byteOffset = 12;
 			aColor.bytes = 4;
 			aColor.name = "color";
-			aColor.data = new Buffer(numNew * aColor.bytes);
+			Buffer* colorData = new Buffer(numNew * aColor.bytes);
 
 			Points* cellBatch = new Points();
 			cellBatch->count = 0;
 			cellBatch->attributes.push_back(aPosition);
 			cellBatch->attributes.push_back(aColor);
+			cellBatch->data.push_back(posData);
+			cellBatch->data.push_back(colorData);
 
 			cells[i].batches.push_back(cellBatch);
 		}
 
 		// now add them
 		for(int64_t i = 0; i < batch->count; i++) {
-			double x = batch->attributes[0].data->dataD[3 * i + 0];
-			double y = batch->attributes[0].data->dataD[3 * i + 1];
-			double z = batch->attributes[0].data->dataD[3 * i + 2];
+			double x = batch->data[0]->dataD[3 * i + 0];
+			double y = batch->data[0]->dataD[3 * i + 1];
+			double z = batch->data[0]->dataD[3 * i + 2];
 
 			int32_t ux = int32_t(cellsD.x * (x - min.x) / size.x);
 			int32_t uy = int32_t(cellsD.y * (y - min.y) / size.y);
@@ -121,36 +123,22 @@ public:
 			Cell& cell = cells[index];
 			Points* cellBatch = cell.batches.back();
 
-			uint8_t r = batch->attributes[1].data->dataU8[4 * i + 0];
-			uint8_t g = batch->attributes[1].data->dataU8[4 * i + 1];
-			uint8_t b = batch->attributes[1].data->dataU8[4 * i + 2];
+			uint8_t r = batch->data[1]->dataU8[4 * i + 0];
+			uint8_t g = batch->data[1]->dataU8[4 * i + 1];
+			uint8_t b = batch->data[1]->dataU8[4 * i + 2];
 
 			int64_t offset = cellBatch->count;
-			cellBatch->attributes[0].data->dataD[3 * offset + 0] = x;
-			cellBatch->attributes[0].data->dataD[3 * offset + 1] = y;
-			cellBatch->attributes[0].data->dataD[3 * offset + 2] = z;
+			cellBatch->data[0]->dataD[3 * offset + 0] = x;
+			cellBatch->data[0]->dataD[3 * offset + 1] = y;
+			cellBatch->data[0]->dataD[3 * offset + 2] = z;
 
-			cellBatch->attributes[1].data->dataU8[4 * offset + 0] = r;
-			cellBatch->attributes[1].data->dataU8[4 * offset + 1] = g;
-			cellBatch->attributes[1].data->dataU8[4 * offset + 2] = b;
+			cellBatch->data[1]->dataU8[4 * offset + 0] = r;
+			cellBatch->data[1]->dataU8[4 * offset + 1] = g;
+			cellBatch->data[1]->dataU8[4 * offset + 2] = b;
 			//cellBatch->attributes[1].data->dataU8[4 * offset + 3] = 255;
 			cellBatch->count++;
 			cell.count++;
 		}
-
-
-
-		//int count = 0;
-		//int sum = 0;
-		//for (int i = 0; i < cells_numNew.size(); i++) {
-		//	if (cells_numNew[i] > 0) {
-		//		count++;
-		//	}
-
-		//	sum += cells_numNew[i];
-		//}
-
-		//cout << "count: " << count << ", sum: " << sum << endl;
 
 	}
 

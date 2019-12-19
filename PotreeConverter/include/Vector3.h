@@ -4,9 +4,9 @@
 template<typename T>
 struct Vector3{
 
-	T x = 0.0;
-	T y = 0.0;
-	T z = 0.0;
+	T x = T(0.0);
+	T y = T(0.0);
+	T z = T(0.0);
 
 	Vector3<T>() {
 

@@ -42,22 +42,22 @@ void saveChunks(Chunker* chunker) {
 		//file.write((char*)& data[0], bytes);
 
 		for (Points* batch : cell.batches) {
-
 			sum += batch->count;
+		}
 
-			{
-				const char* data = reinterpret_cast<const char*>(batch->attributes[0].data->dataU8);
-				int64_t size = batch->attributes[0].data->size;
+		for (Points* batch : cell.batches) {
+			const char* data = reinterpret_cast<const char*>(batch->data[0]->dataU8);
+			int64_t size = batch->data[0]->size;
 
-				file.write(data, size);
-			}
+			file.write(data, size);
 
-			{
-				const char* data = reinterpret_cast<const char*>(batch->attributes[1].data->dataU8);
-				int64_t size = batch->attributes[1].data->size;
+		}
 
-				file.write(data, size);
-			}
+		for (Points* batch : cell.batches) {
+			const char* data = reinterpret_cast<const char*>(batch->data[1]->dataU8);
+			int64_t size = batch->data[1]->size;
+
+			file.write(data, size);
 		}
 
 		file.close();
@@ -108,13 +108,6 @@ future<Chunker*> chunking(LASLoader* loader, Metadata metadata) {
 	return chunker;
 }
 
-ChunkProcessor* processChunks(Metadata metadata) {
-
-	ChunkProcessor* processor = new ChunkProcessor(metadata);
-
-
-	return processor;
-}
 
 future<void> run() {
 
@@ -135,11 +128,12 @@ future<void> run() {
 	metadata.numPoints = loader->numPoints;
 	metadata.chunkGridSize = gridSizeFromPointCount(metadata.numPoints);
 
-	Chunker* chunker = co_await chunking(loader, metadata);
+	//Chunker* chunker = co_await chunking(loader, metadata);
 
-	ChunkProcessor* chunkProcessor = processChunks(metadata);
+	ChunkProcessor* processor = new ChunkProcessor(metadata);
+	processor->waitFinished();
 
-
+	std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
 
 
@@ -148,16 +142,80 @@ future<void> run() {
 	auto duration = tEnd - tStart;
 	cout << "duration: " << duration << endl;
 
+	co_return;
+}
 
+void threadTest() {
 
+	auto tStart = now();
 
+	vector<thread> threads;
 
+	for (int i = 0; i < 10; i++) {
+
+		threads.push_back(
+			thread([i](){
+				std::this_thread::sleep_for(std::chrono::seconds(1));
+
+				auto id = std::this_thread::get_id();
+
+				cout << "thread: " << i << ", id: " << id << endl;
+			})
+		);
+
+	}
+
+	cout << "spawned" << endl;
+
+	for (int i = 0; i < threads.size(); i++) {
+		threads[i].join();
+	}
+
+	auto tEnd = now();
+	auto duration = tEnd - tStart;
+	cout << "duration: " << duration << endl;
+}
+
+void futureTest() {
+
+	auto tStart = now();
+
+	vector<future<void>> futures;
+
+	auto launch = std::launch::async;
+	auto task = [](int value) {
+		std::this_thread::sleep_for(std::chrono::seconds(1));
+
+		auto id = std::this_thread::get_id();
+
+		cout << "thread: " << value << ", id: " << id << endl;
+	};
+
+	for (int i = 0; i < 10; i++) {
+		futures.push_back(async(launch, task, i));
+	}
+
+	cout << "spawned" << endl;
+
+	for (int i = 0; i < futures.size(); i++) {
+		futures[i].wait();
+	}
+	
+	auto tEnd = now();
+	auto duration = tEnd - tStart;
+	cout << "duration: " << duration << endl;
 
 
 
 }
 
+
+
 int main(int argc, char **argv){
+
+	//futureTest();
+
+	//threadTest();
 
 	run().wait();
 	

@@ -18,6 +18,7 @@ struct Buffer {
 	int32_t* dataI32 = nullptr;
 	float* dataF = nullptr;
 	double* dataD = nullptr;
+	char* dataChar = nullptr;
 
 	uint64_t size = 0;
 
@@ -33,6 +34,7 @@ struct Buffer {
 		this->dataI32 = reinterpret_cast<int32_t*>(this->data);
 		this->dataF = reinterpret_cast<float*>(this->data);
 		this->dataD = reinterpret_cast<double*>(this->data);
+		this->dataChar = reinterpret_cast<char*>(this->data);
 
 		this->size = size;
 	}
@@ -46,7 +48,6 @@ struct Buffer {
 struct Attribute {
 
 	string name = "undefined";
-	Buffer* data = nullptr;
 	int64_t byteOffset = 0;
 	int64_t bytes = 0;
 
@@ -60,5 +61,6 @@ struct Points {
 
 	int64_t count = 0;
 	vector<Attribute> attributes;
+	vector<Buffer*> data;
 
 };
