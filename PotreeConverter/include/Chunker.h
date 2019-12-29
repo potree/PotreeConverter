@@ -22,20 +22,13 @@ class Chunker {
 public:
 
 	vector<Points*> batchesToDo;
-	int32_t gridSize = 32;
+	int32_t gridSize = 1; // TODO not hardcode?
 	string targetDirectory = "";
 
 	vector<Cell> cells;
 
 	Vector3<double> min = {0.0, 0.0, 0.0};
 	Vector3<double> max = {0.0, 0.0, 0.0};
-
-	double minX = 0.0;
-	double minY = 0.0;
-	double minZ = 0.0;
-	double maxX = 0.0;
-	double maxY = 0.0;
-	double maxZ = 0.0;
 
 	Chunker(string targetDirectory, int gridSize) {
 		this->targetDirectory = targetDirectory;

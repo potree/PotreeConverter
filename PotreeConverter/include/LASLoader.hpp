@@ -168,10 +168,10 @@ public:
 			points->data[0]->dataD[3 * reli + 1] = coordinates[1];
 			points->data[0]->dataD[3 * reli + 2] = coordinates[2];
 
-			points->data[0]->dataU8[4 * reli + 0] = r;
-			points->data[0]->dataU8[4 * reli + 1] = g;
-			points->data[0]->dataU8[4 * reli + 2] = b;
-			points->data[0]->dataU8[4 * reli + 3] = 0;
+			points->data[1]->dataU8[4 * reli + 0] = r;
+			points->data[1]->dataU8[4 * reli + 1] = g;
+			points->data[1]->dataU8[4 * reli + 2] = b;
+			points->data[1]->dataU8[4 * reli + 3] = 0;
 		}
 
 		{

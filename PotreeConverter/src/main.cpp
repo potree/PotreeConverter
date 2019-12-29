@@ -8,6 +8,8 @@
 
 #include <filesystem>
 
+#include "Subsampler.h"
+#include "Subsampler_PoissonDisc.h"
 #include "Metadata.h"
 #include "LASLoader.hpp"
 #include "Chunker.h"
@@ -88,8 +90,14 @@ int gridSizeFromPointCount(uint64_t pointCount) {
 future<Chunker*> chunking(LASLoader* loader, Metadata metadata) {
 
 	Chunker* chunker = new Chunker(metadata.targetDirectory, metadata.chunkGridSize);
-	chunker->min = metadata.min;
-	chunker->max = metadata.max;
+
+	Vector3<double> size = metadata.max - metadata.min;
+	double cubeSize = std::max(std::max(size.x, size.y), size.z);
+	Vector3<double> cubeMin = metadata.min;
+	Vector3<double> cubeMax = cubeMin + cubeSize;
+
+	chunker->min = cubeMin;
+	chunker->max = cubeMax;
 
 	int batchNumber = 0;
 	Points* batch = co_await loader->nextBatch();
@@ -106,6 +114,21 @@ future<Chunker*> chunking(LASLoader* loader, Metadata metadata) {
 	saveChunks(chunker);
 
 	return chunker;
+}
+
+void savePoints(string path, vector<Vector3<double>> points) {
+	int64_t sum = 0;
+
+	auto file = std::fstream(path, std::ios::out);
+	//auto file = std::fstream(path, std::ios::out | std::ios::binary);
+
+	for (Vector3<double> &point : points) {
+		
+		file << point.x << ", " << point.y << ", " << point.z << endl;
+
+	}
+
+	file.close();
 }
 
 
@@ -130,12 +153,9 @@ future<void> run() {
 
 	//Chunker* chunker = co_await chunking(loader, metadata);
 
-	ChunkProcessor* processor = new ChunkProcessor(metadata);
-	processor->waitFinished();
-
-	std::this_thread::sleep_for(std::chrono::milliseconds(500));
-
-
+	vector<Chunk*> chunks = getListOfChunks(metadata);
+	loadChunk(chunks[0]);
+	processChunk(chunks[0]);
 
 
 	auto tEnd = now();
@@ -145,79 +165,97 @@ future<void> run() {
 	co_return;
 }
 
-void threadTest() {
+future<void> runSubsampler() {
+
+	//string path = "D:/dev/pointclouds/Riegl/Retz_Airborne_Terrestrial_Combined_1cm.las";
+	//string path = "D:/dev/pointclouds/archpro/heidentor.las";
+	string path = "D:/dev/pointclouds/mschuetz/lion.las";
+	//string path = "D:/dev/pointclouds/Riegl/Retz_Airborne_Terrestrial_Combined_1cm.las";
+	string targetDirectory = "D:/temp/test";
 
 	auto tStart = now();
 
-	vector<thread> threads;
+	LASLoader* loader = new LASLoader(path);
 
-	for (int i = 0; i < 10; i++) {
+	Metadata metadata;
+	metadata.targetDirectory = targetDirectory;
+	metadata.min = loader->min;
+	metadata.max = loader->max;
+	metadata.numPoints = loader->numPoints;
+	metadata.chunkGridSize = gridSizeFromPointCount(metadata.numPoints);
 
-		threads.push_back(
-			thread([i](){
-				std::this_thread::sleep_for(std::chrono::seconds(1));
+	Subsampler* subsampler = new Subsampler(targetDirectory, 0.02, metadata.min, metadata.max);
 
-				auto id = std::this_thread::get_id();
+	int batchNumber = 0;
+	Points* batch = co_await loader->nextBatch();
+	while (batch != nullptr) {
+		cout << "batch loaded: " << batchNumber << endl;
 
-				cout << "thread: " << i << ", id: " << id << endl;
-			})
-		);
+		subsampler->add(batch);
 
-	}
+		batch = co_await loader->nextBatch();
 
-	cout << "spawned" << endl;
-
-	for (int i = 0; i < threads.size(); i++) {
-		threads[i].join();
+		batchNumber++;
 	}
 
 	auto tEnd = now();
 	auto duration = tEnd - tStart;
 	cout << "duration: " << duration << endl;
+
+	savePoints("C:/temp/subsample.txt", subsampler->getPoints());
+
+	return;
 }
 
-void futureTest() {
+future<void> runSubsampler_PoissonDisc() {
+
+	//string path = "D:/dev/pointclouds/Riegl/Retz_Airborne_Terrestrial_Combined_1cm.las";
+	string path = "D:/dev/pointclouds/archpro/heidentor.las";
+	//string path = "D:/dev/pointclouds/mschuetz/lion.las";
+	//string path = "D:/dev/pointclouds/Riegl/Retz_Airborne_Terrestrial_Combined_1cm.las";
+	string targetDirectory = "D:/temp/test";
 
 	auto tStart = now();
 
-	vector<future<void>> futures;
+	LASLoader* loader = new LASLoader(path);
 
-	auto launch = std::launch::async;
-	auto task = [](int value) {
-		std::this_thread::sleep_for(std::chrono::seconds(1));
+	Metadata metadata;
+	metadata.targetDirectory = targetDirectory;
+	metadata.min = loader->min;
+	metadata.max = loader->max;
+	metadata.numPoints = loader->numPoints;
+	metadata.chunkGridSize = gridSizeFromPointCount(metadata.numPoints);
 
-		auto id = std::this_thread::get_id();
+	Subsampler_PoissonDisc* subsampler = new Subsampler_PoissonDisc(
+		targetDirectory, 0.2, metadata.min, metadata.max);
 
-		cout << "thread: " << value << ", id: " << id << endl;
-	};
+	int batchNumber = 0;
+	Points* batch = co_await loader->nextBatch();
+	while (batch != nullptr) {
+		cout << "batch loaded: " << batchNumber << endl;
 
-	for (int i = 0; i < 10; i++) {
-		futures.push_back(async(launch, task, i));
+		subsampler->add(batch);
+
+		batch = co_await loader->nextBatch();
+
+		batchNumber++;
 	}
 
-	cout << "spawned" << endl;
-
-	for (int i = 0; i < futures.size(); i++) {
-		futures[i].wait();
-	}
-	
 	auto tEnd = now();
 	auto duration = tEnd - tStart;
 	cout << "duration: " << duration << endl;
 
+	savePoints("C:/temp/subsample_poisson.txt", subsampler->getPoints());
 
-
+	return;
 }
-
-
 
 int main(int argc, char **argv){
 
-	//futureTest();
-
-	//threadTest();
 
 	run().wait();
+	//runSubsampler().wait();
+	//runSubsampler_PoissonDisc().wait();
 	
 	return 0;
 }
