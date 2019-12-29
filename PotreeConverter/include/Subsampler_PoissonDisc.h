@@ -132,16 +132,17 @@ public:
 
 
 		//for (int64_t i = 0; i < batch->count; i++) {
-		for (int64_t iii = 0; iii < batch->count; iii++) {
+		for (int64_t iii = 0; iii < batch->points.size(); iii++) {
 
 			int64_t i = iii;
-			if (batch->count == randomIndices.size()) {
+			if (batch->points.size() == randomIndices.size()) {
 				i = randomIndices[iii];
 			}
 
-			double x = batch->data[0]->dataD[3 * i + 0];
-			double y = batch->data[0]->dataD[3 * i + 1];
-			double z = batch->data[0]->dataD[3 * i + 2];
+			Point point = batch->points[i];
+			double x = point.x;
+			double y = point.y;
+			double z = point.z;
 
 			double gx = cellsD.x * (x - min.x) / size.x;
 			double gy = cellsD.y * (y - min.y) / size.y;

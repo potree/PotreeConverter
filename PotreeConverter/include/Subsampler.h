@@ -60,10 +60,11 @@ public:
 		double gridSizeD = double(gridSize);
 		Vector3<double> cellsD = Vector3<double>(gridSizeD, gridSizeD, gridSizeD);
 
-		for (int64_t i = 0; i < batch->count; i++) {
-			double x = batch->data[0]->dataD[3 * i + 0];
-			double y = batch->data[0]->dataD[3 * i + 1];
-			double z = batch->data[0]->dataD[3 * i + 2];
+		for (int64_t i = 0; i < batch->points.size(); i++) {
+			Point point = batch->points[i];
+			double x = point.x;
+			double y = point.y;
+			double z = point.z;
 
 			double gx = cellsD.x * (x - min.x) / size.x;
 			double gy = cellsD.y * (y - min.y) / size.y;

@@ -134,24 +134,19 @@ public:
 
 				uint64_t currentBatchSize = std::min(npoints - i, batchSize);
 
-				Attribute aPosition;
-				aPosition.byteOffset = 0;
-				aPosition.bytes = 24;
-				aPosition.name = "position";
-				Buffer* posData = new Buffer(currentBatchSize * aPosition.bytes);
-
 				Attribute aColor;
 				aColor.byteOffset = 12;
 				aColor.bytes = 4;
 				aColor.name = "color";
-				Buffer* colorData = new Buffer(currentBatchSize * aColor.bytes);
+				//Buffer* colorData = new Buffer(currentBatchSize * aColor.bytes);
 
 				points = new Points();
-				points->count = currentBatchSize;
-				points->attributes.push_back(aPosition);
+				//points->count = currentBatchSize;
+				//points->attributes.push_back(aPosition);
+				points->attributeBuffer = new Buffer(currentBatchSize * aColor.bytes);
 				points->attributes.push_back(aColor);
-				points->data.push_back(posData);
-				points->data.push_back(colorData);
+				//points->data.push_back(posData);
+				//points->data.push_back(colorData);
 			}
 
 			laszip_read_point(laszip_reader);
@@ -164,14 +159,20 @@ public:
 
 			uint64_t reli = i % batchSize;
 
-			points->data[0]->dataD[3 * reli + 0] = coordinates[0];
-			points->data[0]->dataD[3 * reli + 1] = coordinates[1];
-			points->data[0]->dataD[3 * reli + 2] = coordinates[2];
+			Point point = {
+				coordinates[0],
+				coordinates[1],
+				coordinates[2],
+				i
+			};
+			points->points.push_back(point);
 
-			points->data[1]->dataU8[4 * reli + 0] = r;
-			points->data[1]->dataU8[4 * reli + 1] = g;
-			points->data[1]->dataU8[4 * reli + 2] = b;
-			points->data[1]->dataU8[4 * reli + 3] = 0;
+			uint8_t* rgbBuffer = points->attributeBuffer->dataU8 + (4 * reli + 0);
+
+			rgbBuffer[0] = r;
+			rgbBuffer[1] = g;
+			rgbBuffer[2] = b;
+			rgbBuffer[3] = 0;
 		}
 
 		{

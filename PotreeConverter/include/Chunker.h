@@ -44,12 +44,14 @@ public:
 		Vector3<double> cellsD = Vector3<double>(gridSizeD, gridSizeD, gridSizeD);
 
 		// for each cell, count how many points will be added
+		int64_t numPoints = batch->points.size();
 		vector<int> cells_numNew(gridSize * gridSize * gridSize);
-		for (int64_t i = 0; i < batch->count; i++) {
+		for (int64_t i = 0; i < numPoints; i++) {
 
-			double x = batch->data[0]->dataD[3 * i + 0];
-			double y = batch->data[0]->dataD[3 * i + 1];
-			double z = batch->data[0]->dataD[3 * i + 2];
+			Point point = batch->points[i];
+			double x = point.x;
+			double y = point.y;
+			double z = point.z;
 
 			int32_t ux = int32_t(cellsD.x * (x - min.x) / size.x);
 			int32_t uy = int32_t(cellsD.y * (y - min.y) / size.y);
@@ -64,7 +66,6 @@ public:
 			assert(index < cells.size());
 
 			cells_numNew[index]++;
-
 		}
 
 		// allocate necessary space for each cell
@@ -75,33 +76,31 @@ public:
 				continue;
 			}
 
-			Attribute aPosition;
-			aPosition.byteOffset = 0;
-			aPosition.bytes = 24;
-			aPosition.name = "position";
-			Buffer* posData = new Buffer(numNew * aPosition.bytes);
-
 			Attribute aColor;
-			aColor.byteOffset = 12;
+			aColor.byteOffset = 0;
 			aColor.bytes = 4;
 			aColor.name = "color";
-			Buffer* colorData = new Buffer(numNew * aColor.bytes);
+			//Buffer* colorData = new Buffer(numNew * aColor.bytes);
 
 			Points* cellBatch = new Points();
-			cellBatch->count = 0;
-			cellBatch->attributes.push_back(aPosition);
+			cellBatch->attributeBuffer = new Buffer(numNew * aColor.bytes);
+			//cellBatch->attributes.push_back(aPosition);
 			cellBatch->attributes.push_back(aColor);
-			cellBatch->data.push_back(posData);
-			cellBatch->data.push_back(colorData);
+			//cellBatch->data.push_back(posData);
+			//cellBatch->data.push_back(colorData);
 
 			cells[i].batches.push_back(cellBatch);
 		}
 
 		// now add them
-		for(int64_t i = 0; i < batch->count; i++) {
-			double x = batch->data[0]->dataD[3 * i + 0];
-			double y = batch->data[0]->dataD[3 * i + 1];
-			double z = batch->data[0]->dataD[3 * i + 2];
+		for(int64_t i = 0; i < batch->points.size(); i++) {
+			//double x = batch->data[0]->dataD[3 * i + 0];
+			//double y = batch->data[0]->dataD[3 * i + 1];
+			//double z = batch->data[0]->dataD[3 * i + 2];
+			Point point = batch->points[i];
+			double x = point.x;
+			double y = point.y;
+			double z = point.z;
 
 			int32_t ux = int32_t(cellsD.x * (x - min.x) / size.x);
 			int32_t uy = int32_t(cellsD.y * (y - min.y) / size.y);
@@ -116,20 +115,19 @@ public:
 			Cell& cell = cells[index];
 			Points* cellBatch = cell.batches.back();
 
-			uint8_t r = batch->data[1]->dataU8[4 * i + 0];
-			uint8_t g = batch->data[1]->dataU8[4 * i + 1];
-			uint8_t b = batch->data[1]->dataU8[4 * i + 2];
+			uint8_t r = batch->attributeBuffer->dataU8[4 * i + 0];
+			uint8_t g = batch->attributeBuffer->dataU8[4 * i + 1];
+			uint8_t b = batch->attributeBuffer->dataU8[4 * i + 2];
 
-			int64_t offset = cellBatch->count;
-			cellBatch->data[0]->dataD[3 * offset + 0] = x;
-			cellBatch->data[0]->dataD[3 * offset + 1] = y;
-			cellBatch->data[0]->dataD[3 * offset + 2] = z;
+			int64_t offset = cellBatch->points.size();
+			cellBatch->points.push_back(point);
 
-			cellBatch->data[1]->dataU8[4 * offset + 0] = r;
-			cellBatch->data[1]->dataU8[4 * offset + 1] = g;
-			cellBatch->data[1]->dataU8[4 * offset + 2] = b;
+			uint8_t* rgbBuffer = cellBatch->attributeBuffer->dataU8 + (4 * offset + 0);
+
+			rgbBuffer[0] = r;
+			rgbBuffer[1] = g;
+			rgbBuffer[2] = b;
 			//cellBatch->attributes[1].data->dataU8[4 * offset + 3] = 255;
-			cellBatch->count++;
 			cell.count++;
 		}
 

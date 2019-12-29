@@ -44,20 +44,29 @@ void saveChunks(Chunker* chunker) {
 		//file.write((char*)& data[0], bytes);
 
 		for (Points* batch : cell.batches) {
-			sum += batch->count;
+			sum += batch->points.size();
 		}
 
 		for (Points* batch : cell.batches) {
-			const char* data = reinterpret_cast<const char*>(batch->data[0]->dataU8);
-			int64_t size = batch->data[0]->size;
+
+			vector<Vector3<double>> coordinates;
+			for (Point& point : batch->points) {
+				coordinates.emplace_back(point.x, point.y, point.z);
+			}
+
+			const char* data = reinterpret_cast<const char*>(coordinates.data());
+			int64_t size = coordinates.size() * sizeof(Vector3<double>);
+
+			//const char* data = reinterpret_cast<const char*>(batch->data[0]->dataU8);
+			//int64_t size = batch->data[0]->size;
 
 			file.write(data, size);
 
 		}
 
 		for (Points* batch : cell.batches) {
-			const char* data = reinterpret_cast<const char*>(batch->data[1]->dataU8);
-			int64_t size = batch->data[1]->size;
+			const char* data = reinterpret_cast<const char*>(batch->attributeBuffer->dataU8);
+			int64_t size = batch->attributeBuffer->size;
 
 			file.write(data, size);
 		}
@@ -154,6 +163,7 @@ future<void> run() {
 	//Chunker* chunker = co_await chunking(loader, metadata);
 
 	vector<Chunk*> chunks = getListOfChunks(metadata);
+	//loadChunk(chunks[0]);
 	loadChunk(chunks[1]);
 	processChunk(chunks[1]);
 

@@ -57,22 +57,23 @@ struct Attribute {
 
 };
 
-struct Points {
-
-	int64_t count = 0;
-	vector<Attribute> attributes;
-	vector<Buffer*> data;
-
-};
-
-
 struct Point {
 
 	double x = 0.0;
 	double y = 0.0;
 	double z = 0.0;
 
-	int index = 0;
+	uint64_t index = 0;
 
 };
+
+struct Points {
+	vector<Point> points;
+	
+	vector<Attribute> attributes;
+	Buffer* attributeBuffer;
+};
+
+
+
 

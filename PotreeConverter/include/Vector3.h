@@ -58,7 +58,7 @@ struct Vector3{
 	}
 
 	Vector3<T> operator*(const Vector3<T>& right) const {
-		return Vector3<T>(x * right.x, x * right.y, z * right.z);
+		return Vector3<T>(x * right.x, y * right.y, z * right.z);
 	}
 
 };
