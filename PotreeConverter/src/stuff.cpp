@@ -67,6 +67,14 @@ double now() {
 	return secondsSinceStart;
 }
 
+void printElapsedTime(string label, double startTime) {
+
+	double elapsed = now() - startTime;
+
+	cout << label << ": " << elapsed << "s" << endl;
+
+}
+
 
 void printThreadsafe(string str) {
 

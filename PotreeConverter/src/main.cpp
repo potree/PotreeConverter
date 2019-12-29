@@ -154,8 +154,8 @@ future<void> run() {
 	//Chunker* chunker = co_await chunking(loader, metadata);
 
 	vector<Chunk*> chunks = getListOfChunks(metadata);
-	loadChunk(chunks[0]);
-	processChunk(chunks[0]);
+	loadChunk(chunks[1]);
+	processChunk(chunks[1]);
 
 
 	auto tEnd = now();
@@ -252,8 +252,11 @@ future<void> runSubsampler_PoissonDisc() {
 
 int main(int argc, char **argv){
 
+	//cout << sizeof(Point) << endl;
 
 	run().wait();
+
+
 	//runSubsampler().wait();
 	//runSubsampler_PoissonDisc().wait();
 	

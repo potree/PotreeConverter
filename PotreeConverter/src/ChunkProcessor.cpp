@@ -1,4 +1,6 @@
 
+#include <unordered_map>
+
 #include "ChunkProcessor.h"
 
 vector<Chunk*> getListOfChunks(Metadata& metadata) {
@@ -108,24 +110,12 @@ bool compare(Vector3<double>& a, Vector3<double>& b) {
 }
 
 
-void processChunk(Chunk* chunk) {
+vector<Vector3<double>> subsample(Vector3<double>* candidates, int numPoints, double spacing) {
 
-	cout << "count: " << chunk->points->count << endl;
-
-	cout << chunk->min.toString() << endl;
-	cout << chunk->max.toString() << endl;
-
-	Points* points = chunk->points;
-	Attribute& aPosition = points->attributes[0];
-	double* dPosition = points->data[0]->dataD;
-	Vector3<double>* position = reinterpret_cast<Vector3<double>*>(dPosition);
-
-	std::sort(position, position + points->count, compare);
-
-	vector<Vector3<double>> accepted;
-	double spacing = 0.01;
 	double squaredSpacing = spacing * spacing;
 	int maxCount = 0;
+
+	vector<Vector3<double>> accepted;
 
 	auto isDistant = [&maxCount, &accepted, spacing, squaredSpacing](Vector3<double>& candidate) -> bool {
 
@@ -164,9 +154,9 @@ void processChunk(Chunk* chunk) {
 
 	};
 
-	for (int i = 0; i < points->count; i++) {
+	for (int i = 0; i < numPoints; i++) {
 
-		Vector3<double> candidate = position[i];
+		Vector3<double> candidate = candidates[i];
 		bool distant = isDistant(candidate);
 
 		if (distant) {
@@ -175,23 +165,68 @@ void processChunk(Chunk* chunk) {
 
 	}
 
-	cout << "maxCount: " << maxCount << endl;
+	return accepted;
+}
+
+void processChunk(Chunk* chunk) {
+
+	cout << "count: " << chunk->points->count << endl;
+	cout << chunk->min.toString() << endl;
+	cout << chunk->max.toString() << endl;
+
+	double tStart = now();
+
+	Points* points = chunk->points;
+	Attribute& aPosition = points->attributes[0];
+	double* dPosition = points->data[0]->dataD;
+	Vector3<double>* position = reinterpret_cast<Vector3<double>*>(dPosition);
+
+	std::sort(position, position + points->count, compare);
+
+	Vector3<double> chunkSize = chunk->max - chunk->min;
+
+	double level = std::floor(std::log(double(points->count)) / std::log(4.0));
+	double estimatedSpacing = std::pow(2.0, level + 1.0);
+
+	double spacing = chunkSize.x / 1024;
+	
+	int numPoints = points->count;
+	vector<Vector3<double>> accepted = subsample(position, numPoints, spacing);
+
+	auto level1 = subsample(&accepted[0], accepted.size(), spacing * 2.0);
+	auto level2 = subsample(&level1[0], level1.size(), spacing * 4.0);
+	//auto level3 = subsample(&level2[0], level2.size(), spacing * 8.0);
+	//auto level4 = subsample(&level3[0], level3.size(), spacing * 16.0);
+	//auto level5 = subsample(&level4[0], level4.size(), spacing * 32.0);
+	//
+
+	printElapsedTime("processing", tStart);
+
+	cout << "estimated spacing? " << estimatedSpacing << endl;
 	cout << "#accepted: " << accepted.size() << endl;
+	cout << "#level1: " << level1.size() << endl;
+	cout << "#level2: " << level2.size() << endl;
 
 
-	{
+	auto writeToDisk = [](vector<Vector3<double>> points, string path) {
 
-		string path = "C:/temp/subsample.csv";
 		fstream file;
 		file.open(path, std::ios::out);
 
-		for (auto& point : accepted) {
+		for (auto& point : points) {
 			file << point.x << ", " << point.y << ", " << point.z << endl;
 		}
 
 		file.close();
 
-	}
+	};
+
+	//writeToDisk(accepted, "C:/temp/level0.csv");
+	//writeToDisk(level1, "C:/temp/level1.csv");
+	//writeToDisk(level2, "C:/temp/level2.csv");
+	//writeToDisk(level3, "C:/temp/level3.csv");
+	//writeToDisk(level4, "C:/temp/level4.csv");
+	//writeToDisk(level5, "C:/temp/level5.csv");
 
 
 }

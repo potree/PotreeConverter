@@ -23,7 +23,11 @@ bool iEndsWith(const std::string& str, const std::string& suffix);
 
 double now();
 
+void printElapsedTime(string label, double startTime);
+
 void printThreadsafe(string str);
 void printThreadsafe(string str1, string str2);
 void printThreadsafe(string str1, string str2, string str3);
 void printThreadsafe(string str1, string str2, string str3, string str4);
+
+
