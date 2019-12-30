@@ -5,6 +5,103 @@
 
 #include "ChunkProcessor.h"
 
+double squaredDistance(Point& a, Point& b) {
+	double dx = b.x - a.x;
+	double dy = b.y - a.y;
+	double dz = b.z - a.z;
+
+	double dd = dx * dx + dy * dy + dz * dz;
+
+	return dd;
+}
+
+struct GridOfAccepted {
+
+	struct GridIndex {
+		int ix = 0;
+		int iy = 0;
+		int iz = 0;
+		int index = 0;
+	};
+
+	int gridSize = 0;
+	vector<vector<Point>> grid;
+	Vector3<double> min;
+	Vector3<double> max;
+	Vector3<double> size;
+
+	GridOfAccepted(int gridSize, Vector3<double> min, Vector3<double> max) {
+		this->gridSize = gridSize;
+		this->min = min;
+		this->max = max;
+		this->size = max - min;
+
+		grid.resize(gridSize * gridSize * gridSize);
+	}
+
+	GridIndex toGridIndex(Point& point) {
+		double nx = (point.x - min.x) / size.x;
+		double ny = (point.y - min.y) / size.y;
+		double nz = (point.z - min.z) / size.z;
+
+		int ux = double(gridSize) * nx;
+		int uy = double(gridSize) * ny;
+		int uz = double(gridSize) * nz;
+
+		ux = std::min(ux, gridSize - 1);
+		uy = std::min(uy, gridSize - 1);
+		uz = std::min(uz, gridSize - 1);
+
+		int index = ux + uy * gridSize + uz * gridSize * gridSize;
+
+		return { ux, uy, uz, index };
+	}
+
+	void add(Point& point) {
+
+		GridIndex index = toGridIndex(point);
+
+		grid[index.index].push_back(point);
+	}
+
+	bool isDistant(Point candidate, double squaredSpacing) {
+
+		GridIndex index = toGridIndex(candidate);
+
+		int xStart = std::max(index.ix - 1, 0);
+		int yStart = std::max(index.iy - 1, 0);
+		int zStart = std::max(index.iz - 1, 0);
+		int xEnd = std::min(index.ix + 1, gridSize - 1);
+		int yEnd = std::min(index.iy + 1, gridSize - 1);
+		int zEnd = std::min(index.iz + 1, gridSize - 1);
+
+		for (int ix = xStart; ix <= xEnd; ix++) {
+			for (int iy = yStart; iy <= yEnd; iy++) {
+				for (int iz = zStart; iz <= zEnd; iz++) {
+
+					int index = ix + iy * gridSize + iz * gridSize * gridSize;
+
+					vector<Point>& cell = grid[index];
+					for (Point& point : cell) {
+
+						double dd = squaredDistance(point, candidate);
+
+						if (dd < squaredSpacing) {
+							return false;
+						}
+
+					}
+
+				}
+			}
+		}
+
+		return true;
+
+	}
+
+};
+
 vector<Chunk*> getListOfChunks(Metadata& metadata) {
 	string chunkDirectory = metadata.targetDirectory + "/chunks";
 
@@ -111,77 +208,77 @@ void loadChunk(Chunk* chunk) {
 
 const double SQRT_2 = sqrt(2.0);
 
+//bool compare(Point& a, Point& b) {
+//
+//	auto da = (a.x + a.y + a.z) / SQRT_2;
+//	auto db = (b.x + b.y + b.z) / SQRT_2;
+//
+//	return da < db;
+//}
+
 bool compare(Point& a, Point& b) {
 
-	auto da = (a.x + a.y + a.z) / SQRT_2;
-	auto db = (b.x + b.y + b.z) / SQRT_2;
-
-	return da < db;
-}
-
-double squaredDistance(Point& a, Point& b) {
-	double dx = b.x - a.x;
-	double dy = b.y - a.y;
-	double dz = b.z - a.z;
-
-	double dd = dx * dx + dy * dy + dz * dz;
-
-	return dd;
+	return a.x < b.x;
 }
 
 
-vector<Point> subsample(vector<Point> candidates, double spacing) {
+
+
+vector<Point> subsample(vector<Point> candidates, double spacing, GridOfAccepted& gridOfAccepted) {
 
 	double squaredSpacing = spacing * spacing;
 	int maxCount = 0;
 
 	vector<Point> accepted;
 
-	auto isDistant = [&maxCount, &accepted, spacing, squaredSpacing](Point& candidate) -> bool {
+	//auto isDistant = [&maxCount, &accepted, spacing, squaredSpacing](Point& candidate) -> bool {
 
-		int count = 0;
-		for (int i = accepted.size() - 1; i >= 0; i--) {
+	//	int count = 0;
+	//	for (int i = accepted.size() - 1; i >= 0; i--) {
 
-			Point previouslyAccepted = accepted[i];
+	//		Point previouslyAccepted = accepted[i];
 
-			auto d1 = (previouslyAccepted.x + previouslyAccepted.y + previouslyAccepted.z) / SQRT_2;
-			auto d2 = (candidate.x + candidate.y + candidate.z) / SQRT_2;
+	//		auto d1 = (previouslyAccepted.x + previouslyAccepted.y + previouslyAccepted.z) / SQRT_2;
+	//		auto d2 = (candidate.x + candidate.y + candidate.z) / SQRT_2;
 
-			auto d = d2 - d1;
+	//		auto d = d2 - d1;
 
-			if (std::abs(d) > spacing) {
-				maxCount = std::max(maxCount, count);
-				return true;
-			}
+	//		if (std::abs(d) > spacing) {
+	//			maxCount = std::max(maxCount, count);
+	//			return true;
+	//		}
 
 
-			double dd = squaredDistance(candidate, previouslyAccepted);
+	//		double dd = squaredDistance(candidate, previouslyAccepted);
 
-			if (dd < squaredSpacing) {
-				maxCount = std::max(maxCount, count);
-				return false;
-			}
+	//		if (dd < squaredSpacing) {
+	//			maxCount = std::max(maxCount, count);
+	//			return false;
+	//		}
 
-			count++;
-			//if (count > 1000) {
-			//	return true;
-			//}
-		}
+	//		count++;
+	//		//if (count > 1000) {
+	//		//	return true;
+	//		//}
+	//	}
 
-		maxCount = std::max(maxCount, count);
+	//	maxCount = std::max(maxCount, count);
 
-		return true;
+	//	return true;
 
-	};
+	//};
+
 
 	int numPoints = candidates.size();
 	for (int i = 0; i < numPoints; i++) {
 
 		Point candidate = candidates[i];
-		bool distant = isDistant(candidate);
+		//bool distant = isDistant(candidate);
+		bool distant = gridOfAccepted.isDistant(candidate, squaredSpacing);
 
 		if (distant) {
 			accepted.push_back(candidate);
+			gridOfAccepted.add(candidate);
 		}
 
 	}
@@ -261,7 +358,7 @@ void processChunk(Chunk* chunk) {
 
 	double tStart = now();
 
-	std::sort(points->points.begin(), points->points.end(), compare);
+	//std::sort(points->points.begin(), points->points.end(), compare);
 
 	Vector3<double> chunkSize = chunk->max - chunk->min;
 
@@ -269,7 +366,7 @@ void processChunk(Chunk* chunk) {
 	double level = std::floor(std::log(double(numPoints)) / std::log(4.0));
 	double estimatedSpacing = std::pow(2.0, level + 1.0);
 
-	double spacing = chunkSize.x / 1024;
+	double spacing = chunkSize.x / 2048;
 
 	int gridSize = 0;
 
@@ -298,12 +395,21 @@ void processChunk(Chunk* chunk) {
 	printElapsedTime("cells", tStart);
 
 	cout << "#cells" << cells.size() << endl;
+
+	GridOfAccepted gridOfAcceptedL0(128, chunk->min, chunk->max);
+	GridOfAccepted gridOfAcceptedL1(64, chunk->min, chunk->max);
+	GridOfAccepted gridOfAcceptedL2(32, chunk->min, chunk->max);
+	GridOfAccepted gridOfAcceptedL3(16, chunk->min, chunk->max);
+	GridOfAccepted gridOfAcceptedL4(8, chunk->min, chunk->max);
 	
 	vector<Point> accepted;
 	for (Points* cell : cells) {
-		vector<Point> sampleAccepted = subsample(cell->points, spacing);
 
-		std::sort(sampleAccepted.begin(), sampleAccepted.end(), compare);
+		std::sort(cell->points.begin(), cell->points.end(), compare);
+
+		vector<Point> sampleAccepted = subsample(cell->points, spacing, gridOfAcceptedL0);
+
+		//std::sort(sampleAccepted.begin(), sampleAccepted.end(), compare);
 
 		accepted.insert(accepted.end(), sampleAccepted.begin(), sampleAccepted.end());
 	}
@@ -311,10 +417,10 @@ void processChunk(Chunk* chunk) {
 	
 	//vector<Point> accepted = subsample(points->points, spacing);
 
-	auto level1 = subsample(accepted, spacing * 2.0);
-	auto level2 = subsample(level1, spacing * 4.0);
-	//auto level3 = subsample(&level2[0], level2.size(), spacing * 8.0);
-	//auto level4 = subsample(&level3[0], level3.size(), spacing * 16.0);
+	auto level1 = subsample(accepted, spacing * 2.0, gridOfAcceptedL1);
+	auto level2 = subsample(level1, spacing * 4.0, gridOfAcceptedL2);
+	auto level3 = subsample(level2, spacing * 8.0, gridOfAcceptedL3);
+	auto level4 = subsample(level3, spacing * 16.0, gridOfAcceptedL4);
 	//auto level5 = subsample(&level4[0], level4.size(), spacing * 32.0);
 	//
 
@@ -342,8 +448,8 @@ void processChunk(Chunk* chunk) {
 	writeToDisk(accepted, "C:/temp/level0.csv");
 	writeToDisk(level1, "C:/temp/level1.csv");
 	writeToDisk(level2, "C:/temp/level2.csv");
-	//writeToDisk(level3, "C:/temp/level3.csv");
-	//writeToDisk(level4, "C:/temp/level4.csv");
+	writeToDisk(level3, "C:/temp/level3.csv");
+	writeToDisk(level4, "C:/temp/level4.csv");
 	//writeToDisk(level5, "C:/temp/level5.csv");
 
 

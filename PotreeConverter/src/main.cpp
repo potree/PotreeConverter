@@ -83,7 +83,7 @@ void saveChunks(Chunker* chunker) {
 
 int gridSizeFromPointCount(uint64_t pointCount) {
 	if (pointCount < 100'000'000) {
-		return 4;
+		return 2;
 	} else if (pointCount < 1'000'000'000) {
 		return 8;
 	} else if (pointCount < 10'000'000'000) {
@@ -163,9 +163,9 @@ future<void> run() {
 	//Chunker* chunker = co_await chunking(loader, metadata);
 
 	vector<Chunk*> chunks = getListOfChunks(metadata);
-	//loadChunk(chunks[0]);
-	loadChunk(chunks[1]);
-	processChunk(chunks[1]);
+	loadChunk(chunks[0]);
+	//loadChunk(chunks[1]);
+	processChunk(chunks[0]);
 
 
 	auto tEnd = now();
