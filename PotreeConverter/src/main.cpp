@@ -82,8 +82,10 @@ void saveChunks(Chunker* chunker) {
 }
 
 int gridSizeFromPointCount(uint64_t pointCount) {
-	if (pointCount < 100'000'000) {
+	if (pointCount < 10'000'000) {
 		return 2;
+	} if (pointCount < 100'000'000) {
+		return 4;
 	} else if (pointCount < 1'000'000'000) {
 		return 8;
 	} else if (pointCount < 10'000'000'000) {
@@ -144,9 +146,10 @@ void savePoints(string path, vector<Vector3<double>> points) {
 future<void> run() {
 
 	//string path = "D:/dev/pointclouds/Riegl/Retz_Airborne_Terrestrial_Combined_1cm.las";
-	string path = "D:/dev/pointclouds/archpro/heidentor.las";
+	//string path = "D:/dev/pointclouds/archpro/heidentor.las";
 	//string path = "D:/dev/pointclouds/mschuetz/lion.las";
 	//string path = "D:/dev/pointclouds/Riegl/Retz_Airborne_Terrestrial_Combined_1cm.las";
+	string path = "D:/dev/pointclouds/open_topography/ca13/morro_rock/merged.las";
 	string targetDirectory = "D:/temp/test";
 
 	auto tStart = now();
@@ -158,7 +161,8 @@ future<void> run() {
 	metadata.min = loader->min;
 	metadata.max = loader->max;
 	metadata.numPoints = loader->numPoints;
-	metadata.chunkGridSize = gridSizeFromPointCount(metadata.numPoints);
+	//metadata.chunkGridSize = gridSizeFromPointCount(metadata.numPoints);
+	metadata.chunkGridSize = 1;
 
 	//Chunker* chunker = co_await chunking(loader, metadata);
 
@@ -178,8 +182,8 @@ future<void> run() {
 future<void> runSubsampler() {
 
 	//string path = "D:/dev/pointclouds/Riegl/Retz_Airborne_Terrestrial_Combined_1cm.las";
-	//string path = "D:/dev/pointclouds/archpro/heidentor.las";
-	string path = "D:/dev/pointclouds/mschuetz/lion.las";
+	string path = "D:/dev/pointclouds/archpro/heidentor.las";
+	//string path = "D:/dev/pointclouds/mschuetz/lion.las";
 	//string path = "D:/dev/pointclouds/Riegl/Retz_Airborne_Terrestrial_Combined_1cm.las";
 	string targetDirectory = "D:/temp/test";
 
@@ -221,6 +225,7 @@ future<void> runSubsampler_PoissonDisc() {
 
 	//string path = "D:/dev/pointclouds/Riegl/Retz_Airborne_Terrestrial_Combined_1cm.las";
 	string path = "D:/dev/pointclouds/archpro/heidentor.las";
+	//string path = "D:/dev/pointclouds/open_topography/ca13/morro_rock/merged.las";
 	//string path = "D:/dev/pointclouds/mschuetz/lion.las";
 	//string path = "D:/dev/pointclouds/Riegl/Retz_Airborne_Terrestrial_Combined_1cm.las";
 	string targetDirectory = "D:/temp/test";
