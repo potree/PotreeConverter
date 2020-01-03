@@ -65,6 +65,15 @@ struct Point {
 
 	uint64_t index = 0;
 
+	double squaredDistanceTo(Point& b) {
+		double dx = b.x - this->x;
+		double dy = b.y - this->y;
+		double dz = b.z - this->z;
+
+		double dd = dx * dx + dy * dy + dz * dz;
+
+		return dd;
+	};
 };
 
 struct Points {
@@ -72,6 +81,7 @@ struct Points {
 	
 	vector<Attribute> attributes;
 	Buffer* attributeBuffer;
+
 };
 
 

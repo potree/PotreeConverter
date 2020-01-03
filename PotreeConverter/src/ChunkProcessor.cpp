@@ -3,150 +3,40 @@
 #include <fstream>
 #include <iomanip>
 #include <iterator>
+#include <stack>
 
 #include "ChunkProcessor.h"
 #include "LASWriter.hpp"
 
-double squaredDistance(Point& a, Point& b) {
-	double dx = b.x - a.x;
-	double dy = b.y - a.y;
-	double dz = b.z - a.z;
+using namespace std;
 
-	double dd = dx * dx + dy * dy + dz * dz;
-
-	return dd;
-};
-
-struct GridOfAccepted {
-
-	struct GridIndex {
-		int ix = 0;
-		int iy = 0;
-		int iz = 0;
-		int index = 0;
-	};
-
-	int gridSize = 0;
-	//vector<vector<Point>> grid;
-	unordered_map<int, vector<Point>> grid;
-	Vector3<double> min;
-	Vector3<double> max;
-	Vector3<double> size;
-	double spacing = 0.0;
-	double squaredSpacing = 0.0;
-
-	int maxChecks = 0;
-
-	GridOfAccepted(int gridSize, Vector3<double> min, Vector3<double> max, double spacing) {
-		this->gridSize = gridSize;
-		this->min = min;
-		this->max = max;
-		this->size = max - min;
-		this->spacing = spacing;
-		this->squaredSpacing = spacing * spacing;
-
-		//grid.resize(gridSize * gridSize * gridSize);
-	}
-
-	GridIndex toGridIndex(Point& point) {
-		double nx = (point.x - min.x) / size.x;
-		double ny = (point.y - min.y) / size.y;
-		double nz = (point.z - min.z) / size.z;
-
-		int ux = double(gridSize) * nx;
-		int uy = double(gridSize) * ny;
-		int uz = double(gridSize) * nz;
-
-		ux = std::min(ux, gridSize - 1);
-		uy = std::min(uy, gridSize - 1);
-		uz = std::min(uz, gridSize - 1);
-
-		int index = ux + uy * gridSize + uz * gridSize * gridSize;
-
-		return { ux, uy, uz, index };
-	}
-
-	void add(Point& point) {
-
-		GridIndex index = toGridIndex(point);
-
-		grid[index.index].push_back(point);
-	}
-
-	bool check(Point& candidate, int index, int& checks) {
-		vector<Point>& cell = grid[index];
-		//for (Point& point : cell) {
-
-		//	double dd = squaredDistance(point, candidate);
-
-		//	checks++;
-
-		//	if (dd < squaredSpacing) {
-		//		return false;
-		//	}
-		//}
-
-		for (int i = cell.size() - 1; i >= 0; i--) {
-			Point& point = cell[i];
-			double dd = squaredDistance(point, candidate);
-
-			checks++;
-
-			if (candidate.x - point.x > spacing) {
-				return true;
-			}
-	
-			if (dd < squaredSpacing) {
-				return false;
-			}
-		}
-
-		return true;
-	}
-
-	bool isDistant(Point candidate, int& checks) {
-
-		GridIndex candidateIndex = toGridIndex(candidate);
-
-		int xEnd = std::max(candidateIndex.ix - 1, 0);
-		int yEnd = std::max(candidateIndex.iy - 1, 0);
-		int zEnd = std::max(candidateIndex.iz - 1, 0);
-		int xStart = std::min(candidateIndex.ix + 0, gridSize - 1);
-		int yStart = std::min(candidateIndex.iy + 1, gridSize - 1);
-		int zStart = std::min(candidateIndex.iz + 1, gridSize - 1);
-
-		{ // check candidate cell first
-			bool c = check(candidate, candidateIndex.index, checks);
-
-			if (!c) {
-				return false;
-			}
-		}
-
-		// then check cells in neighborhood
-		for (int ix = xStart; ix >= xEnd; ix--) {
-			for (int iy = yStart; iy >= yEnd; iy--) {
-				for (int iz = zStart; iz >= zEnd; iz--) {
-					int index = ix + iy * gridSize + iz * gridSize * gridSize;
-
-					if (index == candidateIndex.index) {
-						continue;
-					}
-
-					bool c = check(candidate, index, checks);
-
-					if (!c) {
-						return false;
-					}
-				}
-			}
-		}
-
-		return true;
-	}
+struct Cell {
+	vector<Point> accepted;
 
 };
 
+uint64_t toGridIndex(Chunk* chunk, Point& point, uint64_t gridSize) {
+
+	double x = point.x;
+	double y = point.y;
+	double z = point.z;
+
+	double gridSizeD = double(gridSize);
+	Vector3<double>& min = chunk->min;
+	Vector3<double> size = chunk->max - chunk->min;
+
+	uint64_t ux = int32_t(gridSizeD * (x - min.x) / size.x);
+	uint64_t uy = int32_t(gridSizeD * (y - min.y) / size.y);
+	uint64_t uz = int32_t(gridSizeD * (z - min.z) / size.z);
+
+	ux = std::min(ux, gridSize - 1);
+	uy = std::min(uy, gridSize - 1);
+	uz = std::min(uz, gridSize - 1);
+
+	uint64_t index = ux + gridSize * uy + gridSize * gridSize * uz;
+
+	return index;
+}
 
 vector<Chunk*> getListOfChunks(Metadata& metadata) {
 	string chunkDirectory = metadata.targetDirectory + "/chunks";
@@ -177,7 +67,7 @@ vector<Chunk*> getListOfChunks(Metadata& metadata) {
 	//Vector3<double> max = metadata.max;
 	Vector3<double> fittedSize = metadata.max - metadata.min;
 	double cubeSizeScalar = std::max(std::max(fittedSize.x, fittedSize.y), fittedSize.z);
-	Vector3<double> cubeSize = {cubeSizeScalar , cubeSizeScalar , cubeSizeScalar};
+	Vector3<double> cubeSize = { cubeSizeScalar , cubeSizeScalar , cubeSizeScalar };
 	Vector3<double> min = metadata.min;
 	Vector3<double> max = min + cubeSize;
 	Vector3<double> cellSize = cubeSize / double(gridSize);
@@ -193,15 +83,15 @@ vector<Chunk*> getListOfChunks(Metadata& metadata) {
 		chunk->file = entry.path().string();
 		chunk->index = chunkIndex;
 		chunk->index3D = cellCoordinate;
-		
-		Vector3<double> dcoord = { 
-			double(cellCoordinate.x), 
-			double(cellCoordinate.y), 
+
+		Vector3<double> dcoord = {
+			double(cellCoordinate.x),
+			double(cellCoordinate.y),
 			double(cellCoordinate.z)
 		};
 		Vector3<double> cellMin = min + (dcoord * cellSize);
 		Vector3<double> cellMax = cellMin + cellSize;
-		
+
 		chunk->min = cellMin;
 		chunk->max = cellMax;
 
@@ -254,60 +144,144 @@ void loadChunk(Chunk* chunk) {
 	chunk->points = points;
 }
 
-int maxChecks = 0;
+class SparseGrid {
 
-vector<Point> subsample(vector<Point>& candidates, double spacing, GridOfAccepted& gridOfAccepted) {
+public:
 
-	vector<Point> accepted;
+	Vector3<double> min;
+	Vector3<double> max;
+	Vector3<double> size;
+	double spacing = 1.0;
+	double squaredSpacing = 1.0;
 
-	int numPoints = candidates.size();
-	for (int i = 0; i < numPoints; i++) {
+	unordered_map<uint64_t, Cell*> grid;
+	uint64_t gridSize = 1;
+	double gridSizeD = 1.0;
 
-		int checks = 0;
+	SparseGrid(Vector3<double> min, Vector3<double> max, double spacing) {
+		this->min = min;
+		this->max = max;
+		this->size = max - min;
+		this->spacing = spacing;
+		this->squaredSpacing = spacing * spacing;
 
-		Point& candidate = candidates[i];
-		bool distant = gridOfAccepted.isDistant(candidate, checks);
-
-		maxChecks = std::max(maxChecks, checks);
-
-		if (distant) {
-			accepted.push_back(candidate);
-			gridOfAccepted.add(candidate);
-		}
-
+		gridSize = 5.0 * size.x / spacing;
+		gridSizeD = double(gridSize);
 	}
 
-	return accepted;
-}
+	bool isDistant(Point& candidate) {
 
-vector<Points*> split(Points* input, int gridSize, Vector3<double> min, Vector3<double> max) {
+		Vector3<uint64_t> gridCoord = toGridCoordinate(candidate);
 
+		uint64_t xStart = std::max(gridCoord.x - 1, 0ull);
+		uint64_t yStart = std::max(gridCoord.y - 1, 0ull);
+		uint64_t zStart = std::max(gridCoord.z - 1, 0ull);
+		uint64_t xEnd = std::min(gridCoord.x + 1, gridSize - 1);
+		uint64_t yEnd = std::min(gridCoord.y + 1, gridSize - 1);
+		uint64_t zEnd = std::min(gridCoord.z + 1, gridSize - 1);
+
+		for (uint64_t x = xStart; x <= xEnd; x++) {
+		for (uint64_t y = yStart; y <= yEnd; y++) {
+		for (uint64_t z = zStart; z <= zEnd; z++) {
+
+			uint64_t index = x + y * gridSize + z * gridSize * gridSize;
+
+			auto it = grid.find(index);
+
+			if (it == grid.end()) {
+				continue;
+			}
+
+			Cell* cell = it->second;
+
+			for (Point& alreadyAccepted : cell->accepted) {
+				double dd = candidate.squaredDistanceTo(alreadyAccepted);
+
+				if (dd < squaredSpacing) {
+					return false;
+				}
+			}
+
+		}
+		}
+		}
+
+		return true;
+	}
+
+	void add(Point& point) {
+		uint64_t index = toGridIndex(point);
+
+		if (grid.find(index) == grid.end()) {
+			Cell* cell = new Cell();
+			
+			grid.insert(std::make_pair(index, cell));
+		}
+
+		grid[index]->accepted.push_back(point);
+	}
+
+	Vector3<uint64_t> toGridCoordinate(Point& point) {
+
+		double x = point.x;
+		double y = point.y;
+		double z = point.z;
+
+		uint64_t ux = int32_t(gridSizeD * (x - min.x) / size.x);
+		uint64_t uy = int32_t(gridSizeD * (y - min.y) / size.y);
+		uint64_t uz = int32_t(gridSizeD * (z - min.z) / size.z);
+
+		return {ux, uy, uz};
+	}
+
+	uint64_t toGridIndex(Point& point) {
+
+		double x = point.x;
+		double y = point.y;
+		double z = point.z;
+
+		uint64_t ux = int32_t(gridSizeD * (x - min.x) / size.x);
+		uint64_t uy = int32_t(gridSizeD * (y - min.y) / size.y);
+		uint64_t uz = int32_t(gridSizeD * (z - min.z) / size.z);
+
+		ux = std::min(ux, gridSize - 1);
+		uy = std::min(uy, gridSize - 1);
+		uz = std::min(uz, gridSize - 1);
+
+		uint64_t index = ux + gridSize * uy + gridSize * gridSize * uz;
+
+		return index;
+	}
+
+};
+
+vector<Points*> split(Chunk* chunk, Points* input, int gridSize) {
 	struct Cell {
 
-		Points* points = nullptr;
+		Points* points;
 
 		int32_t ux = 0;
 		int32_t uy = 0;
 		int32_t uz = 0;
 	};
 
-	Vector3<double> size = max - min;
+	auto min = chunk->min;
+	auto max = chunk->max;
+	auto size = max - min;
 	double gridSizeD = double(gridSize);
-	vector<Cell*> grid(gridSize, nullptr);
+	vector<Cell*> grid(gridSize * gridSize * gridSize, nullptr);
 
 	for (int i = 0; i < input->points.size(); i++) {
 
 		Point point = input->points[i];
 
-		int32_t ux = int32_t(gridSizeD * (point.x - min.x) / size.x);
-		int32_t index = std::min(ux, gridSize - 1);
+		uint64_t index = toGridIndex(chunk, point, gridSize);
 
 		Cell* cell = grid[index];
 
 		if (cell == nullptr) {
 			cell = new Cell();
 			cell->points = new Points();
-			cell->ux = ux;
 			grid[index] = cell;
 		}
 
@@ -324,48 +298,136 @@ vector<Points*> split(Points* input, int gridSize, Vector3<double> min, Vector3<
 	return pointCells;
 }
 
-bool sortByX(Point& a, Point& b) {
-	return a.x < b.x;
-}
+class Node {
 
-vector<Points*> makeBins(Chunk* chunk) {
-	
-	double tStartBinning = now();
+public:
 
-	Points* points = chunk->points;
-	int numPoints = points->points.size();
+	struct BoundingBox {
+		Vector3<double> min;
+		Vector3<double> max;
+	};
 
-	//int gridSize = 0;
+	Vector3<double> min;
+	Vector3<double> max;
+	Vector3<double> size;
+	double spacing = 1.0;
+	vector<Node*> children = vector<Node*>(8, nullptr);
+	SparseGrid* grid = nullptr;
+	vector<Point> accepted;
 
-	//if (numPoints > 10'000'000) {
-	//	gridSize = 1;
-	//} else if (numPoints > 4'000'000) {
-	//	gridSize = 5;
-	//} else if (numPoints > 1'000'000) {
-	//	gridSize = 4;
-	//} else if (numPoints > 400'000) {
-	//	gridSize = 3;
-	//} else if (numPoints > 100'000) {
-	//	gridSize = 2;
-	//}
+	vector<Point> store;
+	bool storeExceeded = false;
+	int maxStoreSize = 1'000;
 
-	int gridSize = 100;
+	Node(Vector3<double> min, Vector3<double> max, double spacing) {
+		this->min = min;
+		this->max = max;
+		this->size = max - min;
 
-	vector<Points*> bins;
-
-	if (numPoints < 100'000) {
-		bins = { points };
-	} else {
-		Vector3<double> min = chunk->min;
-		Vector3<double> max = chunk->max;
-		bins = split(points, gridSize, min, max);
+		grid = new SparseGrid(min, max, spacing);
 	}
 
-	printElapsedTime("binning", tStartBinning);
-	cout << "#bins" << bins.size() << endl;
+	void add(Point& candidate) {
 
-	return bins;
-}
+		bool isDistant = grid->isDistant(candidate);
+
+		if (isDistant) {
+			accepted.push_back(candidate);
+			grid->add(candidate);
+		} else if(!storeExceeded){
+			store.push_back(candidate);
+
+			if (store.size() > maxStoreSize) {
+				processStore();
+			}
+		}else{
+			addToChild(candidate);
+		}
+
+	}
+
+	void addToChild(Point& point) {
+		int childIndex = childIndexOf(point);
+
+		if (children[childIndex] == nullptr) {
+			BoundingBox box = childBoundingBoxOf(point);
+			Node* child = new Node(box.min, box.max, spacing * 0.5);
+
+			children[childIndex] = child;
+		}
+
+		children[childIndex]->add(point);
+	}
+
+	void processStore() {
+		storeExceeded = true;
+
+		for (Point& point : store) {
+			addToChild(point);
+		}
+
+		store.clear();
+	}
+
+	int childIndexOf(Point& point) {
+		
+		double nx = (point.x - min.x) / size.x;
+		double ny = (point.y - min.y) / size.y;
+		double nz = (point.z - min.z) / size.z;
+
+		int childIndex = 0;
+
+		if (nx > 0.5) {
+			childIndex = childIndex | 0b001;
+		}
+
+		if (ny > 0.5) {
+			childIndex = childIndex | 0b010;
+		}
+
+		if (nz > 0.5) {
+			childIndex = childIndex | 0b100;
+		}
+
+		return childIndex;
+	}
+
+	BoundingBox childBoundingBoxOf(Point& point) {
+		BoundingBox box;
+		Vector3<double> center = min + (size * 0.5);
+
+		double nx = (point.x - min.x) / size.x;
+		double ny = (point.y - min.y) / size.y;
+		double nz = (point.z - min.z) / size.z;
+
+		if (nx <= 0.5) {
+			box.min.x = min.x;
+			box.max.x = center.x;
+		} else {
+			box.min.x = center.x;
+			box.max.x = max.x;
+		}
+
+		if (ny <= 0.5) {
+			box.min.y = min.y;
+			box.max.y = center.y;
+		} else {
+			box.min.y = center.y;
+			box.max.y = max.y;
+		}
+
+		if (nz <= 0.5) {
+			box.min.z = min.z;
+			box.max.z = center.z;
+		} else {
+			box.min.z = center.z;
+			box.max.z = max.z;
+		}
+
+		return box;
+	}
+
+};
 
 void processChunk(Chunk* chunk) {
 
@@ -374,43 +436,20 @@ void processChunk(Chunk* chunk) {
 	cout << chunk->min.toString() << endl;
 	cout << chunk->max.toString() << endl;
 
+	double spacing = 5.0;
+	Node* chunkRoot = new Node(chunk->min, chunk->max, spacing);
 
 	double tStart = now();
 
+	for (Point& point : chunk->points->points) {
 
-
-	// BINNING
-	vector<Points*> bins = makeBins(chunk);
-
-	double spacing = 1;
-	
-	double tStartProcessing = now();
-
-	GridOfAccepted acceptedL0(128, chunk->min, chunk->max, spacing);
-
-	printElapsedTime("create accepted grid", tStartProcessing);
-	
-	vector<Point> accepted;
-	for (Points* bin : bins) {
-
-		std::sort(bin->points.begin(), bin->points.end(), sortByX);
-
-		vector<Point> sampleAccepted = subsample(bin->points, spacing, acceptedL0);
-		accepted.insert(accepted.end(), sampleAccepted.begin(), sampleAccepted.end());
+		chunkRoot->add(point);
+		
 	}
 
-	printElapsedTime("processing", tStartProcessing);
-	cout << "#accepted: " << accepted.size() << endl;
+	auto accepted = chunkRoot->accepted;
 
-	cout << "maxChecks: " << maxChecks << endl;
-
-
-
-
-
-	// DEBUG / WRITE FILES
-
-
+	printElapsedTime("processing", tStart);
 
 	LASHeader header;
 	header.min = chunk->min;
@@ -418,31 +457,31 @@ void processChunk(Chunk* chunk) {
 	header.numPoints = accepted.size();
 	header.scale = { 0.001, 0.001, 0.001 };
 
-	{
-		double tStartWriting = now();
+	//writeLAS("C:/temp/test/chunk.las", header, accepted);
 
-		writeLAS("C:/temp/level_0.las", header, accepted, points);
 
-		printElapsedTime("writing file", tStartWriting);
+	int i = 0;
+	stack<Node*> todo;
+	todo.push(chunkRoot);
+
+	while (!todo.empty()) {
+		Node* node = todo.top();
+		todo.pop();
+
+		
+		string filename = "chunk_" + to_string(chunk->index) + "_node_" + to_string(i) + ".las";
+		header.numPoints = node->accepted.size();
+		writeLAS("C:/temp/test/" + filename, header, node->accepted, chunk->points);
+		i++;
+
+		//for (Node* child : node->children) {
+
+		//	if (child == nullptr) {
+		//		continue;
+		//	}
+
+		//	todo.push(child);
+		//}
 	}
 
-	return;
-
-	int numLevels = 6;
-	vector<Point> toSample = accepted;
-
-	for (int i = 0; i < numLevels; i++) {
-		int gridSize = acceptedL0.gridSize / pow(2, i + 1);
-		double spacing = acceptedL0.spacing * pow(2.0, i + 1);
-
-		GridOfAccepted acceptedLX(gridSize, chunk->min, chunk->max, spacing);
-
-		auto levelX = subsample(toSample, spacing, acceptedLX);
-
-		header.numPoints = levelX.size();
-		string filename = "level_" + to_string(i + 1) + ".las";
-		writeLAS("C:/temp/" + filename, header, levelX, points);
-
-		toSample = levelX;
-	}
 }

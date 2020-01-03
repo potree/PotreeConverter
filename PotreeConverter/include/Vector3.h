@@ -61,4 +61,8 @@ struct Vector3{
 		return Vector3<T>(x * right.x, y * right.y, z * right.z);
 	}
 
+	Vector3<T> operator*(const double& scalar) const {
+		return Vector3<T>(x * scalar, y * scalar, z * scalar);
+	}
+
 };

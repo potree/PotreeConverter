@@ -37,11 +37,9 @@ void saveChunks(Chunker* chunker) {
 		string chunkDirectory = chunker->targetDirectory + "/chunks/";
 		string path = chunkDirectory + "chunk_" + std::to_string(i) + ".bin";
 
-		fs::create_directory(chunkDirectory);
+		fs::create_directories(chunkDirectory);
 
 		auto file = std::fstream(path, std::ios::out | std::ios::binary);
-
-		//file.write((char*)& data[0], bytes);
 
 		for (Points* batch : cell.batches) {
 			sum += batch->points.size();
@@ -127,22 +125,6 @@ future<Chunker*> chunking(LASLoader* loader, Metadata metadata) {
 	return chunker;
 }
 
-void savePoints(string path, vector<Vector3<double>> points) {
-	int64_t sum = 0;
-
-	auto file = std::fstream(path, std::ios::out);
-	//auto file = std::fstream(path, std::ios::out | std::ios::binary);
-
-	for (Vector3<double> &point : points) {
-		
-		file << point.x << ", " << point.y << ", " << point.z << endl;
-
-	}
-
-	file.close();
-}
-
-
 future<void> run() {
 
 	//string path = "D:/dev/pointclouds/Riegl/Retz_Airborne_Terrestrial_Combined_1cm.las";
@@ -150,7 +132,7 @@ future<void> run() {
 	//string path = "D:/dev/pointclouds/mschuetz/lion.las";
 	//string path = "D:/dev/pointclouds/Riegl/Retz_Airborne_Terrestrial_Combined_1cm.las";
 	string path = "D:/dev/pointclouds/open_topography/ca13/morro_rock/merged.las";
-	string targetDirectory = "D:/temp/test";
+	string targetDirectory = "C:/temp/test";
 
 	auto tStart = now();
 
@@ -162,14 +144,27 @@ future<void> run() {
 	metadata.max = loader->max;
 	metadata.numPoints = loader->numPoints;
 	//metadata.chunkGridSize = gridSizeFromPointCount(metadata.numPoints);
-	metadata.chunkGridSize = 1;
+	metadata.chunkGridSize = 4;
 
 	//Chunker* chunker = co_await chunking(loader, metadata);
 
 	vector<Chunk*> chunks = getListOfChunks(metadata);
-	loadChunk(chunks[0]);
-	//loadChunk(chunks[1]);
-	processChunk(chunks[0]);
+
+	vector<thread> threads;
+	for (Chunk* chunk : chunks) {
+
+		threads.emplace_back(thread([chunk](){
+			loadChunk(chunk);
+			processChunk(chunk);
+		}));
+
+	}
+
+	for (thread& t : threads) {
+		t.join();
+	}
+
+	
 
 
 	auto tEnd = now();
@@ -179,102 +174,12 @@ future<void> run() {
 	co_return;
 }
 
-future<void> runSubsampler() {
-
-	//string path = "D:/dev/pointclouds/Riegl/Retz_Airborne_Terrestrial_Combined_1cm.las";
-	string path = "D:/dev/pointclouds/archpro/heidentor.las";
-	//string path = "D:/dev/pointclouds/mschuetz/lion.las";
-	//string path = "D:/dev/pointclouds/Riegl/Retz_Airborne_Terrestrial_Combined_1cm.las";
-	string targetDirectory = "D:/temp/test";
-
-	auto tStart = now();
-
-	LASLoader* loader = new LASLoader(path);
-
-	Metadata metadata;
-	metadata.targetDirectory = targetDirectory;
-	metadata.min = loader->min;
-	metadata.max = loader->max;
-	metadata.numPoints = loader->numPoints;
-	metadata.chunkGridSize = gridSizeFromPointCount(metadata.numPoints);
-
-	Subsampler* subsampler = new Subsampler(targetDirectory, 0.02, metadata.min, metadata.max);
-
-	int batchNumber = 0;
-	Points* batch = co_await loader->nextBatch();
-	while (batch != nullptr) {
-		cout << "batch loaded: " << batchNumber << endl;
-
-		subsampler->add(batch);
-
-		batch = co_await loader->nextBatch();
-
-		batchNumber++;
-	}
-
-	auto tEnd = now();
-	auto duration = tEnd - tStart;
-	cout << "duration: " << duration << endl;
-
-	savePoints("C:/temp/subsample.txt", subsampler->getPoints());
-
-	return;
-}
-
-future<void> runSubsampler_PoissonDisc() {
-
-	//string path = "D:/dev/pointclouds/Riegl/Retz_Airborne_Terrestrial_Combined_1cm.las";
-	string path = "D:/dev/pointclouds/archpro/heidentor.las";
-	//string path = "D:/dev/pointclouds/open_topography/ca13/morro_rock/merged.las";
-	//string path = "D:/dev/pointclouds/mschuetz/lion.las";
-	//string path = "D:/dev/pointclouds/Riegl/Retz_Airborne_Terrestrial_Combined_1cm.las";
-	string targetDirectory = "D:/temp/test";
-
-	auto tStart = now();
-
-	LASLoader* loader = new LASLoader(path);
-
-	Metadata metadata;
-	metadata.targetDirectory = targetDirectory;
-	metadata.min = loader->min;
-	metadata.max = loader->max;
-	metadata.numPoints = loader->numPoints;
-	metadata.chunkGridSize = gridSizeFromPointCount(metadata.numPoints);
-
-	Subsampler_PoissonDisc* subsampler = new Subsampler_PoissonDisc(
-		targetDirectory, 0.2, metadata.min, metadata.max);
-
-	int batchNumber = 0;
-	Points* batch = co_await loader->nextBatch();
-	while (batch != nullptr) {
-		cout << "batch loaded: " << batchNumber << endl;
-
-		subsampler->add(batch);
-
-		batch = co_await loader->nextBatch();
-
-		batchNumber++;
-	}
-
-	auto tEnd = now();
-	auto duration = tEnd - tStart;
-	cout << "duration: " << duration << endl;
-
-	savePoints("C:/temp/subsample_poisson.txt", subsampler->getPoints());
-
-	return;
-}
-
 int main(int argc, char **argv){
 
 	//cout << sizeof(Point) << endl;
 
 	run().wait();
 
-
-	//runSubsampler().wait();
-	//runSubsampler_PoissonDisc().wait();
-	
 	return 0;
 }
 
