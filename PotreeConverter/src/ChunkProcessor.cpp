@@ -5,6 +5,7 @@
 #include <iterator>
 
 #include "ChunkProcessor.h"
+#include "LASWriter.hpp"
 
 double squaredDistance(Point& a, Point& b) {
 	double dx = b.x - a.x;
@@ -26,7 +27,8 @@ struct GridOfAccepted {
 	};
 
 	int gridSize = 0;
-	vector<vector<Point>> grid;
+	//vector<vector<Point>> grid;
+	unordered_map<int, vector<Point>> grid;
 	Vector3<double> min;
 	Vector3<double> max;
 	Vector3<double> size;
@@ -43,7 +45,7 @@ struct GridOfAccepted {
 		this->spacing = spacing;
 		this->squaredSpacing = spacing * spacing;
 
-		grid.resize(gridSize * gridSize * gridSize);
+		//grid.resize(gridSize * gridSize * gridSize);
 	}
 
 	GridIndex toGridIndex(Point& point) {
@@ -71,45 +73,40 @@ struct GridOfAccepted {
 		grid[index.index].push_back(point);
 	}
 
-	bool check(Point& candidate, int index) {
+	bool check(Point& candidate, int index, int& checks) {
 		vector<Point>& cell = grid[index];
-		for (Point& point : cell) {
+		//for (Point& point : cell) {
 
-			double dd = squaredDistance(point, candidate);
-
-			if (dd < squaredSpacing) {
-				return false;
-			}
-		}
-
-		//for (int i = cell.size() - 1; i >= 0; i--) {
-		//	Point& point = cell[i];
 		//	double dd = squaredDistance(point, candidate);
 
-		//	if (candidate.x - point.x > spacing) {
-		//		return true;
-		//	}
-	
+		//	checks++;
+
 		//	if (dd < squaredSpacing) {
 		//		return false;
 		//	}
 		//}
 
+		for (int i = cell.size() - 1; i >= 0; i--) {
+			Point& point = cell[i];
+			double dd = squaredDistance(point, candidate);
+
+			checks++;
+
+			if (candidate.x - point.x > spacing) {
+				return true;
+			}
+	
+			if (dd < squaredSpacing) {
+				return false;
+			}
+		}
+
 		return true;
 	}
 
-	bool isDistant(Point candidate) {
-
-		int checks = 0;
+	bool isDistant(Point candidate, int& checks) {
 
 		GridIndex candidateIndex = toGridIndex(candidate);
-
-		/*int xStart = std::max(index.ix - 1, 0);
-		int yStart = std::max(index.iy - 1, 0);
-		int zStart = std::max(index.iz - 1, 0);
-		int xEnd = std::min(index.ix + 0, gridSize - 1);
-		int yEnd = std::min(index.iy + 1, gridSize - 1);
-		int zEnd = std::min(index.iz + 1, gridSize - 1);*/
 
 		int xEnd = std::max(candidateIndex.ix - 1, 0);
 		int yEnd = std::max(candidateIndex.iy - 1, 0);
@@ -118,12 +115,8 @@ struct GridOfAccepted {
 		int yStart = std::min(candidateIndex.iy + 1, gridSize - 1);
 		int zStart = std::min(candidateIndex.iz + 1, gridSize - 1);
 
-		//int xEnd = index.ix;
-		//int yEnd = index.iy;
-		//int zEnd = index.iz;
-
 		{ // check candidate cell first
-			bool c = check(candidate, candidateIndex.index);
+			bool c = check(candidate, candidateIndex.index, checks);
 
 			if (!c) {
 				return false;
@@ -140,7 +133,7 @@ struct GridOfAccepted {
 						continue;
 					}
 
-					bool c = check(candidate, index);
+					bool c = check(candidate, index, checks);
 
 					if (!c) {
 						return false;
@@ -249,6 +242,8 @@ void loadChunk(Chunk* chunk) {
 		point.y = coordinates[i].y;
 		point.z = coordinates[i].z;
 
+		point.index = i;
+
 		points->points.push_back(point);
 	}
 
@@ -259,35 +254,21 @@ void loadChunk(Chunk* chunk) {
 	chunk->points = points;
 }
 
-const double SQRT_2 = sqrt(2.0);
-
-//bool compare(Point& a, Point& b) {
-//
-//	auto da = (a.x + a.y + a.z) / SQRT_2;
-//	auto db = (b.x + b.y + b.z) / SQRT_2;
-//
-//	return da < db;
-//}
-
-bool compare(Point& a, Point& b) {
-
-	return a.x < b.x;
-}
-
-
-
+int maxChecks = 0;
 
 vector<Point> subsample(vector<Point>& candidates, double spacing, GridOfAccepted& gridOfAccepted) {
 
-	//double squaredSpacing = spacing * spacing;
 	vector<Point> accepted;
 
 	int numPoints = candidates.size();
 	for (int i = 0; i < numPoints; i++) {
 
+		int checks = 0;
+
 		Point& candidate = candidates[i];
-		//bool distant = isDistant(candidate);
-		bool distant = gridOfAccepted.isDistant(candidate);
+		bool distant = gridOfAccepted.isDistant(candidate, checks);
+
+		maxChecks = std::max(maxChecks, checks);
 
 		if (distant) {
 			accepted.push_back(candidate);
@@ -343,6 +324,49 @@ vector<Points*> split(Points* input, int gridSize, Vector3<double> min, Vector3<
 	return pointCells;
 }
 
+bool sortByX(Point& a, Point& b) {
+	return a.x < b.x;
+}
+
+vector<Points*> makeBins(Chunk* chunk) {
+	
+	double tStartBinning = now();
+
+	Points* points = chunk->points;
+	int numPoints = points->points.size();
+
+	//int gridSize = 0;
+
+	//if (numPoints > 10'000'000) {
+	//	gridSize = 1;
+	//} else if (numPoints > 4'000'000) {
+	//	gridSize = 5;
+	//} else if (numPoints > 1'000'000) {
+	//	gridSize = 4;
+	//} else if (numPoints > 400'000) {
+	//	gridSize = 3;
+	//} else if (numPoints > 100'000) {
+	//	gridSize = 2;
+	//}
+
+	int gridSize = 100;
+
+	vector<Points*> bins;
+
+	if (numPoints < 100'000) {
+		bins = { points };
+	} else {
+		Vector3<double> min = chunk->min;
+		Vector3<double> max = chunk->max;
+		bins = split(points, gridSize, min, max);
+	}
+
+	printElapsedTime("binning", tStartBinning);
+	cout << "#bins" << bins.size() << endl;
+
+	return bins;
+}
+
 void processChunk(Chunk* chunk) {
 
 	Points* points = chunk->points;
@@ -350,108 +374,75 @@ void processChunk(Chunk* chunk) {
 	cout << chunk->min.toString() << endl;
 	cout << chunk->max.toString() << endl;
 
+
 	double tStart = now();
 
-	Vector3<double> chunkSize = chunk->max - chunk->min;
 
-	int numPoints = points->points.size();
-	double level = std::floor(std::log(double(numPoints)) / std::log(4.0));
-	double estimatedSpacing = std::pow(2.0, level + 1.0);
 
-	//double spacing = chunkSize.x / 2048;
-	double spacing = 0.3;
+	// BINNING
+	vector<Points*> bins = makeBins(chunk);
 
-	int gridSize = 0;
-
-	if (numPoints > 10'000'000) {
-		gridSize = 1;
-	}else if (numPoints > 4'000'000) {
-		gridSize = 5;
-	} else if (numPoints > 1'000'000) {
-		gridSize = 4;
-	} else if (numPoints > 400'000) {
-		gridSize = 3;
-	} else if (numPoints > 100'000) {
-		gridSize = 2;
-	}
-	vector<Points*> cells;
-
-	gridSize = 100;
+	double spacing = 1;
 	
-	if(numPoints < 100'000){
-		cells = { points };
-	} else {
-		Vector3<double> min = chunk->min;
-		Vector3<double> max = chunk->max;
-		cells = split(points, gridSize, min, max);
-	}
+	double tStartProcessing = now();
 
+	GridOfAccepted acceptedL0(128, chunk->min, chunk->max, spacing);
 
-	printElapsedTime("cells", tStart);
-
-	cout << "#cells" << cells.size() << endl;
-
-	GridOfAccepted acceptedL0(512, chunk->min, chunk->max, spacing);
-	GridOfAccepted acceptedL1(256, chunk->min, chunk->max, 2.0 * spacing);
-	GridOfAccepted acceptedL2(128, chunk->min, chunk->max, 4.0 * spacing);
+	printElapsedTime("create accepted grid", tStartProcessing);
 	
 	vector<Point> accepted;
-	for (Points* cell : cells) {
+	for (Points* bin : bins) {
 
-		std::sort(cell->points.begin(), cell->points.end(), compare);
+		std::sort(bin->points.begin(), bin->points.end(), sortByX);
 
-		vector<Point> sampleAccepted = subsample(cell->points, spacing, acceptedL0);
+		vector<Point> sampleAccepted = subsample(bin->points, spacing, acceptedL0);
 		accepted.insert(accepted.end(), sampleAccepted.begin(), sampleAccepted.end());
-
-
-		//std::sort(accepted.begin(), accepted.end(), compare);
 	}
 
-	auto level1 = subsample(accepted, spacing * 2.0, acceptedL1);
-	auto level2 = subsample(level1, spacing * 4.0, acceptedL2);
-
-	//vector<Point> level1;
-	//vector<Point> level2;
-	//subsample(accepted, spacing * 2.0, level1);
-	//subsample(level1, spacing * 4.0, level2);
-	//auto level3 = subsample(level2, spacing * 8.0, gridOfAcceptedL3);
-	//auto level4 = subsample(level3, spacing * 16.0, gridOfAcceptedL4);
-	//auto level5 = subsample(&level4[0], level4.size(), spacing * 32.0);
-	//
-
-	printElapsedTime("processing", tStart);
-
-	cout << "estimated spacing? " << estimatedSpacing << endl;
+	printElapsedTime("processing", tStartProcessing);
 	cout << "#accepted: " << accepted.size() << endl;
-	cout << "#level1: " << level1.size() << endl;
-	//cout << "#level2: " << level2.size() << endl;
+
+	cout << "maxChecks: " << maxChecks << endl;
 
 
-	auto writeToDisk = [](vector<Point> points, string path) {
-
-		fstream file;
-		file.open(path, std::ios::out);
-
-		file << std::fixed << std::setprecision(4);
-
-		for (auto& point : points) {
-			file << point.x << ", " << point.y << ", " << point.z << endl;
-		}
-
-		file.close();
-
-	};
-
-	cout << "checks l0: " << acceptedL0.maxChecks << endl;
-	cout << "checks l1: " << acceptedL1.maxChecks << endl;
-	cout << "checks l2: " << acceptedL2.maxChecks << endl;
-
-	writeToDisk(accepted, "C:/temp/level0.csv");
-	writeToDisk(level1, "C:/temp/level1.csv");
-	writeToDisk(level2, "C:/temp/level2.csv");
-	//writeToDisk(level3, "C:/temp/level3.csv");
-	//writeToDisk(level4, "C:/temp/level4.csv");
-	//writeToDisk(level5, "C:/temp/level5.csv");
 
 
+
+	// DEBUG / WRITE FILES
+
+
+
+	LASHeader header;
+	header.min = chunk->min;
+	header.max = chunk->max;
+	header.numPoints = accepted.size();
+	header.scale = { 0.001, 0.001, 0.001 };
+
+	{
+		double tStartWriting = now();
+
+		writeLAS("C:/temp/level_0.las", header, accepted, points);
+
+		printElapsedTime("writing file", tStartWriting);
+	}
+
+	return;
+
+	int numLevels = 6;
+	vector<Point> toSample = accepted;
+
+	for (int i = 0; i < numLevels; i++) {
+		int gridSize = acceptedL0.gridSize / pow(2, i + 1);
+		double spacing = acceptedL0.spacing * pow(2.0, i + 1);
+
+		GridOfAccepted acceptedLX(gridSize, chunk->min, chunk->max, spacing);
+
+		auto levelX = subsample(toSample, spacing, acceptedLX);
+
+		header.numPoints = levelX.size();
+		string filename = "level_" + to_string(i + 1) + ".las";
+		writeLAS("C:/temp/" + filename, header, levelX, points);
+
+		toSample = levelX;
+	}
 }
