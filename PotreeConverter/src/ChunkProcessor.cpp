@@ -311,7 +311,13 @@ public:
 	Vector3<double> max;
 	Vector3<double> size;
 	double spacing = 1.0;
+
+	string name = "";
+	int index = 0;
+
+	Node* parent = nullptr;
 	vector<Node*> children = vector<Node*>(8, nullptr);
+
 	SparseGrid* grid = nullptr;
 	vector<Point> accepted;
 
@@ -361,6 +367,9 @@ public:
 		if (children[childIndex] == nullptr) {
 			BoundingBox box = childBoundingBoxOf(point);
 			Node* child = new Node(box.min, box.max, spacing * 0.5);
+			child->index = childIndex;
+			child->name = this->name + to_string(childIndex);
+			child->parent = this;
 
 			children[childIndex] = child;
 		}
@@ -387,7 +396,7 @@ public:
 		int childIndex = 0;
 
 		if (nx > 0.5) {
-			childIndex = childIndex | 0b001;
+			childIndex = childIndex | 0b100;
 		}
 
 		if (ny > 0.5) {
@@ -395,7 +404,7 @@ public:
 		}
 
 		if (nz > 0.5) {
-			childIndex = childIndex | 0b100;
+			childIndex = childIndex | 0b001;
 		}
 
 		return childIndex;
@@ -436,7 +445,215 @@ public:
 		return box;
 	}
 
+	void traverse(function<void(Node*)> callback) {
+
+		callback(this);
+
+		for (Node* child : children) {
+			if (child == nullptr) {
+				continue;
+			}
+
+			child->traverse(callback);
+		}
+
+
+	}
+
 };
+
+
+#include "json.hpp"
+using json = nlohmann::json;
+
+
+void writeHierarchy(string path, Chunk* chunk, Node* root, vector<Node*> flattened) {
+
+	unordered_map<Node*, int64_t> offsets;
+	int64_t offset = 0;
+	for (Node* node : flattened) {
+
+		offsets[node] = offset;
+
+		int64_t numPoints = node->accepted.size() + node->store.size();
+		offset += numPoints;
+	}
+
+	function<json(Node*)> traverse = [&traverse, &offsets](Node* node) -> json {
+
+		vector<json> jsChildren;
+		for (Node* child : node->children) {
+			if (child == nullptr) {
+				continue;
+			}
+
+			json jsChild = traverse(child);
+			jsChildren.push_back(jsChild);
+		}
+
+		uint64_t numPoints = node->accepted.size() + node->store.size();
+		int64_t offset = offsets[node];
+		int64_t byteOffset = offset * 16;
+		int64_t byteSize = numPoints * 16;
+
+		json jsNode = {
+			{"name", node->name},
+			{"numPoints", numPoints},
+			{"byteOffset", byteOffset},
+			{"byteSize", byteSize},
+			{"children", jsChildren}
+		};
+
+		return jsNode;
+	};
+
+	json js;
+	js["hierarchy"] = traverse(root);
+
+	{ // write to file
+		string str = js.dump(4);
+
+		string jsPath = path + "/hierarchy.json";
+
+		fstream file;
+		file.open(jsPath, ios::out);
+
+		file << str;
+
+		file.close();
+	}
+
+	{ // write to console
+		string str = js.dump(4);
+
+		cout << str << endl;
+	}
+}
+
+void writeCloudJson(string path, Chunk* chunk, Node* root) {
+
+	json box = {
+		{"min", {chunk->min.x, chunk->min.y, chunk->min.z}},
+		{"max", {chunk->max.x, chunk->max.y, chunk->max.z}},
+	};
+
+	double spacing = 1.0;
+	double scale = 0.001;
+
+	json aPosition = {
+		{"name", "position"},
+		{"elements", 3},
+		{"elementSize", 4},
+		{"type", "int32"},
+	};
+
+	json aRGBA = {
+		{"name", "rgba"},
+		{"elements", 4},
+		{"elementSize", 1},
+		{"type", "uint8"},
+	};
+
+	json attributes = {
+		{"bla", "blubb"}
+	};
+
+	json js = {
+		{"version", "1.9"},
+		{"projection", ""},
+		{"boundingBox", box},
+		{"spacing", spacing},
+		{"scale", scale},
+		{"attributes", {aPosition, aRGBA}},
+	};
+
+
+	{
+		string str = js.dump(4);
+
+		string jsPath = path + "/cloud.json";
+
+		fstream file;
+		file.open(jsPath, ios::out);
+
+		file << str;
+
+		file.close();
+	}
+}
+
+void writeOctreeData(string path, Chunk* chunk, Node* root) {
+
+	function<vector<Node*>(Node*, vector<Node*>& nodes)> flatten = [&flatten](Node* node, vector<Node*>& nodes) {
+		nodes.push_back(node);
+
+		for (Node* child : node->children) {
+			if (child == nullptr) {
+				continue;
+			}
+
+			flatten(child, nodes);
+		}
+
+		return nodes;
+	};
+
+	Vector3<double> min = chunk->min;
+	Vector3<double> max = chunk->max;
+	Vector3<double> size = max - min;
+	double scale = 0.001;
+
+	Buffer* attributeBuffer = chunk->points->attributeBuffer;
+	int64_t attributeBytes = 4;
+	const char* ccAttributeBuffer = attributeBuffer->dataChar;
+
+	fstream file;
+	file.open(path + "/pointcloud.data", ios::out | ios::binary);
+
+	vector<Node*> nodes;
+	flatten(root, nodes);
+
+	auto writePoint = [&file, &min, &scale, &attributeBytes, &ccAttributeBuffer](Point& point) {
+		int32_t ix = int32_t((point.x - min.x) / scale);
+		int32_t iy = int32_t((point.y - min.y) / scale);
+		int32_t iz = int32_t((point.z - min.z) / scale);
+
+		file.write(reinterpret_cast<const char*>(&ix), 4);
+		file.write(reinterpret_cast<const char*>(&iy), 4);
+		file.write(reinterpret_cast<const char*>(&iz), 4);
+
+		int64_t attributeOffset = point.index * attributeBytes;
+		file.write(ccAttributeBuffer + attributeOffset, attributeBytes);
+	};
+
+	for (Node* node : nodes) {
+		
+		for (Point& point : node->accepted) {
+			writePoint(point);
+		}
+
+		for (Point& point : node->store) {
+			writePoint(point);
+		}
+
+	}
+
+	file.close();
+
+	writeHierarchy(path, chunk, root, nodes);
+
+}
+
+void writePotree(string path, Chunk* chunk, Node* root) {
+
+	fs::create_directories(path);
+
+	//writeHierarchy(path, chunk, root);
+	writeCloudJson(path, chunk, root);
+	writeOctreeData(path, chunk, root);
+	
+
+}
 
 void processChunk(Chunk* chunk) {
 
@@ -447,6 +664,7 @@ void processChunk(Chunk* chunk) {
 
 	double spacing = 5.0;
 	Node* chunkRoot = new Node(chunk->min, chunk->max, spacing);
+	chunkRoot->name = "r";
 
 	double tStart = now();
 
@@ -459,6 +677,10 @@ void processChunk(Chunk* chunk) {
 	auto accepted = chunkRoot->accepted;
 
 	printElapsedTime("processing", tStart);
+
+	writePotree("C:/dev/test/potree", chunk, chunkRoot);
+
+	return;
 
 	LASHeader header;
 	header.min = chunk->min;

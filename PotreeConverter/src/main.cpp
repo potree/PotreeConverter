@@ -150,28 +150,28 @@ future<void> run() {
 
 	vector<Chunk*> chunks = getListOfChunks(metadata);
 
-	//loadChunk(chunks[0]);
+	loadChunk(chunks[0]);
 	//loadChunk(chunks[1]);
 	//loadChunk(chunks[2]);
 	//loadChunk(chunks[3]);
 
-	//processChunk(chunks[0]);
+	processChunk(chunks[0]);
 	//processChunk(chunks[1]);
 	//processChunk(chunks[2]);
 	//processChunk(chunks[3]);
 
-	vector<thread> threads;
-	for (Chunk* chunk : chunks) {
+	//vector<thread> threads;
+	//for (Chunk* chunk : chunks) {
 
-		threads.emplace_back(thread([chunk](){
-			loadChunk(chunk);
-			processChunk(chunk);
-		}));
-	}
+	//	threads.emplace_back(thread([chunk](){
+	//		loadChunk(chunk);
+	//		processChunk(chunk);
+	//	}));
+	//}
 
-	for (thread& t : threads) {
-		t.join();
-	}
+	//for (thread& t : threads) {
+	//	t.join();
+	//}
 
 	
 
