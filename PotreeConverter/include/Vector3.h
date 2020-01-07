@@ -35,6 +35,10 @@ struct Vector3{
 		return dd;
 	}
 
+	T max() {
+		return std::max(std::max(x, y), z);
+	}
+
 	string toString() {
 		string str = to_string(x) + ", " + to_string(y) + ", " + to_string(z);
 

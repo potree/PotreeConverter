@@ -11,7 +11,7 @@
 using std::string;
 namespace fs = std::experimental::filesystem;
 
-struct Cell {
+struct ChunkerCell {
 
 	uint32_t count = 0;
 	vector<Points*> batches;
@@ -25,7 +25,7 @@ public:
 	int32_t gridSize = 1; 
 	string targetDirectory = "";
 
-	vector<Cell> cells;
+	vector<ChunkerCell> cells;
 
 	Vector3<double> min = {0.0, 0.0, 0.0};
 	Vector3<double> max = {0.0, 0.0, 0.0};
@@ -105,7 +105,7 @@ public:
 
 			int32_t index = ux + gridSize * uy + gridSize * gridSize * uz;
 
-			Cell& cell = cells[index];
+			ChunkerCell& cell = cells[index];
 
 			Points* cellBatch = cell.batches.back();
 

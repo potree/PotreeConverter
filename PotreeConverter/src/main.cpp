@@ -15,67 +15,66 @@
 #include "Chunker.h"
 #include "Vector3.h"
 #include "ChunkProcessor.h"
+#include "PotreeWriter.h"
 
 using namespace std::experimental;
 
 namespace fs = std::experimental::filesystem;
 
+void saveChunk(string path, ChunkerCell& cell, int i) {
+	if (cell.count == 0) {
+		return;
+	}
 
-void saveChunks(Chunker* chunker) {
+	auto file = std::fstream(path, std::ios::out | std::ios::binary);
 
-	//std::ios_base::sync_with_stdio(false);
+	for (Points* batch : cell.batches) {
 
-	int64_t sum = 0;
-
-	for (int i = 0; i < chunker->cells.size(); i++) {
-		Cell& cell = chunker->cells[i];
-
-		if (cell.count == 0) {
-			continue;
+		vector<Vector3<double>> coordinates;
+		for (Point& point : batch->points) {
+			coordinates.emplace_back(point.x, point.y, point.z);
 		}
 
-		string chunkDirectory = chunker->targetDirectory + "/chunks/";
-		string path = chunkDirectory + "chunk_" + std::to_string(i) + ".bin";
+		const char* data = reinterpret_cast<const char*>(coordinates.data());
+		int64_t size = coordinates.size() * sizeof(Vector3<double>);
 
-		fs::create_directories(chunkDirectory);
-
-		auto file = std::fstream(path, std::ios::out | std::ios::binary);
-
-		for (Points* batch : cell.batches) {
-			sum += batch->points.size();
-		}
-
-		for (Points* batch : cell.batches) {
-
-			vector<Vector3<double>> coordinates;
-			for (Point& point : batch->points) {
-				coordinates.emplace_back(point.x, point.y, point.z);
-			}
-
-			const char* data = reinterpret_cast<const char*>(coordinates.data());
-			int64_t size = coordinates.size() * sizeof(Vector3<double>);
-
-			//const char* data = reinterpret_cast<const char*>(batch->data[0]->dataU8);
-			//int64_t size = batch->data[0]->size;
-
-			file.write(data, size);
-
-		}
-
-		for (Points* batch : cell.batches) {
-			const char* data = reinterpret_cast<const char*>(batch->attributeBuffer->dataU8);
-			int64_t size = batch->attributeBuffer->size;
-
-			file.write(data, size);
-		}
-
-		file.close();
-
-
+		file.write(data, size);
 
 	}
 
-	cout << "sum: " << sum << endl;
+	for (Points* batch : cell.batches) {
+		const char* data = reinterpret_cast<const char*>(batch->attributeBuffer->dataU8);
+		int64_t size = batch->attributeBuffer->size;
+
+		file.write(data, size);
+	}
+
+	file.close();
+}
+
+void saveChunks(Chunker* chunker) {
+
+	int64_t sum = 0;
+
+	string chunkDirectory = chunker->targetDirectory + "/chunks/";
+	fs::create_directories(chunkDirectory);
+
+	vector<thread> threads;
+
+	for (int i = 0; i < chunker->cells.size(); i++) {
+		ChunkerCell& cell = chunker->cells[i];
+		
+		string path = chunkDirectory + "chunk_" + std::to_string(i) + ".bin";
+
+		threads.emplace_back([path, &cell, i](){
+			saveChunk(path, cell, i);
+		});
+
+	}
+
+	for (thread& t : threads) {
+		t.join();
+	}
 
 }
 
@@ -125,53 +124,66 @@ future<Chunker*> chunking(LASLoader* loader, Metadata metadata) {
 	return chunker;
 }
 
+
 future<void> run() {
 
-	//string path = "D:/dev/pointclouds/Riegl/Retz_Airborne_Terrestrial_Combined_1cm.las";
+	string path = "D:/dev/pointclouds/Riegl/Retz_Airborne_Terrestrial_Combined_1cm.las";
 	//string path = "D:/dev/pointclouds/archpro/heidentor.las";
 	//string path = "D:/dev/pointclouds/mschuetz/lion.las";
 	//string path = "D:/dev/pointclouds/Riegl/Retz_Airborne_Terrestrial_Combined_1cm.las";
-	string path = "D:/dev/pointclouds/open_topography/ca13/morro_rock/merged.las";
-	string targetDirectory = "C:/temp/test";
+	//string path = "D:/dev/pointclouds/open_topography/ca13/morro_rock/merged.las";
+	//string targetDirectory = "C:/temp/test";
+	string targetDirectory = "C:/dev/workspaces/potree/develop/test/new_format";
 
 	auto tStart = now();
 
 	LASLoader* loader = new LASLoader(path);
 
+	auto size = loader->max - loader->min;
+	double octreeSize = size.max();
+
+
 	Metadata metadata;
 	metadata.targetDirectory = targetDirectory;
 	metadata.min = loader->min;
-	metadata.max = loader->max;
+	metadata.max = loader->min + octreeSize;
 	metadata.numPoints = loader->numPoints;
 	//metadata.chunkGridSize = gridSizeFromPointCount(metadata.numPoints);
-	metadata.chunkGridSize = 4;
+
+	int upperLevels = 3;
+	metadata.chunkGridSize = pow(2, upperLevels);
 
 	//Chunker* chunker = co_await chunking(loader, metadata);
 
 	vector<Chunk*> chunks = getListOfChunks(metadata);
 
-	loadChunk(chunks[0]);
-	//loadChunk(chunks[1]);
-	//loadChunk(chunks[2]);
-	//loadChunk(chunks[3]);
+	double scale = 0.001;
+	double spacing = 1.0;
+	PotreeWriter writer(targetDirectory, 
+		metadata.min,
+		metadata.max,
+		spacing,
+		scale,
+		upperLevels
+	);
 
-	processChunk(chunks[0]);
-	//processChunk(chunks[1]);
-	//processChunk(chunks[2]);
-	//processChunk(chunks[3]);
+	vector<thread> threads;
+	for (Chunk* chunk : chunks) {
+	//for (Chunk* chunk : {chunks[0], chunks[1]}) {
 
-	//vector<thread> threads;
-	//for (Chunk* chunk : chunks) {
+		threads.emplace_back(thread([&writer, chunk](){
+			loadChunk(chunk);
+			Node* chunkRoot = processChunk(chunk);
 
-	//	threads.emplace_back(thread([chunk](){
-	//		loadChunk(chunk);
-	//		processChunk(chunk);
-	//	}));
-	//}
+			writer.writeChunk(chunk, chunkRoot);
+		}));
+	}
 
-	//for (thread& t : threads) {
-	//	t.join();
-	//}
+	for (thread& t : threads) {
+		t.join();
+	}
+
+	writer.close();
 
 	
 

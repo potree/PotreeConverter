@@ -12,6 +12,8 @@
 
 #include "Metadata.h"
 #include "Points.h"
+#include "Node.h"
+#include "SparseGrid.h"
 #include "stuff.h"
 
 using std::atomic;
@@ -48,5 +50,5 @@ vector<Chunk*> getListOfChunks(Metadata& metadata);
 
 void loadChunk(Chunk* chunk);
 
-void processChunk(Chunk* chunk);
+Node* processChunk(Chunk* chunk);
 
