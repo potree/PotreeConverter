@@ -52,32 +52,6 @@ void saveChunk(string path, ChunkerCell& cell, int i) {
 	file.close();
 }
 
-void saveChunks(Chunker* chunker) {
-
-	int64_t sum = 0;
-
-	string chunkDirectory = chunker->targetDirectory + "/chunks/";
-	fs::create_directories(chunkDirectory);
-
-	vector<thread> threads;
-
-	for (int i = 0; i < chunker->cells.size(); i++) {
-		ChunkerCell& cell = chunker->cells[i];
-		
-		string path = chunkDirectory + "chunk_" + std::to_string(i) + ".bin";
-
-		threads.emplace_back([path, &cell, i](){
-			saveChunk(path, cell, i);
-		});
-
-	}
-
-	for (thread& t : threads) {
-		t.join();
-	}
-
-}
-
 int gridSizeFromPointCount(uint64_t pointCount) {
 	if (pointCount < 10'000'000) {
 		return 2;
@@ -97,20 +71,29 @@ int gridSizeFromPointCount(uint64_t pointCount) {
 
 future<Chunker*> chunking(LASLoader* loader, Metadata metadata) {
 
-	Chunker* chunker = new Chunker(metadata.targetDirectory, metadata.chunkGridSize);
+	//Chunker* chunker = new Chunker(metadata.targetDirectory, metadata.chunkGridSize);
+
+
+	string path = "D:/temp/test/chunks";
+	for (const auto& entry : fs::directory_iterator(path)){
+		fs::remove(entry);
+	}
 
 	Vector3<double> size = metadata.max - metadata.min;
 	double cubeSize = std::max(std::max(size.x, size.y), size.z);
 	Vector3<double> cubeMin = metadata.min;
 	Vector3<double> cubeMax = cubeMin + cubeSize;
 
-	chunker->min = cubeMin;
-	chunker->max = cubeMax;
+	//chunker->min = cubeMin;
+	//chunker->max = cubeMax;
+	Chunker* chunker = new Chunker(path, cubeMin, cubeMax, 32);
 
 	int batchNumber = 0;
 	Points* batch = co_await loader->nextBatch();
 	while (batch != nullptr) {
-		cout << "batch loaded: " << batchNumber << endl;
+		if ((batchNumber % 10) == 0) {
+			cout << "batch loaded: " << batchNumber << endl;
+		}
 
 		chunker->add(batch);
 
@@ -119,7 +102,7 @@ future<Chunker*> chunking(LASLoader* loader, Metadata metadata) {
 		batchNumber++;
 	}
 
-	saveChunks(chunker);
+	chunker->close();
 
 	return chunker;
 }
@@ -127,7 +110,8 @@ future<Chunker*> chunking(LASLoader* loader, Metadata metadata) {
 
 future<void> run() {
 
-	string path = "D:/dev/pointclouds/Riegl/Retz_Airborne_Terrestrial_Combined_1cm.las";
+	//string path = "D:/dev/pointclouds/Riegl/Retz_Airborne_Terrestrial_Combined_1cm.las";
+	string path = "D:/dev/pointclouds/Riegl/niederweiden.las";
 	//string path = "D:/dev/pointclouds/archpro/heidentor.las";
 	//string path = "D:/dev/pointclouds/mschuetz/lion.las";
 	//string path = "D:/dev/pointclouds/Riegl/Retz_Airborne_Terrestrial_Combined_1cm.las";
@@ -153,37 +137,37 @@ future<void> run() {
 	int upperLevels = 3;
 	metadata.chunkGridSize = pow(2, upperLevels);
 
-	//Chunker* chunker = co_await chunking(loader, metadata);
+	Chunker* chunker = co_await chunking(loader, metadata);
 
-	vector<Chunk*> chunks = getListOfChunks(metadata);
+	//vector<Chunk*> chunks = getListOfChunks(metadata);
 
-	double scale = 0.001;
-	double spacing = 1.0;
-	PotreeWriter writer(targetDirectory, 
-		metadata.min,
-		metadata.max,
-		spacing,
-		scale,
-		upperLevels
-	);
+	//double scale = 0.001;
+	//double spacing = 1.0;
+	//PotreeWriter writer(targetDirectory, 
+	//	metadata.min,
+	//	metadata.max,
+	//	spacing,
+	//	scale,
+	//	upperLevels
+	//);
 
-	vector<thread> threads;
-	for (Chunk* chunk : chunks) {
-	//for (Chunk* chunk : {chunks[0], chunks[1]}) {
+	//vector<thread> threads;
+	//for (Chunk* chunk : chunks) {
+	////for (Chunk* chunk : {chunks[0], chunks[1]}) {
 
-		threads.emplace_back(thread([&writer, chunk](){
-			loadChunk(chunk);
-			Node* chunkRoot = processChunk(chunk);
+	//	threads.emplace_back(thread([&writer, chunk](){
+	//		loadChunk(chunk);
+	//		Node* chunkRoot = processChunk(chunk);
 
-			writer.writeChunk(chunk, chunkRoot);
-		}));
-	}
+	//		writer.writeChunk(chunk, chunkRoot);
+	//	}));
+	//}
 
-	for (thread& t : threads) {
-		t.join();
-	}
+	//for (thread& t : threads) {
+	//	t.join();
+	//}
 
-	writer.close();
+	//writer.close();
 
 	
 

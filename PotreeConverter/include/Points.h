@@ -82,6 +82,10 @@ struct Points {
 	vector<Attribute> attributes;
 	Buffer* attributeBuffer;
 
+	~Points() {
+		delete attributeBuffer;
+	}
+
 };
 
 

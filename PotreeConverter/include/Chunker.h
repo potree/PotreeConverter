@@ -4,18 +4,28 @@
 #include <string>
 #include <assert.h>
 #include <filesystem>
+#include <atomic>
+#include <thread>
+
 
 #include "Points.h"
 #include "Vector3.h"
+#include "LASWriter.hpp"
 
 using std::string;
+using std::atomic_bool;
 namespace fs = std::experimental::filesystem;
 
 struct ChunkerCell {
-
 	uint32_t count = 0;
 	vector<Points*> batches;
+	//bool flushing = false;
+	atomic<bool> isFlusing = false;
+	int index = 0;
 
+	ChunkerCell() {
+		//flushing = false;
+	}
 };
 
 class Chunker {
@@ -23,18 +33,25 @@ public:
 
 	vector<Points*> batchesToDo;
 	int32_t gridSize = 1; 
-	string targetDirectory = "";
+	string path = "";
 
-	vector<ChunkerCell> cells;
+	vector<ChunkerCell*> cells;
+	Vector3<double> min;
+	Vector3<double> max;
+	atomic<int> flushThreads = 0;
 
-	Vector3<double> min = {0.0, 0.0, 0.0};
-	Vector3<double> max = {0.0, 0.0, 0.0};
+	// debug
+	mutex mtx_debug_message;
+	vector<string> debugMessages;
 
-	Chunker(string targetDirectory, int gridSize) {
-		this->targetDirectory = targetDirectory;
+	Chunker(string path, Vector3<double> min, Vector3<double> max, int gridSize) {
+		this->path = path;
 		this->gridSize = gridSize;
+		this->min = min;
+		this->max = max;
 
-		cells.resize(gridSize * gridSize * gridSize);
+		int numCells = gridSize * gridSize * gridSize;
+		cells.resize(numCells, nullptr);
 	}
 
 	void add(Points* batch) {
@@ -43,12 +60,13 @@ public:
 		Vector3<double> size = max - min;
 		Vector3<double> cellsD = Vector3<double>(gridSizeD, gridSizeD, gridSizeD);
 
-		// for each cell, count how many points will be added
 		int64_t numPoints = batch->points.size();
-		vector<int> cells_numNew(gridSize * gridSize * gridSize);
-		for (int64_t i = 0; i < numPoints; i++) {
+		int numCells = gridSize * gridSize * gridSize;
+		vector<int> cells_numNew(numCells);
 
+		for (int64_t i = 0; i < numPoints; i++) {
 			Point point = batch->points[i];
+
 			double x = point.x;
 			double y = point.y;
 			double z = point.z;
@@ -63,9 +81,8 @@ public:
 
 			int32_t index = ux + gridSize * uy + gridSize * gridSize * uz;
 
-			assert(index < cells.size());
-
 			cells_numNew[index]++;
+
 		}
 
 		// allocate necessary space for each cell
@@ -85,11 +102,21 @@ public:
 			cellBatch->attributeBuffer = new Buffer(numNew * aColor.bytes);
 			cellBatch->attributes.push_back(aColor);
 
-			cells[i].batches.push_back(cellBatch);
+			if (cells[i] == nullptr) {
+				ChunkerCell* cell = new ChunkerCell();
+				cells[i] = cell;
+
+
+				
+			}
+
+			cells[i]->batches.push_back(cellBatch);
 		}
 
+		vector<ChunkerCell*> toFlush;
+
 		// now add them
-		for(int64_t i = 0; i < batch->points.size(); i++) {
+		for (int64_t i = 0; i < batch->points.size(); i++) {
 			Point point = batch->points[i];
 			double x = point.x;
 			double y = point.y;
@@ -105,9 +132,10 @@ public:
 
 			int32_t index = ux + gridSize * uy + gridSize * gridSize * uz;
 
-			ChunkerCell& cell = cells[index];
+			ChunkerCell* cell = cells[index];
+			cell->index = index;
 
-			Points* cellBatch = cell.batches.back();
+			Points* cellBatch = cell->batches.back();
 
 			uint8_t r = batch->attributeBuffer->dataU8[4 * i + 0];
 			uint8_t g = batch->attributeBuffer->dataU8[4 * i + 1];
@@ -121,8 +149,141 @@ public:
 			rgbBuffer[0] = r;
 			rgbBuffer[1] = g;
 			rgbBuffer[2] = b;
-			cell.count++;
+			cell->count++;
+
+			if (cell->count > 1'000'000 && cell->isFlusing == false) {
+				toFlush.push_back(cell);
+				cell->isFlusing = true;
+			}
 		}
+
+		for (ChunkerCell* cell : toFlush) {
+			flushCell(cell);
+		}
+
+	}
+
+	void addDebugMessage(string message) {
+
+		lock_guard<mutex> lock(mtx_debug_message);
+
+		debugMessages.push_back(message);
+
+	}
+
+	void flushCell(ChunkerCell* cell) {
+
+		//if (cell->index != 133) {
+		//	return;
+		//}
+
+		//cout << "flush " << cell->index << endl;
+
+		double tStart = now();
+
+		cell->count = 0;
+		vector<Points*> batches = std::move(cell->batches);
+		cell->batches = vector<Points*>();
+		cell->isFlusing = true;
+
+		string filepath = path + "/chunk_" + to_string(cell->index) + ".bin";
+		flushThreads++;
+
+		thread t([cell, filepath, batches, this, tStart](){
+
+			int numPoints = 0;
+
+			for (Points* batch : batches) {
+				numPoints += batch->points.size();
+			}
+
+			addDebugMessage("start " + to_string(cell->index) + " - " + to_string(numPoints));
+
+			//printElapsedTime("#check 1", tStart);
+			fstream file;
+			file.open(filepath, ios::out | ios::binary | ios::app);
+
+			//printElapsedTime("#check 2", tStart);
+
+			int bytesPerPoint = 28;
+			int fileDataSize = numPoints * bytesPerPoint;
+			void* fileData = malloc(fileDataSize);
+			uint8_t* fileDataU8 = reinterpret_cast<uint8_t*>(fileData);
+
+			//printElapsedTime("#check 3", tStart);
+
+			int i = 0; 
+			for (Points* batch : batches) {
+
+				for (Point& point : batch->points) {
+
+					int fileDataOffset = i * bytesPerPoint;
+					
+					//double* posData = reinterpret_cast<double*>(fileDataU8 + fileDataOffset);
+					//posData[0] = point.x;
+					//posData[1] = point.y;
+					//posData[2] = point.z;
+
+					memcpy(fileDataU8 + fileDataOffset, &point, 24);
+
+
+					//uint8_t* rgbData = (fileDataU8 + fileDataOffset + 24);
+					
+					i++;
+				}			
+			}
+
+			//printElapsedTime("#check 4", tStart);
+
+			file.write(reinterpret_cast<const char*>(fileData), fileDataSize);
+
+			//printElapsedTime("#check 5", tStart);
+
+			file.close();
+
+			//printElapsedTime("#check 6", tStart);
+
+			free(fileData);
+			//printElapsedTime("#check 7", tStart);
+
+			cell->isFlusing = false;
+
+			for (Points* batch : batches) {
+				delete batch;
+			}
+
+			flushThreads--;
+			double duration = now() - tStart;
+
+			//printElapsedTime("#check 8", tStart);
+
+			addDebugMessage("end " + to_string(cell->index) + " - " + to_string(numPoints) + " - " + to_string(duration) + " s");
+		});
+		t.detach();
+
+	}
+
+	void close() {
+
+		int numCells = 0;
+		for (ChunkerCell* cell : cells) {
+			if (cell != nullptr && cell->count > 0) {
+				numCells++;
+				flushCell(cell);
+				//cout << cell.count << endl;
+			}
+		}
+
+		cout << numCells << endl;
+
+		cout << "waiting flush" << endl;
+		while (flushThreads > 0) {
+			std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+			cout << "#flushThreads: " << flushThreads << endl;
+		}
+		cout << "all flushed" << endl;
+
 
 	}
 
