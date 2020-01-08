@@ -22,6 +22,10 @@ struct ChunkerCell {
 	//bool flushing = false;
 	atomic<bool> isFlusing = false;
 	int index = 0;
+	int ix = 0;
+	int iy = 0;
+	int iz = 0;
+	string name = "";
 
 	ChunkerCell() {
 		//flushing = false;
@@ -104,9 +108,54 @@ public:
 
 			if (cells[i] == nullptr) {
 				ChunkerCell* cell = new ChunkerCell();
+				cell->index = i; 
+
+				int ix = i % gridSize;
+				int iy = ((i - ix) / gridSize) % gridSize;
+				int iz = (i - ix - iy * gridSize) / (gridSize * gridSize);
+
+				cell->ix = ix;
+				cell->iy = iy;
+				cell->iz = iz;
+
+				string name = "r";
+				int levels = std::log2(gridSize);
+
+				if (cell->ix > 0) {
+					int a = 10;
+				}
+
+				int div = gridSize;
+				for (int j = 0; j < levels; j++) {
+					//double nx = double(ix) / double(div);
+					//double ny = double(iy) / double(div);
+					//double nz = double(iz) / double(div);
+
+					int lIndex = 0;
+
+					if (ix >= (div / 2)) {
+						lIndex = lIndex + 0b100;
+						ix = ix - div;
+					}
+
+					if (iy >= (div / 2)) {
+						lIndex = lIndex + 0b010;
+						iy = iy - div;
+					}
+
+					if (iz >= (div / 2)) {
+						lIndex = lIndex + 0b001;
+						iz = iz - div;
+					}
+
+					name += to_string(lIndex);
+					div = div / 2;
+				}
+				
+				cell->name = name;
+				//cell->name = to_string(cell->ix) + "_" + to_string(cell->iy) + "_" + to_string(cell->iz);
+
 				cells[i] = cell;
-
-
 				
 			}
 
@@ -133,7 +182,6 @@ public:
 			int32_t index = ux + gridSize * uy + gridSize * gridSize * uz;
 
 			ChunkerCell* cell = cells[index];
-			cell->index = index;
 
 			Points* cellBatch = cell->batches.back();
 
@@ -186,7 +234,8 @@ public:
 		cell->batches = vector<Points*>();
 		cell->isFlusing = true;
 
-		string filepath = path + "/chunk_" + to_string(cell->index) + ".bin";
+		//string filepath = path + "/chunk_" + to_string(cell->index) + ".bin";
+		string filepath = path + "/" + cell->name + ".bin";
 		flushThreads++;
 
 		thread t([cell, filepath, batches, this, tStart](){

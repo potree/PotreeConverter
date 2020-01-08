@@ -86,7 +86,7 @@ future<Chunker*> chunking(LASLoader* loader, Metadata metadata) {
 
 	//chunker->min = cubeMin;
 	//chunker->max = cubeMax;
-	Chunker* chunker = new Chunker(path, cubeMin, cubeMax, 32);
+	Chunker* chunker = new Chunker(path, cubeMin, cubeMax, 2);
 
 	int batchNumber = 0;
 	Points* batch = co_await loader->nextBatch();
@@ -111,8 +111,8 @@ future<Chunker*> chunking(LASLoader* loader, Metadata metadata) {
 future<void> run() {
 
 	//string path = "D:/dev/pointclouds/Riegl/Retz_Airborne_Terrestrial_Combined_1cm.las";
-	string path = "D:/dev/pointclouds/Riegl/niederweiden.las";
-	//string path = "D:/dev/pointclouds/archpro/heidentor.las";
+	//string path = "D:/dev/pointclouds/Riegl/niederweiden.las";
+	string path = "D:/dev/pointclouds/archpro/heidentor.las";
 	//string path = "D:/dev/pointclouds/mschuetz/lion.las";
 	//string path = "D:/dev/pointclouds/Riegl/Retz_Airborne_Terrestrial_Combined_1cm.las";
 	//string path = "D:/dev/pointclouds/open_topography/ca13/morro_rock/merged.las";
