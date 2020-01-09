@@ -74,7 +74,8 @@ future<Chunker*> chunking(LASLoader* loader, Metadata metadata) {
 	//Chunker* chunker = new Chunker(metadata.targetDirectory, metadata.chunkGridSize);
 
 
-	string path = "D:/temp/test/chunks";
+	//string path = "D:/temp/test/chunks";
+	string path = metadata.targetDirectory + "/chunks";
 	for (const auto& entry : fs::directory_iterator(path)){
 		fs::remove(entry);
 	}
@@ -86,7 +87,7 @@ future<Chunker*> chunking(LASLoader* loader, Metadata metadata) {
 
 	//chunker->min = cubeMin;
 	//chunker->max = cubeMax;
-	Chunker* chunker = new Chunker(path, cubeMin, cubeMax, 2);
+	Chunker* chunker = new Chunker(path, cubeMin, cubeMax, 8);
 
 	int batchNumber = 0;
 	Points* batch = co_await loader->nextBatch();
@@ -117,6 +118,7 @@ future<void> run() {
 	//string path = "D:/dev/pointclouds/Riegl/Retz_Airborne_Terrestrial_Combined_1cm.las";
 	//string path = "D:/dev/pointclouds/open_topography/ca13/morro_rock/merged.las";
 	//string targetDirectory = "C:/temp/test";
+
 	string targetDirectory = "C:/dev/workspaces/potree/develop/test/new_format";
 
 	auto tStart = now();
@@ -137,37 +139,49 @@ future<void> run() {
 	int upperLevels = 3;
 	metadata.chunkGridSize = pow(2, upperLevels);
 
-	Chunker* chunker = co_await chunking(loader, metadata);
+	//Chunker* chunker = co_await chunking(loader, metadata);
 
-	//vector<Chunk*> chunks = getListOfChunks(metadata);
 
-	//double scale = 0.001;
-	//double spacing = 1.0;
-	//PotreeWriter writer(targetDirectory, 
-	//	metadata.min,
-	//	metadata.max,
-	//	spacing,
-	//	scale,
-	//	upperLevels
-	//);
 
-	//vector<thread> threads;
-	//for (Chunk* chunk : chunks) {
-	////for (Chunk* chunk : {chunks[0], chunks[1]}) {
+	vector<Chunk*> chunks = getListOfChunks(metadata);
 
-	//	threads.emplace_back(thread([&writer, chunk](){
-	//		loadChunk(chunk);
-	//		Node* chunkRoot = processChunk(chunk);
+	double scale = 0.001;
+	double spacing = 1.0;
+	PotreeWriter writer(targetDirectory, 
+		metadata.min,
+		metadata.max,
+		spacing,
+		scale,
+		upperLevels
+	);
 
-	//		writer.writeChunk(chunk, chunkRoot);
-	//	}));
-	//}
+	//loadChunk(chunks[0]);
+	//loadChunk(chunks[1]);
+	//Node* chunkRoot1 = processChunk(chunks[0]);
+	//Node* chunkRoot2 = processChunk(chunks[1]);
 
-	//for (thread& t : threads) {
-	//	t.join();
-	//}
+	//writer.writeChunk(chunks[0], chunkRoot1);
+	//writer.writeChunk(chunks[1], chunkRoot2);
 
 	//writer.close();
+
+	vector<thread> threads;
+	for (Chunk* chunk : chunks) {
+	//for (Chunk* chunk : {chunks[0], chunks[1]}) {
+
+		threads.emplace_back(thread([&writer, chunk](){
+			loadChunk(chunk);
+			Node* chunkRoot = processChunk(chunk);
+
+			writer.writeChunk(chunk, chunkRoot);
+		}));
+	}
+
+	for (thread& t : threads) {
+		t.join();
+	}
+
+	writer.close();
 
 	
 
@@ -179,11 +193,49 @@ future<void> run() {
 	co_return;
 }
 
+//#include "TaskPool.h"
+
+//void testTaskPool() {
+//
+//	struct Batch {
+//		string path = "";
+//		string text = "";
+//
+//		Batch(string path, string text) {
+//			this->path = path;
+//			this->text = text;
+//		}
+//	};
+//
+//	string someCapturedValue = "asoudh adpif sdgsrg";
+//	auto processor = [someCapturedValue](shared_ptr<Batch> batch) {
+//		fstream file;
+//		file.open(batch->path, ios::out);
+//		file << batch->text;
+//		file << someCapturedValue;
+//		file.close();
+//	};
+//
+//	TaskPool<Batch> pool(5, processor);
+//
+//	shared_ptr<Batch> batch1 = make_shared<Batch>(
+//		"C:/temp/test1.txt",
+//		"content of file 1 ");
+//	shared_ptr<Batch> batch2 = make_shared<Batch>(
+//		"C:/temp/test2.txt",
+//		"content of file 2 ");
+//
+//	pool.addTask(batch1);
+//	pool.addTask(batch2);
+//
+//	pool.close();
+//}
+
 int main(int argc, char **argv){
 
-	//cout << sizeof(Point) << endl;
-
 	run().wait();
+
+	//testTaskPool();
 
 	return 0;
 }

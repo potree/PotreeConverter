@@ -11,6 +11,11 @@
 #include "Points.h"
 #include "Vector3.h"
 #include "LASWriter.hpp"
+#include "TaskPool.h"
+
+#include "json.hpp"
+
+using json = nlohmann::json;
 
 using std::string;
 using std::atomic_bool;
@@ -32,8 +37,68 @@ struct ChunkerCell {
 	}
 };
 
+// might be better off using https://github.com/progschj/ThreadPool
+struct FlushTask {
+	ChunkerCell* cell = nullptr;
+	string filepath = "";
+	vector<Points*> batches;
+};
+
+mutex mtx_abc;
+
+auto flushProcessor = [](shared_ptr<FlushTask> task) {
+
+	double tStart = now();
+
+	int numPoints = 0;
+
+	for (Points* batch : task->batches) {
+		numPoints += batch->points.size();
+	}
+
+	int bytesPerPoint = 28;
+	int fileDataSize = numPoints * bytesPerPoint;
+	void* fileData = malloc(fileDataSize);
+	uint8_t* fileDataU8 = reinterpret_cast<uint8_t*>(fileData);
+
+	int i = 0;
+	for (Points* batch : task->batches) {
+
+		for (Point& point : batch->points) {
+
+			int fileDataOffset = i * bytesPerPoint;
+
+			memcpy(fileDataU8 + fileDataOffset, &point, 24);
+
+			i++;
+		}
+	}
+
+	lock_guard<mutex> lock(mtx_abc);
+
+	fstream file;
+	file.open(task->filepath, ios::out | ios::binary | ios::app);
+	file.write(reinterpret_cast<const char*>(fileData), fileDataSize);
+	file.close();
+
+	//cout << task->filepath << endl;
+
+	free(fileData);
+
+	task->cell->isFlusing = false;
+
+	for (Points* batch : task->batches) {
+		delete batch;
+	}
+
+	double duration = now() - tStart;
+
+};
+
 class Chunker {
 public:
+
+
 
 	vector<Points*> batchesToDo;
 	int32_t gridSize = 1; 
@@ -47,6 +112,8 @@ public:
 	// debug
 	mutex mtx_debug_message;
 	vector<string> debugMessages;
+	
+	shared_ptr<TaskPool<FlushTask>> pool;
 
 	Chunker(string path, Vector3<double> min, Vector3<double> max, int gridSize) {
 		this->path = path;
@@ -56,6 +123,10 @@ public:
 
 		int numCells = gridSize * gridSize * gridSize;
 		cells.resize(numCells, nullptr);
+
+		int numFlushThreads = 10;
+		pool = make_shared<TaskPool<FlushTask>>(numFlushThreads, flushProcessor);
+
 	}
 
 	void add(Points* batch) {
@@ -121,39 +192,30 @@ public:
 				string name = "r";
 				int levels = std::log2(gridSize);
 
-				if (cell->ix > 0) {
-					int a = 10;
-				}
-
 				int div = gridSize;
 				for (int j = 0; j < levels; j++) {
-					//double nx = double(ix) / double(div);
-					//double ny = double(iy) / double(div);
-					//double nz = double(iz) / double(div);
 
 					int lIndex = 0;
 
 					if (ix >= (div / 2)) {
 						lIndex = lIndex + 0b100;
-						ix = ix - div;
+						ix = ix - div / 2;
 					}
 
 					if (iy >= (div / 2)) {
 						lIndex = lIndex + 0b010;
-						iy = iy - div;
+						iy = iy - div / 2;
 					}
 
 					if (iz >= (div / 2)) {
 						lIndex = lIndex + 0b001;
-						iz = iz - div;
+						iz = iz - div / 2;
 					}
 
 					name += to_string(lIndex);
 					div = div / 2;
 				}
-				
 				cell->name = name;
-				//cell->name = to_string(cell->ix) + "_" + to_string(cell->iy) + "_" + to_string(cell->iz);
 
 				cells[i] = cell;
 				
@@ -221,116 +283,64 @@ public:
 
 	void flushCell(ChunkerCell* cell) {
 
-		//if (cell->index != 133) {
-		//	return;
-		//}
 
-		//cout << "flush " << cell->index << endl;
-
-		double tStart = now();
+		auto task = make_shared<FlushTask>();
+		task->cell = cell;
+		task->filepath = path + "/" + cell->name + ".bin";
+		task->batches = std::move(cell->batches);
 
 		cell->count = 0;
-		vector<Points*> batches = std::move(cell->batches);
 		cell->batches = vector<Points*>();
 		cell->isFlusing = true;
 
-		//string filepath = path + "/chunk_" + to_string(cell->index) + ".bin";
-		string filepath = path + "/" + cell->name + ".bin";
-		flushThreads++;
+		pool->addTask(task);
 
-		thread t([cell, filepath, batches, this, tStart](){
+	}
 
-			int numPoints = 0;
+	void saveMetadata() {
 
-			for (Points* batch : batches) {
-				numPoints += batch->points.size();
-			}
+		string filepath = path + "/chunks.json";
 
-			addDebugMessage("start " + to_string(cell->index) + " - " + to_string(numPoints));
+		auto min = this->min;
+		auto max = this->max;
 
-			//printElapsedTime("#check 1", tStart);
-			fstream file;
-			file.open(filepath, ios::out | ios::binary | ios::app);
+		json js = {
+			{"min", {min.x, min.y, min.z}},
+			{"max", {max.x, max.y, max.z}},
+		};
 
-			//printElapsedTime("#check 2", tStart);
-
-			int bytesPerPoint = 28;
-			int fileDataSize = numPoints * bytesPerPoint;
-			void* fileData = malloc(fileDataSize);
-			uint8_t* fileDataU8 = reinterpret_cast<uint8_t*>(fileData);
-
-			//printElapsedTime("#check 3", tStart);
-
-			int i = 0; 
-			for (Points* batch : batches) {
-
-				for (Point& point : batch->points) {
-
-					int fileDataOffset = i * bytesPerPoint;
-					
-					//double* posData = reinterpret_cast<double*>(fileDataU8 + fileDataOffset);
-					//posData[0] = point.x;
-					//posData[1] = point.y;
-					//posData[2] = point.z;
-
-					memcpy(fileDataU8 + fileDataOffset, &point, 24);
-
-
-					//uint8_t* rgbData = (fileDataU8 + fileDataOffset + 24);
-					
-					i++;
-				}			
-			}
-
-			//printElapsedTime("#check 4", tStart);
-
-			file.write(reinterpret_cast<const char*>(fileData), fileDataSize);
-
-			//printElapsedTime("#check 5", tStart);
-
-			file.close();
-
-			//printElapsedTime("#check 6", tStart);
-
-			free(fileData);
-			//printElapsedTime("#check 7", tStart);
-
-			cell->isFlusing = false;
-
-			for (Points* batch : batches) {
-				delete batch;
-			}
-
-			flushThreads--;
-			double duration = now() - tStart;
-
-			//printElapsedTime("#check 8", tStart);
-
-			addDebugMessage("end " + to_string(cell->index) + " - " + to_string(numPoints) + " - " + to_string(duration) + " s");
-		});
-		t.detach();
+		fstream file;
+		file.open(filepath, ios::out);
+		file << js.dump(4);
+		file.close();
 
 	}
 
 	void close() {
 
+		vector<ChunkerCell*> populatedCells;
 		int numCells = 0;
 		for (ChunkerCell* cell : cells) {
 			if (cell != nullptr && cell->count > 0) {
-				numCells++;
-				flushCell(cell);
-				//cout << cell.count << endl;
+				populatedCells.push_back(cell);
 			}
 		}
 
-		cout << numCells << endl;
+		// finish all other flushes first
+		// used to make sure that we are not flushing to a file that's already being flushed
+		pool->waitTillEmpty();
+
+		// now flush all the remaining cells
+		for (ChunkerCell* cell : populatedCells) {
+			flushCell(cell);
+		}
+
+
+		saveMetadata();
+
 
 		cout << "waiting flush" << endl;
-		while (flushThreads > 0) {
-			std::this_thread::sleep_for(std::chrono::milliseconds(100));
-
-			cout << "#flushThreads: " << flushThreads << endl;
-		}
+		pool->close();
 		cout << "all flushed" << endl;
 
 

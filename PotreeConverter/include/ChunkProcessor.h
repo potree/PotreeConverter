@@ -34,8 +34,9 @@ struct Chunk {
 
 	string file = "";
 	Points* points = nullptr;
-	int index = -1;
-	Vector3<int> index3D;
+	string id = "";
+	//int index = -1;
+	//Vector3<int> index3D;
 	Vector3<double> min = {Infinity, Infinity, Infinity};
 	Vector3<double> max = {-Infinity, -Infinity, -Infinity };
 

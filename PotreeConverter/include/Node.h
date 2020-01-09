@@ -51,14 +51,6 @@ public:
 
 	void add(Point& candidate) {
 
-		//if (candidate.x >= 693910.0 - 230.0 - 11.0) {
-		//	return;
-		//}
-
-		//if (candidate.y > 3915782.0 + 50.0 || candidate.y < 3915782.0 + 46.0) {
-		//	return;
-		//}
-
 		bool isDistant = grid->isDistant(candidate);
 
 		if (isDistant) {

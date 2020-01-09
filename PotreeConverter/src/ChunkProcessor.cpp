@@ -33,62 +33,78 @@ uint64_t toGridIndex(Chunk* chunk, Point& point, uint64_t gridSize) {
 	return index;
 }
 
+
+struct BoundingBox {
+	Vector3<double> min;
+	Vector3<double> max;
+};
+
+BoundingBox childBoundingBoxOf(BoundingBox box, int index) {
+	Vector3<double> center = (box.max + box.min) / 2.0;
+	BoundingBox childBox;
+
+	if ((index & 0b100) == 0) {
+		childBox.min.x = box.min.x;
+		childBox.max.x = center.x;
+	} else {
+		childBox.min.x = center.x;
+		childBox.max.x = box.max.x;
+	}
+
+	if ((index & 0b010) == 0) {
+		childBox.min.y = box.min.y;
+		childBox.max.y = center.y;
+	} else {
+		childBox.min.y = center.y;
+		childBox.max.y = box.max.y;
+	}
+
+	if ((index & 0b01) == 0) {
+		childBox.min.z = box.min.z;
+		childBox.max.z = center.z;
+	} else {
+		childBox.min.z = center.z;
+		childBox.max.z = box.max.z;
+	}
+
+	return childBox;
+}
+
 vector<Chunk*> getListOfChunks(Metadata& metadata) {
 	string chunkDirectory = metadata.targetDirectory + "/chunks";
 
-	auto toIndex = [](string filename) -> int {
+	auto toID = [](string filename) -> string {
 		string strID = stringReplace(filename, "chunk_", "");
 		strID = stringReplace(strID, ".bin", "");
 
-		int index = std::stoi(strID);
-
-		return index;
+		return strID;
 	};
-
-	int chunkGridSize = metadata.chunkGridSize;
-	auto toCellCoordinate = [chunkGridSize](int index) -> Vector3<int> {
-		int size = chunkGridSize;
-		int x = index % size;
-		int y = (index % (size * size) - x) / size;
-		int z = (index - (x + y * size)) / (size * size);
-
-		Vector3<int> coordinates = { x, y, z };
-
-		return coordinates;
-	};
-
-	int gridSize = metadata.chunkGridSize;
-	//Vector3<double> min = metadata.min;
-	//Vector3<double> max = metadata.max;
-	Vector3<double> fittedSize = metadata.max - metadata.min;
-	double cubeSizeScalar = std::max(std::max(fittedSize.x, fittedSize.y), fittedSize.z);
-	Vector3<double> cubeSize = { cubeSizeScalar , cubeSizeScalar , cubeSizeScalar };
-	Vector3<double> min = metadata.min;
-	Vector3<double> max = min + cubeSize;
-	Vector3<double> cellSize = cubeSize / double(gridSize);
 
 	vector<Chunk*> chunksToLoad;
 	for (const auto& entry : fs::directory_iterator(chunkDirectory)) {
-
 		string filename = entry.path().filename().string();
-		int chunkIndex = toIndex(filename);
-		Vector3<int> cellCoordinate = toCellCoordinate(chunkIndex);
+		string chunkID = toID(filename);
+
+		if (!iEndsWith(filename, ".bin")) {
+			continue;
+		}
 
 		Chunk* chunk = new Chunk();
 		chunk->file = entry.path().string();
-		chunk->index = chunkIndex;
-		chunk->index3D = cellCoordinate;
+		chunk->id = chunkID;
 
-		Vector3<double> dcoord = {
-			double(cellCoordinate.x),
-			double(cellCoordinate.y),
-			double(cellCoordinate.z)
-		};
-		Vector3<double> cellMin = min + (dcoord * cellSize);
-		Vector3<double> cellMax = cellMin + cellSize;
+		Vector3<double> min = metadata.min;
+		Vector3<double> max = metadata.max;
+		BoundingBox box = { min, max };
 
-		chunk->min = cellMin;
-		chunk->max = cellMax;
+		for (int i = 1; i < chunkID.size(); i++) {
+			int index = chunkID[i] - '0'; // this feels so wrong...
+
+			box = childBoundingBoxOf(box, index);	
+		}
+
+		chunk->min = box.min;
+		chunk->max = box.max;
 
 		chunksToLoad.push_back(chunk);
 	}
@@ -98,7 +114,8 @@ vector<Chunk*> getListOfChunks(Metadata& metadata) {
 
 void loadChunk(Chunk* chunk) {
 	auto filesize = fs::file_size(chunk->file);
-	int numPoints = filesize / 28;
+	int bytesPerPoint = 28;
+	int numPoints = filesize / bytesPerPoint;
 
 	Attribute aColor;
 	aColor.byteOffset = 0;
@@ -114,18 +131,26 @@ void loadChunk(Chunk* chunk) {
 
 	ifstream inputFile("shorts.txt", std::ios::binary);
 
-	int bufferSize = numPoints * sizeof(Vector3<double>);
+	int bufferSize = numPoints * bytesPerPoint;
 	void* buffer = malloc(bufferSize);
-	Vector3<double>* coordinates = reinterpret_cast<Vector3<double>*>(buffer);
-	file.read(reinterpret_cast<char*>(coordinates), bufferSize);
-	file.read(points->attributeBuffer->dataChar, points->attributeBuffer->size);
+	uint8_t* bufferU8 = reinterpret_cast<uint8_t*>(buffer);
+	
+	file.read(reinterpret_cast<char*>(buffer), bufferSize);
 
 	for (int i = 0; i < numPoints; i++) {
 
+		uint64_t pointOffset = i * bytesPerPoint;
+		double* coordinates = reinterpret_cast<double*>(bufferU8 + pointOffset);
+
 		Point point;
-		point.x = coordinates[i].x;
-		point.y = coordinates[i].y;
-		point.z = coordinates[i].z;
+		point.x = coordinates[0];
+		point.y = coordinates[1];
+		point.z = coordinates[2];
+
+		points->attributeBuffer->dataU8[4 * i + 0] = 255;
+		points->attributeBuffer->dataU8[4 * i + 1] = 0;
+		points->attributeBuffer->dataU8[4 * i + 2] = 0;
+		points->attributeBuffer->dataU8[4 * i + 3] = 255;
 
 		point.index = i;
 
@@ -192,9 +217,9 @@ Node* processChunk(Chunk* chunk) {
 	//cout << chunk->min.toString() << endl;
 	//cout << chunk->max.toString() << endl;
 
-	double spacing = 5.0;
+	double spacing = 0.02;
 	Node* chunkRoot = new Node(chunk->min, chunk->max, spacing);
-	chunkRoot->name = "r";
+	chunkRoot->name = chunk->id;
 
 	double tStart = now();
 
