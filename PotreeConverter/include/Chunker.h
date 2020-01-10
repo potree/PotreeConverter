@@ -64,11 +64,19 @@ auto flushProcessor = [](shared_ptr<FlushTask> task) {
 	int i = 0;
 	for (Points* batch : task->batches) {
 
+		uint8_t* attBuffer = batch->attributeBuffer->dataU8;
+		int attributesByteSize = 4;
+
+		//vector<uint8_t> dbgSrc(attBuffer, attBuffer + batch->attributeBuffer->size);
+
 		for (Point& point : batch->points) {
 
 			int fileDataOffset = i * bytesPerPoint;
 
 			memcpy(fileDataU8 + fileDataOffset, &point, 24);
+			
+			uint8_t* attSrc = attBuffer + (point.index * attributesByteSize);
+			memcpy(fileDataU8 + fileDataOffset + 24, attSrc, attributesByteSize);
 
 			i++;
 		}
@@ -98,11 +106,10 @@ auto flushProcessor = [](shared_ptr<FlushTask> task) {
 class Chunker {
 public:
 
-
-
 	vector<Points*> batchesToDo;
 	int32_t gridSize = 1; 
 	string path = "";
+	Attributes attributes;
 
 	vector<ChunkerCell*> cells;
 	Vector3<double> min;
@@ -115,11 +122,13 @@ public:
 	
 	shared_ptr<TaskPool<FlushTask>> pool;
 
-	Chunker(string path, Vector3<double> min, Vector3<double> max, int gridSize) {
+	Chunker(string path, Attributes attributes, Vector3<double> min, Vector3<double> max, int gridSize) {
 		this->path = path;
-		this->gridSize = gridSize;
+		this->attributes = attributes;
 		this->min = min;
 		this->max = max;
+		this->gridSize = gridSize;
+
 
 		int numCells = gridSize * gridSize * gridSize;
 		cells.resize(numCells, nullptr);
@@ -131,6 +140,10 @@ public:
 
 	void add(Points* batch) {
 
+		Attributes attributes = batch->attributes;
+
+		int attributesByteSize = 4;
+
 		double gridSizeD = double(gridSize);
 		Vector3<double> size = max - min;
 		Vector3<double> cellsD = Vector3<double>(gridSizeD, gridSizeD, gridSizeD);
@@ -140,7 +153,7 @@ public:
 		vector<int> cells_numNew(numCells);
 
 		for (int64_t i = 0; i < numPoints; i++) {
-			Point point = batch->points[i];
+			Point& point = batch->points[i];
 
 			double x = point.x;
 			double y = point.y;
@@ -168,14 +181,11 @@ public:
 				continue;
 			}
 
-			Attribute aColor;
-			aColor.byteOffset = 0;
-			aColor.bytes = 4;
-			aColor.name = "color";
+			uint64_t attributeBufferSize = numNew * attributes.byteSize;
 
 			Points* cellBatch = new Points();
-			cellBatch->attributeBuffer = new Buffer(numNew * aColor.bytes);
-			cellBatch->attributes.push_back(aColor);
+			cellBatch->attributeBuffer = new Buffer(attributeBufferSize);
+			cellBatch->attributes = attributes;
 
 			if (cells[i] == nullptr) {
 				ChunkerCell* cell = new ChunkerCell();
@@ -246,19 +256,23 @@ public:
 			ChunkerCell* cell = cells[index];
 
 			Points* cellBatch = cell->batches.back();
+			uint8_t* attBuffer = batch->attributeBuffer->dataU8;
 
-			uint8_t r = batch->attributeBuffer->dataU8[4 * i + 0];
-			uint8_t g = batch->attributeBuffer->dataU8[4 * i + 1];
-			uint8_t b = batch->attributeBuffer->dataU8[4 * i + 2];
+			// copy point and its attribute buffer
+			uint64_t srcIndex = point.index;
+			uint64_t destIndex = cellBatch->points.size();
 
-			int64_t offset = cellBatch->points.size();
+			point.index = destIndex;
+
 			cellBatch->points.push_back(point);
 
-			uint8_t* rgbBuffer = cellBatch->attributeBuffer->dataU8 + (4 * offset + 0);
+			uint8_t* attDest = cellBatch->attributeBuffer->dataU8 + (destIndex * attributesByteSize);
+			uint8_t* attSrc = batch->attributeBuffer->dataU8 + (srcIndex * attributesByteSize);
+			memcpy(attDest, attSrc, attributesByteSize);
 
-			rgbBuffer[0] = r;
-			rgbBuffer[1] = g;
-			rgbBuffer[2] = b;
+			//vector<uint8_t> dbgSrc(attSrc, attSrc + 4);
+			//vector<uint8_t> dbgDest(attDest, attDest + 4);
+			
 			cell->count++;
 
 			if (cell->count > 1'000'000 && cell->isFlusing == false) {
@@ -266,6 +280,21 @@ public:
 				cell->isFlusing = true;
 			}
 		}
+
+		//for (ChunkerCell* cell : cells) {
+		//	if (cell == nullptr) {
+		//		continue;
+		//	}
+
+		//	for (Points* batch : cell->batches) {
+		//		vector<uint8_t> dbgSrc(
+		//			batch->attributeBuffer->dataU8,
+		//			batch->attributeBuffer->dataU8 + batch->attributeBuffer->size);
+
+		//		int a = 10;
+		//	}
+		//}
+		
 
 		for (ChunkerCell* cell : toFlush) {
 			flushCell(cell);
@@ -283,6 +312,17 @@ public:
 
 	void flushCell(ChunkerCell* cell) {
 
+		//for (Points* batch : cell->batches) {
+		//	if (batch->points[0].index != 0) {
+		//		int a = 10;
+		//	}
+
+		//	vector<uint8_t> dbgSrc(
+		//		batch->attributeBuffer->dataU8, 
+		//		batch->attributeBuffer->dataU8 + batch->attributeBuffer->size);
+
+		//	int abc = 10;
+		//}
 
 		auto task = make_shared<FlushTask>();
 		task->cell = cell;
@@ -318,6 +358,10 @@ public:
 
 	void close() {
 
+		// finish all other flushes first
+		// used to make sure that we are not flushing to a file that's already being flushed
+		pool->waitTillEmpty();
+
 		vector<ChunkerCell*> populatedCells;
 		int numCells = 0;
 		for (ChunkerCell* cell : cells) {
@@ -325,10 +369,6 @@ public:
 				populatedCells.push_back(cell);
 			}
 		}
-
-		// finish all other flushes first
-		// used to make sure that we are not flushing to a file that's already being flushed
-		pool->waitTillEmpty();
 
 		// now flush all the remaining cells
 		for (ChunkerCell* cell : populatedCells) {

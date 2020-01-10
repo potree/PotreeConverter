@@ -16,6 +16,7 @@
 #include "Vector3.h"
 #include "ChunkProcessor.h"
 #include "PotreeWriter.h"
+#include "ThreadPool/ThreadPool.h"
 
 using namespace std::experimental;
 
@@ -87,7 +88,8 @@ future<Chunker*> chunking(LASLoader* loader, Metadata metadata) {
 
 	//chunker->min = cubeMin;
 	//chunker->max = cubeMax;
-	Chunker* chunker = new Chunker(path, cubeMin, cubeMax, 8);
+	Attributes attributes = loader->getAttributes();
+	Chunker* chunker = new Chunker(path, attributes, cubeMin, cubeMax, 8);
 
 	int batchNumber = 0;
 	Points* batch = co_await loader->nextBatch();
@@ -124,6 +126,7 @@ future<void> run() {
 	auto tStart = now();
 
 	LASLoader* loader = new LASLoader(path);
+	Attributes attributes = loader->getAttributes();
 
 	auto size = loader->max - loader->min;
 	double octreeSize = size.max();
@@ -139,47 +142,61 @@ future<void> run() {
 	int upperLevels = 3;
 	metadata.chunkGridSize = pow(2, upperLevels);
 
-	//Chunker* chunker = co_await chunking(loader, metadata);
+	Chunker* chunker = co_await chunking(loader, metadata);
 
 
 
 	vector<Chunk*> chunks = getListOfChunks(metadata);
+	//chunks.resize(2);
 
 	double scale = 0.001;
-	double spacing = 1.0;
+	double spacing = loader->min.distanceTo(loader->max) / 200.0;
 	PotreeWriter writer(targetDirectory, 
 		metadata.min,
 		metadata.max,
 		spacing,
 		scale,
-		upperLevels
+		upperLevels,
+		chunks
 	);
+	double cSpacing = spacing / 8.0;
 
-	//loadChunk(chunks[0]);
-	//loadChunk(chunks[1]);
-	//Node* chunkRoot1 = processChunk(chunks[0]);
-	//Node* chunkRoot2 = processChunk(chunks[1]);
+	//{ // sequential
+	//	for (Chunk* chunk : chunks) {
+	//		loadChunk(chunk);
+	//	}
 
-	//writer.writeChunk(chunks[0], chunkRoot1);
-	//writer.writeChunk(chunks[1], chunkRoot2);
+	//	vector<Node*> chunkRoots;
+	//	for (Chunk* chunk : chunks) {
+	//		Node* chunkRoot = processChunk(chunk, cSpacing);
+	//		chunkRoots.push_back(chunkRoot);
 
-	//writer.close();
+	//	}
 
-	vector<thread> threads;
-	for (Chunk* chunk : chunks) {
-	//for (Chunk* chunk : {chunks[0], chunks[1]}) {
+	//	for (int i = 0; i < chunks.size(); i++) {
+	//		Chunk* chunk = chunks[i];
+	//		Node* chunkRoot = chunkRoots[i];
 
-		threads.emplace_back(thread([&writer, chunk](){
-			loadChunk(chunk);
-			Node* chunkRoot = processChunk(chunk);
+	//		writer.writeChunk(chunk, chunkRoot);
+	//	}
+	//}
+
+
+	// parallel
+	ThreadPool* pool = new ThreadPool(16);
+	for(int i = 0; i < chunks.size(); i++){
+
+		Chunk* chunk = chunks[i];
+
+		pool->enqueue([chunk, attributes, &writer, cSpacing](){
+			loadChunk(chunk, attributes);
+
+			Node* chunkRoot = processChunk(chunk, cSpacing);
 
 			writer.writeChunk(chunk, chunkRoot);
-		}));
+		});
 	}
-
-	for (thread& t : threads) {
-		t.join();
-	}
+	delete pool;
 
 	writer.close();
 

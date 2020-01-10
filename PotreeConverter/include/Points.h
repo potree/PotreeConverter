@@ -54,6 +54,12 @@ struct Attribute {
 	Attribute() {
 
 	}
+};
+
+struct Attributes {
+
+	vector<Attribute> list;
+	int byteSize = 0;
 
 };
 
@@ -76,11 +82,14 @@ struct Point {
 	};
 };
 
+
 struct Points {
 	vector<Point> points;
 	
-	vector<Attribute> attributes;
+	Attributes attributes;
 	Buffer* attributeBuffer;
+	//vector<Attribute> attributes;
+	//int attributesByteSize = 0;
 
 	~Points() {
 		delete attributeBuffer;

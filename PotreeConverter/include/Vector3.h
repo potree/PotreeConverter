@@ -35,6 +35,17 @@ struct Vector3{
 		return dd;
 	}
 
+	T distanceTo(const Vector3<T>& right) {
+		double dx = right.x - x;
+		double dy = right.y - y;
+		double dz = right.z - z;
+
+		double dd = dx * dx + dy * dy + dz * dz;
+		double d = std::sqrt(dd);
+
+		return d;
+	}
+
 	T max() {
 		return std::max(std::max(x, y), z);
 	}

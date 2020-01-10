@@ -112,6 +112,18 @@ public:
 		return fut;
 	}
 
+	Attributes getAttributes() {
+		Attributes attributes;
+		Attribute aColor;
+		aColor.byteOffset = 12;
+		aColor.bytes = 4;
+		aColor.name = "color";
+		attributes.list.push_back(aColor);
+		attributes.byteSize += aColor.bytes;
+
+		return attributes;
+	}
+
 	void loadStuff() {
 
 		uint64_t npoints = (header->number_of_point_records ? header->number_of_point_records : header->extended_number_of_point_records);
@@ -121,6 +133,8 @@ public:
 		Points* points = nullptr;
 
 		double coordinates[3];
+
+		Attributes attributes = getAttributes();
 
 		for (uint64_t i = 0; i < npoints; i++) {
 
@@ -134,26 +148,17 @@ public:
 
 				uint64_t currentBatchSize = std::min(npoints - i, batchSize);
 
-				Attribute aColor;
-				aColor.byteOffset = 12;
-				aColor.bytes = 4;
-				aColor.name = "color";
-				//Buffer* colorData = new Buffer(currentBatchSize * aColor.bytes);
-
 				points = new Points();
-				//points->count = currentBatchSize;
-				//points->attributes.push_back(aPosition);
-				points->attributeBuffer = new Buffer(currentBatchSize * aColor.bytes);
-				points->attributes.push_back(aColor);
-				//points->data.push_back(posData);
-				//points->data.push_back(colorData);
+				uint64_t attributeBufferSize = currentBatchSize * attributes.byteSize;
+				points->attributes = attributes;
+				points->attributeBuffer = new Buffer(attributeBufferSize);
 			}
 
 			laszip_read_point(laszip_reader);
 
-			uint8_t r = point->rgb[0] / 255;
-			uint8_t g = point->rgb[1] / 255;
-			uint8_t b = point->rgb[2] / 255;
+			uint8_t r = point->rgb[0] / 256;
+			uint8_t g = point->rgb[1] / 256;
+			uint8_t b = point->rgb[2] / 256;
 
 			laszip_get_coordinates(laszip_reader, coordinates);
 
@@ -163,7 +168,7 @@ public:
 				coordinates[0],
 				coordinates[1],
 				coordinates[2],
-				i
+				reli
 			};
 			points->points.push_back(point);
 
@@ -172,7 +177,7 @@ public:
 			rgbBuffer[0] = r;
 			rgbBuffer[1] = g;
 			rgbBuffer[2] = b;
-			rgbBuffer[3] = 0;
+			rgbBuffer[3] = 255;
 		}
 
 		{

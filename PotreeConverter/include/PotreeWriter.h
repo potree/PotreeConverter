@@ -6,6 +6,8 @@
 #include <mutex>
 #include <filesystem>
 #include <fstream>
+#include <random>
+
 
 #include "json.hpp"
 
@@ -30,6 +32,137 @@ struct PWNode {
 
 };
 
+struct Subsample {
+	vector<Point> subsample;
+	vector<Point> remaining;
+};
+
+Subsample subsampleLevel(vector<Point>& samples, double spacing, Vector3<double> min, Vector3<double> max) {
+	
+	Vector3<double> size = max - min;
+	double gridSizeD = (size.x / spacing) / 2.0;
+	int gridSize = int(gridSizeD);
+
+	random_device rd;
+	mt19937 mt(rd());
+	uniform_real_distribution<double> random(0.0, 1.0);
+
+	vector<vector<int>> grid(gridSize * gridSize * gridSize);
+
+	// binning of points into cells
+	for (int i = 0; i < samples.size(); i++) {
+
+		Point& point = samples[i];
+
+		double nx = (point.x - min.x) / size.x;
+		double ny = (point.y - min.y) / size.y;
+		double nz = (point.z - min.z) / size.z;
+
+		int ux = std::min(gridSize * nx, gridSize - 1.0);
+		int uy = std::min(gridSize * ny, gridSize - 1.0);
+		int uz = std::min(gridSize * nz, gridSize - 1.0);
+
+		int index = ux + uy * gridSize + uz * gridSize * gridSize;
+
+		vector<int>& cell = grid[index];
+		cell.push_back(i);
+	}
+
+	// select random point from each cell
+	vector<Point> subsample;
+	vector<Point> remaining;
+	for (auto& cell : grid) {
+		if (cell.size() == 0) {
+			continue;
+		}
+
+		double r = double(cell.size()) * random(mt);
+		int selected = cell[int(r)];
+
+		for (int i : cell) {
+			if (i == selected) {
+				subsample.push_back(samples[selected]);
+			} else {
+				remaining.push_back(samples[selected]);
+			}
+		}
+	}
+
+	return {subsample, remaining};
+}
+
+struct SubsampleData {
+	Points* points = nullptr;
+	string nodeName = "";
+};
+
+Points* toBufferData(vector<Point>& subsample, Chunk* chunk) {
+
+	int numPoints = subsample.size();
+
+	Attributes attributes = chunk->points->attributes;
+
+	Points* points = new Points();
+	// TODO potential source of error? does it copy or move the referenced data?
+	// would be bad if it kept pointing to the reference, even after it is deleted
+	points->points = subsample; 
+	points->attributes = attributes;
+	uint64_t attributeBufferSize = attributes.byteSize * numPoints;
+	points->attributeBuffer = new Buffer(attributeBufferSize);
+
+	for (int i = 0; i < points->points.size(); i++) {
+
+		Point& point = points->points[i];
+
+		int srcIndex = point.index;
+		int destIndex = i;
+
+		uint8_t* attSrc = chunk->points->attributeBuffer->dataU8 + (attributes.byteSize * srcIndex);
+		uint8_t* attDest = points->attributeBuffer->dataU8 + (attributes.byteSize * destIndex);
+
+		memcpy(attDest, attSrc, attributes.byteSize);
+
+		point.index = destIndex;
+	}
+
+	return points;
+}
+
+vector<SubsampleData> subsampleLowerLevels(Chunk* chunk, Node* chunkRoot) {
+
+	int startLevel = chunkRoot->name.size() - 1;
+
+	string currentName = chunkRoot->name;
+	vector<Point>& currentSample = chunkRoot->accepted;
+	double currentSpacing = chunkRoot->spacing / 2.0;
+	auto min = chunk->min;
+	auto max = chunk->max;
+
+	vector<SubsampleData> subsamples;
+
+	for (int level = startLevel; level >= 0; level--) {
+
+		Subsample subsample = subsampleLevel(currentSample, currentSpacing, min, max);
+
+		if (level == startLevel) {
+			chunkRoot->accepted = subsample.remaining;
+		}
+
+		Points* subsampleBuffer = toBufferData(subsample.remaining, chunk);
+
+		SubsampleData subData = { subsampleBuffer, currentName };
+
+		subsamples.push_back(subData);
+
+		currentName = currentName.substr(0, currentName.size() - 1);
+		currentSample = subsample.subsample;
+		currentSpacing = currentSpacing * 2.0;
+	}
+
+
+	return subsamples;
+}
+
 class PotreeWriter {
 public:
 
@@ -48,12 +181,25 @@ public:
 	unordered_map<Node*, PWNode*> pwNodes;
 
 	mutex mtx_writeChunk;
-	int currentByteOffset = 0;
+	mutex* mtx_test = new mutex();
 
-	PotreeWriter(string targetDirectory, Vector3<double> min, Vector3<double> max, double spacing, double scale, int upperLevels) {
+	int currentByteOffset = 0;
+	mutex mtx_byteOffset;
+
+	vector<SubsampleData> lowerLevelSubsamples;
+
+	fstream* fsFile = nullptr;
+
+	PotreeWriter(string targetDirectory, 
+		Vector3<double> min, Vector3<double> max, 
+		double spacing, double scale, int upperLevels,
+		vector<Chunk*> chunks) {
+
+
 		this->targetDirectory = targetDirectory;
 		this->min = min;
 		this->max = max;
+		this->spacing = spacing;
 		this->scale = scale;
 		this->upperLevels = upperLevels;
 
@@ -66,6 +212,12 @@ public:
 		fs::remove(pathData);
 
 		root = new PWNode("r");
+
+		vector<string> nodeIDs;
+		for (Chunk* chunk : chunks) {
+			nodeIDs.push_back(chunk->id);
+		}
+		createNodes(nodeIDs);
 	}
 
 	struct ChildParams {
@@ -74,6 +226,17 @@ public:
 		Vector3<double> size;
 		int id;
 	};
+
+	uint64_t increaseByteOffset(uint64_t amount) {
+
+		lock_guard<mutex> lock(mtx_byteOffset);
+
+		uint64_t old = currentByteOffset;
+
+		currentByteOffset += amount;
+
+		return old;
+	}
 
 	ChildParams computeChildParameters(Vector3<double>& min, Vector3<double>& max, Vector3<double> point){
 
@@ -125,6 +288,19 @@ public:
 		return params;
 	}
 
+	vector<int> toVectorID(string stringID) {
+		vector<int> id;
+
+		for (int i = 1; i < stringID.size(); i++) {
+
+			int index = stringID[i] - '0'; // ... ouch
+
+			id.push_back(index);
+		}
+
+		return id;
+	}
+
 	vector<int> computeNodeID(Node* node) {
 
 		auto min = this->min;
@@ -145,18 +321,40 @@ public:
 		return id;
 	}
 
-	PWNode* findCreatePWNode(vector<int> id) {
+	void createNodes(vector<string> nodeIDs) {
+
+		for (string nodeID : nodeIDs) {
+			PWNode* node = root;
+
+			vector<int> id = toVectorID(nodeID);
+
+			for (int childIndex : id) {
+
+				if (node->children[childIndex] == nullptr) {
+					string childName = node->name + to_string(childIndex);
+					PWNode* child = new PWNode(childName);
+
+					node->children[childIndex] = child;
+				}
+
+				node = node->children[childIndex];
+			}
+		}
+
+	}
+
+	PWNode* findPWNode(vector<int> id) {
 
 		PWNode* node = root;
 
 		for (int childIndex : id) {
 
-			if (node->children[childIndex] == nullptr) {
-				string childName = node->name + to_string(childIndex);
-				PWNode* child = new PWNode(childName);
+			//if (node->children[childIndex] == nullptr) {
+			//	string childName = node->name + to_string(childIndex);
+			//	PWNode* child = new PWNode(childName);
 
-				node->children[childIndex] = child;
-			}
+			//	node->children[childIndex] = child;
+			//}
 
 			node = node->children[childIndex];
 		}
@@ -164,40 +362,38 @@ public:
 		return node;
 	}
 
+
+
 	void writeChunk(Chunk* chunk, Node* chunkRoot) {
 
 		double tStart = now();
-		lock_guard<mutex> lock(mtx_writeChunk);
 
-		double lockDuration = now() - tStart;
+		// returns subsamples and removes subsampled points from nodes
+		auto subsamples = subsampleLowerLevels(chunk, chunkRoot);
 
-		if (lockDuration > 0.1) {
-			cout << "significant lock time in writeChunk(): " << lockDuration << "s " << endl;
-		}
+		struct NodePairing {
+			Node* node = nullptr;
+			PWNode* pwNode = nullptr;
 
-		vector<int> id = computeNodeID(chunkRoot);
-		PWNode* pwChunkRoot = findCreatePWNode(id);
-		pwNodes[chunkRoot] = pwChunkRoot;
+			NodePairing(Node* node, PWNode* pwNode) {
+				this->node = node;
+				this->pwNode = pwNode;
+			}
+		};
 
-		auto& pwNodes = this->pwNodes;
-
-		function<vector<Node*>(Node*, PWNode *, vector<Node*> & nodes)> flatten = [&flatten, &pwNodes](Node* node, PWNode* target, vector<Node*>& nodes) {
-			nodes.push_back(node);
-
-			target->numPoints = node->accepted.size() + node->store.size();
+		function<void(Node*, PWNode*, vector<NodePairing> & nodes)> flatten = [&flatten](Node* node, PWNode* pwNode, vector<NodePairing>& nodes) {
+			nodes.emplace_back(node, pwNode);
 
 			for (int i = 0; i < node->children.size(); i++) {
-				
+			
 				Node* child = node->children[i];
 
 				if (child == nullptr) {
 					continue;
 				}
 
-				string childName = target->name + to_string(i);
-				PWNode* pwChild = new PWNode(childName);
-				target->children[i] = pwChild;
-				pwNodes[child] = pwChild;
+				PWNode* pwChild = new PWNode(child->name);
+				pwNode->children.push_back(pwChild);
 
 				flatten(child, pwChild, nodes);
 			}
@@ -205,21 +401,22 @@ public:
 			return nodes;
 		};
 
-		vector<Node*> nodes;
+		PWNode* pwChunkRoot = new PWNode(chunkRoot->name);
+		vector<NodePairing> nodes;
 		flatten(chunkRoot, pwChunkRoot, nodes);
 
+		Attributes attributes = chunk->points->attributes;
 		Buffer* attributeBuffer = chunk->points->attributeBuffer;
-		int64_t attributeBytes = 4;
 		const char* ccAttributeBuffer = attributeBuffer->dataChar;
 
 		auto min = this->min;
 		auto scale = this->scale;
 
 		uint64_t bufferSize = 0;
-		int bytesPerPoint = 16;
+		int bytesPerPoint = 12 + attributes.byteSize;
 
-		for (Node* node : nodes) {
-			int numPoints = node->accepted.size() + node->store.size();
+		for (NodePairing pair : nodes) {
+			int numPoints = pair.node->accepted.size() + pair.node->store.size();
 			int nodeBufferSize = numPoints * bytesPerPoint;
 
 			bufferSize += nodeBufferSize;
@@ -228,7 +425,7 @@ public:
 		vector<uint8_t> buffer(bufferSize, 0);
 		uint64_t bufferOffset = 0;
 
-		auto writePoint = [&bufferOffset, &bytesPerPoint , &buffer, &min, &scale, &attributeBytes, &attributeBuffer](Point& point) {
+		auto writePoint = [&bufferOffset, &bytesPerPoint , &buffer, &min, &scale, &attributes, &attributeBuffer](Point& point) {
 			int32_t ix = int32_t((point.x - min.x) / scale);
 			int32_t iy = int32_t((point.y - min.y) / scale);
 			int32_t iz = int32_t((point.z - min.z) / scale);
@@ -237,55 +434,154 @@ public:
 			memcpy(buffer.data() + bufferOffset + 4, reinterpret_cast<void*>(&iy), sizeof(int32_t));
 			memcpy(buffer.data() + bufferOffset + 8, reinterpret_cast<void*>(&iz), sizeof(int32_t));
 
-			//file.write(reinterpret_cast<const char*>(&ix), 4);
-			//file.write(reinterpret_cast<const char*>(&iy), 4);
-			//file.write(reinterpret_cast<const char*>(&iz), 4);
-
-			int64_t attributeOffset = point.index * attributeBytes;
-			//file.write(ccAttributeBuffer + attributeOffset, attributeBytes);
+			int64_t attributeOffset = point.index * attributes.byteSize;
 
 			auto attributeTarget = buffer.data() + bufferOffset + 12;
 			auto attributeSource = attributeBuffer->dataU8 + attributeOffset;
-			memcpy(attributeTarget, attributeSource, attributeBytes);
+			memcpy(attributeTarget, attributeSource, attributes.byteSize);
 
 			bufferOffset += bytesPerPoint;
 		};
 
-		for (Node* node : nodes) {
 
-			for (Point& point : node->accepted) {
+		for (NodePairing& pair: nodes) {
+
+			for (Point& point : pair.node->accepted) {
 				writePoint(point);
 			}
 
-			for (Point& point : node->store) {
+			for (Point& point : pair.node->store) {
 				writePoint(point);
 			}
-
-			int numPoints = node->accepted.size() + node->store.size();
-			int currentByteSize = numPoints * bytesPerPoint;
-
-			PWNode* pwNode = pwNodes[node];
-			pwNode->byteOffset = currentByteOffset;
-			pwNode->byteSize = currentByteSize;
-
-			currentByteOffset += currentByteSize;
-
-			delete node;
 		}
 
 
-		fstream file;
-		file.open(pathData, ios::out | ios::binary | ios::app);
+		// ==============================================================================
+		// FROM HERE ON, ONLY ONE THREAD UPDATES THE HIERARCHY DATA AND WRITES TO FILE
+		// ==============================================================================
 
-		file.write(reinterpret_cast<const char*>(buffer.data()), buffer.size());
+		double tLockStart = now();
+		lock_guard<mutex> lock(mtx_writeChunk);
 
-		file.close();
+		//lowerLevelSubsamples.push_back(subsamples);
+		lowerLevelSubsamples.insert(
+			lowerLevelSubsamples.begin(),
+			subsamples.begin(),
+			subsamples.end()
+		);
+
+		double lockDuration = now() - tLockStart;
+		if (lockDuration > 0.1) {
+			cout << "long lock duration: " << lockDuration << " s" << endl;
+		}
+
+		for (NodePairing& pair : nodes) {
+			int numPoints = pair.node->accepted.size() + pair.node->store.size();
+			int nodeBufferSize = numPoints * bytesPerPoint;
+
+			pair.pwNode->byteOffset = currentByteOffset;
+			pair.pwNode->byteSize = nodeBufferSize;
+			pair.pwNode->numPoints = numPoints;
+
+			currentByteOffset += nodeBufferSize;
+		}
+
+		// attach local chunk-root to global hierarchy, by replacing previously created dummy
+		vector<int> pwid = toVectorID(pwChunkRoot->name);
+		PWNode* pwMain = findPWNode(pwid);
+		PWNode* pwLocal = pwChunkRoot;
+
+		pwMain->byteOffset = pwLocal->byteOffset;
+		pwMain->byteSize = pwLocal->byteSize;
+		pwMain->children = pwLocal->children;
+		pwMain->name = pwLocal->name;
+		pwMain->numPoints = pwLocal->numPoints;
+
+		// now write everything to file
+		if (fsFile == nullptr) {
+			fsFile = new fstream();
+			fsFile->open(pathData, ios::out | ios::binary | ios::app);
+		}
+
+		fsFile->write(reinterpret_cast<const char*>(buffer.data()), buffer.size());
+
+		// fsFile is closed in PotreeWriter::close()
+	}
+
+	void processLowerLevelSubsamples() {
+
+		unordered_map<string, vector<Points*>> data;
+
+		for (SubsampleData& subsample : lowerLevelSubsamples) {
+			data[subsample.nodeName].push_back(subsample.points);
+		}
+
+		for (auto it : data) {
+			string nodeName = it.first;
+			vector<Points*> batches = it.second;
+
+			vector<int> id = toVectorID(nodeName);
+			PWNode* pwNode = findPWNode(id);
+
+			int numPoints = 0;
+			for (Points* batch : batches) {
+				numPoints += batch->points.size();
+			}
+
+			Attributes attributes = batches[0]->attributes;
+
+			int bytesPerPoint = 12 + attributes.byteSize;
+			int bufferSize = numPoints * bytesPerPoint;
+			vector<uint8_t> buffer(bufferSize, 0);
+			uint64_t bufferOffset = 0;
+			auto min = this->min;
+			auto scale = this->scale;
+
+			auto writePoint = [&bufferOffset, &bytesPerPoint, &buffer, &min, &scale](Point& point, Points* points) {
+				int32_t ix = int32_t((point.x - min.x) / scale);
+				int32_t iy = int32_t((point.y - min.y) / scale);
+				int32_t iz = int32_t((point.z - min.z) / scale);
+
+				memcpy(buffer.data() + bufferOffset + 0, reinterpret_cast<void*>(&ix), sizeof(int32_t));
+				memcpy(buffer.data() + bufferOffset + 4, reinterpret_cast<void*>(&iy), sizeof(int32_t));
+				memcpy(buffer.data() + bufferOffset + 8, reinterpret_cast<void*>(&iz), sizeof(int32_t));
+
+				int64_t attributeOffset = point.index * points->attributes.byteSize;
+
+				auto attributeTarget = buffer.data() + bufferOffset + 12;
+				auto attributeSource = points->attributeBuffer->dataU8 + attributeOffset;
+				memcpy(attributeTarget, attributeSource, points->attributes.byteSize);
+
+				bufferOffset += bytesPerPoint;
+			};
+
+			for (Points* batch : batches) {
+				for (Point& point : batch->points) {
+					writePoint(point, batch);
+				}
+			}
+
+			fsFile->write(reinterpret_cast<const char*>(buffer.data()), buffer.size());
+
+
+			pwNode->numPoints = numPoints;
+			pwNode->byteSize = bufferSize;
+			pwNode->byteOffset = currentByteOffset;
+
+			currentByteOffset += bufferSize;
+		}
 
 	}
 
 	void close() {
+
+		processLowerLevelSubsamples();
+
+		fsFile->close();
+
 		writeHierarchy();
 		writeCloudJson();
+
 	}
 
 	void writeCloudJson() {
@@ -337,8 +633,6 @@ public:
 			file.close();
 		}
 	}
-
-
 
 
 	void writeHierarchy() {

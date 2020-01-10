@@ -112,19 +112,18 @@ vector<Chunk*> getListOfChunks(Metadata& metadata) {
 	return chunksToLoad;
 }
 
-void loadChunk(Chunk* chunk) {
+void loadChunk(Chunk* chunk, Attributes attributes) {
 	auto filesize = fs::file_size(chunk->file);
-	int bytesPerPoint = 28;
+	uint64_t bytesPerPoint = 28;
 	int numPoints = filesize / bytesPerPoint;
 
-	Attribute aColor;
-	aColor.byteOffset = 0;
-	aColor.bytes = 4;
-	aColor.name = "color";
+	uint64_t attributeBufferSize = numPoints * attributes.byteSize;
 
 	Points* points = new Points();
-	points->attributes.push_back(aColor);
-	points->attributeBuffer = new Buffer(numPoints * aColor.bytes);
+	points->attributes = attributes;
+	points->attributeBuffer = new Buffer(attributeBufferSize);
+
+	int attributesByteSize = 4;
 
 	auto file = fstream(chunk->file, std::ios::in | std::ios::binary);
 
@@ -137,7 +136,7 @@ void loadChunk(Chunk* chunk) {
 	
 	file.read(reinterpret_cast<char*>(buffer), bufferSize);
 
-	for (int i = 0; i < numPoints; i++) {
+	for (uint64_t i = 0; i < numPoints; i++) {
 
 		uint64_t pointOffset = i * bytesPerPoint;
 		double* coordinates = reinterpret_cast<double*>(bufferU8 + pointOffset);
@@ -147,10 +146,9 @@ void loadChunk(Chunk* chunk) {
 		point.y = coordinates[1];
 		point.z = coordinates[2];
 
-		points->attributeBuffer->dataU8[4 * i + 0] = 255;
-		points->attributeBuffer->dataU8[4 * i + 1] = 0;
-		points->attributeBuffer->dataU8[4 * i + 2] = 0;
-		points->attributeBuffer->dataU8[4 * i + 3] = 255;
+		uint8_t* attSrc = bufferU8 + (bytesPerPoint * i + 24);
+		uint8_t* attDest = points->attributeBuffer->dataU8 + (4 * i);
+		memcpy(attDest, attSrc, attributesByteSize);
 
 		point.index = i;
 
@@ -193,6 +191,7 @@ vector<Points*> split(Chunk* chunk, Points* input, int gridSize) {
 		if (cell == nullptr) {
 			cell = new Cell();
 			cell->points = new Points();
+			cell->points->attributes = input->attributes;
 			grid[index] = cell;
 		}
 
@@ -210,43 +209,18 @@ vector<Points*> split(Chunk* chunk, Points* input, int gridSize) {
 }
 
 
-Node* processChunk(Chunk* chunk) {
-
-	Points* points = chunk->points;
-	//cout << "count: " << points->points.size() << endl;
-	//cout << chunk->min.toString() << endl;
-	//cout << chunk->max.toString() << endl;
-
-	double spacing = 0.02;
+Node* processChunk(Chunk* chunk, double spacing) {
+	
 	Node* chunkRoot = new Node(chunk->min, chunk->max, spacing);
 	chunkRoot->name = chunk->id;
 
 	double tStart = now();
 
 	for (Point& point : chunk->points->points) {
-
 		chunkRoot->add(point);
-		
 	}
-
-	auto accepted = chunkRoot->accepted;
 
 	printElapsedTime("processing", tStart);
 
 	return chunkRoot;
-	//writePotree("C:/dev/test/potree", chunk, chunkRoot);
-
-	// write root
-	//{
-	//	LASHeader header;
-	//	header.min = chunk->min;
-	//	header.max = chunk->max;
-	//	header.numPoints = accepted.size();
-	//	header.scale = { 0.001, 0.001, 0.001 };
-	//	header.numPoints = chunkRoot->accepted.size();
-
-	//	string filename = "chunk_" + to_string(chunk->index) + "_node_r.las";
-	//	writeLAS("C:/temp/test/" + filename, header, chunkRoot->accepted, chunk->points);
-	//}
-
 }

@@ -49,7 +49,7 @@ class ChunkLoader;
 
 vector<Chunk*> getListOfChunks(Metadata& metadata);
 
-void loadChunk(Chunk* chunk);
+void loadChunk(Chunk* chunk, Attributes attributes);
 
-Node* processChunk(Chunk* chunk);
+Node* processChunk(Chunk* chunk, double spacing);
 
