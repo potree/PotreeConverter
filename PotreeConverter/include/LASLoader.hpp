@@ -151,7 +151,7 @@ public:
 				points = make_shared<Points>();
 				uint64_t attributeBufferSize = currentBatchSize * attributes.byteSize;
 				points->attributes = attributes;
-				points->attributeBuffer = new Buffer(attributeBufferSize);
+				points->attributeBuffer = make_shared<Buffer>(attributeBufferSize);
 			}
 
 			laszip_read_point(laszip_reader);

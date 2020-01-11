@@ -108,7 +108,7 @@ shared_ptr<Points> toBufferData(vector<Point>& subsample, shared_ptr<Chunk> chun
 	points->points = subsample; 
 	points->attributes = attributes;
 	uint64_t attributeBufferSize = attributes.byteSize * numPoints;
-	points->attributeBuffer = new Buffer(attributeBufferSize);
+	points->attributeBuffer = make_shared<Buffer>(attributeBufferSize);
 
 	for (int i = 0; i < points->points.size(); i++) {
 

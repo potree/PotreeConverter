@@ -4,9 +4,11 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <memory>
 
 using std::string;
 using std::vector;
+using std::shared_ptr;
 
 struct Buffer {
 	void* data = nullptr;

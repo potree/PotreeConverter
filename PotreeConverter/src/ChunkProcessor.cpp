@@ -121,7 +121,7 @@ shared_ptr<Points> loadChunk(shared_ptr<Chunk> chunk, Attributes attributes) {
 
 	shared_ptr<Points> points = make_shared<Points>();
 	points->attributes = attributes;
-	points->attributeBuffer = new Buffer(attributeBufferSize);
+	points->attributeBuffer = make_shared<Buffer>(attributeBufferSize);
 
 	int attributesByteSize = 4;
 

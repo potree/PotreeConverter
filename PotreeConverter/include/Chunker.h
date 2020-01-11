@@ -6,6 +6,7 @@
 #include <filesystem>
 #include <atomic>
 #include <thread>
+#include <memory>
 
 
 #include "Points.h"
@@ -17,6 +18,7 @@
 
 using json = nlohmann::json;
 
+using std::shared_ptr;
 using std::string;
 using std::atomic_bool;
 namespace fs = std::experimental::filesystem;
@@ -185,7 +187,7 @@ public:
 			uint64_t attributeBufferSize = numNew * attributes.byteSize;
 
 			auto cellBatch = make_shared<Points>();
-			cellBatch->attributeBuffer = new Buffer(attributeBufferSize);
+			cellBatch->attributeBuffer = make_shared<Buffer>(attributeBufferSize);
 			cellBatch->attributes = attributes;
 
 			if (cells[i] == nullptr) {
