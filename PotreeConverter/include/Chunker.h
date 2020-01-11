@@ -50,19 +50,19 @@ auto flushProcessor = [](shared_ptr<FlushTask> task) {
 
 	double tStart = now();
 
-	int numPoints = 0;
+	uint64_t numPoints = 0;
 
 	for (auto batch : task->batches) {
 		numPoints += batch->points.size();
 	}
 
-	int bytesPerPoint = 28;
-	int fileDataSize = numPoints * bytesPerPoint;
+	uint64_t bytesPerPoint = 28;
+	uint64_t fileDataSize = numPoints * bytesPerPoint;
 	void* fileData = malloc(fileDataSize);
 	uint8_t* fileDataU8 = reinterpret_cast<uint8_t*>(fileData);
 
-	int i = 0;
-	for (auto batch : task->batches) {
+	uint64_t i = 0;
+	for (shared_ptr<Points> batch : task->batches) {
 
 		uint8_t* attBuffer = batch->attributeBuffer->dataU8;
 		int attributesByteSize = 4;
@@ -185,7 +185,6 @@ public:
 			uint64_t attributeBufferSize = numNew * attributes.byteSize;
 
 			auto cellBatch = make_shared<Points>();
-			//Points* cellBatch = new Points();
 			cellBatch->attributeBuffer = new Buffer(attributeBufferSize);
 			cellBatch->attributes = attributes;
 

@@ -408,7 +408,7 @@ public:
 		flatten(chunkRoot, pwChunkRoot, nodes);
 
 		Attributes attributes = points->attributes;
-		Buffer* attributeBuffer = points->attributeBuffer;
+		auto attributeBuffer = points->attributeBuffer;
 		const char* ccAttributeBuffer = attributeBuffer->dataChar;
 
 		auto min = this->min;

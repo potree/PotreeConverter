@@ -87,13 +87,11 @@ struct Points {
 	vector<Point> points;
 	
 	Attributes attributes;
-	Buffer* attributeBuffer;
-	//vector<Attribute> attributes;
-	//int attributesByteSize = 0;
+	shared_ptr<Buffer> attributeBuffer;
 
-	~Points() {
-		delete attributeBuffer;
-	}
+	//~Points() {
+	//	delete attributeBuffer;
+	//}
 
 };
 

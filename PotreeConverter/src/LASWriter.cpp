@@ -114,7 +114,7 @@ void writeLAS(string path, LASHeader header, vector<Point> sample, Points* point
 	file.write(reinterpret_cast<const char*>(headerBuffer.data()), header.headerSize);
 
 	LASPointF2 laspoint;
-	Buffer* attributeBuffer = points->attributeBuffer;
+	auto attributeBuffer = points->attributeBuffer;
 	int bytesPerPointAttribute = 4;
 
 	for (Point& point : sample) {
