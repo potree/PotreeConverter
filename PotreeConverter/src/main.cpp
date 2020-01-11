@@ -22,37 +22,6 @@ using namespace std::experimental;
 
 namespace fs = std::experimental::filesystem;
 
-void saveChunk(string path, ChunkerCell& cell, int i) {
-	if (cell.count == 0) {
-		return;
-	}
-
-	auto file = std::fstream(path, std::ios::out | std::ios::binary);
-
-	for (Points* batch : cell.batches) {
-
-		vector<Vector3<double>> coordinates;
-		for (Point& point : batch->points) {
-			coordinates.emplace_back(point.x, point.y, point.z);
-		}
-
-		const char* data = reinterpret_cast<const char*>(coordinates.data());
-		int64_t size = coordinates.size() * sizeof(Vector3<double>);
-
-		file.write(data, size);
-
-	}
-
-	for (Points* batch : cell.batches) {
-		const char* data = reinterpret_cast<const char*>(batch->attributeBuffer->dataU8);
-		int64_t size = batch->attributeBuffer->size;
-
-		file.write(data, size);
-	}
-
-	file.close();
-}
-
 int gridSizeFromPointCount(uint64_t pointCount) {
 	if (pointCount < 10'000'000) {
 		return 2;
@@ -69,13 +38,10 @@ int gridSizeFromPointCount(uint64_t pointCount) {
 	}
 }
 
-
 future<Chunker*> chunking(LASLoader* loader, Metadata metadata) {
 
-	//Chunker* chunker = new Chunker(metadata.targetDirectory, metadata.chunkGridSize);
+	double tStart = now();
 
-
-	//string path = "D:/temp/test/chunks";
 	string path = metadata.targetDirectory + "/chunks";
 	for (const auto& entry : fs::directory_iterator(path)){
 		fs::remove(entry);
@@ -86,13 +52,11 @@ future<Chunker*> chunking(LASLoader* loader, Metadata metadata) {
 	Vector3<double> cubeMin = metadata.min;
 	Vector3<double> cubeMax = cubeMin + cubeSize;
 
-	//chunker->min = cubeMin;
-	//chunker->max = cubeMax;
 	Attributes attributes = loader->getAttributes();
 	Chunker* chunker = new Chunker(path, attributes, cubeMin, cubeMax, 8);
 
 	int batchNumber = 0;
-	Points* batch = co_await loader->nextBatch();
+	auto batch = co_await loader->nextBatch();
 	while (batch != nullptr) {
 		if ((batchNumber % 10) == 0) {
 			cout << "batch loaded: " << batchNumber << endl;
@@ -106,6 +70,8 @@ future<Chunker*> chunking(LASLoader* loader, Metadata metadata) {
 	}
 
 	chunker->close();
+
+	printElapsedTime("chunking duration", tStart);
 
 	return chunker;
 }
@@ -130,6 +96,9 @@ future<void> run() {
 
 	auto size = loader->max - loader->min;
 	double octreeSize = size.max();
+
+	fs::create_directories(targetDirectory);
+	fs::create_directories(targetDirectory + "/chunks");
 
 
 	Metadata metadata;

@@ -23,7 +23,7 @@ namespace fs = std::experimental::filesystem;
 
 struct ChunkerCell {
 	uint32_t count = 0;
-	vector<Points*> batches;
+	vector<shared_ptr<Points>> batches;
 	//bool flushing = false;
 	atomic<bool> isFlusing = false;
 	int index = 0;
@@ -39,9 +39,9 @@ struct ChunkerCell {
 
 // might be better off using https://github.com/progschj/ThreadPool
 struct FlushTask {
-	ChunkerCell* cell = nullptr;
+	shared_ptr<ChunkerCell> cell;
 	string filepath = "";
-	vector<Points*> batches;
+	vector<shared_ptr<Points>> batches;
 };
 
 mutex mtx_abc;
@@ -52,7 +52,7 @@ auto flushProcessor = [](shared_ptr<FlushTask> task) {
 
 	int numPoints = 0;
 
-	for (Points* batch : task->batches) {
+	for (auto batch : task->batches) {
 		numPoints += batch->points.size();
 	}
 
@@ -62,7 +62,7 @@ auto flushProcessor = [](shared_ptr<FlushTask> task) {
 	uint8_t* fileDataU8 = reinterpret_cast<uint8_t*>(fileData);
 
 	int i = 0;
-	for (Points* batch : task->batches) {
+	for (auto batch : task->batches) {
 
 		uint8_t* attBuffer = batch->attributeBuffer->dataU8;
 		int attributesByteSize = 4;
@@ -95,9 +95,10 @@ auto flushProcessor = [](shared_ptr<FlushTask> task) {
 
 	task->cell->isFlusing = false;
 
-	for (Points* batch : task->batches) {
-		delete batch;
-	}
+	// shouldn't be necessary with shared pointers?
+	//for (auto batch : task->batches) {
+	//	delete batch;
+	//}
 
 	double duration = now() - tStart;
 
@@ -111,7 +112,7 @@ public:
 	string path = "";
 	Attributes attributes;
 
-	vector<ChunkerCell*> cells;
+	vector<shared_ptr<ChunkerCell>> cells;
 	Vector3<double> min;
 	Vector3<double> max;
 	atomic<int> flushThreads = 0;
@@ -138,7 +139,7 @@ public:
 
 	}
 
-	void add(Points* batch) {
+	void add(shared_ptr<Points> batch) {
 
 		Attributes attributes = batch->attributes;
 
@@ -183,12 +184,13 @@ public:
 
 			uint64_t attributeBufferSize = numNew * attributes.byteSize;
 
-			Points* cellBatch = new Points();
+			auto cellBatch = make_shared<Points>();
+			//Points* cellBatch = new Points();
 			cellBatch->attributeBuffer = new Buffer(attributeBufferSize);
 			cellBatch->attributes = attributes;
 
 			if (cells[i] == nullptr) {
-				ChunkerCell* cell = new ChunkerCell();
+				auto cell = make_shared<ChunkerCell>();
 				cell->index = i; 
 
 				int ix = i % gridSize;
@@ -234,7 +236,7 @@ public:
 			cells[i]->batches.push_back(cellBatch);
 		}
 
-		vector<ChunkerCell*> toFlush;
+		vector<shared_ptr<ChunkerCell>> toFlush;
 
 		// now add them
 		for (int64_t i = 0; i < batch->points.size(); i++) {
@@ -253,9 +255,9 @@ public:
 
 			int32_t index = ux + gridSize * uy + gridSize * gridSize * uz;
 
-			ChunkerCell* cell = cells[index];
+			auto cell = cells[index];
 
-			Points* cellBatch = cell->batches.back();
+			auto cellBatch = cell->batches.back();
 			uint8_t* attBuffer = batch->attributeBuffer->dataU8;
 
 			// copy point and its attribute buffer
@@ -296,7 +298,7 @@ public:
 		//}
 		
 
-		for (ChunkerCell* cell : toFlush) {
+		for (auto cell : toFlush) {
 			flushCell(cell);
 		}
 
@@ -310,19 +312,7 @@ public:
 
 	}
 
-	void flushCell(ChunkerCell* cell) {
-
-		//for (Points* batch : cell->batches) {
-		//	if (batch->points[0].index != 0) {
-		//		int a = 10;
-		//	}
-
-		//	vector<uint8_t> dbgSrc(
-		//		batch->attributeBuffer->dataU8, 
-		//		batch->attributeBuffer->dataU8 + batch->attributeBuffer->size);
-
-		//	int abc = 10;
-		//}
+	void flushCell(shared_ptr<ChunkerCell> cell) {
 
 		auto task = make_shared<FlushTask>();
 		task->cell = cell;
@@ -330,7 +320,7 @@ public:
 		task->batches = std::move(cell->batches);
 
 		cell->count = 0;
-		cell->batches = vector<Points*>();
+		cell->batches = vector<shared_ptr<Points>>();
 		cell->isFlusing = true;
 
 		pool->addTask(task);
@@ -362,16 +352,16 @@ public:
 		// used to make sure that we are not flushing to a file that's already being flushed
 		pool->waitTillEmpty();
 
-		vector<ChunkerCell*> populatedCells;
+		vector<shared_ptr<ChunkerCell>> populatedCells;
 		int numCells = 0;
-		for (ChunkerCell* cell : cells) {
+		for (auto cell : cells) {
 			if (cell != nullptr && cell->count > 0) {
 				populatedCells.push_back(cell);
 			}
 		}
 
 		// now flush all the remaining cells
-		for (ChunkerCell* cell : populatedCells) {
+		for (auto cell : populatedCells) {
 			flushCell(cell);
 		}
 

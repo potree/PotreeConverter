@@ -36,7 +36,7 @@ public:
 	laszip_point* point;
 
 	uint64_t batchSize = 1'000'000;
-	vector<Points*> batches;
+	vector<shared_ptr<Points>> batches;
 	bool finishedLoading = false;
 
 	uint64_t numPoints = 0;
@@ -70,9 +70,9 @@ public:
 
 	}
 
-	future<Points*> nextBatch() {
+	future<shared_ptr<Points>> nextBatch() {
 
-		auto fut = std::async(std::launch::async, [=]() -> Points* {
+		auto fut = std::async(std::launch::async, [=]() -> shared_ptr<Points> {
 
 			bool done = false;
 
@@ -92,7 +92,7 @@ public:
 				unique_lock<mutex> lock(mtx_batches, std::defer_lock);
 				lock.lock();
 				if (batches.size() > 0) {
-					Points* batch = batches.back();
+					auto batch = batches.back();
 					batches.pop_back();
 
 					lock.unlock();
@@ -130,7 +130,7 @@ public:
 
 		laszip_get_point_pointer(laszip_reader, &point);
 
-		Points* points = nullptr;
+		shared_ptr<Points> points;
 
 		double coordinates[3];
 
@@ -148,7 +148,7 @@ public:
 
 				uint64_t currentBatchSize = std::min(npoints - i, batchSize);
 
-				points = new Points();
+				points = make_shared<Points>();
 				uint64_t attributeBufferSize = currentBatchSize * attributes.byteSize;
 				points->attributes = attributes;
 				points->attributeBuffer = new Buffer(attributeBufferSize);
