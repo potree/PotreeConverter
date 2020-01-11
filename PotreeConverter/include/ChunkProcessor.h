@@ -33,7 +33,7 @@ namespace fs = std::experimental::filesystem;
 struct Chunk {
 
 	string file = "";
-	Points* points = nullptr;
+	//Points* points = nullptr;
 	string id = "";
 	//int index = -1;
 	//Vector3<int> index3D;
@@ -47,9 +47,9 @@ struct Chunk {
 
 class ChunkLoader;
 
-vector<Chunk*> getListOfChunks(Metadata& metadata);
+vector<shared_ptr<Chunk>> getListOfChunks(Metadata& metadata);
 
-void loadChunk(Chunk* chunk, Attributes attributes);
+shared_ptr<Points> loadChunk(shared_ptr<Chunk> chunk, Attributes attributes);
 
-Node* processChunk(Chunk* chunk, double spacing);
+shared_ptr<Node> processChunk(shared_ptr<Chunk> chunk, shared_ptr<Points> points, double spacing);
 

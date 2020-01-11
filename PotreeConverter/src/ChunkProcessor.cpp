@@ -70,7 +70,7 @@ BoundingBox childBoundingBoxOf(BoundingBox box, int index) {
 	return childBox;
 }
 
-vector<Chunk*> getListOfChunks(Metadata& metadata) {
+vector<shared_ptr<Chunk>> getListOfChunks(Metadata& metadata) {
 	string chunkDirectory = metadata.targetDirectory + "/chunks";
 
 	auto toID = [](string filename) -> string {
@@ -80,7 +80,7 @@ vector<Chunk*> getListOfChunks(Metadata& metadata) {
 		return strID;
 	};
 
-	vector<Chunk*> chunksToLoad;
+	vector<shared_ptr<Chunk>> chunksToLoad;
 	for (const auto& entry : fs::directory_iterator(chunkDirectory)) {
 		string filename = entry.path().filename().string();
 		string chunkID = toID(filename);
@@ -89,7 +89,7 @@ vector<Chunk*> getListOfChunks(Metadata& metadata) {
 			continue;
 		}
 
-		Chunk* chunk = new Chunk();
+		shared_ptr<Chunk> chunk = make_shared<Chunk>();
 		chunk->file = entry.path().string();
 		chunk->id = chunkID;
 
@@ -112,14 +112,14 @@ vector<Chunk*> getListOfChunks(Metadata& metadata) {
 	return chunksToLoad;
 }
 
-void loadChunk(Chunk* chunk, Attributes attributes) {
+shared_ptr<Points> loadChunk(shared_ptr<Chunk> chunk, Attributes attributes) {
 	auto filesize = fs::file_size(chunk->file);
 	uint64_t bytesPerPoint = 28;
 	int numPoints = filesize / bytesPerPoint;
 
 	uint64_t attributeBufferSize = numPoints * attributes.byteSize;
 
-	Points* points = new Points();
+	shared_ptr<Points> points = make_shared<Points>();
 	points->attributes = attributes;
 	points->attributeBuffer = new Buffer(attributeBufferSize);
 
@@ -159,7 +159,9 @@ void loadChunk(Chunk* chunk, Attributes attributes) {
 
 	file.close();
 
-	chunk->points = points;
+	//chunk->points = points;
+
+	return points;
 }
 
 
@@ -209,14 +211,14 @@ vector<Points*> split(Chunk* chunk, Points* input, int gridSize) {
 }
 
 
-Node* processChunk(Chunk* chunk, double spacing) {
+shared_ptr<Node> processChunk(shared_ptr<Chunk> chunk, shared_ptr<Points> points, double spacing) {
 	
-	Node* chunkRoot = new Node(chunk->min, chunk->max, spacing);
+	shared_ptr<Node> chunkRoot = make_shared<Node>(chunk->min, chunk->max, spacing);
 	chunkRoot->name = chunk->id;
 
 	double tStart = now();
 
-	for (Point& point : chunk->points->points) {
+	for (Point& point : points->points) {
 		chunkRoot->add(point);
 	}
 

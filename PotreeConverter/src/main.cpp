@@ -82,6 +82,7 @@ future<void> run() {
 	//string path = "D:/dev/pointclouds/Riegl/Retz_Airborne_Terrestrial_Combined_1cm.las";
 	//string path = "D:/dev/pointclouds/Riegl/niederweiden.las";
 	string path = "D:/dev/pointclouds/archpro/heidentor.las";
+	//string path = "D:/dev/pointclouds/pix4d/eclepens.las";
 	//string path = "D:/dev/pointclouds/mschuetz/lion.las";
 	//string path = "D:/dev/pointclouds/Riegl/Retz_Airborne_Terrestrial_Combined_1cm.las";
 	//string path = "D:/dev/pointclouds/open_topography/ca13/morro_rock/merged.las";
@@ -115,7 +116,7 @@ future<void> run() {
 
 
 
-	vector<Chunk*> chunks = getListOfChunks(metadata);
+	vector<shared_ptr<Chunk>> chunks = getListOfChunks(metadata);
 	//chunks.resize(2);
 
 	double scale = 0.001;
@@ -155,14 +156,14 @@ future<void> run() {
 	ThreadPool* pool = new ThreadPool(16);
 	for(int i = 0; i < chunks.size(); i++){
 
-		Chunk* chunk = chunks[i];
+		shared_ptr<Chunk> chunk = chunks[i];
 
 		pool->enqueue([chunk, attributes, &writer, cSpacing](){
-			loadChunk(chunk, attributes);
+			auto points = loadChunk(chunk, attributes);
 
-			Node* chunkRoot = processChunk(chunk, cSpacing);
+			auto chunkRoot = processChunk(chunk, points, cSpacing);
 
-			writer.writeChunk(chunk, chunkRoot);
+			writer.writeChunk(chunk, points, chunkRoot);
 		});
 	}
 	delete pool;

@@ -27,9 +27,9 @@ public:
 	int index = 0;
 
 	Node* parent = nullptr;
-	vector<Node*> children = vector<Node*>(8, nullptr);
+	vector<shared_ptr<Node>> children = vector<shared_ptr<Node>>(8, nullptr);
 
-	SparseGrid* grid = nullptr;
+	shared_ptr<SparseGrid> grid;
 	vector<Point> accepted;
 
 	vector<Point> store;
@@ -42,11 +42,11 @@ public:
 		this->size = max - min;
 		this->spacing = spacing;
 
-		grid = new SparseGrid(min, max, spacing);
+		grid = make_shared<SparseGrid>(min, max, spacing);
 	}
 
 	~Node() {
-		delete grid;
+		
 	}
 
 	void add(Point& candidate) {
@@ -73,7 +73,7 @@ public:
 
 		if (children[childIndex] == nullptr) {
 			BoundingBox box = childBoundingBoxOf(point);
-			Node* child = new Node(box.min, box.max, spacing * 0.5);
+			shared_ptr<Node> child = make_shared<Node>(box.min, box.max, spacing * 0.5);
 			child->index = childIndex;
 			child->name = this->name + to_string(childIndex);
 			child->parent = this;
@@ -156,7 +156,7 @@ public:
 
 		callback(this);
 
-		for (Node* child : children) {
+		for (auto child : children) {
 			if (child == nullptr) {
 				continue;
 			}

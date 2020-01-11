@@ -92,17 +92,17 @@ Subsample subsampleLevel(vector<Point>& samples, double spacing, Vector3<double>
 }
 
 struct SubsampleData {
-	Points* points = nullptr;
+	shared_ptr<Points> points = nullptr;
 	string nodeName = "";
 };
 
-Points* toBufferData(vector<Point>& subsample, Chunk* chunk) {
+shared_ptr<Points> toBufferData(vector<Point>& subsample, shared_ptr<Chunk> chunk, shared_ptr<Points> pointsInChunk) {
 
 	int numPoints = subsample.size();
 
-	Attributes attributes = chunk->points->attributes;
+	Attributes attributes = pointsInChunk->attributes;
 
-	Points* points = new Points();
+	shared_ptr<Points> points = make_shared<Points>();
 	// TODO potential source of error? does it copy or move the referenced data?
 	// would be bad if it kept pointing to the reference, even after it is deleted
 	points->points = subsample; 
@@ -117,7 +117,7 @@ Points* toBufferData(vector<Point>& subsample, Chunk* chunk) {
 		int srcIndex = point.index;
 		int destIndex = i;
 
-		uint8_t* attSrc = chunk->points->attributeBuffer->dataU8 + (attributes.byteSize * srcIndex);
+		uint8_t* attSrc = pointsInChunk->attributeBuffer->dataU8 + (attributes.byteSize * srcIndex);
 		uint8_t* attDest = points->attributeBuffer->dataU8 + (attributes.byteSize * destIndex);
 
 		memcpy(attDest, attSrc, attributes.byteSize);
@@ -128,7 +128,7 @@ Points* toBufferData(vector<Point>& subsample, Chunk* chunk) {
 	return points;
 }
 
-vector<SubsampleData> subsampleLowerLevels(Chunk* chunk, Node* chunkRoot) {
+vector<SubsampleData> subsampleLowerLevels(shared_ptr<Chunk> chunk, shared_ptr<Points> pointsInChunk, shared_ptr<Node> chunkRoot) {
 
 	int startLevel = chunkRoot->name.size() - 1;
 
@@ -148,7 +148,7 @@ vector<SubsampleData> subsampleLowerLevels(Chunk* chunk, Node* chunkRoot) {
 			chunkRoot->accepted = subsample.remaining;
 		}
 
-		Points* subsampleBuffer = toBufferData(subsample.remaining, chunk);
+		shared_ptr<Points> subsampleBuffer = toBufferData(subsample.remaining, chunk, pointsInChunk);
 
 		SubsampleData subData = { subsampleBuffer, currentName };
 
@@ -193,7 +193,7 @@ public:
 	PotreeWriter(string targetDirectory, 
 		Vector3<double> min, Vector3<double> max, 
 		double spacing, double scale, int upperLevels,
-		vector<Chunk*> chunks) {
+		vector<shared_ptr<Chunk>> chunks) {
 
 
 		this->targetDirectory = targetDirectory;
@@ -214,7 +214,7 @@ public:
 		root = new PWNode("r");
 
 		vector<string> nodeIDs;
-		for (Chunk* chunk : chunks) {
+		for (auto chunk : chunks) {
 			nodeIDs.push_back(chunk->id);
 		}
 		createNodes(nodeIDs);
@@ -364,29 +364,31 @@ public:
 
 
 
-	void writeChunk(Chunk* chunk, Node* chunkRoot) {
+	void writeChunk(shared_ptr<Chunk> chunk, shared_ptr<Points> points, shared_ptr<Node> chunkRoot) {
 
 		double tStart = now();
 
 		// returns subsamples and removes subsampled points from nodes
-		auto subsamples = subsampleLowerLevels(chunk, chunkRoot);
+		// TODO not happy with passing a pointer here
+		auto subsamples = subsampleLowerLevels(chunk, points, chunkRoot);
 
 		struct NodePairing {
-			Node* node = nullptr;
+			shared_ptr<Node> node = nullptr;
 			PWNode* pwNode = nullptr;
 
-			NodePairing(Node* node, PWNode* pwNode) {
+			NodePairing(shared_ptr<Node> node, PWNode* pwNode) {
 				this->node = node;
 				this->pwNode = pwNode;
 			}
 		};
 
-		function<void(Node*, PWNode*, vector<NodePairing> & nodes)> flatten = [&flatten](Node* node, PWNode* pwNode, vector<NodePairing>& nodes) {
+		function<void(shared_ptr<Node>, PWNode*, vector<NodePairing> & nodes)> flatten = [&flatten](shared_ptr<Node> node, PWNode* pwNode, vector<NodePairing>& nodes) {
 			nodes.emplace_back(node, pwNode);
 
-			for (int i = 0; i < node->children.size(); i++) {
+			//for (int i = 0; i < node->children.size(); i++) {
 			
-				Node* child = node->children[i];
+				//auto child = node->children[i];
+			for(auto child : node->children){
 
 				if (child == nullptr) {
 					continue;
@@ -405,8 +407,8 @@ public:
 		vector<NodePairing> nodes;
 		flatten(chunkRoot, pwChunkRoot, nodes);
 
-		Attributes attributes = chunk->points->attributes;
-		Buffer* attributeBuffer = chunk->points->attributeBuffer;
+		Attributes attributes = points->attributes;
+		Buffer* attributeBuffer = points->attributeBuffer;
 		const char* ccAttributeBuffer = attributeBuffer->dataChar;
 
 		auto min = this->min;
@@ -510,7 +512,7 @@ public:
 
 	void processLowerLevelSubsamples() {
 
-		unordered_map<string, vector<Points*>> data;
+		unordered_map<string, vector<shared_ptr<Points>>> data;
 
 		for (SubsampleData& subsample : lowerLevelSubsamples) {
 			data[subsample.nodeName].push_back(subsample.points);
@@ -518,13 +520,13 @@ public:
 
 		for (auto it : data) {
 			string nodeName = it.first;
-			vector<Points*> batches = it.second;
+			vector<shared_ptr<Points>> batches = it.second;
 
 			vector<int> id = toVectorID(nodeName);
 			PWNode* pwNode = findPWNode(id);
 
 			int numPoints = 0;
-			for (Points* batch : batches) {
+			for (auto batch : batches) {
 				numPoints += batch->points.size();
 			}
 
@@ -537,7 +539,7 @@ public:
 			auto min = this->min;
 			auto scale = this->scale;
 
-			auto writePoint = [&bufferOffset, &bytesPerPoint, &buffer, &min, &scale](Point& point, Points* points) {
+			auto writePoint = [&bufferOffset, &bytesPerPoint, &buffer, &min, &scale](Point& point, shared_ptr<Points> points) {
 				int32_t ix = int32_t((point.x - min.x) / scale);
 				int32_t iy = int32_t((point.y - min.y) / scale);
 				int32_t iz = int32_t((point.z - min.z) / scale);
@@ -555,7 +557,7 @@ public:
 				bufferOffset += bytesPerPoint;
 			};
 
-			for (Points* batch : batches) {
+			for (auto batch : batches) {
 				for (Point& point : batch->points) {
 					writePoint(point, batch);
 				}
