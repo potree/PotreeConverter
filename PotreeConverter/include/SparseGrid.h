@@ -14,7 +14,9 @@ using namespace std;
 
 
 struct Cell {
-	vector<Point> accepted;
+	Point accepted;
+	int location = 0;
+	int count = 0;
 };
 
 class SparseGrid {
@@ -27,15 +29,10 @@ public:
 	double spacing = 1.0;
 	double squaredSpacing = 1.0;
 
-#define SP_MAP
-//#define SP_VEC
+	//vector<Cell*> grid;
+	unordered_map<uint64_t, Cell> grid;
+	vector<Point> accepted;
 
-
-#if defined(SP_MAP)
-	unordered_map<uint64_t, Cell*> grid;
-#elif defined(SP_VEC)
-	vector<Cell*> grid;
-#endif
 	int64_t gridSize = 1;
 	double gridSizeD = 1.0;
 
@@ -49,82 +46,56 @@ public:
 		gridSize = (size.x / spacing) / 1.0;
 		gridSizeD = double(gridSize);
 
-#if defined(SP_VEC)
-		grid.resize(gridSize * gridSize * gridSize, nullptr);
-#endif
+		//grid.resize(gridSize * gridSize * gridSize, nullptr);
 	}
 
-	bool isDistant(Point& candidate) {
+	enum class Actions {
+		add,
+		exchange,
+		pass,
+	};
 
-		Vector3<int64_t> gridCoord = toGridCoordinate(candidate);
+	struct Action {
+		Actions action;
+		Point& subject;
+	};
 
-		int64_t xStart = std::max(gridCoord.x - 1, 0ll);
-		int64_t yStart = std::max(gridCoord.y - 1, 0ll);
-		int64_t zStart = std::max(gridCoord.z - 1, 0ll);
-		int64_t xEnd = std::min(gridCoord.x + 1, gridSize - 1);
-		int64_t yEnd = std::min(gridCoord.y + 1, gridSize - 1);
-		int64_t zEnd = std::min(gridCoord.z + 1, gridSize - 1);
+	Action evaluate(Point& candidate) {
+		uint64_t index = toGridIndex(candidate);
 
-		for (uint64_t x = xStart; x <= xEnd; x++) {
-			for (uint64_t y = yStart; y <= yEnd; y++) {
-				for (uint64_t z = zStart; z <= zEnd; z++) {
+		Action action = {Actions::add, candidate};
 
-					uint64_t index = x + y * gridSize + z * gridSize * gridSize;
+		auto it = grid.find(index);
+		if (it == grid.end()) {
+			grid[index] = Cell();
 
-#if defined(SP_VEC)
-					auto cell = grid[index];
+			it = grid.find(index);
+		}
+		Cell& cell = it->second;
 
-					if (cell == nullptr) {
-						continue;
-					}
-#elif defined(SP_MAP)
+		cell.count++;
 
-					auto it = grid.find(index);
-					if (it == grid.end()) {
-						continue;
-					}
-
-					auto cell = it->second;
-#endif
-
-					for (Point& alreadyAccepted : cell->accepted) {
-						double dd = candidate.squaredDistanceTo(alreadyAccepted);
-
-						if (dd < squaredSpacing) {
-							return false;
-						}
-					}
-
-				}
-			}
+		if (cell.count == 1) {
+			action.action = Actions::add;
+		} else {
+			action.action = Actions::pass;
 		}
 
-		return true;
-	}
+		if (action.action == Actions::add) {
+			cell.accepted = candidate;
 
-	void add(Point& point) {
-		uint64_t index = toGridIndex(point);
+			accepted.push_back(candidate);
+			cell.location = accepted.size() - 1;
 
-#if defined(SP_VEC)
-		auto cell = grid[index];
+		} else if (action.action == Actions::exchange) {
+			Point oldPoint = cell.accepted;
+			cell.accepted = candidate;
+			action.subject = oldPoint;
+		} else if (action.action == Actions::pass) {
 
-		if (cell == nullptr) {
-			cell = new Cell();
-
-			grid[index] = cell;
 		}
 
-		cell->accepted.push_back(point);
-#elif defined(SP_MAP)
-
-		if (grid.find(index) == grid.end()) {
-			Cell* cell = new Cell();
-
-			grid.insert(std::make_pair(index, cell));
-		}
-
-		grid[index]->accepted.push_back(point);
-#endif
+		return action;
 	}
 
 	Vector3<int64_t> toGridCoordinate(Point& point) {

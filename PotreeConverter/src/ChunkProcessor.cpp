@@ -218,6 +218,9 @@ shared_ptr<Node> processChunk(shared_ptr<Chunk> chunk, shared_ptr<Points> points
 
 	double tStart = now();
 
+	// reduces sampling patterns for sampling algorithms that are order-dependent
+	random_shuffle(points->points.begin(), points->points.end());
+
 	for (Point& point : points->points) {
 		chunkRoot->add(point);
 	}

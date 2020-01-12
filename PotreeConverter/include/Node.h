@@ -30,11 +30,10 @@ public:
 	vector<shared_ptr<Node>> children = vector<shared_ptr<Node>>(8, nullptr);
 
 	shared_ptr<SparseGrid> grid;
-	vector<Point> accepted;
-
+	
 	vector<Point> store;
-	bool storeExceeded = false;
-	int maxStoreSize = 1'000;
+	int storeSize = 1'000;
+	bool storeBroken = false;
 
 	Node(Vector3<double> min, Vector3<double> max, double spacing) {
 		this->min = min;
@@ -49,23 +48,35 @@ public:
 		
 	}
 
-	void add(Point& candidate) {
+	void add(Point& candidate){
 
-		bool isDistant = grid->isDistant(candidate);
-
-		if (isDistant) {
-			accepted.push_back(candidate);
-			grid->add(candidate);
-		} else if (!storeExceeded) {
+		if (!storeBroken && store.size() < storeSize) {
 			store.push_back(candidate);
-
-			if (store.size() > maxStoreSize) {
-				processStore();
-			}
+		} else if(!storeBroken && store.size() >= storeSize) {
+			breakStore();
 		} else {
-			addToChild(candidate);
+			auto action = grid->evaluate(candidate);
+
+			bool keepGoing = 
+				action.action == SparseGrid::Actions::exchange
+				|| action.action == SparseGrid::Actions::pass;
+
+			if (keepGoing) {
+				addToChild(candidate);
+			}
 		}
 
+	}
+
+	void breakStore() {
+		storeBroken = true;
+
+		for (Point& point : store) {
+			add(point);
+		}
+
+		store.clear();
+		store.shrink_to_fit();
 	}
 
 	void addToChild(Point& point) {
@@ -82,16 +93,6 @@ public:
 		}
 
 		children[childIndex]->add(point);
-	}
-
-	void processStore() {
-		storeExceeded = true;
-
-		for (Point& point : store) {
-			addToChild(point);
-		}
-
-		store.clear();
 	}
 
 	int childIndexOf(Point& point) {

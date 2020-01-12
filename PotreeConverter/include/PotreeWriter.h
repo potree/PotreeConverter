@@ -7,6 +7,8 @@
 #include <filesystem>
 #include <fstream>
 #include <random>
+#include <unordered_map>
+#include <vector>
 
 
 #include "json.hpp"
@@ -32,137 +34,6 @@ struct PWNode {
 
 };
 
-struct Subsample {
-	vector<Point> subsample;
-	vector<Point> remaining;
-};
-
-Subsample subsampleLevel(vector<Point>& samples, double spacing, Vector3<double> min, Vector3<double> max) {
-	
-	Vector3<double> size = max - min;
-	double gridSizeD = (size.x / spacing);
-	int gridSize = int(gridSizeD);
-
-	random_device rd;
-	mt19937 mt(rd());
-	uniform_real_distribution<double> random(0.0, 1.0);
-
-	vector<vector<int>> grid(gridSize * gridSize * gridSize);
-
-	// binning of points into cells
-	for (int i = 0; i < samples.size(); i++) {
-
-		Point& point = samples[i];
-
-		double nx = (point.x - min.x) / size.x;
-		double ny = (point.y - min.y) / size.y;
-		double nz = (point.z - min.z) / size.z;
-
-		int ux = std::min(gridSize * nx, gridSize - 1.0);
-		int uy = std::min(gridSize * ny, gridSize - 1.0);
-		int uz = std::min(gridSize * nz, gridSize - 1.0);
-
-		int index = ux + uy * gridSize + uz * gridSize * gridSize;
-
-		vector<int>& cell = grid[index];
-		cell.push_back(i);
-	}
-
-	// select random point from each cell
-	vector<Point> subsample;
-	vector<Point> remaining;
-	for (auto& cell : grid) {
-		if (cell.size() == 0) {
-			continue;
-		}
-
-		double r = double(cell.size()) * random(mt);
-		int selected = cell[int(r)];
-
-		for (int i : cell) {
-			if (i == selected) {
-				subsample.push_back(samples[selected]);
-			} else {
-				remaining.push_back(samples[selected]);
-			}
-		}
-	}
-
-	return {subsample, remaining};
-}
-
-struct SubsampleData {
-	shared_ptr<Points> points = nullptr;
-	string nodeName = "";
-};
-
-shared_ptr<Points> toBufferData(vector<Point>& subsample, shared_ptr<Chunk> chunk, shared_ptr<Points> pointsInChunk) {
-
-	int numPoints = subsample.size();
-
-	Attributes attributes = pointsInChunk->attributes;
-
-	shared_ptr<Points> points = make_shared<Points>();
-	// TODO potential source of error? does it copy or move the referenced data?
-	// would be bad if it kept pointing to the reference, even after it is deleted
-	points->points = subsample; 
-	points->attributes = attributes;
-	uint64_t attributeBufferSize = attributes.byteSize * numPoints;
-	points->attributeBuffer = make_shared<Buffer>(attributeBufferSize);
-
-	for (int i = 0; i < points->points.size(); i++) {
-
-		Point& point = points->points[i];
-
-		int srcIndex = point.index;
-		int destIndex = i;
-
-		uint8_t* attSrc = pointsInChunk->attributeBuffer->dataU8 + (attributes.byteSize * srcIndex);
-		uint8_t* attDest = points->attributeBuffer->dataU8 + (attributes.byteSize * destIndex);
-
-		memcpy(attDest, attSrc, attributes.byteSize);
-
-		point.index = destIndex;
-	}
-
-	return points;
-}
-
-vector<SubsampleData> subsampleLowerLevels(shared_ptr<Chunk> chunk, shared_ptr<Points> pointsInChunk, shared_ptr<Node> chunkRoot) {
-
-	int startLevel = chunkRoot->name.size() - 2;
-
-	string currentName = chunkRoot->name.substr(0, chunkRoot->name.size() - 1);
-	vector<Point>& currentSample = chunkRoot->accepted;
-	double currentSpacing = chunkRoot->spacing * 2.0;
-	auto min = chunk->min;
-	auto max = chunk->max;
-
-	vector<SubsampleData> subsamples;
-
-	for (int level = startLevel; level >= 0; level--) {
-
-		Subsample subsample = subsampleLevel(currentSample, currentSpacing, min, max);
-
-		if (level == startLevel) {
-			chunkRoot->accepted = subsample.remaining;
-		}
-
-		shared_ptr<Points> subsampleBuffer = toBufferData(subsample.subsample, chunk, pointsInChunk);
-
-		SubsampleData subData = { subsampleBuffer, currentName };
-
-		subsamples.push_back(subData);
-
-		currentName = currentName.substr(0, currentName.size() - 1);
-		currentSample = subsampleBuffer->points;
-		currentSpacing = currentSpacing * 2.0;
-	}
-
-
-	return subsamples;
-}
-
 class PotreeWriter {
 public:
 
@@ -185,8 +56,6 @@ public:
 
 	int currentByteOffset = 0;
 	mutex mtx_byteOffset;
-
-	vector<SubsampleData> lowerLevelSubsamples;
 
 	fstream* fsFile = nullptr;
 
@@ -370,7 +239,7 @@ public:
 
 		// returns subsamples and removes subsampled points from nodes
 		// TODO not happy with passing a pointer here
-		auto subsamples = subsampleLowerLevels(chunk, points, chunkRoot);
+		//auto subsamples = subsampleLowerLevels(chunk, points, chunkRoot);
 
 		struct NodePairing {
 			shared_ptr<Node> node = nullptr;
@@ -418,7 +287,7 @@ public:
 		int bytesPerPoint = 12 + attributes.byteSize;
 
 		for (NodePairing pair : nodes) {
-			int numPoints = pair.node->accepted.size() + pair.node->store.size();
+			int numPoints = pair.node->grid->accepted.size() + pair.node->store.size();
 			int nodeBufferSize = numPoints * bytesPerPoint;
 
 			bufferSize += nodeBufferSize;
@@ -447,8 +316,7 @@ public:
 
 
 		for (NodePairing& pair: nodes) {
-
-			for (Point& point : pair.node->accepted) {
+			for (Point& point : pair.node->grid->accepted) {
 				writePoint(point);
 			}
 
@@ -466,11 +334,11 @@ public:
 		lock_guard<mutex> lock(mtx_writeChunk);
 
 		//lowerLevelSubsamples.push_back(subsamples);
-		lowerLevelSubsamples.insert(
+		/*lowerLevelSubsamples.insert(
 			lowerLevelSubsamples.begin(),
 			subsamples.begin(),
 			subsamples.end()
-		);
+		);*/
 
 		double lockDuration = now() - tLockStart;
 		if (lockDuration > 0.1) {
@@ -478,7 +346,7 @@ public:
 		}
 
 		for (NodePairing& pair : nodes) {
-			int numPoints = pair.node->accepted.size() + pair.node->store.size();
+			int numPoints = pair.node->grid->accepted.size() + pair.node->store.size();
 			int nodeBufferSize = numPoints * bytesPerPoint;
 
 			pair.pwNode->byteOffset = currentByteOffset;
@@ -510,74 +378,7 @@ public:
 		// fsFile is closed in PotreeWriter::close()
 	}
 
-	void processLowerLevelSubsamples() {
-
-		unordered_map<string, vector<shared_ptr<Points>>> data;
-
-		for (SubsampleData& subsample : lowerLevelSubsamples) {
-			data[subsample.nodeName].push_back(subsample.points);
-		}
-
-		for (auto it : data) {
-			string nodeName = it.first;
-			vector<shared_ptr<Points>> batches = it.second;
-
-			vector<int> id = toVectorID(nodeName);
-			PWNode* pwNode = findPWNode(id);
-
-			int numPoints = 0;
-			for (auto batch : batches) {
-				numPoints += batch->points.size();
-			}
-
-			Attributes attributes = batches[0]->attributes;
-
-			int bytesPerPoint = 12 + attributes.byteSize;
-			int bufferSize = numPoints * bytesPerPoint;
-			vector<uint8_t> buffer(bufferSize, 0);
-			uint64_t bufferOffset = 0;
-			auto min = this->min;
-			auto scale = this->scale;
-
-			auto writePoint = [&bufferOffset, &bytesPerPoint, &buffer, &min, &scale](Point& point, shared_ptr<Points> points) {
-				int32_t ix = int32_t((point.x - min.x) / scale);
-				int32_t iy = int32_t((point.y - min.y) / scale);
-				int32_t iz = int32_t((point.z - min.z) / scale);
-
-				memcpy(buffer.data() + bufferOffset + 0, reinterpret_cast<void*>(&ix), sizeof(int32_t));
-				memcpy(buffer.data() + bufferOffset + 4, reinterpret_cast<void*>(&iy), sizeof(int32_t));
-				memcpy(buffer.data() + bufferOffset + 8, reinterpret_cast<void*>(&iz), sizeof(int32_t));
-
-				int64_t attributeOffset = point.index * points->attributes.byteSize;
-
-				auto attributeTarget = buffer.data() + bufferOffset + 12;
-				auto attributeSource = points->attributeBuffer->dataU8 + attributeOffset;
-				memcpy(attributeTarget, attributeSource, points->attributes.byteSize);
-
-				bufferOffset += bytesPerPoint;
-			};
-
-			for (auto batch : batches) {
-				for (Point& point : batch->points) {
-					writePoint(point, batch);
-				}
-			}
-
-			fsFile->write(reinterpret_cast<const char*>(buffer.data()), buffer.size());
-
-
-			pwNode->numPoints = numPoints;
-			pwNode->byteSize = bufferSize;
-			pwNode->byteOffset = currentByteOffset;
-
-			currentByteOffset += bufferSize;
-		}
-
-	}
-
 	void close() {
-
-		processLowerLevelSubsamples();
 
 		fsFile->close();
 

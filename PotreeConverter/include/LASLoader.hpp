@@ -4,6 +4,7 @@
 #include <string>
 #include <iostream>
 #include <vector>
+#include <unordered_map>
 #include <thread>
 #include <mutex>
 #include <future>
@@ -21,6 +22,7 @@ using std::string;
 using std::cout;
 using std::endl;
 using std::vector;
+using std::unordered_map;
 using std::thread;
 using std::future;
 using std::mutex;

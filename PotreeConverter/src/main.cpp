@@ -93,9 +93,8 @@ future<void> run() {
 	LASLoader* loader = new LASLoader(path);
 	Attributes attributes = loader->getAttributes();
 
-	loader->estimateAttributes();
-
-	return;
+	//loader->estimateAttributes();
+	//return;
 
 	auto size = loader->max - loader->min;
 	double octreeSize = size.max();
@@ -114,7 +113,7 @@ future<void> run() {
 	int upperLevels = 3;
 	metadata.chunkGridSize = pow(2, upperLevels);
 
-	Chunker* chunker = co_await chunking(loader, metadata);
+	//Chunker* chunker = co_await chunking(loader, metadata);
 
 
 
