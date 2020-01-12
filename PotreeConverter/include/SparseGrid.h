@@ -17,7 +17,6 @@ struct Cell {
 	vector<Point> accepted;
 };
 
-
 class SparseGrid {
 
 public:
@@ -28,7 +27,15 @@ public:
 	double spacing = 1.0;
 	double squaredSpacing = 1.0;
 
+#define SP_MAP
+//#define SP_VEC
+
+
+#if defined(SP_MAP)
 	unordered_map<uint64_t, Cell*> grid;
+#elif defined(SP_VEC)
+	vector<Cell*> grid;
+#endif
 	int64_t gridSize = 1;
 	double gridSizeD = 1.0;
 
@@ -39,8 +46,12 @@ public:
 		this->spacing = spacing;
 		this->squaredSpacing = spacing * spacing;
 
-		gridSize = 5.0 * size.x / spacing;
+		gridSize = (size.x / spacing) / 1.0;
 		gridSizeD = double(gridSize);
+
+#if defined(SP_VEC)
+		grid.resize(gridSize * gridSize * gridSize, nullptr);
+#endif
 	}
 
 	bool isDistant(Point& candidate) {
@@ -60,13 +71,21 @@ public:
 
 					uint64_t index = x + y * gridSize + z * gridSize * gridSize;
 
-					auto it = grid.find(index);
+#if defined(SP_VEC)
+					auto cell = grid[index];
 
+					if (cell == nullptr) {
+						continue;
+					}
+#elif defined(SP_MAP)
+
+					auto it = grid.find(index);
 					if (it == grid.end()) {
 						continue;
 					}
 
-					Cell* cell = it->second;
+					auto cell = it->second;
+#endif
 
 					for (Point& alreadyAccepted : cell->accepted) {
 						double dd = candidate.squaredDistanceTo(alreadyAccepted);
@@ -86,6 +105,18 @@ public:
 	void add(Point& point) {
 		uint64_t index = toGridIndex(point);
 
+#if defined(SP_VEC)
+		auto cell = grid[index];
+
+		if (cell == nullptr) {
+			cell = new Cell();
+
+			grid[index] = cell;
+		}
+
+		cell->accepted.push_back(point);
+#elif defined(SP_MAP)
+
 		if (grid.find(index) == grid.end()) {
 			Cell* cell = new Cell();
 
@@ -93,6 +124,7 @@ public:
 		}
 
 		grid[index]->accepted.push_back(point);
+#endif
 	}
 
 	Vector3<int64_t> toGridCoordinate(Point& point) {

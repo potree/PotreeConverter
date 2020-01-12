@@ -40,7 +40,7 @@ struct Subsample {
 Subsample subsampleLevel(vector<Point>& samples, double spacing, Vector3<double> min, Vector3<double> max) {
 	
 	Vector3<double> size = max - min;
-	double gridSizeD = (size.x / spacing) / 2.0;
+	double gridSizeD = (size.x / spacing);
 	int gridSize = int(gridSizeD);
 
 	random_device rd;
@@ -130,11 +130,11 @@ shared_ptr<Points> toBufferData(vector<Point>& subsample, shared_ptr<Chunk> chun
 
 vector<SubsampleData> subsampleLowerLevels(shared_ptr<Chunk> chunk, shared_ptr<Points> pointsInChunk, shared_ptr<Node> chunkRoot) {
 
-	int startLevel = chunkRoot->name.size() - 1;
+	int startLevel = chunkRoot->name.size() - 2;
 
-	string currentName = chunkRoot->name;
+	string currentName = chunkRoot->name.substr(0, chunkRoot->name.size() - 1);
 	vector<Point>& currentSample = chunkRoot->accepted;
-	double currentSpacing = chunkRoot->spacing / 2.0;
+	double currentSpacing = chunkRoot->spacing * 2.0;
 	auto min = chunk->min;
 	auto max = chunk->max;
 
@@ -148,14 +148,14 @@ vector<SubsampleData> subsampleLowerLevels(shared_ptr<Chunk> chunk, shared_ptr<P
 			chunkRoot->accepted = subsample.remaining;
 		}
 
-		shared_ptr<Points> subsampleBuffer = toBufferData(subsample.remaining, chunk, pointsInChunk);
+		shared_ptr<Points> subsampleBuffer = toBufferData(subsample.subsample, chunk, pointsInChunk);
 
 		SubsampleData subData = { subsampleBuffer, currentName };
 
 		subsamples.push_back(subData);
 
 		currentName = currentName.substr(0, currentName.size() - 1);
-		currentSample = subsample.subsample;
+		currentSample = subsampleBuffer->points;
 		currentSpacing = currentSpacing * 2.0;
 	}
 

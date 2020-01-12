@@ -8,8 +8,6 @@
 
 #include <filesystem>
 
-#include "Subsampler.h"
-#include "Subsampler_PoissonDisc.h"
 #include "Metadata.h"
 #include "LASLoader.hpp"
 #include "Chunker.h"
@@ -88,12 +86,16 @@ future<void> run() {
 	//string path = "D:/dev/pointclouds/open_topography/ca13/morro_rock/merged.las";
 	//string targetDirectory = "C:/temp/test";
 
-	string targetDirectory = "C:/dev/workspaces/potree/develop/test/new_format";
+	string targetDirectory = "C:/dev/workspaces/potree/develop/test/new_format1";
 
 	auto tStart = now();
 
 	LASLoader* loader = new LASLoader(path);
 	Attributes attributes = loader->getAttributes();
+
+	loader->estimateAttributes();
+
+	return;
 
 	auto size = loader->max - loader->min;
 	double octreeSize = size.max();
@@ -117,7 +119,7 @@ future<void> run() {
 
 
 	vector<shared_ptr<Chunk>> chunks = getListOfChunks(metadata);
-	//chunks.resize(2);
+	//chunks.resize(1);
 
 	double scale = 0.001;
 	double spacing = loader->min.distanceTo(loader->max) / 200.0;

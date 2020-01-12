@@ -8,6 +8,8 @@
 #include <mutex>
 #include <future>
 #include <experimental/coroutine>
+#include <algorithm>
+#include <cmath>
 
 #include "laszip_api.h"
 
@@ -25,6 +27,105 @@ using std::mutex;
 using std::lock_guard;
 using std::unique_lock;
 
+// see LAS spec 1.4
+// https://www.asprs.org/wp-content/uploads/2010/12/LAS_1_4_r13.pdf
+// total of 192 bytes 
+struct ExtraBytesRecord {
+	unsigned char reserved[2];
+	unsigned char data_type;
+	unsigned char options;
+	char name[32];
+	unsigned char unused[4];
+	int64_t no_data[3]; // 24 = 3*8 bytes // hack: not really int, can be double too
+	int64_t min[3]; // 24 = 3*8 bytes	  // hack: not really int, can be double too
+	int64_t max[3]; // 24 = 3*8 bytes	  // hack: not really int, can be double too
+	double scale[3];
+	double offset[3];
+	char description[32];
+};
+
+struct ExtraType {
+	AttributeType type;
+	int size = 0;
+	int numElements = 0;
+};
+
+const unordered_map<unsigned char, ExtraType> typeToExtraType = {
+	{0, ExtraType{AttributeType::undefined, 0, 1}},
+	{1, ExtraType{AttributeType::uint8, 1, 1}},
+	{2, ExtraType{AttributeType::int8, 1, 1}},
+	{3, ExtraType{AttributeType::uint16, 2, 1}},
+	{4, ExtraType{AttributeType::int16, 2, 1}},
+	{5, ExtraType{AttributeType::uint32, 4, 1}},
+	{6, ExtraType{AttributeType::int32, 4, 1}},
+	{7, ExtraType{AttributeType::uint64, 8, 1}},
+	{8, ExtraType{AttributeType::int64, 8, 1}},
+	{9, ExtraType{AttributeType::float32, 4, 1}},
+	{10, ExtraType{AttributeType::float64, 8, 1}},
+};
+
+
+Attributes estimateAttributes(string path) {
+	laszip_POINTER laszip_reader = nullptr;
+
+	laszip_create(&laszip_reader);
+
+	laszip_BOOL request_reader = 1;
+	laszip_request_compatibility_mode(laszip_reader, request_reader);
+
+	laszip_BOOL is_compressed = iEndsWith(path, ".laz") ? 1 : 0;
+	laszip_open_reader(laszip_reader, path.c_str(), &is_compressed);
+
+	laszip_header* header = nullptr;
+	laszip_get_header_pointer(laszip_reader, &header);
+
+	int64_t npoints = (header->number_of_point_records ? header->number_of_point_records : header->extended_number_of_point_records);
+
+	//int64_t nPointsChecking = std::min(npoints, 1'000'000ll);
+
+	//for (int64_t i = 0; i < nPointsChecking; i++) {
+
+	//}
+
+	Attributes attributes;
+
+	{ // read extra bytes
+
+		for (int i = 0; i < header->number_of_variable_length_records; i++) {
+			laszip_vlr_struct vlr = header->vlrs[i];
+
+			if (vlr.record_id != 4) {
+				continue;
+			}
+
+			cout << "record id: " << vlr.record_id << endl;
+			cout << "record_length_after_header: " << vlr.record_length_after_header << endl;
+
+			int numExtraBytes = vlr.record_length_after_header / sizeof(ExtraBytesRecord);
+
+			ExtraBytesRecord* extraBytes = reinterpret_cast<ExtraBytesRecord*>(vlr.data);
+
+			for (int j = 0; j < numExtraBytes; j++) {
+				ExtraBytesRecord extraAttribute = extraBytes[j];
+
+				string name = string(extraAttribute.name);
+
+				cout << "name: " << name << endl;
+
+				ExtraType et = typeToExtraType.at(extraAttribute.data_type);
+				
+				Attribute attribute(name, et.type);
+				attribute.bytes = et.size;
+				attribute.numElements = et.numElements;
+
+				attributes.add(attribute);
+
+			}
+		}
+	}
+
+	return attributes;
+}
 
 
 class LASLoader {
@@ -70,6 +171,18 @@ public:
 
 	}
 
+	Attributes getAttributes() {
+		Attributes attributes;
+		Attribute aColor("color", AttributeType::uint8);
+		aColor.byteOffset = 12;
+		aColor.bytes = 4;
+
+		attributes.list.push_back(aColor);
+		attributes.byteSize += aColor.bytes;
+
+		return attributes;
+	}
+
 	future<shared_ptr<Points>> nextBatch() {
 
 		auto fut = std::async(std::launch::async, [=]() -> shared_ptr<Points> {
@@ -110,18 +223,6 @@ public:
 		});
 
 		return fut;
-	}
-
-	Attributes getAttributes() {
-		Attributes attributes;
-		Attribute aColor;
-		aColor.byteOffset = 12;
-		aColor.bytes = 4;
-		aColor.name = "color";
-		attributes.list.push_back(aColor);
-		attributes.byteSize += aColor.bytes;
-
-		return attributes;
 	}
 
 	void loadStuff() {

@@ -47,21 +47,50 @@ struct Buffer {
 
 };
 
+enum class AttributeType {
+	undefined,
+	int8,
+	int16,
+	int32,
+	int64,
+	uint8,
+	uint16,
+	uint32,
+	uint64,
+	float32, 
+	float64,
+};
+
 struct Attribute {
 
 	string name = "undefined";
+	string description = "";
+
+	AttributeType type;
+	int numElements = 1;
+
 	int64_t byteOffset = 0;
 	int64_t bytes = 0;
 
-	Attribute() {
+	//Vector3<double> scale = {0.0, 0.0, 0.0};
+	//Vector3<double> offset = {0.0, 0.0, 0.0};
 
+	Attribute(string name, AttributeType type) {
+		this->name = name;
+		this->type = type;
 	}
+
 };
 
 struct Attributes {
 
 	vector<Attribute> list;
 	int byteSize = 0;
+
+	void add(Attribute attribute) {
+		list.push_back(attribute);
+		byteSize += attribute.bytes;
+	}
 
 };
 
