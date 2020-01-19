@@ -211,21 +211,79 @@ vector<Points*> split(Chunk* chunk, Points* input, int gridSize) {
 }
 
 
-shared_ptr<Node> processChunk(shared_ptr<Chunk> chunk, shared_ptr<Points> points, double spacing) {
+ProcessResult processChunk(
+	shared_ptr<Chunk> chunk, 
+	shared_ptr<Points> points, 
+	Vector3<double> min, Vector3<double> max, 
+	double spacing) {
 	
-	shared_ptr<Node> chunkRoot = make_shared<Node>(chunk->min, chunk->max, spacing);
-	chunkRoot->name = chunk->id;
 
 	double tStart = now();
+
+	shared_ptr<Node> root = make_shared<Node>("r", min, max, spacing);
+	int levels = chunk->id.size() - 1;
+	root->setStorefreeLevels(levels);
 
 	// reduces sampling patterns for sampling algorithms that are order-dependent
 	random_shuffle(points->points.begin(), points->points.end());
 
+	// TODO may have to disable Node::store for levels up to chunk
 	for (Point& point : points->points) {
-		chunkRoot->add(point);
+		root->add(point);
 	}
+
+	// now find the chunk root and disconnect it from the upper levels
+	auto chunkRoot = root->find(chunk->id);
+
+	if(chunkRoot != nullptr){
+		Node* parent = chunkRoot->parent;
+		parent->remove(chunkRoot);
+		chunkRoot->parent = nullptr;
+	}
+
+	shared_ptr<Points> upperLevelsData = make_shared<Points>();
+	{
+		int numPoints = 0;
+		root->traverse([&numPoints](Node* node){
+			numPoints += node->grid->accepted.size();
+		});
+
+		auto attributes = points->attributes;
+
+		int attributeBufferSize = numPoints * attributes.byteSize;
+		auto attributeBuffer = make_shared<Buffer>(attributeBufferSize);
+
+		upperLevelsData->attributes = attributes;
+		upperLevelsData->attributeBuffer = attributeBuffer;
+
+		int index = 0;
+		root->traverse([&index, points, attributeBuffer, attributes](Node* node) {
+			
+			for (Point& point : node->grid->accepted) {
+
+				auto oldIndex = point.index;
+				auto newIndex = index;
+
+				auto srcBuffer = points->attributeBuffer->dataU8 + (oldIndex * attributes.byteSize);
+				auto destBuffer = attributeBuffer->dataU8 + (newIndex * attributes.byteSize);
+
+				memcpy(destBuffer, srcBuffer, attributes.byteSize);
+
+				point.index = newIndex;
+
+				index++;
+			}
+
+		});
+	}
+
+
+	ProcessResult result;
+	result.upperLevels = root;
+	result.upperLevelsData = upperLevelsData;
+	result.chunkRoot = chunkRoot;
 
 	printElapsedTime("processing", tStart);
 
-	return chunkRoot;
+	return result;
 }

@@ -51,5 +51,25 @@ vector<shared_ptr<Chunk>> getListOfChunks(Metadata& metadata);
 
 shared_ptr<Points> loadChunk(shared_ptr<Chunk> chunk, Attributes attributes);
 
-shared_ptr<Node> processChunk(shared_ptr<Chunk> chunk, shared_ptr<Points> points, double spacing);
+//shared_ptr<Node> processChunk(shared_ptr<Chunk> chunk, shared_ptr<Points> points, double spacing);
+
+
+struct ProcessResult {
+
+	// upperLevels starts from global root
+	// it extents to eclusive chunkRoot, but does not connect to it,
+	// so that we can throw away chunkRoot at some point and let shared_ptr 
+	// remove chunkRoot from memory, while keeping upperLevels for later
+	shared_ptr<Node> upperLevels;
+	shared_ptr<Points> upperLevelsData;
+
+	shared_ptr<Node> chunkRoot;
+
+};
+
+ProcessResult processChunk(
+	shared_ptr<Chunk> chunk,
+	shared_ptr<Points> points,
+	Vector3<double> min, Vector3<double> max,
+	double spacing);
 

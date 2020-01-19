@@ -51,18 +51,29 @@ public:
 	PWNode* root = nullptr;
 	unordered_map<Node*, PWNode*> pwNodes;
 
+	struct UpperLevelStuff {
+		shared_ptr<Node> node;
+		shared_ptr<Points> data;
+	};
+
+	// partial sampling results for upper levels
+	// will contain multiple entries for the same node
+	// that need to be merged.
+	vector<UpperLevelStuff> upperLevelsResults;
+
 	mutex mtx_writeChunk;
 	mutex* mtx_test = new mutex();
 
 	int currentByteOffset = 0;
 	mutex mtx_byteOffset;
 
+	Attributes attributes;
 	fstream* fsFile = nullptr;
 
 	PotreeWriter(string targetDirectory, 
 		Vector3<double> min, Vector3<double> max, 
 		double spacing, double scale, int upperLevels,
-		vector<shared_ptr<Chunk>> chunks) {
+		vector<shared_ptr<Chunk>> chunks, Attributes attributes): attributes(attributes) {
 
 
 		this->targetDirectory = targetDirectory;
@@ -217,15 +228,11 @@ public:
 		PWNode* node = root;
 
 		for (int childIndex : id) {
-
-			//if (node->children[childIndex] == nullptr) {
-			//	string childName = node->name + to_string(childIndex);
-			//	PWNode* child = new PWNode(childName);
-
-			//	node->children[childIndex] = child;
-			//}
-
 			node = node->children[childIndex];
+
+			if (node == nullptr) {
+				return nullptr;
+			}
 		}
 
 		return node;
@@ -233,13 +240,22 @@ public:
 
 
 
-	void writeChunk(shared_ptr<Chunk> chunk, shared_ptr<Points> points, shared_ptr<Node> chunkRoot) {
+	void writeChunk(shared_ptr<Chunk> chunk, shared_ptr<Points> points, ProcessResult processResult) {
 
 		double tStart = now();
 
-		// returns subsamples and removes subsampled points from nodes
-		// TODO not happy with passing a pointer here
-		//auto subsamples = subsampleLowerLevels(chunk, points, chunkRoot);
+		{
+			lock_guard<mutex> lock(mtx_writeChunk);
+
+			UpperLevelStuff stuff = { processResult.upperLevels , processResult.upperLevelsData };
+			upperLevelsResults.push_back(stuff); 
+		}
+
+		auto chunkRoot = processResult.chunkRoot;
+
+		if (chunkRoot == nullptr) {
+			return;
+		}
 
 		struct NodePairing {
 			shared_ptr<Node> node = nullptr;
@@ -333,13 +349,6 @@ public:
 		double tLockStart = now();
 		lock_guard<mutex> lock(mtx_writeChunk);
 
-		//lowerLevelSubsamples.push_back(subsamples);
-		/*lowerLevelSubsamples.insert(
-			lowerLevelSubsamples.begin(),
-			subsamples.begin(),
-			subsamples.end()
-		);*/
-
 		double lockDuration = now() - tLockStart;
 		if (lockDuration > 0.1) {
 			cout << "long lock duration: " << lockDuration << " s" << endl;
@@ -378,7 +387,100 @@ public:
 		// fsFile is closed in PotreeWriter::close()
 	}
 
+	void processUpperLevelResults() {
+
+		auto results = upperLevelsResults;
+
+		struct NodeAndData {
+			Node* node;
+			shared_ptr<Points> data;
+		};
+
+		unordered_map<string, vector<NodeAndData>> nodes;
+
+		for (auto stuff : results) {
+			stuff.node->traverse([&nodes, &stuff](Node* node){
+
+				NodeAndData nad;
+				nad.node = node;
+				nad.data = stuff.data;
+
+				nodes[node->name].push_back(nad);
+			});
+		}
+
+		for (auto it : nodes) {
+
+			string name = it.first;
+			auto id = toVectorID(name);
+			PWNode* pwNode = findPWNode(id);
+
+			if (pwNode == nullptr) {
+				cout << "ERROR: points attempted to be added in an unintented chunk. " << endl;
+				continue;
+			}
+
+			vector<NodeAndData>& nodeParts = it.second;
+
+			int numPoints = 0;
+			for (NodeAndData& part : nodeParts) {
+				numPoints += part.node->grid->accepted.size(); // shouldn't have any stores
+			}
+
+			int bytesPerPoint = 12 + attributes.byteSize;
+			uint64_t bufferSize = numPoints * bytesPerPoint;
+
+			vector<uint8_t> buffer(bufferSize, 0);
+			uint64_t bufferOffset = 0;
+
+			auto min = this->min;
+			auto max = this->max;
+			auto scale = this->scale;
+			auto attributes = this->attributes;
+
+			for (auto nad : nodeParts) {
+
+				auto node = nad.node;
+				auto srcBuffer = nad.data->attributeBuffer;
+			
+				auto writePoint = [&bufferOffset, &bytesPerPoint, &buffer, &min, &scale, &attributes, srcBuffer](Point& point) {
+					int32_t ix = int32_t((point.x - min.x) / scale);
+					int32_t iy = int32_t((point.y - min.y) / scale);
+					int32_t iz = int32_t((point.z - min.z) / scale);
+
+					memcpy(buffer.data() + bufferOffset + 0, reinterpret_cast<void*>(&ix), sizeof(int32_t));
+					memcpy(buffer.data() + bufferOffset + 4, reinterpret_cast<void*>(&iy), sizeof(int32_t));
+					memcpy(buffer.data() + bufferOffset + 8, reinterpret_cast<void*>(&iz), sizeof(int32_t));
+
+					int64_t attributeOffset = point.index * attributes.byteSize;
+
+					auto attributeTarget = buffer.data() + bufferOffset + 12;
+					auto attributeSource = srcBuffer->dataU8 + attributeOffset;
+					memcpy(attributeTarget, attributeSource, attributes.byteSize);
+
+					bufferOffset += bytesPerPoint;
+				};
+
+				for (Point& point : node->grid->accepted) {
+					writePoint(point);
+				}
+			}
+
+
+			pwNode->byteOffset = currentByteOffset;
+			pwNode->byteSize = bufferSize;
+			pwNode->numPoints = numPoints;
+
+			currentByteOffset += bufferSize;
+
+			fsFile->write(reinterpret_cast<const char*>(buffer.data()), buffer.size());
+		}
+
+	}
+
 	void close() {
+
+		processUpperLevelResults();
 
 		fsFile->close();
 
@@ -437,8 +539,18 @@ public:
 		}
 	}
 
-
 	void writeHierarchy() {
+
+		// for debugging/testing
+		writeHierarchyJSON();
+
+
+
+
+
+	}
+
+	void writeHierarchyJSON() {
 
 		function<json(PWNode*)> traverse = [&traverse](PWNode* node) -> json {
 

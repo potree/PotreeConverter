@@ -79,9 +79,9 @@ future<void> run() {
 
 	//string path = "D:/dev/pointclouds/Riegl/Retz_Airborne_Terrestrial_Combined_1cm.las";
 	//string path = "D:/dev/pointclouds/Riegl/niederweiden.las";
-	string path = "D:/dev/pointclouds/archpro/heidentor.las";
+	//string path = "D:/dev/pointclouds/archpro/heidentor.las";
 	//string path = "D:/dev/pointclouds/pix4d/eclepens.las";
-	//string path = "D:/dev/pointclouds/mschuetz/lion.las";
+	string path = "D:/dev/pointclouds/mschuetz/lion.las";
 	//string path = "D:/dev/pointclouds/Riegl/Retz_Airborne_Terrestrial_Combined_1cm.las";
 	//string path = "D:/dev/pointclouds/open_topography/ca13/morro_rock/merged.las";
 	//string targetDirectory = "C:/temp/test";
@@ -113,45 +113,28 @@ future<void> run() {
 	int upperLevels = 3;
 	metadata.chunkGridSize = pow(2, upperLevels);
 
-	//Chunker* chunker = co_await chunking(loader, metadata);
+	Chunker* chunker = co_await chunking(loader, metadata);
 
 
 
 	vector<shared_ptr<Chunk>> chunks = getListOfChunks(metadata);
-	//chunks.resize(1);
+	//chunks.resize(39);
+	//chunks = {chunks[38]};
 
 	double scale = 0.001;
-	double spacing = loader->min.distanceTo(loader->max) / 200.0;
+	double spacing = loader->min.distanceTo(loader->max) / 100.0;
 	PotreeWriter writer(targetDirectory, 
 		metadata.min,
 		metadata.max,
 		spacing,
 		scale,
 		upperLevels,
-		chunks
+		chunks,
+		attributes
 	);
-	double cSpacing = spacing / 8.0;
 
-	//{ // sequential
-	//	for (Chunk* chunk : chunks) {
-	//		loadChunk(chunk);
-	//	}
-
-	//	vector<Node*> chunkRoots;
-	//	for (Chunk* chunk : chunks) {
-	//		Node* chunkRoot = processChunk(chunk, cSpacing);
-	//		chunkRoots.push_back(chunkRoot);
-
-	//	}
-
-	//	for (int i = 0; i < chunks.size(); i++) {
-	//		Chunk* chunk = chunks[i];
-	//		Node* chunkRoot = chunkRoots[i];
-
-	//		writer.writeChunk(chunk, chunkRoot);
-	//	}
-	//}
-
+	auto min = metadata.min;
+	auto max = metadata.max;
 
 	// parallel
 	ThreadPool* pool = new ThreadPool(16);
@@ -159,12 +142,12 @@ future<void> run() {
 
 		shared_ptr<Chunk> chunk = chunks[i];
 
-		pool->enqueue([chunk, attributes, &writer, cSpacing](){
+		pool->enqueue([chunk, attributes, &writer, min, max, spacing](){
 			auto points = loadChunk(chunk, attributes);
 
-			auto chunkRoot = processChunk(chunk, points, cSpacing);
+			ProcessResult processResult = processChunk(chunk, points, min, max, spacing);
 
-			writer.writeChunk(chunk, points, chunkRoot);
+			writer.writeChunk(chunk, points, processResult);
 		});
 	}
 	delete pool;
