@@ -149,7 +149,7 @@ PWNode *PWNode::createChild(int childIndex ){
 
 void PWNode ::split(){
 	children.resize(8, NULL);
-
+	numAccepted = 0;
 	string filepath = workDir() + "/data/" + path();
 	if(fs::exists(filepath)){
 		fs::remove(filepath);
@@ -164,17 +164,17 @@ void PWNode ::split(){
 
 PWNode *PWNode::add(Point &point){
 	addCalledSinceLastFlush = true;
-
+	addedSinceLastFlush = true;
 	if(!isInMemory){
 		loadFromDisk();
 	}
 
 	if(isLeafNode()){
 		store.push_back(point);
+		numAccepted++;
 		if(int(store.size()) >= potreeWriter->storeSize){
 			split();
 		}
-
 		return this;
 	}else{
 
