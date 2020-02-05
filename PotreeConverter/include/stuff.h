@@ -31,3 +31,11 @@ void printThreadsafe(string str1, string str2, string str3);
 void printThreadsafe(string str1, string str2, string str3, string str4);
 
 
+
+struct MemoryUsage {
+	uint64_t totalMemory = 0;
+	uint64_t usedMemory = 0;
+
+};
+
+MemoryUsage getMemoryUsage();

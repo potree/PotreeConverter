@@ -4,20 +4,15 @@
 #include <string>
 #include <assert.h>
 #include <filesystem>
+#include <functional>
 
 #include "Points.h"
 #include "Vector3.h"
 #include "LASWriter.hpp"
+#include "TaskPool.h"
 
 using std::string;
-namespace fs = std::experimental::filesystem;
-
-struct ChunkerCell {
-
-	uint32_t count = 0;
-	vector<Points*> batches;
-
-};
+namespace fs = std::filesystem;
 
 struct ChunkNode {
 
@@ -49,7 +44,7 @@ struct ChunkNode {
 
 		childBinSize.resize(8, 0);
 
-		points.reserve(1'000'000);
+		//points.reserve(1'000'000);
 	}
 
 	void add(Point& point) {
@@ -57,6 +52,10 @@ struct ChunkNode {
 		totalPoints++;
 
 		if (totalPoints <= storeSize) {
+
+			if (points.size() == 0) {
+				points.reserve(1'000'000);
+			}
 			points.push_back(point);
 
 			{
@@ -179,36 +178,22 @@ public:
 	int32_t gridSize = 1; 
 	string path = "";
 
-	//vector<ChunkerCell> cells;
 	ChunkNode* root = nullptr;
 
-	//Vector3<double> min = {0.0, 0.0, 0.0};
-	//Vector3<double> max = {0.0, 0.0, 0.0};
-
-	//Chunker(string targetDirectory, int gridSize) {
-	Chunker(string path, Vector3<double> min, Vector3<double> max) {
+	Chunker(string path, Attributes attributes, Vector3<double> min, Vector3<double> max) {
 		this->path = path;
 		this->gridSize = gridSize;
-
-		//cells.resize(gridSize * gridSize * gridSize);
 
 		root = new ChunkNode("r", min, max);
 	}
 
 	void close() {
 
-		function<void(ChunkNode*)> traverse = [&traverse, this](ChunkNode* node) {
+		vector<ChunkNode*> nodes;
 
-			cout << node->name << ": " << node->totalPoints << ", " << node->points.size() << endl;
+		function<void(ChunkNode*)> traverse = [&traverse, this, &nodes](ChunkNode* node) {
 
-			string lasPath = this->path + "/" + node->name + ".las";
-			LASHeader header;
-			header.min = node->min;
-			header.max = node->max;
-			header.numPoints = node->points.size();
-			header.scale = { 0.001, 0.001, 0.001 };
-
-			writeLAS(lasPath, header, node->points);
+			nodes.push_back(node);
 
 			for (ChunkNode* child : node->children) {
 
@@ -218,14 +203,38 @@ public:
 
 				traverse(child);
 			}
-
 		};
 
 		traverse(root);
 
+		return;
+
+		auto path = this->path;
+		auto flushProcessor = [path](shared_ptr<ChunkNode> node) {
+			//cout << node->name << ": " << node->totalPoints << ", " << node->points.size() << endl;
+
+			string lasPath = path + "/" + node->name + ".las";
+			LASHeader header;
+			header.min = node->min;
+			header.max = node->max;
+			header.numPoints = node->points.size();
+			header.scale = { 0.001, 0.001, 0.001 };
+
+			writeLAS(lasPath, header, node->points);
+		};
+
+		int numFlushThreads = 12;
+		TaskPool<ChunkNode> pool(numFlushThreads, flushProcessor);
+
+		for (ChunkNode* node : nodes) {
+			pool.addTask(shared_ptr<ChunkNode>(node));
+		}
+
+		pool.close();
+
 	}
 
-	void add(Points* batch) {
+	void add(shared_ptr<Points> batch) {
 
 		for (Point& point : batch->points) {
 			root->add(point);

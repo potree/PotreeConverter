@@ -21,7 +21,7 @@ using json = nlohmann::json;
 using std::shared_ptr;
 using std::string;
 using std::atomic_bool;
-namespace fs = std::experimental::filesystem;
+namespace fs = std::filesystem;
 
 struct ChunkerCell {
 	uint32_t count = 0;

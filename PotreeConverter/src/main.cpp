@@ -10,39 +10,20 @@
 
 #include "Metadata.h"
 #include "LASLoader.hpp"
-#include "Chunker.h"
+//#include "Chunker_Tree.h"
+#include "Chunker2.h"
 #include "Vector3.h"
 #include "ChunkProcessor.h"
 #include "PotreeWriter.h"
 #include "ThreadPool/ThreadPool.h"
 
-using namespace std::experimental;
-
-namespace fs = std::experimental::filesystem;
-
-int gridSizeFromPointCount(uint64_t pointCount) {
-	if (pointCount < 10'000'000) {
-		return 2;
-	} if (pointCount < 100'000'000) {
-		return 4;
-	} else if (pointCount < 1'000'000'000) {
-		return 8;
-	} else if (pointCount < 10'000'000'000) {
-		return 16;
-	} else if (pointCount < 100'000'000'000) {
-		return 32;
-	} else{
-		return 64;
-	}
-}
-
 future<Chunker*> chunking(LASLoader* loader, Metadata metadata) {
 
 	double tStart = now();
 
-	string path = metadata.targetDirectory + "/chunks";
-	for (const auto& entry : fs::directory_iterator(path)){
-		fs::remove(entry);
+	string path = metadata.targetDirectory + "/chunks/";
+	for (const auto& entry : std::filesystem::directory_iterator(path)){
+		std::filesystem::remove(entry);
 	}
 
 	Vector3<double> size = metadata.max - metadata.min;
@@ -51,8 +32,10 @@ future<Chunker*> chunking(LASLoader* loader, Metadata metadata) {
 	Vector3<double> cubeMax = cubeMin + cubeSize;
 
 	Attributes attributes = loader->getAttributes();
-	Chunker* chunker = new Chunker(path, attributes, cubeMin, cubeMax, 8);
+	int gridSize = metadata.chunkGridSize;
+	Chunker* chunker = new Chunker(path, attributes, cubeMin, cubeMax, gridSize);
 
+	double sum = 0.0;
 	int batchNumber = 0;
 	auto batch = co_await loader->nextBatch();
 	while (batch != nullptr) {
@@ -60,19 +43,28 @@ future<Chunker*> chunking(LASLoader* loader, Metadata metadata) {
 			cout << "batch loaded: " << batchNumber << endl;
 		}
 
+		auto tStart = now();
 		chunker->add(batch);
+		auto duration = now() - tStart;
+		sum += duration;
 
 		batch = co_await loader->nextBatch();
 
 		batchNumber++;
 	}
 
-	chunker->close();
+	cout << "raw batch add time: " << sum << endl;
 
 	printElapsedTime("chunking duration", tStart);
 
+	chunker->close();
+
+	printElapsedTime("chunking duration + close", tStart);
+
 	return chunker;
 }
+
+
 
 
 future<void> run() {
@@ -86,15 +78,13 @@ future<void> run() {
 	//string path = "D:/dev/pointclouds/open_topography/ca13/morro_rock/merged.las";
 	//string targetDirectory = "C:/temp/test";
 
-	string targetDirectory = "C:/dev/workspaces/potree/develop/test/new_format1";
+	string targetDirectory = "C:/dev/workspaces/Potree2/master/pointclouds/test";
 
 	auto tStart = now();
 
 	LASLoader* loader = new LASLoader(path);
+	loader->spawnLoadThread();
 	Attributes attributes = loader->getAttributes();
-
-	//loader->estimateAttributes();
-	//return;
 
 	auto size = loader->max - loader->min;
 	double octreeSize = size.max();
@@ -102,60 +92,70 @@ future<void> run() {
 	fs::create_directories(targetDirectory);
 	fs::create_directories(targetDirectory + "/chunks");
 
-
 	Metadata metadata;
 	metadata.targetDirectory = targetDirectory;
 	metadata.min = loader->min;
 	metadata.max = loader->min + octreeSize;
 	metadata.numPoints = loader->numPoints;
-	//metadata.chunkGridSize = gridSizeFromPointCount(metadata.numPoints);
-
+	metadata.chunkGridSize = 8;
 	int upperLevels = 3;
-	metadata.chunkGridSize = pow(2, upperLevels);
 
 	Chunker* chunker = co_await chunking(loader, metadata);
 
+	{
+		vector<shared_ptr<Chunk>> chunks = getListOfChunks(metadata);
+		//chunks.resize(39);
+		//chunks = {chunks[38]};
+
+		double scale = 0.001;
+		double spacing = loader->min.distanceTo(loader->max) / 100.0;
+		PotreeWriter writer(targetDirectory,
+			metadata.min,
+			metadata.max,
+			spacing,
+			scale,
+			upperLevels,
+			chunks,
+			attributes
+		);
+
+		auto min = metadata.min;
+		auto max = metadata.max;
+
+		// parallel
+		ThreadPool* pool = new ThreadPool(16);
+		for (int i = 0; i < chunks.size(); i++) {
+
+			shared_ptr<Chunk> chunk = chunks[i];
 
 
-	vector<shared_ptr<Chunk>> chunks = getListOfChunks(metadata);
-	//chunks.resize(39);
-	//chunks = {chunks[38]};
+			//auto usage1 = getMemoryUsage();
 
-	double scale = 0.001;
-	double spacing = loader->min.distanceTo(loader->max) / 100.0;
-	PotreeWriter writer(targetDirectory, 
-		metadata.min,
-		metadata.max,
-		spacing,
-		scale,
-		upperLevels,
-		chunks,
-		attributes
-	);
+			//{
+			//	auto points = loadChunk(chunk, attributes);
+			//	//ProcessResult processResult = processChunk(chunk, points, min, max, spacing);
+			//	//writer.writeChunk(chunk, points, processResult);
+			//}
+			//
 
-	auto min = metadata.min;
-	auto max = metadata.max;
+			//auto usage2 = getMemoryUsage();
 
-	// parallel
-	ThreadPool* pool = new ThreadPool(16);
-	for(int i = 0; i < chunks.size(); i++){
+			//cout << usage1.usedMemory << endl;
+			//cout << usage2.usedMemory << endl;
 
-		shared_ptr<Chunk> chunk = chunks[i];
+			pool->enqueue([chunk, attributes, &writer, min, max, spacing]() {
+				auto points = loadChunk(chunk, attributes);
 
-		pool->enqueue([chunk, attributes, &writer, min, max, spacing](){
-			auto points = loadChunk(chunk, attributes);
+				ProcessResult processResult = processChunk(chunk, points, min, max, spacing);
 
-			ProcessResult processResult = processChunk(chunk, points, min, max, spacing);
+				writer.writeChunk(chunk, points, processResult);
+			});
+		}
+		delete pool;
 
-			writer.writeChunk(chunk, points, processResult);
-		});
+		writer.close();
+
 	}
-	delete pool;
-
-	writer.close();
-
-	
-
 
 	auto tEnd = now();
 	auto duration = tEnd - tStart;
@@ -164,49 +164,9 @@ future<void> run() {
 	co_return;
 }
 
-//#include "TaskPool.h"
-
-//void testTaskPool() {
-//
-//	struct Batch {
-//		string path = "";
-//		string text = "";
-//
-//		Batch(string path, string text) {
-//			this->path = path;
-//			this->text = text;
-//		}
-//	};
-//
-//	string someCapturedValue = "asoudh adpif sdgsrg";
-//	auto processor = [someCapturedValue](shared_ptr<Batch> batch) {
-//		fstream file;
-//		file.open(batch->path, ios::out);
-//		file << batch->text;
-//		file << someCapturedValue;
-//		file.close();
-//	};
-//
-//	TaskPool<Batch> pool(5, processor);
-//
-//	shared_ptr<Batch> batch1 = make_shared<Batch>(
-//		"C:/temp/test1.txt",
-//		"content of file 1 ");
-//	shared_ptr<Batch> batch2 = make_shared<Batch>(
-//		"C:/temp/test2.txt",
-//		"content of file 2 ");
-//
-//	pool.addTask(batch1);
-//	pool.addTask(batch2);
-//
-//	pool.close();
-//}
-
 int main(int argc, char **argv){
 
 	run().wait();
-
-	//testTaskPool();
 
 	return 0;
 }

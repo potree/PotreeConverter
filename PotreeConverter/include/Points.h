@@ -9,6 +9,8 @@
 using std::string;
 using std::vector;
 using std::shared_ptr;
+using std::cout;
+using std::endl;
 
 struct Buffer {
 	void* data = nullptr;
@@ -120,9 +122,13 @@ struct Points {
 	Attributes attributes;
 	shared_ptr<Buffer> attributeBuffer;
 
-	//~Points() {
-	//	delete attributeBuffer;
-	//}
+	Points() {
+		//cout << "create points" << endl;
+	}
+
+	~Points() {
+		//cout << "delete points" << endl;
+	}
 
 };
 

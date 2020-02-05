@@ -169,7 +169,7 @@ public:
 
 		this->numPoints = npoints;
 		
-		spawnLoadThread();
+		//spawnLoadThread();
 
 	}
 
@@ -215,7 +215,7 @@ public:
 					return batch;
 				} else {
 					lock.unlock();
-					std::this_thread::sleep_for(std::chrono::milliseconds(10));
+					std::this_thread::sleep_for(std::chrono::milliseconds(5));
 				}
 			}
 
@@ -228,6 +228,8 @@ public:
 	}
 
 	void loadStuff() {
+
+		auto tStart = now();
 
 		uint64_t npoints = (header->number_of_point_records ? header->number_of_point_records : header->extended_number_of_point_records);
 
@@ -253,6 +255,7 @@ public:
 
 				points = make_shared<Points>();
 				uint64_t attributeBufferSize = currentBatchSize * attributes.byteSize;
+				points->points.reserve(currentBatchSize);
 				points->attributes = attributes;
 				points->attributeBuffer = make_shared<Buffer>(attributeBufferSize);
 			}
@@ -292,6 +295,7 @@ public:
 		}
 
 		cout << "#points: " << npoints << endl;
+		printElapsedTime("loaded", tStart);
 
 		cout << batches.size() << endl;
 	}

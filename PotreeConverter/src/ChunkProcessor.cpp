@@ -3,6 +3,8 @@
 #include <fstream>
 #include <iomanip>
 #include <iterator>
+#include <algorithm>
+#include <random>
 #include <stack>
 
 #include "ChunkProcessor.h"
@@ -128,7 +130,7 @@ shared_ptr<Points> loadChunk(shared_ptr<Chunk> chunk, Attributes attributes) {
 	auto file = fstream(chunk->file, std::ios::in | std::ios::binary);
 
 
-	ifstream inputFile("shorts.txt", std::ios::binary);
+	//ifstream inputFile("shorts.txt", std::ios::binary);
 
 	int bufferSize = numPoints * bytesPerPoint;
 	void* buffer = malloc(bufferSize);
@@ -225,7 +227,10 @@ ProcessResult processChunk(
 	root->setStorefreeLevels(levels);
 
 	// reduces sampling patterns for sampling algorithms that are order-dependent
-	random_shuffle(points->points.begin(), points->points.end());
+	std::random_device rd;
+	std::mt19937 g(rd());
+	//random_shuffle(points->points.begin(), points->points.end());
+	std::shuffle(points->points.begin(), points->points.end(), g);
 
 	// TODO may have to disable Node::store for levels up to chunk
 	for (Point& point : points->points) {
@@ -283,7 +288,8 @@ ProcessResult processChunk(
 	result.upperLevelsData = upperLevelsData;
 	result.chunkRoot = chunkRoot;
 
-	printElapsedTime("processing", tStart);
+	string label = "processed(" + chunk->id + ")";
+	printElapsedTime(label, tStart);
 
 	return result;
 }

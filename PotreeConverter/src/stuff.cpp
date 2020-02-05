@@ -105,3 +105,33 @@ void printThreadsafe(string str1, string str2, string str3, string str4) {
 
 	cout << ss.str();
 }
+
+
+#include <Windows.h>
+#include "psapi.h"
+
+MemoryUsage getMemoryUsage() {
+
+	MemoryUsage usage;
+
+	{
+		MEMORYSTATUSEX memInfo;
+		memInfo.dwLength = sizeof(MEMORYSTATUSEX);
+		GlobalMemoryStatusEx(&memInfo);
+
+		usage.totalMemory = memInfo.ullTotalPhys;
+
+	}
+
+	{
+		PROCESS_MEMORY_COUNTERS_EX pmc;
+		GetProcessMemoryInfo(GetCurrentProcess(), (PROCESS_MEMORY_COUNTERS*)& pmc, sizeof(pmc));
+		SIZE_T virtualMemUsedByMe = pmc.PrivateUsage;
+
+		usage.usedMemory = pmc.WorkingSetSize;
+
+	}
+
+
+	return usage;
+}

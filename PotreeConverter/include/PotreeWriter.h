@@ -9,6 +9,7 @@
 #include <random>
 #include <unordered_map>
 #include <vector>
+#include <algorithm>
 
 
 #include "json.hpp"
@@ -16,7 +17,7 @@
 using json = nlohmann::json;
 using namespace std;
 
-namespace fs = std::experimental::filesystem;
+namespace fs = std::filesystem;
 
 struct PWNode {
 
@@ -544,8 +545,119 @@ public:
 		// for debugging/testing
 		writeHierarchyJSON();
 
+		writeHierarchyBinary();
 
 
+
+
+	}
+
+	void writeHierarchyBinary() {
+
+		vector<PWNode*> nodes;
+		function<void(PWNode*)> traverse = [&traverse, &nodes](PWNode* node){
+			nodes.push_back(node);
+
+			for (auto child : node->children) {
+				if (child != nullptr) {
+					traverse(child);
+				}
+			}
+		};
+		traverse(root);
+
+		// sizeof(NodeData) = 32 bytes
+		struct NodeData {
+			uint64_t byteOffset = 0; // location of first byte in data store
+			uint64_t byteLength = 0; // byte size in data store
+			uint64_t childPosition = 0; // location of first child in hierarchy
+			uint8_t childBitset = 0; // which of the eight children exist?
+		};
+
+		// sort in breadth-first order
+		auto compare = [](PWNode* a, PWNode* b) -> bool {
+			if (a->name.size() == b->name.size()) {
+				bool result = lexicographical_compare(
+					a->name.begin(), a->name.end(),
+					b->name.begin(), b->name.end());
+
+				return result;
+			} else {
+				return a->name.size() < b->name.size();
+			}
+		};
+
+		sort(nodes.begin(), nodes.end(), compare);
+
+		unordered_map<string, uint64_t> nodesMap;
+		vector<NodeData> nodesData(nodes.size());
+
+		for (uint64_t i = 0; i < nodes.size(); i++) {
+
+			PWNode* node = nodes[i];
+			NodeData& nodeData = nodesData[i];
+
+			nodeData.byteOffset = node->byteOffset;
+			nodeData.byteLength = node->byteSize;
+
+			nodesMap[node->name] = i;
+
+			if (node->name != "r") {
+				string parentName = node->name.substr(0, node->name.size() - 1);
+				uint64_t parentIndex = nodesMap[parentName];
+				PWNode* parent = nodes[parentIndex];
+				NodeData& parentData = nodesData[parentIndex];
+
+
+				int index = node->name.at(node->name.size() - 1) - '0';
+				int bitmask = 1 << index;
+				parentData.childBitset = parentData.childBitset | bitmask;
+
+				if (parentData.childPosition == 0) {
+					parentData.childPosition = i;
+				}
+
+			}
+		}
+
+		cout << "#nodes: " << nodes.size() << endl;
+
+		{
+			string jsPath = targetDirectory + "/hierarchy.bin";
+
+			fstream file;
+			file.open(jsPath, ios::out | ios::binary);
+
+			char* data = reinterpret_cast<char*>(nodesData.data());
+			file.write(data, nodesData.size() * sizeof(NodeData));
+
+			cout << "sizeof(NodeData): " << sizeof(NodeData) << endl;
+
+			//for (int i = 0; i < 109; i++) {
+			//	NodeData& nodeData = nodesData[i];
+			//	PWNode* node = nodes[i];
+
+			//	file << "=================" << endl;
+			//	file << "position; " << i << endl;
+			//	file << "name: " << node->name << endl;
+			//	file << "offset: " << nodeData.byteOffset << endl;
+			//	file << "size: " << nodeData.byteLength << endl;
+			//	file << "childPosition: " << nodeData.childPosition << endl;
+			//	file << "children: ";
+
+			//	for (int j = 0; j < 8; j++) {
+			//		int value = nodeData.childBitset & (1 << j);
+
+			//		file << (value > 0 ? 1 : 0)<< ", ";
+			//	}
+			//	file << endl;
+
+
+			//}
+			
+
+			file.close();
+		}
 
 
 	}
