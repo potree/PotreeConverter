@@ -13,7 +13,7 @@
 #include "arguments.hpp"
 #include <filesystem>
 
-namespace fs = std::experimental::filesystem;
+namespace fs = std::filesystem;
 
 using std::string;
 using std::cout;
