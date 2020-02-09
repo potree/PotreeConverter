@@ -1,4 +1,4 @@
-FROM ubuntu:15.10
+FROM ubuntu:16.04
 
 RUN apt-get update && apt-get install -y g++ git cmake libboost-all-dev
 RUN mkdir /data
