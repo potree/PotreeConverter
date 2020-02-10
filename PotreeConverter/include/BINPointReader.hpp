@@ -3,6 +3,7 @@
 #ifndef BINPOINTREADER_H
 #define BINPOINTREADER_H
 
+#include <cstring>
 #include <string>
 #include <iostream>
 #include <vector>
