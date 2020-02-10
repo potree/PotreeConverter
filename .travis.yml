@@ -2,16 +2,16 @@ dist: trusty
 sudo: false
 script: make
 env:
-  - CXX='clang++-4.0 -std=c++11' CC=clang-4.0
-  - CXX=g++-6 CC=gcc-6
+  - CXX='clang++-4.0 -std=c++17' CC=clang-4.0
+  - CXX=g++-8 CC=gcc-8
 addons:
   apt:
     sources:
     - ubuntu-toolchain-r-test
     - llvm-toolchain-trusty-4.0
     packages:
-    - gcc-6
-    - g++-6
+    - gcc-8
+    - g++-8
     - cmake
     - libboost-all-dev
     - clang-4.0

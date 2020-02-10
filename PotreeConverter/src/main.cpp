@@ -251,7 +251,7 @@ PotreeArguments parseArguments(int argc, char **argv){
 	}
 
    try {
-    auto absolutePath = fs::canonical(fs::system_complete(argv[0]));
+    auto absolutePath = fs::canonical(fs::absolute(argv[0]));
     a.executablePath = absolutePath.parent_path().string();
    } catch (const fs::filesystem_error &e) {
      // do nothing

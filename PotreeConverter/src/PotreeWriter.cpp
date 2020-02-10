@@ -295,7 +295,8 @@ void PWNode::flush(){
 			if(fs::exists(temppath)){
 				PointReader *reader = createReader(temppath);
 				while(reader->readNextPoint()){
-					writer->write(reader->getPoint());
+                    Potree::Point pt = reader->getPoint();
+					writer->write(pt);
 				}
 				reader->close();
 				delete reader;
