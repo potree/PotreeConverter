@@ -302,25 +302,8 @@ void indexChunk(shared_ptr<Chunk> chunk, string path) {
 	vector<Point> resolved;
 	resolved.reserve(points.size());
 
-	auto getColor = [](int level) -> uint32_t {
-		if (level == 1) {
-			return 0xff0000ff;
-		} else if (level == 2) {
-			return 0x00ff00ff;
-		} else if (level == 3) {
-			return 0x0000ffff;
-		} else if (level == 4) {
-			return 0xffff00ff;
-		} else if (level == 5) {
-			return 0xff00ffff;
-		} else if (level == 6) {
-			return 0x00ffffff;
-		} else {
-			return 0xffffff;
-		}
-	};
 
-	root.traverse([path, &resolved, getColor](Node* node) {
+	root.traverse([path](Node* node) {
 
 		auto accepted = node->getAccepted();
 
@@ -328,21 +311,34 @@ void indexChunk(shared_ptr<Chunk> chunk, string path) {
 			return;
 		}
 
-		for (Point point : accepted) {
-			point.index = getColor(node->level);
-			resolved.push_back(point);
+		if (node->level >= 4) {
+			return;
 		}
+
+		//for (Point point : accepted) {
+		//	point.index = getColor(node->level);
+		//	resolved.push_back(point);
+		//}
+
+		LASHeader header;
+		header.numPoints = accepted.size();
+		header.headerSize = 375;
+		header.scale = { 0.001, 0.001, 0.001 };
+		header.min = node->box.min;
+		header.max = node->box.max;
+		string laspath = path + "/nodes/" + node->name + ".las";
+		writeLAS(laspath, header, accepted);
 
 	});
 
-	LASHeader header;
-	header.numPoints = resolved.size();
-	header.headerSize = 375;
-	header.scale = { 0.001, 0.001, 0.001 };
-	header.min = chunk->min;
-	header.max = chunk->max;
-	string laspath = path + "/nodes/" + chunk->id + ".las";
-	writeLAS(laspath, header, resolved);
+	//LASHeader header;
+	//header.numPoints = resolved.size();
+	//header.headerSize = 375;
+	//header.scale = { 0.001, 0.001, 0.001 };
+	//header.min = chunk->min;
+	//header.max = chunk->max;
+	//string laspath = path + "/nodes/" + chunk->id + ".las";
+	//writeLAS(laspath, header, resolved);
 }
 
 void doIndexing(string path) {
@@ -364,17 +360,6 @@ void doIndexing(string path) {
 		t.join();
 	}
 	
-
-
-
-	/*LASHeader header;
-	header.numPoints = accepted.size();
-	header.headerSize = 375;
-	header.scale = { 0.001, 0.001, 0.001 };
-	header.min = chunk->min;
-	header.max = chunk->max;
-	string laspath = path + "/test.las";
-	writeLAS(laspath, header, accepted);*/
 
 
 }

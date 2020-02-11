@@ -95,10 +95,14 @@ void writeLAS(string path, LASHeader header, vector<Point> points) {
 		laspoint.x = ix;
 		laspoint.y = iy;
 		laspoint.z = iz;
+
+		laspoint.r = 255;
+		laspoint.g = 0;
+		laspoint.b = 0;
 		
-		laspoint.r = point.index & 0xff000000;
-		laspoint.g = point.index & 0x00ff0000;
-		laspoint.b = point.index & 0x0000ff00;
+		//laspoint.r = point.index & 0xff000000;
+		//laspoint.g = point.index & 0x00ff0000;
+		//laspoint.b = point.index & 0x0000ff00;
 
 		file.write(reinterpret_cast<const char*>(&laspoint), 26);
 	}

@@ -257,7 +257,7 @@ void doChunking(string pathIn, string pathOut) {
 
 	flushPool = make_shared<TaskPool<ChunkPiece>>(16, flushProcessor);
 
-	LASLoader* loader = new LASLoader(pathIn);
+	LASLoader* loader = new LASLoader(pathIn, 2);
 	loader->spawnLoadThread();
 	Attributes attributes = loader->getAttributes();
 
@@ -312,7 +312,7 @@ void doChunking(string pathIn, string pathOut) {
 	printElapsedTime("chunking duration", tStart);
 
 	flushPool->waitTillEmpty();
-	chunker->close();
+	//chunker->close();
 
 	printElapsedTime("chunking duration + close", tStart);
 }
