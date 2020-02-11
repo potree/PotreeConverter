@@ -7,7 +7,11 @@
 #include <deque>
 #include <vector>
 
-using namespace std;
+//using namespace std;
+
+using std::thread;
+using std::mutex;
+using std::vector;
 
 // might be better off using https://github.com/progschj/ThreadPool
 template<class Task>
@@ -63,6 +67,10 @@ public:
 			});
 		}
 
+	}
+
+	~TaskPool() {
+		this->close();
 	}
 
 	void addTask(shared_ptr<Task> t) {

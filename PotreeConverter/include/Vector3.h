@@ -1,10 +1,11 @@
 
 #pragma once
 
-#include <limits>
 #include <string>
+#include <cmath>
+#include <limits>
 
-using namespace std;
+//using std::string;
 
 static double Infinity = std::numeric_limits<double>::infinity();
 
@@ -50,11 +51,11 @@ struct Vector3{
 		return std::max(std::max(x, y), z);
 	}
 
-	string toString() {
-		string str = to_string(x) + ", " + to_string(y) + ", " + to_string(z);
+	//string toString() {
+	//	string str = to_string(x) + ", " + to_string(y) + ", " + to_string(z);
 
-		return str;
-	}
+	//	return str;
+	//}
 
 	Vector3<T> operator-(const Vector3<T>& right) const {
 		return Vector3<T>(x - right.x, y - right.y, z - right.z);

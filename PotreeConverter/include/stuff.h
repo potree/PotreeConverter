@@ -5,9 +5,13 @@
 #include <chrono>
 #include <cstdarg>
 #include <sstream>
+#include <vector>
 
 using std::string;
+using std::vector;
 using std::stringstream;
+
+string repeat(string str, int count);
 
 string stringReplace(string str, string search, string replacement);
 
@@ -30,6 +34,9 @@ void printThreadsafe(string str1, string str2);
 void printThreadsafe(string str1, string str2, string str3);
 void printThreadsafe(string str1, string str2, string str3, string str4);
 
+void writeFile(string path, string text);
+string readTextFile(string path);
+vector<char> readBinaryFile(string path);
 
 
 struct MemoryUsage {

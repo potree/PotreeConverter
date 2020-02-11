@@ -17,17 +17,19 @@
 #include "Points.h"
 #include "stuff.h"
 #include "Vector3.h"
+//
+//using std::string;
+//using std::cout;
+//using std::endl;
+//using std::vector;
+//using std::unordered_map;
+//using std::thread;
+//using std::future;
+//using std::mutex;
+//using std::lock_guard;
+//using std::unique_lock;
 
-using std::string;
-using std::cout;
-using std::endl;
-using std::vector;
-using std::unordered_map;
-using std::thread;
-using std::future;
-using std::mutex;
-using std::lock_guard;
-using std::unique_lock;
+using namespace std;
 
 // see LAS spec 1.4
 // https://www.asprs.org/wp-content/uploads/2010/12/LAS_1_4_r13.pdf

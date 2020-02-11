@@ -2,6 +2,7 @@
 #include "LASWriter.hpp"
 
 #include <fstream>
+#include <cstdint>
 
 using namespace std;
 
@@ -87,16 +88,17 @@ void writeLAS(string path, LASHeader header, vector<Point> points) {
 
 	for (Point& point : points) {
 
-		int32_t ix = (point.x - header.min.x) / header.scale.x;
-		int32_t iy = (point.y - header.min.y) / header.scale.y;
-		int32_t iz = (point.z - header.min.z) / header.scale.z;
+		int32_t ix = int32_t((point.x - header.min.x) / header.scale.x);
+		int32_t iy = int32_t((point.y - header.min.y) / header.scale.y);
+		int32_t iz = int32_t((point.z - header.min.z) / header.scale.z);
 
 		laspoint.x = ix;
 		laspoint.y = iy;
 		laspoint.z = iz;
-		laspoint.r = 255;
-		laspoint.g = 0;
-		laspoint.b = 0;
+		
+		laspoint.r = point.index & 0xff000000;
+		laspoint.g = point.index & 0x00ff0000;
+		laspoint.b = point.index & 0x0000ff00;
 
 		file.write(reinterpret_cast<const char*>(&laspoint), 26);
 	}
@@ -119,9 +121,9 @@ void writeLAS(string path, LASHeader header, vector<Point> sample, Points* point
 
 	for (Point& point : sample) {
 
-		int32_t ix = (point.x - header.min.x) / header.scale.x;
-		int32_t iy = (point.y - header.min.y) / header.scale.y;
-		int32_t iz = (point.z - header.min.z) / header.scale.z;
+		int32_t ix = int32_t((point.x - header.min.x) / header.scale.x);
+		int32_t iy = int32_t((point.y - header.min.y) / header.scale.y);
+		int32_t iz = int32_t((point.z - header.min.z) / header.scale.z);
 
 		laspoint.x = ix;
 		laspoint.y = iy;
