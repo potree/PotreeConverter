@@ -12,6 +12,9 @@ using std::string;
 
 #include "Chunker.h"
 #include "Indexer_Centered.h"
+#include "Indexer_Bluenoise.h"
+#include "Indexer_Centered_countsort.h"
+#include "Indexer_Centered_nochunks.h"
 
 
 int main(int argc, char **argv){
@@ -31,7 +34,10 @@ int main(int argc, char **argv){
 
 	//doChunking(pathIn, pathOut);
 
-	doIndexing(pathOut);
+	//countsort::doIndexing(pathOut);
+	//centered::doIndexing(pathOut);
+	//centered_nochunks::doIndexing(pathIn, pathOut);
+	bluenoise::doIndexing(pathOut);
 
 	printElapsedTime("total time", tStart);
 

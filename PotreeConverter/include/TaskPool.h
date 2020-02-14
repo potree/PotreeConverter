@@ -6,12 +6,18 @@
 #include <atomic>
 #include <deque>
 #include <vector>
+#include <functional>
+#include <atomic>
 
 //using namespace std;
 
 using std::thread;
+using std::atomic;
 using std::mutex;
 using std::vector;
+using std::deque;
+using std::function;
+using std::lock_guard;
 
 // might be better off using https://github.com/progschj/ThreadPool
 template<class Task>
@@ -80,6 +86,10 @@ public:
 	}
 
 	void close() {
+		if(isClosed){
+			return;
+		}
+
 		isClosed = true;
 
 		for (thread& t : threads) {

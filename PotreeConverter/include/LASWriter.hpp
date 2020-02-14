@@ -10,7 +10,7 @@ struct LASHeader {
 	uint64_t numPoints = 0;
 	Vector3<double> min;
 	Vector3<double> max;
-	Vector3<double> scale;
+	Vector3<double> scale = {0.001, 0.001, 0.001};
 
 };
 

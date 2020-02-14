@@ -5,10 +5,12 @@
 #include <string>
 #include <vector>
 #include <memory>
+#include <unordered_map>
 
 #include "Vector3.h"
 
 using std::string;
+using std::unordered_map;
 using std::vector;
 using std::shared_ptr;
 using std::cout;
@@ -51,19 +53,85 @@ struct Buffer {
 
 };
 
-enum class AttributeType {
-	undefined,
-	int8,
-	int16,
-	int32,
-	int64,
-	uint8,
-	uint16,
-	uint32,
-	uint64,
-	float32, 
-	float64,
+struct AttributeType {
+	int id;
+	string name;
+
+	bool operator==(AttributeType& type) {
+		return this->id == type.id;
+	}
 };
+
+namespace AttributeTypes {
+	static const AttributeType undefined   = { 0, "undefined"};
+	static const AttributeType int8        = { 1, "int8"};
+	static const AttributeType int16       = { 2, "int16"};
+	static const AttributeType int32       = { 3, "int32"};
+	static const AttributeType int64       = { 4, "int64"};
+	static const AttributeType uint8       = { 5, "uint8"};
+	static const AttributeType uint16      = { 6, "uint16"};
+	static const AttributeType uint32      = { 7, "uint32"};
+	static const AttributeType uint64      = { 8, "uint64"};
+	static const AttributeType float32     = { 9, "float32"};
+	static const AttributeType float64     = {10, "float64"};
+
+	static const unordered_map<string, AttributeType> map = {
+		{"undefined", undefined},
+		{"int8", int8},
+		{"int16", int16},
+		{"int32", int32},
+		{"int64", int64},
+		{"uint8", uint8},
+		{"uint16", uint16},
+		{"uint32", uint32},
+		{"uint64", uint64},
+		{"float32", float32},
+		{"float64", float64}
+	};
+
+	inline AttributeType fromName(string name) {
+		if (map.find(name) == map.end()) {
+			cout << "ERROR: attribute type with this name does not exist: " << name << endl;
+			cout << __FILE__ << "(" << __LINE__ << ")" << endl;
+
+			exit(123);
+		}
+
+		return map.at(name);
+	}
+}
+
+
+//enum class AttributeType {
+//	undefined,
+//	int8,
+//	int16,
+//	int32,
+//	int64,
+//	uint8,
+//	uint16,
+//	uint32,
+//	uint64,
+//	float32, 
+//	float64,
+//};
+//
+//inline unordered_map< AttributeType, string> AttributeTypeNames = {
+//	{AttributeType::undefined, "undefined"},
+//	{AttributeType::int8, "int8"},
+//	{AttributeType::int16, "int16"},
+//	{AttributeType::int32, "int32"},
+//	{AttributeType::int64, "int64"},
+//	{AttributeType::uint8, "uint8"},
+//	{AttributeType::uint16, "uint16"},
+//	{AttributeType::uint32, "uint32"},
+//	{AttributeType::uint64, "uint64"},
+//	{AttributeType::float32, "float32,"},
+//	{AttributeType::float64, "float64"}
+//};
+
+
+//inline unord
 
 struct Attribute {
 
@@ -84,12 +152,30 @@ struct Attribute {
 		this->type = type;
 	}
 
+	Attribute(string name, AttributeType type, int offset, int bytes, int numElements) {
+		this->name = name;
+		this->type = type;
+		this->byteOffset = offset;
+		this->bytes = bytes;
+		this->numElements = numElements;
+	}
+
 };
 
 struct Attributes {
 
 	vector<Attribute> list;
 	int byteSize = 0;
+
+	Attributes() {
+
+	}
+
+	Attributes(vector<Attribute> list) {
+		for (auto attribute : list) {
+			add(attribute);
+		}
+	}
 
 	void add(Attribute attribute) {
 		list.push_back(attribute);
@@ -106,7 +192,28 @@ struct Point {
 
 	uint64_t index = 0;
 
+	Point() {
+
+	}
+
+	Point(double x, double y, double z, int index) {
+		this->x = x;
+		this->y = y;
+		this->z = z;
+		this->index = index;
+	}
+
 	double squaredDistanceTo(Point& b) {
+		double dx = b.x - this->x;
+		double dy = b.y - this->y;
+		double dz = b.z - this->z;
+
+		double dd = dx * dx + dy * dy + dz * dz;
+
+		return dd;
+	};
+
+	double squaredDistanceTo(Vector3<double> b) {
 		double dx = b.x - this->x;
 		double dy = b.y - this->y;
 		double dz = b.z - this->z;

@@ -93,12 +93,26 @@ void flushProcessor(shared_ptr<ChunkPiece> piece) {
 
 shared_ptr< TaskPool<ChunkPiece>> flushPool;
 
-void writeMetadata(string path, Vector3<double> min, Vector3<double> max) {
+void writeMetadata(string path, Vector3<double> min, Vector3<double> max, Attributes attributes) {
 
 	json js;
 
 	js["min"] = { min.x, min.y, min.z };
 	js["max"] = { max.x, max.y, max.z };
+	js["attributes"] = {};
+
+	for (auto attribute : attributes.list) {
+		
+		json jsAttribute;
+		jsAttribute["name"] = attribute.name;
+		jsAttribute["byteOffset"] = attribute.byteOffset;
+		jsAttribute["byteSize"] = attribute.bytes;
+		jsAttribute["description"] = attribute.description;
+		jsAttribute["numElements"] = attribute.numElements;
+		jsAttribute["type"] = attribute.type.name;
+
+		js["attributes"].push_back(jsAttribute);
+	}
 
 	string content = js.dump(4);
 
@@ -258,7 +272,6 @@ void doChunking(string pathIn, string pathOut) {
 	flushPool = make_shared<TaskPool<ChunkPiece>>(16, flushProcessor);
 
 	LASLoader* loader = new LASLoader(pathIn, 2);
-	loader->spawnLoadThread();
 	Attributes attributes = loader->getAttributes();
 
 	string path = pathOut + "/chunks/";
@@ -274,7 +287,7 @@ void doChunking(string pathIn, string pathOut) {
 	Vector3<double> cubeMin = loader->min;
 	Vector3<double> cubeMax = cubeMin + cubeSize;
 
-	int gridSize = 2;
+	int gridSize = 4;
 	Chunker* chunker = new Chunker(path, attributes, cubeMin, cubeMax, gridSize);
 
 	double sum = 0.0;
@@ -304,7 +317,7 @@ void doChunking(string pathIn, string pathOut) {
 
 
 	string metadataPath = pathOut + "/chunks/metadata.json";
-	writeMetadata(metadataPath, cubeMin, cubeMax);
+	writeMetadata(metadataPath, cubeMin, cubeMax, attributes);
 
 
 

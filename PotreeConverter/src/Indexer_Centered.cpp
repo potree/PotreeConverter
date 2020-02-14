@@ -5,14 +5,16 @@
 #include <filesystem>
 #include <memory>
 #include <thread>
-#include <string>
 #include <unordered_map>
+
+#include "json.hpp"
 
 #include "convmath.h"
 #include "converter_utils.h"
 #include "stuff.h"
 #include "LASWriter.hpp"
-//#include "LASLoader.hpp"B
+#include "TaskPool.h"
+
 
 using std::vector;
 using std::thread;
@@ -25,6 +27,8 @@ using json = nlohmann::json;
 
 namespace fs = std::filesystem;
 
+namespace centered{
+
 struct Chunk {
 	Vector3<double> min;
 	Vector3<double> max;
@@ -33,7 +37,6 @@ struct Chunk {
 	string id;
 };
 
-int maxLevel = 3;
 int pointsAdded = 0;
 
 struct Node {
@@ -43,32 +46,57 @@ struct Node {
 	int gridSize;
 	double dGridSize;
 
+	vector<Point> store;
+	int storeSize = 1'000;
+	bool storeBroken = false;
+
+	int maxDepth = 0;
+
 	unordered_map<int, Point> grid;
-	//vector<Point> grid;
 
 	BoundingBox box;
 	vector<shared_ptr<Node>> children;
 
-	Node(string name, int gridSize, BoundingBox box) {
+	Node(string name, int gridSize, BoundingBox box, int maxDepth) {
 		this->name = name;
 		this->level = name.size() - 1;
 		this->gridSize = gridSize;
 		this->box = box;
+		this->maxDepth = maxDepth;
 
 		children.resize(8, nullptr);
+		//store.reserve(storeSize);
 
 		dGridSize = gridSize;
 	}
 
-	void add(Point point) {
+	void breakStore() {
+		storeBroken = true;
 
-		if (level > maxLevel) {
-			return;
+		for (Point& point : store) {
+			this->add(point);
 		}
 
-		//if (grid.size() == 0) {
-		//	grid.resize(gridSize * gridSize * gridSize);
+		store.clear();
+		store = vector<Point>();
+	}
+
+	void add(Point& point) {
+
+		//if (!storeBroken) {
+		//	store.push_back(point);
+
+		//	if (store.size() > storeSize) {
+		//		breakStore();
+		//	}
+
+		//	return;
 		//}
+
+		if (level >= maxDepth) {
+			store.push_back(point);
+			return;
+		}
 
 		auto min = this->box.min;
 		auto max = this->box.max;
@@ -116,7 +144,7 @@ struct Node {
 					string childName = name + to_string(childIndex);
 					auto childBox = childBoundingBoxOf(box, childIndex);
 
-					auto child = make_shared<Node>(childName, gridSize, childBox);
+					auto child = make_shared<Node>(childName, gridSize, childBox, maxDepth);
 					children[childIndex] = child;
 				}
 
@@ -129,7 +157,7 @@ struct Node {
 					string childName = name + to_string(childIndex);
 					auto childBox = childBoundingBoxOf(box, childIndex);
 
-					auto child = make_shared<Node>(childName, gridSize, childBox);
+					auto child = make_shared<Node>(childName, gridSize, childBox, maxDepth);
 					children[childIndex] = child;
 				}
 
@@ -240,34 +268,9 @@ vector<shared_ptr<Chunk>> getListOfChunks(string pathIn) {
 	return chunksToLoad;
 }
 
-vector<Point> loadPoints(string file) {
-	auto buffer = readBinaryFile(file);
+int pointsProcessed = 0;
 
-	int numPoints = buffer.size() / 28;
-
-	vector<Point> points;
-	points.reserve(numPoints);
-
-	for (int i = 0; i < numPoints; i++) {
-
-		double x = reinterpret_cast<double*>(buffer.data() + (28 * i + 0))[0];
-		double y = reinterpret_cast<double*>(buffer.data() + (28 * i + 0))[1];
-		double z = reinterpret_cast<double*>(buffer.data() + (28 * i + 0))[2];
-
-		Point point;
-		point.x = x;
-		point.y = y;
-		point.z = z;
-		point.index = i;
-
-		points.push_back(point);
-	}
-
-	return points;
-
-}
-
-void indexChunk(shared_ptr<Chunk> chunk, string path) {
+shared_ptr<Node> indexChunk(shared_ptr<Chunk> chunk, string path) {
 	auto points = loadPoints(chunk->file);
 
 	auto tStartIndexing = now();
@@ -275,61 +278,70 @@ void indexChunk(shared_ptr<Chunk> chunk, string path) {
 	int gridSize = 128;
 
 	BoundingBox box = { chunk->min, chunk->max };
-	Node root(chunk->id, gridSize, box);
+	shared_ptr<Node> root = make_shared<Node>(chunk->id, gridSize, box, 5);
 
 	for (Point point : points) {
-		root.add(point);
+		root->add(point);
 	}
 
 	int numNodes = 0;
 	int highestLevel = 0;
-	root.traverse([&numNodes, &highestLevel](Node* node) {
+	root->traverse([&numNodes, &highestLevel](Node* node) {
 		//cout << repeat("  ", node->level) << node->name << endl;
 		numNodes++;
 		highestLevel = std::max(highestLevel, node->level);
-		});
+	});
 
-	cout << "numNodes: " << numNodes << endl;
-	cout << "highestLevel: " << highestLevel << endl;
+	//cout << "numNodes: " << numNodes << endl;
+	//cout << "highestLevel: " << highestLevel << endl;
 
-	auto accepted = root.getAccepted();
+	//auto accepted = root.getAccepted();
 	//auto accepted = root.children[0]->getAccepted();
 
-	printElapsedTime("indexing", tStartIndexing);
+	printElapsedTime("indexing " + chunk->id, tStartIndexing);
 
-	cout << "pointsAdded: " << pointsAdded << endl;
+	pointsProcessed += points.size();
 
-	vector<Point> resolved;
-	resolved.reserve(points.size());
+	return root;
+
+	//cout << "pointsAdded: " << pointsAdded << endl;
+
+	// vector<Point> resolved;
+	// resolved.reserve(points.size());
 
 
-	root.traverse([path](Node* node) {
+	//root.traverse([path](Node* node) {
 
-		auto accepted = node->getAccepted();
+	//	auto accepted = node->getAccepted();
 
-		if (accepted.size() == 0) {
-			return;
-		}
+	//	if (accepted.size() > 0) {
+	//		LASHeader header;
+	//		header.numPoints = accepted.size();
+	//		header.headerSize = 375;
+	//		header.scale = { 0.001, 0.001, 0.001 };
+	//		header.min = node->box.min;
+	//		header.max = node->box.max;
+	//		string laspath = path + "/nodes/" + node->name + ".las";
+	//		writeLAS(laspath, header, accepted);
+	//	}
 
-		if (node->level >= 4) {
-			return;
-		}
+	//	if (node->store.size() > 0) {
+	//		LASHeader header;
+	//		header.numPoints = node->store.size();
+	//		header.headerSize = 375;
+	//		header.scale = { 0.001, 0.001, 0.001 };
+	//		header.min = node->box.min;
+	//		header.max = node->box.max;
+	//		string laspath = path + "/nodes/" + node->name + "_store.las";
+	//		writeLAS(laspath, header, node->store);
+	//	}
 
-		//for (Point point : accepted) {
-		//	point.index = getColor(node->level);
-		//	resolved.push_back(point);
-		//}
+	//	
 
-		LASHeader header;
-		header.numPoints = accepted.size();
-		header.headerSize = 375;
-		header.scale = { 0.001, 0.001, 0.001 };
-		header.min = node->box.min;
-		header.max = node->box.max;
-		string laspath = path + "/nodes/" + node->name + ".las";
-		writeLAS(laspath, header, accepted);
+	//});
 
-	});
+
+
 
 	//LASHeader header;
 	//header.numPoints = resolved.size();
@@ -341,25 +353,46 @@ void indexChunk(shared_ptr<Chunk> chunk, string path) {
 	//writeLAS(laspath, header, resolved);
 }
 
+struct IndexTask {
+	shared_ptr<Chunk> chunk;
+	string path;
+
+	IndexTask(shared_ptr<Chunk> chunk, string path) {
+		this->chunk = chunk;
+		this->path = path;
+	}
+};
+
+auto processor = [](shared_ptr<IndexTask> task) {
+	auto root = indexChunk(task->chunk, task->path);
+
+
+};
+
 void doIndexing(string path) {
 
 	fs::create_directories(path + "/nodes");
 
 	auto chunks = getListOfChunks(path);
 
-	vector<thread> threads;
-	for (auto chunk : chunks) {
+	// auto chunk = chunks[0];
+	// indexChunk(chunk, path);
 
-		thread t([chunk, path]() {
-			indexChunk(chunk, path);
-		});
-		threads.push_back(move(t));
+
+	TaskPool<IndexTask> pool(16, processor);
+
+	for(auto chunk : chunks){
+		shared_ptr<IndexTask> task = make_shared<IndexTask>(chunk, path);
+
+		pool.addTask(task);
 	}
 
-	for (thread& t : threads) {
-		t.join();
-	}
+	pool.close();
+
+
 	
+	cout << "pointsProcessed: " << pointsProcessed << endl;
 
 
+}
 }

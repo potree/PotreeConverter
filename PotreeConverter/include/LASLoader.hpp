@@ -44,21 +44,21 @@ struct ExtraType {
 };
 
 const unordered_map<unsigned char, ExtraType> typeToExtraType = {
-	{0, ExtraType{AttributeType::undefined, 0, 1}},
-	{1, ExtraType{AttributeType::uint8, 1, 1}},
-	{2, ExtraType{AttributeType::int8, 1, 1}},
-	{3, ExtraType{AttributeType::uint16, 2, 1}},
-	{4, ExtraType{AttributeType::int16, 2, 1}},
-	{5, ExtraType{AttributeType::uint32, 4, 1}},
-	{6, ExtraType{AttributeType::int32, 4, 1}},
-	{7, ExtraType{AttributeType::uint64, 8, 1}},
-	{8, ExtraType{AttributeType::int64, 8, 1}},
-	{9, ExtraType{AttributeType::float32, 4, 1}},
-	{10, ExtraType{AttributeType::float64, 8, 1}},
+	{0, ExtraType{AttributeTypes::undefined, 0, 1}},
+	{1, ExtraType{AttributeTypes::uint8, 1, 1}},
+	{2, ExtraType{AttributeTypes::int8, 1, 1}},
+	{3, ExtraType{AttributeTypes::uint16, 2, 1}},
+	{4, ExtraType{AttributeTypes::int16, 2, 1}},
+	{5, ExtraType{AttributeTypes::uint32, 4, 1}},
+	{6, ExtraType{AttributeTypes::int32, 4, 1}},
+	{7, ExtraType{AttributeTypes::uint64, 8, 1}},
+	{8, ExtraType{AttributeTypes::int64, 8, 1}},
+	{9, ExtraType{AttributeTypes::float32, 4, 1}},
+	{10, ExtraType{AttributeTypes::float64, 8, 1}},
 };
 
 
-Attributes estimateAttributes(string path) {
+inline Attributes estimateAttributes(string path) {
 	laszip_POINTER laszip_reader = nullptr;
 
 	laszip_create(&laszip_reader);
@@ -84,7 +84,7 @@ Attributes estimateAttributes(string path) {
 
 	{ // read extra bytes
 
-		for (int i = 0; i < header->number_of_variable_length_records; i++) {
+		for (uint64_t i = 0; i < header->number_of_variable_length_records; i++) {
 			laszip_vlr_struct vlr = header->vlrs[i];
 
 			if (vlr.record_id != 4) {
@@ -121,8 +121,8 @@ Attributes estimateAttributes(string path) {
 }
 
 struct LasLoadTask {
-	uint64_t start;
-	uint64_t numPoints;
+	uint64_t start = 0;
+	uint64_t numPoints = 0;
 	bool done = false;
 };
 
@@ -200,13 +200,16 @@ public:
 	}
 
 	Attributes getAttributes() {
-		Attributes attributes;
-		Attribute aColor("color", AttributeType::uint8);
-		aColor.byteOffset = 12;
-		aColor.bytes = 4;
 
-		attributes.list.push_back(aColor);
-		attributes.byteSize += aColor.bytes;
+		//Attribute aPosition("position", AttributeTypes::float64, 0, 24, 3);
+		Attribute aColor("color", AttributeTypes::uint8, 0, 4, 4);
+
+		vector<Attribute> list = {
+			//aPosition,
+			aColor
+		};
+
+		Attributes attributes(list);
 
 		return attributes;
 	}

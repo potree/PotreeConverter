@@ -5,8 +5,11 @@
 #include <fstream>
 #include <vector>
 #include <sstream>
+#include <string>
 
 using std::stringstream;
+using std::string;
+using std::to_string;
 using std::cout;
 using std::endl;
 using std::ofstream;
@@ -128,7 +131,10 @@ void printElapsedTime(string label, double startTime) {
 
 	double elapsed = now() - startTime;
 
-	cout << label << ": " << elapsed << "s" << endl;
+	string msg = label + ": " + to_string(elapsed) + "s\n";
+	cout << msg;
+
+	//cout << label << ": " << elapsed << "s" << endl;
 
 }
 

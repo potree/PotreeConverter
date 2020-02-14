@@ -3,7 +3,7 @@
 
 #include <string>
 
-namespace centered{
+namespace bluenoise {
 
 	using std::string;
 
