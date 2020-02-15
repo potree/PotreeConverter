@@ -271,7 +271,7 @@ void doChunking(string pathIn, string pathOut) {
 
 	flushPool = make_shared<TaskPool<ChunkPiece>>(16, flushProcessor);
 
-	LASLoader* loader = new LASLoader(pathIn, 2);
+	LASLoader* loader = new LASLoader(pathIn, 4);
 	Attributes attributes = loader->getAttributes();
 
 	string path = pathOut + "/chunks/";

@@ -3,6 +3,8 @@
 
 #include <string>
 
+//#include "Structures.h"
+
 namespace bluenoise {
 
 	using std::string;
