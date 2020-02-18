@@ -152,13 +152,8 @@ void indexNode(shared_ptr<Node> chunkRoot, double baseSpacing){
 
 	function<void(shared_ptr<Node>, function<void(Node*)>)> traverse;
 	traverse = [&traverse](shared_ptr<Node> node, function<void(Node*)> callback) {
-
 		for (auto child : node->children) {
-			if (child == nullptr) {
-				continue;
-			}
-
-			if (child->isFlushed) {
+			if (child == nullptr || child->isFlushed) {
 				continue;
 			}
 
@@ -166,7 +161,6 @@ void indexNode(shared_ptr<Node> chunkRoot, double baseSpacing){
 		}
 
 		callback(node.get());
-
 	};
 
 
@@ -176,7 +170,6 @@ void indexNode(shared_ptr<Node> chunkRoot, double baseSpacing){
 		auto size = node->max - node->min;
 		auto center = node->min + size * 0.5;
 
-		//double baseSpacing = 0.2;
 		double spacing = baseSpacing / pow(2.0, level);
 		double spacingSquared = spacing * spacing;
 		vector<Point> accepted;
