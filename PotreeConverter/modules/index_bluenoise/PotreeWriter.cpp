@@ -68,12 +68,12 @@ namespace bluenoise {
 	}
 	
 
-	void PotreeWriter::writeChunk(shared_ptr<IndexedChunk> chunk){
+	void PotreeWriter::writeChunk(shared_ptr<Node> chunk){
 
 		string octreeFilePath = path + "/octree.bin";
 
-		auto localWriteRoot = findOrCreateWriterNode(chunk->chunk->id);
-		auto localIndexRoot = chunk->root;
+		auto localWriteRoot = findOrCreateWriterNode(chunk->name);
+		auto localIndexRoot = chunk;
 
 		struct NodePair{
 			shared_ptr<Node> node;
@@ -96,10 +96,18 @@ namespace bluenoise {
 					continue;
 				}
 
-				auto writerChild = make_shared<WriterNode>(child->name, child->min, child->max);
-				writerChild->numPoints = child->points.size() + child->store.size();
+				if(child->isFlushed){
+					continue;
+				}
 
-				pair.writerNode->children[childIndex] = writerChild;
+				auto writerChild = pair.writerNode->children[childIndex];
+
+				if (writerChild == nullptr) {
+					writerChild = make_shared<WriterNode>(child->name, child->min, child->max);
+					writerChild->numPoints = child->points.size() + child->store.size();
+
+					pair.writerNode->children[childIndex] = writerChild;
+				}
 
 				stack.push_back({child, writerChild});
 				nodePairs.push_back({child, writerChild});
@@ -162,6 +170,8 @@ namespace bluenoise {
 			bytesWritten += bufferSize;
 
 			free(buffer);
+
+			node->isFlushed = true;
 		}
 
 		fout.close();

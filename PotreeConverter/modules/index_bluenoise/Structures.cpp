@@ -92,4 +92,38 @@ void Node::traverse_postorder(function<void(Node*)> callback){
 	callback(this);
 }
 
+shared_ptr<Node> Node::find(shared_ptr<Node> root, string targetName){
+
+	auto node = root;
+
+	for(int i = 1; i < targetName.size(); i++){
+		int childIndex = targetName.at(i) - '0';
+
+		auto child = node->children[childIndex];
+
+		if(child == nullptr){
+			return nullptr;
+		}else{
+			node = child;
+		}
+
+	}
+
+	if(node->name == targetName){
+		return node;
+	}else{
+		cout << "ERROR: could not find node with name " << targetName << endl;
+	}
+}
+
+void Node::clear(){
+	this->traverse([](Node* node){
+		node->points.clear();
+		node->store.clear();
+		
+		node->points.shrink_to_fit();
+		node->store.shrink_to_fit();
+	});
+}
+
 }

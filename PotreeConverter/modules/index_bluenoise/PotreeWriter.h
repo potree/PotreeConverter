@@ -55,7 +55,7 @@ namespace bluenoise {
 
 		shared_ptr<WriterNode> findOrCreateWriterNode(string name);
 
-		void writeChunk(shared_ptr<IndexedChunk> chunk);
+		void writeChunk(shared_ptr<Node> chunk);
 
 		void finishOctree();
 

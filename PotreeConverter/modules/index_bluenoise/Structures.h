@@ -50,6 +50,8 @@ struct Node {
 	int storeSize = 20'000;
 	bool storeExceeded = false;
 
+	bool isFlushed = false;
+
 	Node* parent = nullptr;
 	shared_ptr<Node> children[8] = { 
 		nullptr, nullptr, nullptr, nullptr, 
@@ -65,11 +67,15 @@ struct Node {
 
 	void traverse_postorder(function<void(Node*)> callback);
 
+	static shared_ptr<Node> find(shared_ptr<Node> start, string targetName);
+
+	void clear();
+
 };
 
 struct IndexedChunk {
 	shared_ptr<Chunk> chunk;
-	shared_ptr<Node> root;
+	shared_ptr<Node> node;
 };
 
 

@@ -33,6 +33,51 @@ namespace fs = std::filesystem;
 namespace bluenoise {
 
 
+struct Indexer{
+
+	shared_ptr<Node> root;
+	shared_ptr<Chunks> chunks;
+
+	Indexer(){
+
+	}
+
+};
+
+// create hierarchy from root "r" to the nodes represented by all chunks
+shared_ptr<Node> buildHierarchyToRoot(shared_ptr<Chunks> chunks){
+
+	auto expandHierarchy = [](shared_ptr<Node> root, string name){
+
+		shared_ptr<Node> node = root;
+		for(int i = 1; i < name.size(); i++){
+			int childIndex = name.at(i) - '0';
+
+			auto child = node->children[childIndex];
+
+			if(child == nullptr){
+				string childName = name.substr(0, i + 1);
+				auto box = childBoundingBoxOf(node->min, node->max, childIndex);
+
+				child = make_shared<Node>(childName, box.min, box.max);
+				child->parent = node.get();
+				node->children[childIndex] = child;
+			}
+
+			node = child;
+		}
+
+	};
+
+	shared_ptr<Node> root = make_shared<Node>("r", chunks->min, chunks->max);
+
+	for(auto chunk : chunks->list){
+		expandHierarchy(root, chunk->id);
+	}
+
+	return root;
+}
+
 
 shared_ptr<Chunks> getChunks(string pathIn) {
 	string chunkDirectory = pathIn + "/chunks";
@@ -103,56 +148,29 @@ shared_ptr<Chunks> getChunks(string pathIn) {
 
 int maxChecks = 0;
 
+void indexNode(shared_ptr<Node> chunkRoot, double baseSpacing){
+
+	function<void(shared_ptr<Node>, function<void(Node*)>)> traverse;
+	traverse = [&traverse](shared_ptr<Node> node, function<void(Node*)> callback) {
+
+		for (auto child : node->children) {
+			if (child == nullptr) {
+				continue;
+			}
+
+			if (child->isFlushed) {
+				continue;
+			}
+
+			traverse(child, callback);
+		}
+
+		callback(node.get());
+
+	};
 
 
-shared_ptr<IndexedChunk> indexChunk(shared_ptr<Chunk> chunk, string path, double baseSpacing) {
-
-	auto points = loadPoints(chunk->file);
-
-	cout << "test" << endl;
-	cout << "size: " << points.size() << endl;
-
-	auto tStart = now();
-
-	int gridSize = 32;
-	double dGridSize = gridSize;
-	auto min = chunk->min;
-	auto max = chunk->max;
-	auto size = max - min;
-
-
-	shared_ptr<Node> root = make_shared<Node>(chunk->id, min, max);
-
-	for (Point& point : points) {
-		root->add(point);
-	}
-
-	printElapsedTime("indexing", tStart);
-
-	auto tSort = now();
-
-	//root.traverse_postorder([baseSpacing](Node* node) {
-
-	//	auto size = node->max - node->min;
-	//	auto center = node->min + size * 0.5;
-
-	//	std::sort(node->store.begin(), node->store.end(), [center](Point& a, Point& b) {
-	//		//return a.x - b.x;
-	//		double da = a.squaredDistanceTo(center);
-	//		double db = b.squaredDistanceTo(center);
-
-	//		return da < db;
-	//	});
-
-	//});
-
-	//printElapsedTime("sorting", tSort);
-
-	int totalSortDuration = 0.0;
-
-	auto tSubsampling = now();
-
-	root->traverse_postorder([baseSpacing, &totalSortDuration](Node* node) {
+	traverse(chunkRoot, [baseSpacing](Node* node){
 
 		int level = node->name.size() - 1;
 		auto size = node->max - node->min;
@@ -164,8 +182,6 @@ shared_ptr<IndexedChunk> indexChunk(shared_ptr<Chunk> chunk, string path, double
 		vector<Point> accepted;
 		vector<Point> rejected;
 
-		double tSort = now();
-
 		std::sort(node->store.begin(), node->store.end(), [center](Point& a, Point& b) {
 			//return a.x - b.x;
 			double da = a.squaredDistanceTo(center);
@@ -173,8 +189,6 @@ shared_ptr<IndexedChunk> indexChunk(shared_ptr<Chunk> chunk, string path, double
 
 			return da < db;
 		});
-
-		totalSortDuration += (now() - tSort);
 
 		auto isDistant = [&accepted, center, spacingSquared, spacing](Point& candidate){
 
@@ -227,34 +241,46 @@ shared_ptr<IndexedChunk> indexChunk(shared_ptr<Chunk> chunk, string path, double
 
 	});
 
+}
+
+shared_ptr<IndexedChunk> indexChunk(shared_ptr<Chunk> chunk, shared_ptr<Node> chunkRoot, string path, double baseSpacing) {
+
+	auto points = loadPoints(chunk->file);
+
+	cout << "test" << endl;
+	cout << "size: " << points.size() << endl;
+
+	auto tStart = now();
+
+	int gridSize = 32;
+	double dGridSize = gridSize;
+	auto min = chunk->min;
+	auto max = chunk->max;
+	auto size = max - min;
+
+	for (Point& point : points) {
+		chunkRoot->add(point);
+	}
+
+	printElapsedTime("indexing", tStart);
+
+	auto tSort = now();
+
+	int totalSortDuration = 0.0;
+
+	auto tSubsampling = now();
+
+	indexNode(chunkRoot, baseSpacing);
+
 	printElapsedTime("subsampling", tSubsampling);
 	cout << "sorting: " << totalSortDuration << "s" << endl;
 
-
-	//root.traverse([](Node* node) {
-
-	//	string path = "D:/temp/test/nodes/" + node->name + ".las";
-
-	//	vector<Point> points;
-	//	points.reserve(node->points.size() + node->store.size());
-
-	//	points.insert(points.begin(), node->points.begin(), node->points.end());
-	//	points.insert(points.end(), node->store.begin(), node->store.end());
-
-	//	LASHeader header;
-	//	header.min = node->min;
-	//	header.max = node->max;
-	//	header.numPoints = points.size();
-
-	//	writeLAS(path, header, points);
-
-	//});
 
 	cout << "maxChecks: " << maxChecks << endl;
 
 	auto index = make_shared<IndexedChunk>();
 	index->chunk = chunk;
-	index->root = root;
+	index->node = chunkRoot;
 
 	return index;
 }
@@ -263,16 +289,20 @@ shared_ptr<IndexedChunk> indexChunk(shared_ptr<Chunk> chunk, string path, double
 
 void doIndexing(string path) {
 
+	// create base directory or remove files from previous build
 	fs::create_directories(path + "/nodes");
-
 	for (const auto& entry : std::filesystem::directory_iterator(path + "/nodes")) {
 		std::filesystem::remove(entry);
 	}
-
 	std::filesystem::remove(path + "/octree.bin");
-	
+
+
 
 	auto chunks = getChunks(path);
+
+	Indexer indexer;
+	indexer.chunks = chunks;
+	indexer.root = buildHierarchyToRoot(chunks);
 
 	double spacing = chunks->max.distanceTo(chunks->min) / 100.0;
 
@@ -283,29 +313,43 @@ void doIndexing(string path) {
 
 	struct IndexTask {
 		shared_ptr<Chunk> chunk;
+		shared_ptr<Node> node;
 		string path;
 
-		IndexTask(shared_ptr<Chunk> chunk, string path) {
+		IndexTask(shared_ptr<Chunk> chunk, shared_ptr<Node> node, string path) {
 			this->chunk = chunk;
+			this->node = node;
 			this->path = path;
 		}
 	};
 
 	auto processor = [spacing, &writer](shared_ptr<IndexTask> task) {
-		auto index = indexChunk(task->chunk, task->path, spacing);
+		auto node = task->node;
 
-		writer.writeChunk(index);
+		indexChunk(task->chunk, node, task->path, spacing);
+
+		writer.writeChunk(node);
+
+		node->clear();
 	};
 
-	TaskPool<IndexTask> pool(10, processor);
+	TaskPool<IndexTask> pool(15, processor);
 
 	for(auto chunk : chunks->list){
-		shared_ptr<IndexTask> task = make_shared<IndexTask>(chunk, path);
+		auto node = Node::find(indexer.root, chunk->id);
+
+		shared_ptr<IndexTask> task = make_shared<IndexTask>(chunk, node, path);
 
 		pool.addTask(task);
 	}
 
 	pool.close();
+
+
+	indexNode(indexer.root, spacing);
+	writer.writeChunk(indexer.root);
+
+
 	writer.close();
 
 
