@@ -3,12 +3,14 @@
 
 #include <string>
 #include <memory>
+#include <fstream>
 
 #include "Structures.h"
 
 using std::string;
 using std::shared_ptr;
 using std::make_shared;
+using std::fstream;
 
 namespace bluenoise {
 
@@ -41,6 +43,8 @@ namespace bluenoise {
 		string path;
 		bool closed = false;
 
+		fstream fout;
+
 		Vector3<double> min;
 		Vector3<double> max;
 		Vector3<double> scale = {0.001, 0.001, 0.001};
@@ -55,7 +59,7 @@ namespace bluenoise {
 
 		shared_ptr<WriterNode> findOrCreateWriterNode(string name);
 
-		void writeChunk(shared_ptr<Node> chunk);
+		void writeNode(Node* node);
 
 		void finishOctree();
 

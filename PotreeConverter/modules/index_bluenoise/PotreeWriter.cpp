@@ -34,6 +34,9 @@ namespace bluenoise {
 		this->max = max;
 
 		root = make_shared<WriterNode>("r", min, max);
+
+		string octreeFilePath = path + "/octree.bin";
+		fout.open(octreeFilePath, ios::out | ios::binary | ios::app);
 	}
 
 	PotreeWriter::~PotreeWriter(){
@@ -68,62 +71,22 @@ namespace bluenoise {
 	}
 	
 
-	void PotreeWriter::writeChunk(shared_ptr<Node> chunk){
+	void PotreeWriter::writeNode(Node* node){
 
-		string octreeFilePath = path + "/octree.bin";
+		auto writerNode = findOrCreateWriterNode(node->name);
 
-		auto localWriteRoot = findOrCreateWriterNode(chunk->name);
-		auto localIndexRoot = chunk;
-
-		struct NodePair{
-			shared_ptr<Node> node;
-			shared_ptr<WriterNode> writerNode;
-		};
-
-		vector<NodePair> nodePairs = {{localIndexRoot, localWriteRoot}};
-		deque<NodePair> stack;
-		stack.push_back({localIndexRoot, localWriteRoot});
-
-		while(!stack.empty()){
-			auto pair = stack.back();
-			stack.pop_back();
-		
-			// for(auto child : pair.node->children){
-			for(int childIndex = 0; childIndex < 8; childIndex++){
-				auto child = pair.node->children[childIndex];
-
-				if(child == nullptr){
-					continue;
-				}
-
-				if(child->isFlushed){
-					continue;
-				}
-
-				auto writerChild = pair.writerNode->children[childIndex];
-
-				if (writerChild == nullptr) {
-					writerChild = make_shared<WriterNode>(child->name, child->min, child->max);
-					writerChild->numPoints = child->points.size() + child->store.size();
-
-					pair.writerNode->children[childIndex] = writerChild;
-				}
-
-				stack.push_back({child, writerChild});
-				nodePairs.push_back({child, writerChild});
-			}
+		static unordered_map<string, Node*> alreadyDone;
+		if (alreadyDone.find(node->name) != alreadyDone.end()) {
+			int a = 10;
 		}
+		alreadyDone[node->name] = node;
 
-		lock_guard<mutex> lock(mtx_writeFile);
-
-		fstream fout;
-		fout.open(octreeFilePath, ios::out | ios::binary | ios::app);
-
-		for(auto pair : nodePairs){
-			auto node = pair.node;
-			auto writerNode = pair.writerNode;
-
+		{
 			auto numPoints = node->points.size() + node->store.size();
+
+			if (numPoints == 0) {
+				int a = 10;
+			}
 
 			auto bytesPerPoint = 16;
 			auto bufferSize = numPoints * bytesPerPoint;
@@ -162,26 +125,24 @@ namespace bluenoise {
 				writePoint(point);
 			}
 
-			fout.write(reinterpret_cast<char*>(buffer), bufferSize);
+			{
+				lock_guard<mutex> lock(mtx_writeFile);
+				fout.write(reinterpret_cast<char*>(buffer), bufferSize);
 
-			writerNode->byteOffset = bytesWritten;
-			writerNode->byteSize = bufferSize;
-
-			bytesWritten += bufferSize;
+				writerNode->byteOffset = this->bytesWritten;
+				writerNode->byteSize = bufferSize;
+				this->bytesWritten += bufferSize;
+			}
 
 			free(buffer);
 
 			node->isFlushed = true;
 		}
 
-		fout.close();
-
-
-
 	}
 
 	void PotreeWriter::finishOctree(){
-
+		fout.close();
 	}
 
 	void PotreeWriter::writeMetadata(){

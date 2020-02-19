@@ -46,11 +46,13 @@ struct Node {
 	vector<Point> points;
 	vector<Point> store;
 	int64_t numPoints = 0;
+	int numAccepted = 0;
 
 	int storeSize = 20'000;
 	bool storeExceeded = false;
 
 	bool isFlushed = false;
+	bool isSubsampled = false;
 
 	Node* parent = nullptr;
 	shared_ptr<Node> children[8] = { 
@@ -70,6 +72,8 @@ struct Node {
 	static shared_ptr<Node> find(shared_ptr<Node> start, string targetName);
 
 	void clear();
+
+	bool isLeaf();
 
 };
 

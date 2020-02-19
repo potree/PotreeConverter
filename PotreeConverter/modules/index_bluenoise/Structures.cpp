@@ -113,17 +113,32 @@ shared_ptr<Node> Node::find(shared_ptr<Node> root, string targetName){
 		return node;
 	}else{
 		cout << "ERROR: could not find node with name " << targetName << endl;
+
+		exit(1234);
+
+		return nullptr;
 	}
 }
 
 void Node::clear(){
-	this->traverse([](Node* node){
-		node->points.clear();
-		node->store.clear();
+	//this->traverse([](Node* node){
+		this->points.clear();
+		this->store.clear();
 		
-		node->points.shrink_to_fit();
-		node->store.shrink_to_fit();
-	});
+		this->points.shrink_to_fit();
+		this->store.shrink_to_fit();
+	//});
+}
+
+bool Node::isLeaf(){
+
+	for(auto child : children){
+		if(child != nullptr){
+			return false;
+		}
+	}
+
+	return true;
 }
 
 }

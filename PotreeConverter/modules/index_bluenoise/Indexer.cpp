@@ -37,9 +37,146 @@ struct Indexer{
 
 	shared_ptr<Node> root;
 	shared_ptr<Chunks> chunks;
+	shared_ptr<PotreeWriter> writer;
+	double spacing = 1.0;
 
 	Indexer(){
 
+	}
+
+	void indexNode(shared_ptr<Node> chunkRoot){
+
+		function<void(shared_ptr<Node>, function<void(Node*)>)> traverse;
+		traverse = [&traverse](shared_ptr<Node> node, function<void(Node*)> callback) {
+			for (auto child : node->children) {
+				if (child == nullptr || child->isSubsampled) {
+					continue;
+				}
+
+				traverse(child, callback);
+			}
+
+			callback(node.get());
+		};
+
+		double baseSpacing = this->spacing;
+		auto writer = this->writer;
+		traverse(chunkRoot, [baseSpacing, writer](Node* node){
+
+			int level = node->name.size() - 1;
+			auto size = node->max - node->min;
+			auto center = node->min + size * 0.5;
+
+			double spacing = baseSpacing / pow(2.0, level);
+			double spacingSquared = spacing * spacing;
+			vector<Point> accepted;
+			vector<Point> rejected;
+
+			auto byCenter = [center](Point& a, Point& b) {
+				//return a.x - b.x;
+				double da = a.squaredDistanceTo(center);
+				double db = b.squaredDistanceTo(center);
+
+				return da > db;
+			};
+
+			//std::sort(node->store.begin(), node->store.end(), byCenter);
+
+			auto isDistant = [&accepted, spacingSquared, spacing](Point& candidate, Vector3<double>& center){
+
+			
+				for(int i = accepted.size() - 1; i >= 0; i--){
+					Point& prev = accepted[i];
+
+					double cc = sqrt(candidate.squaredDistanceTo(center));
+					double pc = sqrt(prev.squaredDistanceTo(center));
+
+					 //if (cc > pc + spacing) {
+					 //	return true;
+					 //}
+
+					if (cc < pc - spacing) {
+						return true;
+					}
+
+					auto distanceSquared = candidate.squaredDistanceTo(prev);
+
+					if(distanceSquared < spacingSquared){
+						return false;
+					}
+				}
+
+				return true;
+			};
+
+			if (node->name == "r005") {
+				int a = 10;
+			}
+
+			if(node->isLeaf()){
+				std::sort(node->store.begin(), node->store.end(), byCenter);
+
+				for(Point& candidate : node->store){
+					bool distant = isDistant(candidate, center);
+
+					if(distant){
+						accepted.push_back(candidate);
+					} else {
+						rejected.push_back(candidate);
+					}
+				}
+
+				node->points = accepted;
+				node->store = rejected;
+			}else{
+				for(auto child : node->children){
+					if(child == nullptr){
+						continue;
+					}
+
+					std::sort(child->points.begin(), child->points.end(), byCenter);
+
+					//auto center = child->max - child->min;
+
+					for(Point& candidate : child->points){
+						bool distant = isDistant(candidate, center);
+
+						if(distant){
+							accepted.push_back(candidate);
+						}else{
+							rejected.push_back(candidate);
+						}
+					}
+
+					child->points = rejected;
+					node->points = accepted;
+
+					auto abc = child.get();
+					writer->writeNode(abc);
+
+					child->clear();
+				}
+			}
+
+			node->isSubsampled = true;
+			
+			//node->points = accepted;
+
+			if(node->parent == nullptr){
+				writer->writeNode(node);
+			}
+
+			//cout << repeat("  ", level) << node->name << ": " << accepted.size() << endl;
+		});
+
+	}
+
+	void loadChunk(string file, shared_ptr<Node> targetNode){
+		auto points = loadPoints(file);
+
+		for (Point& point : points) {
+			targetNode->add(point);
+		}
 	}
 
 };
@@ -148,135 +285,6 @@ shared_ptr<Chunks> getChunks(string pathIn) {
 
 int maxChecks = 0;
 
-void indexNode(shared_ptr<Node> chunkRoot, double baseSpacing){
-
-	function<void(shared_ptr<Node>, function<void(Node*)>)> traverse;
-	traverse = [&traverse](shared_ptr<Node> node, function<void(Node*)> callback) {
-		for (auto child : node->children) {
-			if (child == nullptr || child->isFlushed) {
-				continue;
-			}
-
-			traverse(child, callback);
-		}
-
-		callback(node.get());
-	};
-
-
-	traverse(chunkRoot, [baseSpacing](Node* node){
-
-		int level = node->name.size() - 1;
-		auto size = node->max - node->min;
-		auto center = node->min + size * 0.5;
-
-		double spacing = baseSpacing / pow(2.0, level);
-		double spacingSquared = spacing * spacing;
-		vector<Point> accepted;
-		vector<Point> rejected;
-
-		std::sort(node->store.begin(), node->store.end(), [center](Point& a, Point& b) {
-			//return a.x - b.x;
-			double da = a.squaredDistanceTo(center);
-			double db = b.squaredDistanceTo(center);
-
-			return da < db;
-		});
-
-		auto isDistant = [&accepted, center, spacingSquared, spacing](Point& candidate){
-
-			int checks = 0;
-
-			for(int i = accepted.size() - 1; i >= 0; i--){
-				Point& prev = accepted[i];
-
-				double dc = sqrt(candidate.squaredDistanceTo(center));
-				double pc = sqrt(prev.squaredDistanceTo(center));
-
-				if (dc > pc + spacing) {
-					return true;
-				}
-
-				checks++;
-				maxChecks = std::max(maxChecks, checks);
-
-				auto distanceSquared = candidate.squaredDistanceTo(prev);
-
-				if(distanceSquared < spacingSquared){
-					return false;
-				}
-			}
-
-			return true;
-		};
-
-		for(Point& candidate : node->store){
-			bool distant = isDistant(candidate);
-
-			if(distant){
-				accepted.push_back(candidate);
-			}else{
-				rejected.push_back(candidate);
-			}
-		}
-
-		node->points = accepted;
-		node->store = rejected;
-
-		if(node->parent != nullptr){
-			Node* parent = node->parent;
-
-			//cout << "adding " << accepted.size() << " points from " << node->name << " to " << parent->name << endl;
-			parent->store.insert(parent->store.end(), accepted.begin(), accepted.end());
-		}
-
-		//cout << repeat("  ", level) << node->name << ": " << accepted.size() << endl;
-
-	});
-
-}
-
-shared_ptr<IndexedChunk> indexChunk(shared_ptr<Chunk> chunk, shared_ptr<Node> chunkRoot, string path, double baseSpacing) {
-
-	auto points = loadPoints(chunk->file);
-
-	cout << "test" << endl;
-	cout << "size: " << points.size() << endl;
-
-	auto tStart = now();
-
-	int gridSize = 32;
-	double dGridSize = gridSize;
-	auto min = chunk->min;
-	auto max = chunk->max;
-	auto size = max - min;
-
-	for (Point& point : points) {
-		chunkRoot->add(point);
-	}
-
-	printElapsedTime("indexing", tStart);
-
-	auto tSort = now();
-
-	int totalSortDuration = 0.0;
-
-	auto tSubsampling = now();
-
-	indexNode(chunkRoot, baseSpacing);
-
-	printElapsedTime("subsampling", tSubsampling);
-	cout << "sorting: " << totalSortDuration << "s" << endl;
-
-
-	cout << "maxChecks: " << maxChecks << endl;
-
-	auto index = make_shared<IndexedChunk>();
-	index->chunk = chunk;
-	index->node = chunkRoot;
-
-	return index;
-}
 
 
 
@@ -296,10 +304,10 @@ void doIndexing(string path) {
 	Indexer indexer;
 	indexer.chunks = chunks;
 	indexer.root = buildHierarchyToRoot(chunks);
+	indexer.spacing = chunks->max.distanceTo(chunks->min) / 100.0;
 
-	double spacing = chunks->max.distanceTo(chunks->min) / 100.0;
-
-	PotreeWriter writer(path, chunks->min, chunks->max);
+	auto writer = make_shared<PotreeWriter>(path, chunks->min, chunks->max);
+	indexer.writer = writer;
 
 	//auto chunk = chunks->list[1];
 	//indexChunk(chunk, path, spacing);
@@ -316,14 +324,13 @@ void doIndexing(string path) {
 		}
 	};
 
-	auto processor = [spacing, &writer](shared_ptr<IndexTask> task) {
+	auto processor = [&indexer](shared_ptr<IndexTask> task) {
+		
+		auto file = task->chunk->file;
 		auto node = task->node;
 
-		indexChunk(task->chunk, node, task->path, spacing);
-
-		writer.writeChunk(node);
-
-		node->clear();
+		indexer.loadChunk(file, node);
+		indexer.indexNode(node);
 	};
 
 	TaskPool<IndexTask> pool(15, processor);
@@ -339,11 +346,9 @@ void doIndexing(string path) {
 	pool.close();
 
 
-	indexNode(indexer.root, spacing);
-	writer.writeChunk(indexer.root);
+	indexer.indexNode(indexer.root);
 
-
-	writer.close();
+	writer->close();
 
 
 
