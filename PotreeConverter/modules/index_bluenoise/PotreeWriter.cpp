@@ -83,6 +83,7 @@ namespace bluenoise {
 
 		{
 			auto numPoints = node->points.size() + node->store.size();
+			//auto numPoints = node->numAccepted;
 
 			if (numPoints == 0) {
 				int a = 10;
@@ -131,6 +132,7 @@ namespace bluenoise {
 
 				writerNode->byteOffset = this->bytesWritten;
 				writerNode->byteSize = bufferSize;
+				writerNode->numPoints = numPoints;
 				this->bytesWritten += bufferSize;
 			}
 

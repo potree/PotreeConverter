@@ -46,9 +46,8 @@ struct Node {
 	vector<Point> points;
 	vector<Point> store;
 	int64_t numPoints = 0;
-	int numAccepted = 0;
 
-	int storeSize = 20'000;
+	int storeSize = 10'000;
 	bool storeExceeded = false;
 
 	bool isFlushed = false;

@@ -64,13 +64,14 @@ struct Indexer{
 		traverse(chunkRoot, [baseSpacing, writer](Node* node){
 
 			int level = node->name.size() - 1;
+			auto min = node->min;
+			auto max = node->max;
 			auto size = node->max - node->min;
-			auto center = node->min + size * 0.5;
+			auto center = min + size * 0.5;
 
 			double spacing = baseSpacing / pow(2.0, level);
 			double spacingSquared = spacing * spacing;
 			vector<Point> accepted;
-			vector<Point> rejected;
 
 			auto byCenter = [center](Point& a, Point& b) {
 				//return a.x - b.x;
@@ -82,7 +83,34 @@ struct Indexer{
 
 			//std::sort(node->store.begin(), node->store.end(), byCenter);
 
-			auto isDistant = [&accepted, spacingSquared, spacing](Point& candidate, Vector3<double>& center){
+			auto isInConflictZone = [min, max, spacing](Point& candidate, Vector3<double>& center) {
+
+				double wx = sin(3.1415 * candidate.x / spacing);
+				double wy = sin(3.1415 * candidate.y / spacing);
+				double wz = sin(3.1415 * candidate.z / spacing);
+
+				double wxy = wx * wy;
+				double wxz = wx * wz;
+				double wyz = wy * wz;
+
+				double adjust = 0.8;
+
+				bool conflicting = false;
+				conflicting = conflicting ||(candidate.x - min.x) < 0.5 * (wyz + 1.0) * spacing * adjust;
+				conflicting = conflicting ||(candidate.x - max.x) > 0.5 * (wyz - 1.0) * spacing * adjust;
+				conflicting = conflicting || (candidate.y - min.y) < 0.5 * (wxz + 1.0) * spacing * adjust;
+				conflicting = conflicting || (candidate.y - max.y) > 0.5 * (wxz - 1.0) * spacing * adjust;
+				conflicting = conflicting || (candidate.z - min.z) < 0.5 * (wxy + 1.0) * spacing * adjust;
+				conflicting = conflicting || (candidate.z - max.z) > 0.5 * (wxy - 1.0) * spacing * adjust;
+				
+				return conflicting;
+			};
+
+			auto isDistant = [&accepted, spacingSquared, spacing, &isInConflictZone](Point& candidate, Vector3<double>& center){
+
+				if (isInConflictZone(candidate, center)) {
+					return false;
+				}
 
 			
 				for(int i = accepted.size() - 1; i >= 0; i--){
@@ -95,9 +123,9 @@ struct Indexer{
 					 //	return true;
 					 //}
 
-					if (cc < pc - spacing) {
-						return true;
-					}
+					//if (cc < pc - spacing) {
+					//	return true;
+					//}
 
 					auto distanceSquared = candidate.squaredDistanceTo(prev);
 
@@ -109,12 +137,10 @@ struct Indexer{
 				return true;
 			};
 
-			if (node->name == "r005") {
-				int a = 10;
-			}
-
 			if(node->isLeaf()){
 				std::sort(node->store.begin(), node->store.end(), byCenter);
+
+				vector<Point> rejected;
 
 				for(Point& candidate : node->store){
 					bool distant = isDistant(candidate, center);
@@ -128,6 +154,7 @@ struct Indexer{
 
 				node->points = accepted;
 				node->store = rejected;
+
 			}else{
 				for(auto child : node->children){
 					if(child == nullptr){
@@ -136,7 +163,8 @@ struct Indexer{
 
 					std::sort(child->points.begin(), child->points.end(), byCenter);
 
-					//auto center = child->max - child->min;
+
+					vector<Point> rejected;
 
 					for(Point& candidate : child->points){
 						bool distant = isDistant(candidate, center);
@@ -148,13 +176,23 @@ struct Indexer{
 						}
 					}
 
+
 					child->points = rejected;
 					node->points = accepted;
 
-					auto abc = child.get();
-					writer->writeNode(abc);
+					if (child->points.size() == 0 && child->store.size() == 0) {
+						int childIndex = child->name.at(child->name.size() - 1) - '0';
+						child->parent->children[childIndex] = nullptr;
+					} else {
+						auto abc = child.get();
+						writer->writeNode(abc);
 
-					child->clear();
+						child->clear();
+					}
+
+					
+
+					//cout << node->name << ": " << node->points.size() << " & " << node->store.size() << endl;
 				}
 			}
 

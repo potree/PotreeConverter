@@ -287,7 +287,7 @@ void doChunking(string pathIn, string pathOut) {
 	Vector3<double> cubeMin = loader->min;
 	Vector3<double> cubeMax = cubeMin + cubeSize;
 
-	int gridSize = 2;
+	int gridSize = 8;
 	Chunker* chunker = new Chunker(path, attributes, cubeMin, cubeMax, gridSize);
 
 	double sum = 0.0;
