@@ -47,7 +47,7 @@ struct Node {
 	vector<Point> store;
 	int64_t numPoints = 0;
 
-	int storeSize = 10'000;
+	int storeSize = 5'000;
 	bool storeExceeded = false;
 
 	bool isFlushed = false;
