@@ -7,7 +7,7 @@
 #include <fstream>
 #include <iomanip>
 
-#include <experimental/filesystem>
+#include <filesystem>
 
 #include "AABB.h"
 #include "SparseGrid.h"
@@ -31,7 +31,7 @@ using std::chrono::high_resolution_clock;
 using std::chrono::milliseconds;
 using std::chrono::duration_cast;
 
-namespace fs = std::experimental::filesystem;
+namespace fs = std::filesystem;
 
 namespace Potree{
 

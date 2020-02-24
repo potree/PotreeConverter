@@ -14,7 +14,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-#include <experimental/filesystem>
+#include <filesystem>
 
 #include "Vector3.h"
 #include "AABB.h"
@@ -33,10 +33,9 @@ using std::cout;
 using std::cin;
 using std::endl;
 using std::vector;
-using std::binary_function;
 using std::map;
 
-namespace fs = std::experimental::filesystem;
+namespace fs = std::filesystem;
 
 namespace Potree {
 

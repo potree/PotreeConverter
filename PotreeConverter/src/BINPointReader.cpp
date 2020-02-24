@@ -3,12 +3,12 @@
 #include <iostream>
 #include <vector>
 
-#include <experimental/filesystem>
+#include <filesystem>
 
 #include "BINPointReader.hpp"
 #include "stuff.h"
 
-namespace fs = std::experimental::filesystem;
+namespace fs = std::filesystem;
 
 using std::ifstream;
 using std::cout;

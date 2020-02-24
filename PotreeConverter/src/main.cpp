@@ -13,14 +13,13 @@
 #include "arguments.hpp"
 #include <filesystem>
 
-namespace fs = std::experimental::filesystem;
+namespace fs = std::filesystem;
 
 using std::string;
 using std::cout;
 using std::cerr;
 using std::endl;
 using std::vector;
-using std::binary_function;
 using std::map;
 using std::chrono::high_resolution_clock;
 using std::chrono::milliseconds;
@@ -251,7 +250,7 @@ PotreeArguments parseArguments(int argc, char **argv){
 	}
 
    try {
-    auto absolutePath = fs::canonical(fs::system_complete(argv[0]));
+    auto absolutePath = fs::canonical(fs::absolute(argv[0]));
     a.executablePath = absolutePath.parent_path().string();
    } catch (const fs::filesystem_error &e) {
      // do nothing
