@@ -40,7 +40,17 @@ struct Indexer{
 	shared_ptr<PotreeWriter> writer;
 	double spacing = 1.0;
 
+	Attributes attributes;
+
 	Indexer(){
+
+	}
+
+	void indexRoot() {
+
+		auto node = this->root;
+
+
 
 	}
 
@@ -61,7 +71,8 @@ struct Indexer{
 
 		double baseSpacing = this->spacing;
 		auto writer = this->writer;
-		traverse(chunkRoot, [baseSpacing, writer](Node* node){
+		auto attributes = this->attributes;
+		traverse(chunkRoot, [baseSpacing, writer, attributes](Node* node){
 
 			int level = node->name.size() - 1;
 			auto min = node->min;
@@ -156,7 +167,22 @@ struct Indexer{
 				node->store = rejected;
 
 			}else{
-				for(auto child : node->children){
+
+				// count how many points were accepted from each child
+				vector<int> acceptedByCounts(8, 0);
+				vector<shared_ptr<Node>> childsToClear;
+				vector<shared_ptr<Node>> childsToRemove;
+
+				
+				
+				for (int i = 0; i < 8; i++) {
+
+					if (node->name == "r05657") {
+						int a = 10;
+					}
+
+					auto child = node->children[i];
+
 					if(child == nullptr){
 						continue;
 					}
@@ -171,29 +197,70 @@ struct Indexer{
 
 						if(distant){
 							accepted.push_back(candidate);
+							acceptedByCounts[i]++;
 						}else{
 							rejected.push_back(candidate);
 						}
 					}
 
-
 					child->points = rejected;
-					node->points = accepted;
 
-					if (child->points.size() == 0 && child->store.size() == 0) {
-						int childIndex = child->name.at(child->name.size() - 1) - '0';
-						child->parent->children[childIndex] = nullptr;
+					bool isEmptyChild = child->points.size() == 0 && child->store.size() == 0;
+					if (isEmptyChild) {
+						// remove
+						childsToRemove.push_back(child);
 					} else {
-						auto abc = child.get();
-						writer->writeNode(abc);
+						// write
+						auto childPtr = child.get();
+						writer->writeNode(childPtr);
 
-						child->clear();
+						childsToClear.push_back(child);
+					}
+				}
+
+				int numPoints = accepted.size();
+				int bytesPerPoint = attributes.byteSize;
+				auto attributeBuffer = make_shared<Buffer>(numPoints * bytesPerPoint);
+				
+				int targetIndex = 0;
+				for (int i = 0; i < 8; i++) {
+
+					auto child = node->children[i];
+					int acceptedByChildCount = acceptedByCounts[i];
+
+					for (int j = 0; j < acceptedByChildCount; j++) {
+						auto& point = accepted[targetIndex];
+						auto sourceIndex = point.index;
+
+						auto source = child->attributeBuffer->dataU8 + sourceIndex * bytesPerPoint;
+						auto target = attributeBuffer->dataU8 + targetIndex * bytesPerPoint;;
+
+						memcpy(target, source, bytesPerPoint);
+
+						point.index = targetIndex;
+						targetIndex++;
 					}
 
+					if(child != nullptr){
+						vector<uint8_t> viewS(child->attributeBuffer->dataU8, child->attributeBuffer->dataU8 + 56);
+						vector<uint8_t> viewT(attributeBuffer->dataU8, attributeBuffer->dataU8 + 56);
+						int a = 10;
+					}
 					
-
-					//cout << node->name << ": " << node->points.size() << " & " << node->store.size() << endl;
 				}
+
+				node->points = accepted;
+				node->attributeBuffer = attributeBuffer;
+
+				for (auto child : childsToClear) {
+					child->clear();
+				}
+
+				for (auto child : childsToRemove) {
+					int childIndex = child->name.at(child->name.size() - 1) - '0';
+					child->parent->children[childIndex] = nullptr;
+				}
+
 			}
 
 			node->isSubsampled = true;
@@ -209,12 +276,51 @@ struct Indexer{
 
 	}
 
-	void loadChunk(string file, shared_ptr<Node> targetNode){
-		auto points = loadPoints(file);
+	shared_ptr<Points> loadChunk(shared_ptr<Chunk> chunk, shared_ptr<Node> targetNode){
+		auto points = loadPoints(chunk->file, chunk->attributes);
 
-		for (Point& point : points) {
+		//vector<uint8_t> view1(points->attributeBuffer->dataU8, points->attributeBuffer->dataU8 + 56);
+		//vector<uint8_t> view2(attributeBuffer->dataU8, attributeBuffer->dataU8 + 56);
+
+		// add points with indices to attributes
+		for (Point& point : points->points) {
 			targetNode->add(point);
 		}
+
+		// build attribute buffers for points that were distributed to leaves
+		targetNode->traverse([points](Node* node){
+			
+			int numPoints = node->store.size();
+
+			if (numPoints == 0) {
+				return;
+			}
+
+			auto bytesPerPoint = points->attributes.byteSize;
+			auto attributeBuffer = make_shared<Buffer>(numPoints * bytesPerPoint);
+
+			for (int i = 0; i < numPoints; i++) {
+
+				int index = node->store[i].index;
+
+				auto source = points->attributeBuffer->dataU8 + index * bytesPerPoint;
+				auto target = attributeBuffer->dataU8 + i * bytesPerPoint;
+
+				memcpy(target, source, bytesPerPoint);
+
+				node->store[i].index = i;
+			}
+
+			//string msg = "built attribute buffer for " + node->name + ", " + to_string(numPoints) + " points\n";
+			//cout << msg;
+
+			//vector<uint8_t> view1(points->attributeBuffer->dataU8, points->attributeBuffer->dataU8 + 56);
+			//vector<uint8_t> view2(attributeBuffer->dataU8, attributeBuffer->dataU8 + 56);
+
+			node->attributeBuffer = attributeBuffer;
+		});
+
+		return points;
 	}
 
 };
@@ -265,11 +371,32 @@ shared_ptr<Chunks> getChunks(string pathIn) {
 		js["min"][1].get<double>(),
 		js["min"][2].get<double>()
 	};
+
 	Vector3<double> max = {
 		js["max"][0].get<double>(),
 		js["max"][1].get<double>(),
 		js["max"][2].get<double>()
 	};
+
+	Attributes attributes;
+	{
+		auto jsAttributes = js["attributes"];
+
+		for (auto jsAttribute : jsAttributes) {
+
+			auto jsEncoding = jsAttribute["encoding"];
+
+			Attribute attribute;
+			attribute.name = jsAttribute["name"];
+			attribute.type = AttributeTypes::fromName(jsEncoding["type"]);
+			attribute.numElements = jsAttribute["numElements"];
+			attribute.bytes = jsEncoding["bytes"];
+
+
+
+			attributes.add(attribute);
+		}
+	}
 
 	auto toID = [](string filename) -> string {
 		string strID = stringReplace(filename, "chunk_", "");
@@ -290,6 +417,7 @@ shared_ptr<Chunks> getChunks(string pathIn) {
 		shared_ptr<Chunk> chunk = make_shared<Chunk>();
 		chunk->file = entry.path().string();
 		chunk->id = chunkID;
+		chunk->attributes = attributes;
 
 		BoundingBox box = { min, max };
 
@@ -305,7 +433,10 @@ shared_ptr<Chunks> getChunks(string pathIn) {
 		chunksToLoad.push_back(chunk);
 	}
 
+	
+
 	auto chunks = make_shared<Chunks>(chunksToLoad, min, max);
+	chunks->attributes = attributes;
 
 	return chunks;
 }
@@ -343,6 +474,8 @@ void doIndexing(string path) {
 	indexer.chunks = chunks;
 	indexer.root = buildHierarchyToRoot(chunks);
 	indexer.spacing = chunks->max.distanceTo(chunks->min) / 100.0;
+	indexer.attributes = chunks->attributes;
+	//indexer.chunkAttributes = chunks->attributes;
 
 	auto writer = make_shared<PotreeWriter>(path, chunks->min, chunks->max);
 	indexer.writer = writer;
@@ -367,7 +500,7 @@ void doIndexing(string path) {
 		auto file = task->chunk->file;
 		auto node = task->node;
 
-		indexer.loadChunk(file, node);
+		auto points = indexer.loadChunk(task->chunk, node);
 		indexer.indexNode(node);
 	};
 
@@ -383,7 +516,11 @@ void doIndexing(string path) {
 
 	pool.close();
 
+	
+	shared_ptr<Buffer> attributeBuffer;
+	// TODO: properly initialize attribute buffer
 
+	//indexer.indexRoot();
 	indexer.indexNode(indexer.root);
 
 	writer->close();

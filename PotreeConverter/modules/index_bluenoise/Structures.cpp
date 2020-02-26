@@ -124,6 +124,7 @@ void Node::clear(){
 	//this->traverse([](Node* node){
 		this->points.clear();
 		this->store.clear();
+		this->attributeBuffer = nullptr;
 		
 		this->points.shrink_to_fit();
 		this->store.shrink_to_fit();

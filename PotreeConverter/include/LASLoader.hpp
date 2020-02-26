@@ -201,11 +201,11 @@ public:
 
 	Attributes getAttributes() {
 
-		//Attribute aPosition("position", AttributeTypes::float64, 0, 24, 3);
+		Attribute aPosition("position", AttributeTypes::float64, 0, 24, 3);
 		Attribute aColor("color", AttributeTypes::uint8, 0, 4, 4);
 
 		vector<Attribute> list = {
-			//aPosition,
+			aPosition,
 			aColor
 		};
 

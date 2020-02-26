@@ -1,6 +1,10 @@
 
 #pragma once
 
+#include <memory>
+
+using std::make_shared;
+
 #include "convmath.h"
 #include "Points.h"
 #include "stuff.h"
@@ -118,6 +122,42 @@ inline vector<Point> loadPoints(string file) {
 
 		points.push_back(point);
 	}
+
+	return points;
+
+}
+
+
+
+inline shared_ptr<Points> loadPoints(string file, Attributes attributes) {
+	auto buffer = readBinaryFile(file);
+
+	int bytesPerPoint = attributes.byteSize;
+	int64_t numPoints = buffer.size() / attributes.byteSize;
+
+	auto points = make_shared<Points>();
+	points->points.reserve(numPoints);
+	points->attributes = attributes;
+	points->attributeBuffer = make_shared<Buffer>(numPoints * bytesPerPoint);
+
+	for (int i = 0; i < numPoints; i++) {
+
+		double* xyz = reinterpret_cast<double*>(buffer.data() + (bytesPerPoint * i));
+
+		double x = xyz[0];
+		double y = xyz[1];
+		double z = xyz[2];
+
+		Point point;
+		point.x = x;
+		point.y = y;
+		point.z = z;
+		point.index = i;
+
+		points->points.push_back(point);
+	}
+
+	memcpy(points->attributeBuffer->data, buffer.data(), buffer.size());
 
 	return points;
 

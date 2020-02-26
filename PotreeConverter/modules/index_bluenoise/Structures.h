@@ -19,6 +19,7 @@ namespace bluenoise {
 struct Chunk {
 	Vector3<double> min;
 	Vector3<double> max;
+	Attributes attributes;
 
 	string file;
 	string id;
@@ -28,6 +29,7 @@ struct Chunks {
 	vector<shared_ptr<Chunk>> list;
 	Vector3<double> min;
 	Vector3<double> max;
+	Attributes attributes;
 
 	Chunks(vector<shared_ptr<Chunk>> list, Vector3<double> min, Vector3<double> max) {
 		this->list = list;
@@ -43,8 +45,11 @@ struct Node {
 	Vector3<double> min;
 	Vector3<double> max;
 
+
 	vector<Point> points;
 	vector<Point> store;
+	shared_ptr<Buffer> attributeBuffer = nullptr;
+
 	int64_t numPoints = 0;
 
 	int storeSize = 5'000;

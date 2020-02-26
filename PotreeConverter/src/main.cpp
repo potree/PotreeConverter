@@ -32,7 +32,7 @@ int main(int argc, char **argv){
 	//string pathIn = "D:/dev/pointclouds/mschuetz/plane.las";
 	//string pathIn = "D:/dev/pointclouds/mschuetz/plane_small.las";
 
-	string pathOut = "D:/temp/test";
+	string pathOut = "C:/dev/workspaces/potree/develop/test/converter/pointcloud";
 
 	doChunking(pathIn, pathOut);
 

@@ -89,8 +89,9 @@ namespace bluenoise {
 				int a = 10;
 			}
 
-			auto bytesPerPoint = 16;
-			auto bufferSize = numPoints * bytesPerPoint;
+			auto sourceBytesPerPoint = 28;
+			auto targetBytesPerPoint = 16;
+			auto bufferSize = numPoints * targetBytesPerPoint;
 			auto buffer = malloc(bufferSize);
 			auto bufferU8 = reinterpret_cast<uint8_t*>(buffer);
 
@@ -98,22 +99,28 @@ namespace bluenoise {
 			auto max = this->max;
 			auto scale = this->scale;
 
+			auto attributeBuffer = node->attributeBuffer;
+
 			int i = 0;
 
-			auto writePoint = [&i, bufferU8, min, scale, bytesPerPoint](Point& point){
+			auto writePoint = [&i, bufferU8, min, scale, sourceBytesPerPoint, targetBytesPerPoint, &attributeBuffer](Point& point){
 				int32_t x = (point.x - min.x) / scale.x;
 				int32_t y = (point.y - min.y) / scale.y;
 				int32_t z = (point.z - min.z) / scale.z;
 
-				auto destXYZ = reinterpret_cast<int32_t*>(bufferU8 + i * bytesPerPoint);
+				auto destXYZ = reinterpret_cast<int32_t*>(bufferU8 + i * targetBytesPerPoint);
 				destXYZ[0] = x;
 				destXYZ[1] = y;
 				destXYZ[2] = z;
 
-				bufferU8[i * bytesPerPoint + 12] = 255;
-				bufferU8[i * bytesPerPoint + 13] = 0;
-				bufferU8[i * bytesPerPoint + 14] = 0;
-				bufferU8[i * bytesPerPoint + 15] = 255;
+				auto source = attributeBuffer->dataU8 + i * sourceBytesPerPoint;
+
+				vector<uint8_t> viewS(attributeBuffer->dataU8, attributeBuffer->dataU8 + 28);
+
+				bufferU8[i * targetBytesPerPoint + 12] = source[24];
+				bufferU8[i * targetBytesPerPoint + 13] = source[25];
+				bufferU8[i * targetBytesPerPoint + 14] = source[26];
+				bufferU8[i * targetBytesPerPoint + 15] = 255;
 
 				i++;
 			};

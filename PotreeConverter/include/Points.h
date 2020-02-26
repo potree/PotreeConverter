@@ -56,6 +56,7 @@ struct Buffer {
 struct AttributeType {
 	int id;
 	string name;
+	int bytes;
 
 	bool operator==(AttributeType& type) {
 		return this->id == type.id;
@@ -63,17 +64,17 @@ struct AttributeType {
 };
 
 namespace AttributeTypes {
-	static const AttributeType undefined   = { 0, "undefined"};
-	static const AttributeType int8        = { 1, "int8"};
-	static const AttributeType int16       = { 2, "int16"};
-	static const AttributeType int32       = { 3, "int32"};
-	static const AttributeType int64       = { 4, "int64"};
-	static const AttributeType uint8       = { 5, "uint8"};
-	static const AttributeType uint16      = { 6, "uint16"};
-	static const AttributeType uint32      = { 7, "uint32"};
-	static const AttributeType uint64      = { 8, "uint64"};
-	static const AttributeType float32     = { 9, "float32"};
-	static const AttributeType float64     = {10, "float64"};
+	static const AttributeType undefined   = { 0, "undefined", 0};
+	static const AttributeType int8        = { 1, "int8", 1};
+	static const AttributeType int16       = { 2, "int16", 2};
+	static const AttributeType int32       = { 3, "int32", 4};
+	static const AttributeType int64       = { 4, "int64", 8};
+	static const AttributeType uint8       = { 5, "uint8", 1};
+	static const AttributeType uint16      = { 6, "uint16", 2};
+	static const AttributeType uint32      = { 7, "uint32", 4};
+	static const AttributeType uint64      = { 8, "uint64", 8};
+	static const AttributeType float32     = { 9, "float32", 4};
+	static const AttributeType float64     = {10, "float64", 8};
 
 	static const unordered_map<string, AttributeType> map = {
 		{"undefined", undefined},
@@ -101,38 +102,6 @@ namespace AttributeTypes {
 	}
 }
 
-
-//enum class AttributeType {
-//	undefined,
-//	int8,
-//	int16,
-//	int32,
-//	int64,
-//	uint8,
-//	uint16,
-//	uint32,
-//	uint64,
-//	float32, 
-//	float64,
-//};
-//
-//inline unordered_map< AttributeType, string> AttributeTypeNames = {
-//	{AttributeType::undefined, "undefined"},
-//	{AttributeType::int8, "int8"},
-//	{AttributeType::int16, "int16"},
-//	{AttributeType::int32, "int32"},
-//	{AttributeType::int64, "int64"},
-//	{AttributeType::uint8, "uint8"},
-//	{AttributeType::uint16, "uint16"},
-//	{AttributeType::uint32, "uint32"},
-//	{AttributeType::uint64, "uint64"},
-//	{AttributeType::float32, "float32,"},
-//	{AttributeType::float64, "float64"}
-//};
-
-
-//inline unord
-
 struct Attribute {
 
 	string name = "undefined";
@@ -140,12 +109,11 @@ struct Attribute {
 
 	AttributeType type;
 	int numElements = 1;
+	int bytes = 0;
 
-	int64_t byteOffset = 0;
-	int64_t bytes = 0;
+	Attribute(){
 
-	//Vector3<double> scale = {0.0, 0.0, 0.0};
-	//Vector3<double> offset = {0.0, 0.0, 0.0};
+	}
 
 	Attribute(string name, AttributeType type) {
 		this->name = name;
@@ -155,9 +123,9 @@ struct Attribute {
 	Attribute(string name, AttributeType type, int offset, int bytes, int numElements) {
 		this->name = name;
 		this->type = type;
-		this->byteOffset = offset;
 		this->bytes = bytes;
 		this->numElements = numElements;
+
 	}
 
 };

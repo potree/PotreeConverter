@@ -51,7 +51,7 @@ void flushProcessor(shared_ptr<ChunkPiece> piece) {
 
 		memcpy(fileDataU8 + fileDataOffset, &point, 24);
 
-		uint8_t* attSrc = attBuffer + (i * attributesByteSize);
+		uint8_t* attSrc = attBuffer + (i * attributesByteSize) + 24;
 		memcpy(fileDataU8 + fileDataOffset + 24, attSrc, attributesByteSize);
 
 		i++;
@@ -105,11 +105,22 @@ void writeMetadata(string path, Vector3<double> min, Vector3<double> max, Attrib
 		
 		json jsAttribute;
 		jsAttribute["name"] = attribute.name;
-		jsAttribute["byteOffset"] = attribute.byteOffset;
-		jsAttribute["byteSize"] = attribute.bytes;
-		jsAttribute["description"] = attribute.description;
-		jsAttribute["numElements"] = attribute.numElements;
 		jsAttribute["type"] = attribute.type.name;
+		jsAttribute["numElements"] = attribute.numElements;
+		jsAttribute["description"] = "";
+
+		json jsEncoding;
+
+		jsEncoding["type"] = attribute.type.name;
+		jsEncoding["scale"] = { 0.0, 0.0, 0.0 };
+		jsEncoding["offset"] = { 0.0, 0.0, 0.0 };
+		jsEncoding["bytes"] = attribute.type.bytes * attribute.numElements;
+
+		jsAttribute["encoding"] = jsEncoding;
+
+		//jsAttribute["byteOffset"] = attribute.byteOffset;
+		//jsAttribute["byteSize"] = attribute.bytes;
+		//jsAttribute["description"] = attribute.description;
 
 		js["attributes"].push_back(jsAttribute);
 	}
@@ -228,12 +239,7 @@ void Chunker::add(shared_ptr<Points> batch) {
 		int attributeBufferSize = attributes.byteSize * binCount;
 		bin->attributeBuffer = make_shared<Buffer>(attributeBufferSize);
 
-		//if (grid[i] == nullptr) {
-		//	grid[i] = make_shared<ChunkCell>();
-		//}
-
-		// add bin-piece to grid
-		//grid[i]->pieces.push_back(bin);
+		//memset(bin->attributeBuffer->dataU8, 123, attributeBufferSize);
 
 		bins[i] = bin;
 	}
@@ -243,7 +249,15 @@ void Chunker::add(shared_ptr<Points> batch) {
 
 		int64_t index = toIndex(point);
 
-		bins[index]->points.push_back(point);
+		auto bin = bins[index];
+
+		int i = bin->points.size();
+		bin->points.push_back(point);
+
+		auto source = batch->attributeBuffer->dataU8 + point.index * attributes.byteSize;
+		auto target = bin->attributeBuffer->dataU8 + i * attributes.byteSize;
+		
+		memcpy(target, source, attributes.byteSize);
 	}
 
 	// create flush tasks
