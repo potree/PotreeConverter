@@ -173,13 +173,7 @@ struct Indexer{
 				vector<shared_ptr<Node>> childsToClear;
 				vector<shared_ptr<Node>> childsToRemove;
 
-				
-				
 				for (int i = 0; i < 8; i++) {
-
-					if (node->name == "r05657") {
-						int a = 10;
-					}
 
 					auto child = node->children[i];
 
@@ -188,7 +182,6 @@ struct Indexer{
 					}
 
 					std::sort(child->points.begin(), child->points.end(), byCenter);
-
 
 					vector<Point> rejected;
 
@@ -233,7 +226,7 @@ struct Indexer{
 						auto sourceIndex = point.index;
 
 						auto source = child->attributeBuffer->dataU8 + sourceIndex * bytesPerPoint;
-						auto target = attributeBuffer->dataU8 + targetIndex * bytesPerPoint;;
+						auto target = attributeBuffer->dataU8 + targetIndex * bytesPerPoint;
 
 						memcpy(target, source, bytesPerPoint);
 
@@ -241,11 +234,11 @@ struct Indexer{
 						targetIndex++;
 					}
 
-					if(child != nullptr){
-						vector<uint8_t> viewS(child->attributeBuffer->dataU8, child->attributeBuffer->dataU8 + 56);
-						vector<uint8_t> viewT(attributeBuffer->dataU8, attributeBuffer->dataU8 + 56);
-						int a = 10;
-					}
+					//if(child != nullptr){
+					//	vector<uint8_t> viewS(child->attributeBuffer->dataU8, child->attributeBuffer->dataU8 + 56);
+					//	vector<uint8_t> viewT(attributeBuffer->dataU8, attributeBuffer->dataU8 + 56);
+					//	int a = 10;
+					//}
 					
 				}
 
@@ -279,16 +272,17 @@ struct Indexer{
 	shared_ptr<Points> loadChunk(shared_ptr<Chunk> chunk, shared_ptr<Node> targetNode){
 		auto points = loadPoints(chunk->file, chunk->attributes);
 
-		//vector<uint8_t> view1(points->attributeBuffer->dataU8, points->attributeBuffer->dataU8 + 56);
-		//vector<uint8_t> view2(attributeBuffer->dataU8, attributeBuffer->dataU8 + 56);
+		//auto view1 = points->attributeBuffer->debug_toVector();
 
 		// add points with indices to attributes
 		for (Point& point : points->points) {
 			targetNode->add(point);
 		}
 
+		vector<int> counts(points->points.size(), 0);
+
 		// build attribute buffers for points that were distributed to leaves
-		targetNode->traverse([points](Node* node){
+		targetNode->traverse([points, &counts](Node* node){
 			
 			int numPoints = node->store.size();
 
@@ -301,14 +295,18 @@ struct Indexer{
 
 			for (int i = 0; i < numPoints; i++) {
 
-				int index = node->store[i].index;
+				auto& point = node->store[i];
+
+				int index = point.index;
+
+				counts[index]++;
 
 				auto source = points->attributeBuffer->dataU8 + index * bytesPerPoint;
 				auto target = attributeBuffer->dataU8 + i * bytesPerPoint;
 
 				memcpy(target, source, bytesPerPoint);
 
-				node->store[i].index = i;
+				point.index = i;
 			}
 
 			//string msg = "built attribute buffer for " + node->name + ", " + to_string(numPoints) + " points\n";
@@ -318,6 +316,40 @@ struct Indexer{
 			//vector<uint8_t> view2(attributeBuffer->dataU8, attributeBuffer->dataU8 + 56);
 
 			node->attributeBuffer = attributeBuffer;
+		});
+
+		// DEBUG: verify that each point attribute is taken
+		//for (int i = 0; i < counts.size(); i++) {
+		//	if (counts[i] != 1) {
+		//		cout << "ERROR: count should be 1" << endl;
+		//		exit(123);
+		//	}
+		//}
+
+		//DEBUG: verify that attributes are initialized
+		targetNode->traverse([points](Node* node) {
+			auto attributeBuffer = node->attributeBuffer;
+
+			int bytesPerPoint = points->attributes.byteSize;
+
+			for (int i = 0; i < node->store.size(); i++) {
+				uint8_t* rgba = attributeBuffer->dataU8 + (i * bytesPerPoint) + 24;
+
+				uint8_t r = rgba[0];
+				uint8_t g = rgba[1];
+				uint8_t b = rgba[2];
+				uint8_t a = rgba[3];
+
+				auto dv = Buffer::defaultvalue;
+				if (r == dv && g == dv && b == dv && a == dv) {
+
+					// auto view = vector<uint8_t>(attributeBuffer->dataU8, attributeBuffer->dataU8 + 10 * 28);
+					// cout << "ERROR: rgb is not initialized" << endl;
+
+					// exit(123);
+				}
+				
+			}
 		});
 
 		return points;
@@ -431,6 +463,8 @@ shared_ptr<Chunks> getChunks(string pathIn) {
 		chunk->max = box.max;
 
 		chunksToLoad.push_back(chunk);
+
+		//break;
 	}
 
 	
@@ -501,6 +535,12 @@ void doIndexing(string path) {
 		auto node = task->node;
 
 		auto points = indexer.loadChunk(task->chunk, node);
+
+		static int i = 0;
+		string laspath = file + "/../../debug/chunk_" + to_string(i) + ".las";
+		writeLAS(laspath, points);
+		i++;
+
 		indexer.indexNode(node);
 	};
 

@@ -17,3 +17,4 @@ struct LASHeader {
 
 void writeLAS(string path, LASHeader header, vector<Point> points);
 void writeLAS(string path, LASHeader header, vector<Point> sample, Points* points);
+void writeLAS(string path, shared_ptr<Points> points);

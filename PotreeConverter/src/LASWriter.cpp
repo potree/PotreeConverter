@@ -3,8 +3,11 @@
 
 #include <fstream>
 #include <cstdint>
+#include <filesystem>
 
 using namespace std;
+
+namespace fs = std::filesystem;
 
 vector<uint8_t> makeHeaderBuffer(LASHeader header) {
 	int headerSize = header.headerSize;
@@ -134,6 +137,47 @@ void writeLAS(string path, LASHeader header, vector<Point> sample, Points* point
 		laspoint.z = iz;
 
 		uint8_t* pointAttributeData = attributeBuffer->dataU8 + (point.index * bytesPerPointAttribute);
+		laspoint.r = pointAttributeData[0];
+		laspoint.g = pointAttributeData[1];
+		laspoint.b = pointAttributeData[2];
+
+		file.write(reinterpret_cast<const char*>(&laspoint), 26);
+	}
+
+	file.close();
+}
+
+
+void writeLAS(string path, shared_ptr<Points> points) {
+
+	fs::create_directories(fs::path(path).parent_path());
+	
+
+	LASHeader header;
+	header.numPoints = points->points.size();
+
+	vector<uint8_t> headerBuffer = makeHeaderBuffer(header);
+
+	fstream file(path, ios::out | ios::binary);
+
+	file.write(reinterpret_cast<const char*>(headerBuffer.data()), header.headerSize);
+
+	LASPointF2 laspoint;
+	auto attributeBuffer = points->attributeBuffer;
+	int bytesPerPoint = points->attributes.byteSize;
+	int offsetToFirstAttribute = points->attributes.list[0].bytes;
+	
+	for (Point& point : points->points) {
+
+		int32_t ix = int32_t((point.x - header.min.x) / header.scale.x);
+		int32_t iy = int32_t((point.y - header.min.y) / header.scale.y);
+		int32_t iz = int32_t((point.z - header.min.z) / header.scale.z);
+
+		laspoint.x = ix;
+		laspoint.y = iy;
+		laspoint.z = iz;
+
+		uint8_t* pointAttributeData = attributeBuffer->dataU8 + (point.index * bytesPerPoint + offsetToFirstAttribute);
 		laspoint.r = pointAttributeData[0];
 		laspoint.g = pointAttributeData[1];
 		laspoint.b = pointAttributeData[2];

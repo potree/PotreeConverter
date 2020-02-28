@@ -14,6 +14,8 @@
 
 #include "laszip_api.h"
 
+
+#include "LASWriter.hpp"
 #include "Points.h"
 #include "stuff.h"
 #include "Vector3.h"
@@ -175,6 +177,7 @@ public:
 		this->max = {header->max_x, header->max_y, header->max_z};
 
 		uint64_t npoints = (header->number_of_point_records ? header->number_of_point_records : header->extended_number_of_point_records);
+		//uint64_t npoints = 10'000;
 
 		this->numPoints = npoints;
 
@@ -256,79 +259,6 @@ public:
 		return fut;
 	}
 
-	//void loadStuff() {
-
-	//	auto tStart = now();
-
-	//	uint64_t npoints = (header->number_of_point_records ? header->number_of_point_records : header->extended_number_of_point_records);
-
-	//	laszip_get_point_pointer(laszip_reader, &point);
-
-	//	shared_ptr<Points> points;
-
-	//	double coordinates[3];
-
-	//	Attributes attributes = getAttributes();
-
-	//	for (uint64_t i = 0; i < npoints; i++) {
-
-	//		if ((i % batchSize) == 0) {
-
-	//			if (points != nullptr) {
-	//				lock_guard<mutex> guard(mtx_batches);
-
-	//				batches.push_back(points);
-	//			}
-
-	//			uint64_t currentBatchSize = std::min(npoints - i, batchSize);
-
-	//			points = make_shared<Points>();
-	//			uint64_t attributeBufferSize = currentBatchSize * attributes.byteSize;
-	//			points->points.reserve(currentBatchSize);
-	//			points->attributes = attributes;
-	//			points->attributeBuffer = make_shared<Buffer>(attributeBufferSize);
-	//		}
-
-	//		laszip_read_point(laszip_reader);
-
-	//		uint8_t r = point->rgb[0] / 256;
-	//		uint8_t g = point->rgb[1] / 256;
-	//		uint8_t b = point->rgb[2] / 256;
-
-	//		laszip_get_coordinates(laszip_reader, coordinates);
-
-	//		uint64_t reli = i % batchSize;
-
-	//		Point point = {
-	//			coordinates[0],
-	//			coordinates[1],
-	//			coordinates[2],
-	//			reli
-	//		};
-	//		points->points.push_back(point);
-
-	//		uint8_t* rgbBuffer = points->attributeBuffer->dataU8 + (4 * reli + 0);
-
-	//		rgbBuffer[0] = r;
-	//		rgbBuffer[1] = g;
-	//		rgbBuffer[2] = b;
-	//		rgbBuffer[3] = 255;
-	//	}
-
-	//	{
-	//		lock_guard<mutex> guard1(mtx_batches);
-	//		lock_guard<mutex> guard2(mtx_finishedLoading);
-
-	//		batches.push_back(points);
-	//		finishedLoading = true;
-	//	}
-
-	//	cout << "#points: " << npoints << endl;
-	//	printElapsedTime("loaded", tStart);
-
-	//	cout << batches.size() << endl;
-	//}
-
 	void spawnThreads() {
 		this->activeThreads = numThreads;
 
@@ -392,7 +322,8 @@ public:
 						relIndex
 					};
 
-					uint8_t* rgbBuffer = points->attributeBuffer->dataU8 + (4 * relIndex + 0);
+					uint8_t* rgbBuffer = points->attributeBuffer->dataU8 + (28 * relIndex + 24);
+					//uint8_t* rgbBuffer = points->attributeBuffer->dataU8 + (4 * relIndex);
 
 					rgbBuffer[0] = r;
 					rgbBuffer[1] = g;
@@ -403,6 +334,8 @@ public:
 
 					relIndex++;
 				}
+
+				//writeLAS("D:/temp/test/batches/loader_finalizing.las", points);
 
 
 				{

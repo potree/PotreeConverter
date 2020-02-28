@@ -75,19 +75,8 @@ namespace bluenoise {
 
 		auto writerNode = findOrCreateWriterNode(node->name);
 
-		static unordered_map<string, Node*> alreadyDone;
-		if (alreadyDone.find(node->name) != alreadyDone.end()) {
-			int a = 10;
-		}
-		alreadyDone[node->name] = node;
-
 		{
 			auto numPoints = node->points.size() + node->store.size();
-			//auto numPoints = node->numAccepted;
-
-			if (numPoints == 0) {
-				int a = 10;
-			}
 
 			auto sourceBytesPerPoint = 28;
 			auto targetBytesPerPoint = 16;
@@ -113,9 +102,12 @@ namespace bluenoise {
 				destXYZ[1] = y;
 				destXYZ[2] = z;
 
-				auto source = attributeBuffer->dataU8 + i * sourceBytesPerPoint;
+				int sourceIndex = point.index;
+				auto source = attributeBuffer->dataU8 + sourceIndex * sourceBytesPerPoint;
 
-				vector<uint8_t> viewS(attributeBuffer->dataU8, attributeBuffer->dataU8 + 28);
+				uint8_t r = source[24];
+				uint8_t g = source[25];
+				uint8_t b = source[26];
 
 				bufferU8[i * targetBytesPerPoint + 12] = source[24];
 				bufferU8[i * targetBytesPerPoint + 13] = source[25];

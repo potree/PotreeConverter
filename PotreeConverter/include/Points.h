@@ -30,6 +30,10 @@ struct Buffer {
 
 	uint64_t size = 0;
 
+	// DEBUG
+	// 0x70 = 112
+	inline static uint8_t defaultvalue = 0x70;
+
 	Buffer(uint64_t size) {
 
 		this->data = malloc(size);
@@ -44,11 +48,18 @@ struct Buffer {
 		this->dataD = reinterpret_cast<double*>(this->data);
 		this->dataChar = reinterpret_cast<char*>(this->data);
 
+		
+		memset(this->dataU8, defaultvalue, size);
+
 		this->size = size;
 	}
 
 	~Buffer() {
 		free(this->data);
+	}
+
+	vector<uint8_t> debug_toVector() {
+		return vector<uint8_t>(this->dataU8, this->dataU8 + this->size);
 	}
 
 };

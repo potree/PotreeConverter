@@ -33,16 +33,18 @@ namespace fs = std::filesystem;
 void flushProcessor(shared_ptr<ChunkPiece> piece) {
 
 	auto points = piece->points;
+
+	auto attributes = points->attributes;
+	uint8_t* attBuffer = points->attributeBuffer->dataU8;
+
 	uint64_t numPoints = points->points.size();
-	uint64_t bytesPerPoint = 28;
+	uint64_t bytesPerPoint = attributes.byteSize;
 	uint64_t fileDataSize = numPoints * bytesPerPoint;
 
 	void* fileData = malloc(fileDataSize);
 	uint8_t* fileDataU8 = reinterpret_cast<uint8_t*>(fileData);
 
-
-	uint8_t* attBuffer = points->attributeBuffer->dataU8;
-	int attributesByteSize = 4;
+	
 
 	int i = 0;
 	for (Point point : points->points) {
@@ -51,8 +53,10 @@ void flushProcessor(shared_ptr<ChunkPiece> piece) {
 
 		memcpy(fileDataU8 + fileDataOffset, &point, 24);
 
-		uint8_t* attSrc = attBuffer + (i * attributesByteSize) + 24;
-		memcpy(fileDataU8 + fileDataOffset + 24, attSrc, attributesByteSize);
+		uint8_t* source = attBuffer + i * attributes.byteSize + 24;
+		uint8_t* target = fileDataU8 + i * attributes.byteSize + 24;
+
+		memcpy(target, source, attributes.byteSize - 24);
 
 		i++;
 	}
@@ -235,6 +239,7 @@ void Chunker::add(shared_ptr<Points> batch) {
 
 		shared_ptr<Points> bin = make_shared<Points>();
 		bin->points.reserve(binCount);
+		bin->attributes = batch->attributes;
 
 		int attributeBufferSize = attributes.byteSize * binCount;
 		bin->attributeBuffer = make_shared<Buffer>(attributeBufferSize);
@@ -252,12 +257,26 @@ void Chunker::add(shared_ptr<Points> batch) {
 		auto bin = bins[index];
 
 		int i = bin->points.size();
-		bin->points.push_back(point);
 
 		auto source = batch->attributeBuffer->dataU8 + point.index * attributes.byteSize;
 		auto target = bin->attributeBuffer->dataU8 + i * attributes.byteSize;
 		
 		memcpy(target, source, attributes.byteSize);
+
+		// if (index == 1) {
+		// 	auto viewSource = batch->attributeBuffer->debug_toVector();
+		// 	auto viewTarget = bin->attributeBuffer->debug_toVector();
+
+		// 	auto viewSourceOffseted = vector<uint8_t>(
+		// 		batch->attributeBuffer->dataU8 + point.index * attributes.byteSize,
+		// 		batch->attributeBuffer->dataU8 + point.index * attributes.byteSize + 28);
+
+		// 	int a = 10;
+		// }
+
+		point.index = i;
+		bin->points.push_back(point);
+		
 	}
 
 	// create flush tasks
@@ -267,6 +286,8 @@ void Chunker::add(shared_ptr<Points> batch) {
 		if (points == nullptr) {
 			continue;
 		}
+
+		// auto view = points->attributeBuffer->debug_toVector();
 
 		int index = i;
 		string name = getName(index);
@@ -285,7 +306,7 @@ void doChunking(string pathIn, string pathOut) {
 
 	flushPool = make_shared<TaskPool<ChunkPiece>>(16, flushProcessor);
 
-	LASLoader* loader = new LASLoader(pathIn, 4);
+	LASLoader* loader = new LASLoader(pathIn, 32);
 	Attributes attributes = loader->getAttributes();
 
 	string path = pathOut + "/chunks/";
@@ -301,7 +322,7 @@ void doChunking(string pathIn, string pathOut) {
 	Vector3<double> cubeMin = loader->min;
 	Vector3<double> cubeMax = cubeMin + cubeSize;
 
-	int gridSize = 8;
+	int gridSize = 4;
 	Chunker* chunker = new Chunker(path, attributes, cubeMin, cubeMax, gridSize);
 
 	double sum = 0.0;
