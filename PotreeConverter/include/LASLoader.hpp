@@ -22,6 +22,76 @@
 
 using namespace std;
 
+
+inline Attributes LAS_FORMAT_0({
+	{"position",        AttributeTypes::int32, 3},
+	{"intensity",       AttributeTypes::uint16},
+	{"returns",         AttributeTypes::uint8}, 
+	{"classification",  AttributeTypes::uint8},
+	{"scan angle rank", AttributeTypes::int8},
+	{"user data",       AttributeTypes::uint8},
+	{"point source id", AttributeTypes::uint16},
+});
+
+inline Attributes LAS_FORMAT_1({
+	{"position",        AttributeTypes::int32, 3},
+	{"intensity",       AttributeTypes::uint16},
+	{"returns",         AttributeTypes::uint8},
+	{"classification",  AttributeTypes::uint8},
+	{"scan angle rank", AttributeTypes::int8},
+	{"user data",       AttributeTypes::uint8},
+	{"point source id", AttributeTypes::uint16},
+	{"gps-time",        AttributeTypes::float64},
+});
+
+inline Attributes LAS_FORMAT_2({
+	{"position",        AttributeTypes::int32, 3},
+	{"intensity",       AttributeTypes::uint16},
+	{"returns",         AttributeTypes::uint8},
+	{"classification",  AttributeTypes::uint8},
+	{"scan angle rank", AttributeTypes::int8},
+	{"user data",       AttributeTypes::uint8},
+	{"point source id", AttributeTypes::uint16},
+	{"rgb",             AttributeTypes::uint16, 3},
+});
+
+inline Attributes LAS_FORMAT_3({
+	{"position",        AttributeTypes::int32, 3},
+	{"intensity",       AttributeTypes::uint16},
+	{"returns",         AttributeTypes::uint8},
+	{"classification",  AttributeTypes::uint8},
+	{"scan angle rank", AttributeTypes::int8},
+	{"user data",       AttributeTypes::uint8},
+	{"point source id", AttributeTypes::uint16},
+	{"gps-time",        AttributeTypes::float64},
+	{"rgb",             AttributeTypes::uint16, 3},
+});
+
+inline Attributes LAS_FORMAT_4({
+	{"position",        AttributeTypes::int32, 3},
+	{"intensity",       AttributeTypes::uint16},
+	{"returns",         AttributeTypes::uint8},
+	{"classification",  AttributeTypes::uint8},
+	{"scan angle rank", AttributeTypes::int8},
+	{"user data",       AttributeTypes::uint8},
+	{"point source id", AttributeTypes::uint16},
+	{"gps-time",        AttributeTypes::float64},
+	{"wave packet descriptor index",   AttributeTypes::uint8},
+	{"byte offset to waveform data",   AttributeTypes::uint64},
+	{"waveform packet size",           AttributeTypes::uint32},
+	{"return point waveform location", AttributeTypes::float32},
+	{"XYZ(t)",          AttributeTypes::float32, 3},
+});
+
+inline vector<Attributes> lasFormats = {
+	LAS_FORMAT_0,
+	LAS_FORMAT_1,
+	LAS_FORMAT_2,
+	LAS_FORMAT_3,
+	LAS_FORMAT_4
+};
+
+
 // see LAS spec 1.4
 // https://www.asprs.org/wp-content/uploads/2010/12/LAS_1_4_r13.pdf
 // total of 192 bytes 
@@ -59,6 +129,18 @@ const unordered_map<unsigned char, ExtraType> typeToExtraType = {
 	{10, ExtraType{AttributeTypes::float64, 8, 1}},
 };
 
+//struct LasPointMapping {
+//	int offset = 0;
+//	int size = 0;
+//};
+
+//inline unordered_map<string, LasPointMapping> laspointMappings = {
+//	{"position",  {offsetof(laszip_point, X), 12}},
+//	{"intensity", {offsetof(laszip_point, intensity), sizeof(laszip_point_struct::intensity)}},
+//	{"returns", {offsetof(laszip_point, intensity), sizeof(laszip_point_struct::intensity)}},
+//};
+
+//inline int abc = sizeof(laszip_point_struct::intensity);
 
 inline Attributes estimateAttributes(string path) {
 	laszip_POINTER laszip_reader = nullptr;
@@ -74,52 +156,143 @@ inline Attributes estimateAttributes(string path) {
 	laszip_header* header = nullptr;
 	laszip_get_header_pointer(laszip_reader, &header);
 
-	int64_t npoints = (header->number_of_point_records ? header->number_of_point_records : header->extended_number_of_point_records);
+	laszip_point* point;
+	laszip_get_point_pointer(laszip_reader, &point);
 
-	//int64_t nPointsChecking = std::min(npoints, 1'000'000ll);
+	int64_t npoints = header->number_of_point_records ? 
+		header->number_of_point_records : 
+		header->extended_number_of_point_records;
 
-	//for (int64_t i = 0; i < nPointsChecking; i++) {
+	auto format = header->point_data_format;
+	
+	if (format > lasFormats.size()) {
+		cout << "ERROR: unsupported las format: " << format << endl;
+		exit(123);
+	}
+	
+	auto attributes = lasFormats[format];
 
-	//}
 
-	Attributes attributes;
+	int numPointsToCheck = std::min(npoints, 100'000ll);
+	//int numPointsToCheck = std::min(npoints, 10ll);
 
-	{ // read extra bytes
+	vector<int> nonemptyCounter(attributes.list.size());
 
-		for (uint64_t i = 0; i < header->number_of_variable_length_records; i++) {
-			laszip_vlr_struct vlr = header->vlrs[i];
+	for (int i = 0; i < numPointsToCheck; i++) {
+		// point
+		laszip_read_point(laszip_reader);
+		
+		int j = 0;
+		for (auto attribute : attributes.list) {
 
-			if (vlr.record_id != 4) {
-				continue;
+			if (attribute.name == "position") {
+				nonemptyCounter[j]++;
+			} else if (attribute.name == "intensity") {
+				if (point->intensity != 0) {
+					nonemptyCounter[j]++;
+				}
+			} else if (attribute.name == "returns") {
+				if (point->return_number != 0) {
+					nonemptyCounter[j]++;
+				} else if (point->number_of_returns != 0) {
+
+				}
+			} else if (attribute.name == "classification") {
+				if (point->classification != 0) {
+					nonemptyCounter[j]++;
+				}
+			} else if (attribute.name == "point source id") {
+				if (point->point_source_ID != 0) {
+					nonemptyCounter[j]++;
+				}
+			} else if (attribute.name == "gps-time") {
+				if (point->gps_time != 0.0) {
+					nonemptyCounter[j]++;
+				}
+			} else if (attribute.name == "rgb") {
+				bool hasRGB = point->rgb[0] != 0
+					|| point->rgb[1] != 0
+					|| point->rgb[2] != 0;
+				if (point->rgb[0] != 0) {
+					nonemptyCounter[j]++;
+				}
 			}
-
-			cout << "record id: " << vlr.record_id << endl;
-			cout << "record_length_after_header: " << vlr.record_length_after_header << endl;
-
-			int numExtraBytes = vlr.record_length_after_header / sizeof(ExtraBytesRecord);
-
-			ExtraBytesRecord* extraBytes = reinterpret_cast<ExtraBytesRecord*>(vlr.data);
-
-			for (int j = 0; j < numExtraBytes; j++) {
-				ExtraBytesRecord extraAttribute = extraBytes[j];
-
-				string name = string(extraAttribute.name);
-
-				cout << "name: " << name << endl;
-
-				ExtraType et = typeToExtraType.at(extraAttribute.data_type);
-				
-				Attribute attribute(name, et.type);
-				attribute.bytes = et.size;
-				attribute.numElements = et.numElements;
-
-				attributes.add(attribute);
-
-			}
+			
+			j++;
 		}
 	}
 
-	return attributes;
+	vector<Attribute> nonemptyAttributes;
+	for (int i = 0; i < attributes.list.size(); i++) {
+		Attribute attribute = attributes.list[i];
+
+		if (nonemptyCounter[i] > 0) {
+			nonemptyAttributes.push_back(attribute);
+		}
+	}
+
+	//vector<laszip_point> laszipPoints(numPointsToCheck);
+
+	//for (int i = 0; i < numPointsToCheck; i++) {
+	//	laszip_read_point(laszip_reader);
+
+	//	laszipPoints.push_back(*point);
+	//}
+
+	//for (auto attribute : attributes.list) {
+
+	//	if (attribute.name == "position") {
+	//		nonemptyAttributes.push_back(attribute);
+	//	} else if (attribute.name == "intensity") {
+	//		for (int i = 0; i < numPointsToCheck; i++) {
+	//			if (laszipPoints[i].intensity != 0) {
+	//				nonemptyAttributes.push_back(attribute);
+	//				continue;
+	//			}
+	//		}
+
+
+	//	}
+
+	//}
+
+
+	//{ // TODO: read extra bytes
+
+	//	for (uint64_t i = 0; i < header->number_of_variable_length_records; i++) {
+	//		laszip_vlr_struct vlr = header->vlrs[i];
+
+	//		if (vlr.record_id != 4) {
+	//			continue;
+	//		}
+
+	//		cout << "record id: " << vlr.record_id << endl;
+	//		cout << "record_length_after_header: " << vlr.record_length_after_header << endl;
+
+	//		int numExtraBytes = vlr.record_length_after_header / sizeof(ExtraBytesRecord);
+
+	//		ExtraBytesRecord* extraBytes = reinterpret_cast<ExtraBytesRecord*>(vlr.data);
+
+	//		for (int j = 0; j < numExtraBytes; j++) {
+	//			ExtraBytesRecord extraAttribute = extraBytes[j];
+
+	//			string name = string(extraAttribute.name);
+
+	//			cout << "name: " << name << endl;
+
+	//			ExtraType et = typeToExtraType.at(extraAttribute.data_type);
+	//			
+	//			Attribute attribute(name, et.type);
+	//			attribute.bytes = et.size;
+	//			attribute.numElements = et.numElements;
+
+	//			attributes.add(attribute);
+
+	//		}
+	//	}
+	//}
+
+	return nonemptyAttributes;
 }
 
 struct LasLoadTask {
@@ -144,6 +317,7 @@ public:
 	Vector3<double> min = { 0.0, 0.0, 0.0 };
 	Vector3<double> max = { 0.0, 0.0, 0.0 };
 
+	Attributes attributes;
 
 	mutex mtx_batches;
 	mutex mtx_finishedLoading;
@@ -183,6 +357,8 @@ public:
 
 		laszip_close_reader(laszip_reader);
 
+		this->attributes = estimateAttributes(path);
+
 		spawnThreads();
 	}
 
@@ -203,18 +379,7 @@ public:
 	}
 
 	Attributes getAttributes() {
-
-		Attribute aPosition("position", AttributeTypes::float64, 0, 24, 3);
-		Attribute aColor("color", AttributeTypes::uint8, 0, 4, 4);
-
-		vector<Attribute> list = {
-			aPosition,
-			aColor
-		};
-
-		Attributes attributes(list);
-
-		return attributes;
+		return this->attributes;
 	}
 
 	future<shared_ptr<Points>> nextBatch() {
@@ -285,8 +450,10 @@ public:
 			laszip_header* header = nullptr;
 			laszip_get_header_pointer(laszip_reader, &header);
 
-			laszip_point* point;
-			laszip_get_point_pointer(laszip_reader, &point);
+			laszip_point* ptrPoint;
+			laszip_get_point_pointer(laszip_reader, &ptrPoint);
+
+			Attributes attributes = this->attributes;
 
 
 			LasLoadTask task = getLoadTask();
@@ -297,21 +464,44 @@ public:
 				laszip_seek_point(laszip_reader, task.start);
 
 				double coordinates[3];
-				Attributes attributes = getAttributes();
 
 				shared_ptr<Points> points = make_shared<Points>();
 				points->points.reserve(task.numPoints);
 				points->attributes = attributes;
 				uint64_t attributeBufferSize = task.numPoints * attributes.byteSize;
-				points->attributeBuffer = make_shared<Buffer>(attributeBufferSize);
+				auto buffer = make_shared<Buffer>(attributeBufferSize);
+				points->attributeBuffer = buffer;
+
+				vector<function<void(int)>> attributeReaders;
+
+				int offset = 0;
+				for (Attribute attribute : attributes.list) {
+
+					if (attribute.name == "position") {
+						// handle position separately
+					} else if (attribute.name == "rgb") {
+						int attributeOffset = offset;
+						auto reader = [ptrPoint, buffer, points, attributes, attributeOffset](int i) {
+
+							uint8_t* pointer = buffer->dataU8 + (attributes.byteSize * i + attributeOffset);
+							uint16_t* rgbBuffer = reinterpret_cast<uint16_t*>(pointer);
+
+							rgbBuffer[0] = ptrPoint->rgb[0];
+							rgbBuffer[1] = ptrPoint->rgb[1];
+							rgbBuffer[2] = ptrPoint->rgb[2];
+						};
+						attributeReaders.push_back(reader);
+					}
+
+					offset += attribute.bytes;
+					
+				}
+				
+
 
 				int relIndex = 0;
 				for (uint64_t i = task.start; i < end; i++) {
 					laszip_read_point(laszip_reader);
-
-					uint8_t r = point->rgb[0] / 256;
-					uint8_t g = point->rgb[1] / 256;
-					uint8_t b = point->rgb[2] / 256;
 
 					laszip_get_coordinates(laszip_reader, coordinates);
 
@@ -322,28 +512,33 @@ public:
 						relIndex
 					};
 
-					uint8_t* rgbBuffer = points->attributeBuffer->dataU8 + (28 * relIndex + 24);
-					//uint8_t* rgbBuffer = points->attributeBuffer->dataU8 + (4 * relIndex);
+					//uint8_t r = ptrPoint->rgb[0] / 256;
+					//uint8_t g = ptrPoint->rgb[1] / 256;
+					//uint8_t b = ptrPoint->rgb[2] / 256;
 
-					rgbBuffer[0] = r;
-					rgbBuffer[1] = g;
-					rgbBuffer[2] = b;
-					rgbBuffer[3] = 255;
+					//uint8_t* rgbBuffer = points->attributeBuffer->dataU8 + (attributes.byteSize * relIndex + 24);
+
+					//rgbBuffer[0] = r;
+					//rgbBuffer[1] = g;
+					//rgbBuffer[2] = b;
+					//rgbBuffer[3] = 255;
+
+					// store coordinates in attribute buffer
+					auto target = buffer->dataU8 + attributes.byteSize * relIndex;
+					auto source = coordinates;
+					memcpy(target, source, 12);
+
+					// store all remaining attributes in attribute buffer
+					for(auto& attributeReader : attributeReaders){
+						attributeReader(relIndex);
+					}
 
 					points->points.push_back(point);
 
 					relIndex++;
 				}
 
-				//writeLAS("D:/temp/test/batches/loader_finalizing.las", points);
-
-
-				{
-					lock_guard<mutex> guard(mtx_batches);
-
-					batches.push_back(points);
-				}
-
+				addLoadedBatch(points);
 
 				task = getLoadTask();
 			}
@@ -365,12 +560,15 @@ public:
 		});
 
 		t.detach();
-	
-		//thread t([&](){
-		//	loadStuff();
-		//});
-		//t.detach();
+	}
 
+
+	private:
+
+	void addLoadedBatch(shared_ptr<Points> points) {
+		lock_guard<mutex> guard(mtx_batches);
+
+		batches.push_back(points);
 	}
 
 };

@@ -155,6 +155,11 @@ void writeLAS(string path, shared_ptr<Points> points) {
 
 	LASHeader header;
 	header.numPoints = points->points.size();
+	header.min = {
+		points->points[0].x,
+		points->points[0].y,
+		points->points[0].z
+	};
 
 	vector<uint8_t> headerBuffer = makeHeaderBuffer(header);
 
@@ -166,6 +171,16 @@ void writeLAS(string path, shared_ptr<Points> points) {
 	auto attributeBuffer = points->attributeBuffer;
 	int bytesPerPoint = points->attributes.byteSize;
 	int offsetToFirstAttribute = points->attributes.list[0].bytes;
+
+	int rgbOffset = 0;
+	for (auto attribute : points->attributes.list) {
+		if (attribute.name == "rgb") {
+			break;
+		}
+
+		rgbOffset += attribute.bytes;
+	}
+	//int rgbOffset = points->attributes.list[0].bytes;
 	
 	for (Point& point : points->points) {
 
@@ -177,10 +192,11 @@ void writeLAS(string path, shared_ptr<Points> points) {
 		laspoint.y = iy;
 		laspoint.z = iz;
 
-		uint8_t* pointAttributeData = attributeBuffer->dataU8 + (point.index * bytesPerPoint + offsetToFirstAttribute);
-		laspoint.r = pointAttributeData[0];
-		laspoint.g = pointAttributeData[1];
-		laspoint.b = pointAttributeData[2];
+		uint8_t* ptrRGB = attributeBuffer->dataU8 + (point.index * bytesPerPoint + rgbOffset);
+		uint16_t* rgb = reinterpret_cast<uint16_t*>(ptrRGB);
+		laspoint.r = rgb[0];
+		laspoint.g = rgb[1];
+		laspoint.b = rgb[2];
 
 		file.write(reinterpret_cast<const char*>(&laspoint), 26);
 	}

@@ -129,6 +129,14 @@ struct Attribute {
 	Attribute(string name, AttributeType type) {
 		this->name = name;
 		this->type = type;
+		this->bytes = type.bytes;
+	}
+
+	Attribute(string name, AttributeType type, int numElements) {
+		this->name = name;
+		this->type = type;
+		this->numElements = numElements;
+		this->bytes = type.bytes * numElements;
 	}
 
 	Attribute(string name, AttributeType type, int offset, int bytes, int numElements) {
@@ -136,7 +144,7 @@ struct Attribute {
 		this->type = type;
 		this->bytes = bytes;
 		this->numElements = numElements;
-
+		this->bytes = type.bytes * numElements;
 	}
 
 };
