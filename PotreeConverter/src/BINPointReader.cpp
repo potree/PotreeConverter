@@ -4,6 +4,7 @@
 #include <vector>
 
 #include <filesystem>
+#include <cstring>
 
 #include "BINPointReader.hpp"
 #include "stuff.h"
@@ -15,6 +16,7 @@ using std::cout;
 using std::endl;
 using std::vector;
 using std::ios;
+using std::memcpy;
 
 namespace Potree{
 

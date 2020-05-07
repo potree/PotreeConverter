@@ -6,6 +6,7 @@
 #include <chrono>
 #include <fstream>
 #include <iomanip>
+#include <cstring>
 
 #include <filesystem>
 
@@ -30,6 +31,7 @@ using std::stringstream;
 using std::chrono::high_resolution_clock;
 using std::chrono::milliseconds;
 using std::chrono::duration_cast;
+using std::memcpy;
 
 namespace fs = std::filesystem;
 
@@ -295,7 +297,8 @@ void PWNode::flush(){
 			if(fs::exists(temppath)){
 				PointReader *reader = createReader(temppath);
 				while(reader->readNextPoint()){
-					writer->write(reader->getPoint());
+					auto point = reader->getPoint();
+					writer->write(point);
 				}
 				reader->close();
 				delete reader;
