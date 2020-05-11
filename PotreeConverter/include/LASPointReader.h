@@ -68,7 +68,7 @@ public:
 			laszip_get_point_pointer(laszip_reader, &point);
 
 			colorScale = 1;
-			for(int i = 0; i < 100'000 && i < npoints; i++){
+			for(int i = 0; i < 1'000'000 && i < npoints; i++){
 				laszip_read_point(laszip_reader);
 		
 				auto r = point->rgb[0];
@@ -117,9 +117,20 @@ public:
         p.intensity = point->intensity;
         p.classification = point->classification;
 
-        p.color.x = point->rgb[0] / colorScale;
-        p.color.y = point->rgb[1] / colorScale;
-        p.color.z = point->rgb[2] / colorScale;
+		uint16_t r = point->rgb[0] / colorScale;
+		uint16_t g = point->rgb[1] / colorScale;
+		uint16_t b = point->rgb[2] / colorScale;
+
+		// in case color scale estimate was wrong...
+		p.color.x = r > 255 ? r / 256 : r;
+		p.color.y = g > 255 ? g / 256 : g;
+		p.color.z = b > 255 ? b / 256 : b;
+
+		static int i = 0;
+		if (i > 5'000'000) {
+			int a = 10;
+		}
+		i++;
 
 		p.returnNumber = point->return_number;
 		p.numberOfReturns = point->number_of_returns;
