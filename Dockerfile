@@ -1,21 +1,25 @@
-FROM ubuntu:15.10
+FROM ubuntu:bionic
 
-RUN apt-get update && apt-get install -y g++ git cmake libboost-all-dev
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && apt-get install -y g++-8 git cmake libboost-all-dev
+RUN update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-8 800 --slave /usr/bin/g++ g++ /usr/bin/g++-8
 RUN mkdir /data
 
 WORKDIR /data
 
-RUN git clone https://github.com/m-schuetz/LAStools.git
-WORKDIR /data/LAStools/LASzip
-RUN mkdir build
-RUN cd build && cmake -DCMAKE_BUILD_TYPE=Release ..
-RUN cd build && make
+RUN git clone https://github.com/LAStools/LAStools.git
+WORKDIR /data/LAStools/
+RUN make && cd LASzip && cmake . -DCMAKE_BUILD_TYPE=Release \
+    && make && make install
 
 RUN mkdir ./PotreeConverter
 WORKDIR /data/PotreeConverter
 ADD . /data/PotreeConverter
-RUN mkdir build
-RUN cd build && cmake -DCMAKE_BUILD_TYPE=Release -DLASZIP_INCLUDE_DIRS=/data/LAStools/LASzip/dll -DLASZIP_LIBRARY=/data/LAStools/LASzip/build/src/liblaszip.so .. 
-RUN cd build && make
-RUN cp -R /data/PotreeConverter/PotreeConverter/resources/ /data
-
+RUN mkdir build && cd build && cmake \
+            -DCMAKE_CXX_STANDARD=17 \
+            -DCMAKE_CXX_STANDARD_REQUIRED=ON \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DLASZIP_INCLUDE_DIRS=/usr/local/include/laszip/ \
+            -DLASZIP_LIBRARY=/usr/local/lib/liblaszip.so .. \  
+    && make
