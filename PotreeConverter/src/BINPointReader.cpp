@@ -3,12 +3,12 @@
 #include <iostream>
 #include <vector>
 
-#include <experimental/filesystem>
+#include <filesystem>
 
 #include "BINPointReader.hpp"
 #include "stuff.h"
 
-namespace fs = std::experimental::filesystem;
+namespace fs = std::filesystem;
 
 using std::ifstream;
 using std::cout;
@@ -104,7 +104,19 @@ bool BINPointReader::readNextPoint(){
 			}else if(attribute == PointAttribute::CLASSIFICATION){
 				unsigned char* ucBuffer = reinterpret_cast<unsigned char*>(buffer+offset);
 				point.classification = ucBuffer[0];
-			}else if(attribute == PointAttribute::NORMAL_SPHEREMAPPED){
+			} else if (attribute == PointAttribute::RETURN_NUMBER) {
+				unsigned char* ucBuffer = reinterpret_cast<unsigned char*>(buffer + offset);
+				point.returnNumber = ucBuffer[0];
+			} else if (attribute == PointAttribute::NUMBER_OF_RETURNS) {
+				unsigned char* ucBuffer = reinterpret_cast<unsigned char*>(buffer + offset);
+				point.numberOfReturns = ucBuffer[0];
+			} else if (attribute == PointAttribute::SOURCE_ID) {
+				unsigned short* usBuffer = reinterpret_cast<unsigned short*>(buffer + offset);
+				point.pointSourceID = usBuffer[0];
+			} else if (attribute == PointAttribute::GPS_TIME) {
+				double* dBuffer = reinterpret_cast<double*>(buffer + offset);
+				point.gpsTime = dBuffer[0];
+			} else if(attribute == PointAttribute::NORMAL_SPHEREMAPPED){
 				// see http://aras-p.info/texts/CompactNormalStorage.html
 				unsigned char* ucBuffer = reinterpret_cast<unsigned char*>(buffer+offset);
 				unsigned char bx = ucBuffer[0];
@@ -164,7 +176,14 @@ bool BINPointReader::readNextPoint(){
 				point.normal.x = fBuffer[0];
 				point.normal.y = fBuffer[1];
 				point.normal.z = fBuffer[2];
+			} else {
+				vector<uint8_t> target(attribute.byteSize, 0);
+
+				memcpy(target.data(), (buffer + offset), attribute.byteSize);
+				
+				point.extraBytes.insert(point.extraBytes.end(), target.begin(), target.end());
 			}
+			
 
 			offset += attribute.byteSize;
 		}

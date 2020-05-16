@@ -38,7 +38,7 @@ public:
 	bool addCalledSinceLastFlush = false;
 	PotreeWriter *potreeWriter;
 	vector<Point> cache;
-	int storeLimit = 20'000;
+	//int storeLimit = 20'000;
 	vector<Point> store;
 	bool isInMemory = true;
 
@@ -115,6 +115,7 @@ public:
 	int pointsInMemory = 0;
 	string projection = "";
 	ConversionQuality quality = ConversionQuality::DEFAULT;
+	int storeSize = 20'000;
 
 
 	PotreeWriter(string workDir, ConversionQuality quality);

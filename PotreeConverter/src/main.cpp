@@ -11,16 +11,15 @@
 #include "PotreeException.h"
 
 #include "arguments.hpp"
-#include <experimental/filesystem>
+#include <filesystem>
 
-namespace fs = std::experimental::filesystem;
+namespace fs = std::filesystem;
 
 using std::string;
 using std::cout;
 using std::cerr;
 using std::endl;
 using std::vector;
-using std::binary_function;
 using std::map;
 using std::chrono::high_resolution_clock;
 using std::chrono::milliseconds;
@@ -64,6 +63,8 @@ struct PotreeArguments {
 	bool showSkybox = false;
 	string material = "RGB";
     string executablePath;
+	int storeSize;
+	int flushLimit;
 };
 
 PotreeArguments parseArguments(int argc, char **argv){
@@ -95,6 +96,8 @@ PotreeArguments parseArguments(int argc, char **argv){
 	args.addArgument("edl-enabled", "Enable Eye-Dome-Lighting.");
 	args.addArgument("show-skybox", "");
 	args.addArgument("material", "RGB, ELEVATION, INTENSITY, INTENSITY_GRADIENT, CLASSIFICATION, RETURN_NUMBER, SOURCE, LEVEL_OF_DETAIL");
+	args.addArgument("store-size", "A node is split once more than store-size points are added. Reduce for better results at cost of performance. Default is 20000");
+	args.addArgument("flush-limit", "Flush after X points. Default is 10000000");
 
 	PotreeArguments a;
 
@@ -125,6 +128,8 @@ PotreeArguments parseArguments(int argc, char **argv){
 	}
 	a.outdir = args.get("outdir").as<string>();
 	a.spacing = args.get("spacing").as<double>(0.0);
+	a.storeSize = args.get("store-size").as<int>(20'000);
+	a.flushLimit= args.get("flush-limit").as<int>(10'000'000);
 	a.diagonalFraction = args.get("d").as<double>(0.0);
 	a.levels = args.get("levels").as<int>(-1);
 	a.format = args.get("input-format").as<string>();
@@ -150,7 +155,7 @@ PotreeArguments parseArguments(int argc, char **argv){
 	if (args.has("output-attributes")) {
 		a.outputAttributes = args.get("output-attributes").as<vector<string>>();
 	} else {
-		a.outputAttributes = { "RGB" };
+		//a.outputAttributes = { "RGB" };
 	}
 
 	a.scale = args.get("scale").as<double>(0.0);
@@ -231,7 +236,12 @@ PotreeArguments parseArguments(int argc, char **argv){
 
 	// set default parameters 
 	fs::path pSource(a.source[0]);
-	a.outdir = args.has("outdir") ? args.get("outdir").as<string>() : pSource.generic_string() + "_converted";
+	if (args.has("outdir")) {
+		a.outdir = args.get("outdir").as<string>();
+	} else {
+		string name = fs::canonical(pSource).filename().string();
+		a.outdir = name + "_converted";	
+	}
 	
 	if (a.diagonalFraction != 0) {
 		a.spacing = 0;
@@ -240,7 +250,7 @@ PotreeArguments parseArguments(int argc, char **argv){
 	}
 
    try {
-    auto absolutePath = fs::canonical(fs::system_complete(argv[0]));
+    auto absolutePath = fs::canonical(fs::absolute(argv[0]));
     a.executablePath = absolutePath.parent_path().string();
    } catch (const fs::filesystem_error &e) {
      // do nothing
@@ -308,6 +318,8 @@ int main(int argc, char **argv){
 		pc.edlEnabled = a.edlEnabled;
 		pc.material = a.material;
 		pc.showSkybox = a.showSkybox;
+		pc.storeSize = a.storeSize;
+		pc.flushLimit = a.flushLimit;
 
 		pc.convert();
 	}catch(exception &e){

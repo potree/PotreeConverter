@@ -7,7 +7,7 @@
 #include <fstream>
 #include <iomanip>
 
-#include <experimental/filesystem>
+#include <filesystem>
 
 #include "AABB.h"
 #include "SparseGrid.h"
@@ -31,7 +31,7 @@ using std::chrono::high_resolution_clock;
 using std::chrono::milliseconds;
 using std::chrono::duration_cast;
 
-namespace fs = std::experimental::filesystem;
+namespace fs = std::filesystem;
 
 namespace Potree{
 
@@ -171,7 +171,7 @@ PWNode *PWNode::add(Point &point){
 
 	if(isLeafNode()){
 		store.push_back(point);
-		if(int(store.size()) >= storeLimit){
+		if(int(store.size()) >= potreeWriter->storeSize){
 			split();
 		}
 
@@ -308,7 +308,7 @@ void PWNode::flush(){
 			writer = createWriter(filepath);
 		}
 
-		for(const auto &e_c : points){
+		for(auto &e_c : points){
 			writer->write(e_c);
 		}
 
@@ -493,7 +493,7 @@ PotreeWriter::PotreeWriter(string workDir, AABB aabb, float spacing, int maxDept
 	cloudjs.boundingBox = aabb;
 	cloudjs.octreeDir = "data";
 	cloudjs.spacing = spacing;
-	cloudjs.version = "1.7";
+	cloudjs.version = "1.8";
 	cloudjs.scale = this->scale;
 	cloudjs.pointAttributes = pointAttributes;
 

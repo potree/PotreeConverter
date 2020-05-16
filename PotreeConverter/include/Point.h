@@ -5,8 +5,10 @@
 #include "Vector3.h"
 
 #include <iostream>
+#include <vector>
 
 using std::ostream;
+using std::vector;
 
 namespace Potree{
 
@@ -21,7 +23,8 @@ public:
 	unsigned char returnNumber = 0;
 	unsigned char numberOfReturns = 0;
 	unsigned short pointSourceID = 0;
-
+	double gpsTime = 0.0;
+	vector<uint8_t> extraBytes;
 
 	Point() = default;
 

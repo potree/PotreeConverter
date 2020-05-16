@@ -97,7 +97,7 @@ public:
 				}
 
 				int i = 0;
-				for(const auto &f : format) {
+				for(const auto &f : this->format) {
 					string token = tokens[i++];
 					if(f == 'r'){
 						max = std::max(max, stof(token));

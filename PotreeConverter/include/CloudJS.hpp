@@ -124,21 +124,9 @@ public:
 		Value version(this->version.c_str(), (rapidjson::SizeType)this->version.size());
 		Value octreeDir("data");
 		Value projection(this->projection.c_str(), (rapidjson::SizeType)this->projection.size());
+
 		Value boundingBox(rapidjson::kObjectType);
 		{
-			//Value min(rapidjson::kArrayType);
-			//min.PushBack(this->boundingBox.min.x, d.GetAllocator());
-			//min.PushBack(this->boundingBox.min.y, d.GetAllocator());
-			//min.PushBack(this->boundingBox.min.z, d.GetAllocator());
-			//
-			//Value max(rapidjson::kArrayType);
-			//max.PushBack(this->boundingBox.max.x, d.GetAllocator());
-			//max.PushBack(this->boundingBox.max.y, d.GetAllocator());
-			//max.PushBack(this->boundingBox.max.z, d.GetAllocator());
-			//
-			//boundingBox.AddMember("min", min, d.GetAllocator());
-			//boundingBox.AddMember("max", max, d.GetAllocator());
-
 			boundingBox.AddMember("lx", this->boundingBox.min.x, d.GetAllocator());
 			boundingBox.AddMember("ly", this->boundingBox.min.y, d.GetAllocator());
 			boundingBox.AddMember("lz", this->boundingBox.min.z, d.GetAllocator());
@@ -146,21 +134,9 @@ public:
 			boundingBox.AddMember("uy", this->boundingBox.max.y, d.GetAllocator());
 			boundingBox.AddMember("uz", this->boundingBox.max.z, d.GetAllocator());
 		}
+
 		Value tightBoundingBox(rapidjson::kObjectType);
 		{
-			//Value min(rapidjson::kArrayType);
-			//min.PushBack(this->tightBoundingBox.min.x, d.GetAllocator());
-			//min.PushBack(this->tightBoundingBox.min.y, d.GetAllocator());
-			//min.PushBack(this->tightBoundingBox.min.z, d.GetAllocator());
-			//
-			//Value max(rapidjson::kArrayType);
-			//max.PushBack(this->tightBoundingBox.max.x, d.GetAllocator());
-			//max.PushBack(this->tightBoundingBox.max.y, d.GetAllocator());
-			//max.PushBack(this->tightBoundingBox.max.z, d.GetAllocator());
-			//
-			//tightBoundingBox.AddMember("min", min, d.GetAllocator());
-			//tightBoundingBox.AddMember("max", max, d.GetAllocator());
-
 			tightBoundingBox.AddMember("lx", this->tightBoundingBox.min.x, d.GetAllocator());
 			tightBoundingBox.AddMember("ly", this->tightBoundingBox.min.y, d.GetAllocator());
 			tightBoundingBox.AddMember("lz", this->tightBoundingBox.min.z, d.GetAllocator());
@@ -174,8 +150,17 @@ public:
 			pointAttributes.SetArray();
 			for(int i = 0; i < this->pointAttributes.size(); i++){
 				PointAttribute attribute = this->pointAttributes[i];
-				Value str(attribute.name.c_str(), d.GetAllocator());
-				pointAttributes.PushBack(str, d.GetAllocator());
+
+
+				Value vAttribute(rapidjson::kObjectType);
+				vAttribute.AddMember("name", Value(attribute.name.c_str(), d.GetAllocator()), d.GetAllocator());
+				vAttribute.AddMember("size", attribute.byteSize, d.GetAllocator());
+				vAttribute.AddMember("elements", attribute.numElements, d.GetAllocator());
+				vAttribute.AddMember("elementSize", attribute.byteSize / attribute.numElements, d.GetAllocator());
+				vAttribute.AddMember("type", Value(attribute.type.c_str(), d.GetAllocator()), d.GetAllocator());
+				vAttribute.AddMember("description", Value(attribute.description.c_str(), d.GetAllocator()), d.GetAllocator());
+				
+				pointAttributes.PushBack(vAttribute, d.GetAllocator());
 			}
 		}else if(outputFormat == OutputFormat::LAS){
 			pointAttributes = "LAS";
