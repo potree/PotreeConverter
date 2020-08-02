@@ -2,7 +2,8 @@
 	"workbench.editor.enablePreview": false,
 	"files.associations": {
 		"*.vs": "cpp",
-		"*.fs": "cpp"
+		"*.fs": "cpp",
+		"filesystem": "cpp"
 	},
 	"files.trimTrailingWhitespace": false,
 	"editor.fontSize": 28,

@@ -345,21 +345,21 @@ void PotreeConverter::generatePage(string name){
 
 	string pagedir = this->workDir;
     string templateSourcePath = this->executablePath + "/resources/page_template/viewer_template.html";
-    string mapTemplateSourcePath = this->executablePath + "/resources/page_template/lasmap_template.html";
+    //string mapTemplateSourcePath = this->executablePath + "/resources/page_template/lasmap_template.html";
     string templateDir = this->executablePath + "/resources/page_template";
 
         if(!this->pageTemplatePath.empty()) {
 		templateSourcePath = this->pageTemplatePath + "/viewer_template.html";
-		mapTemplateSourcePath = this->pageTemplatePath + "/lasmap_template.html";
+		//mapTemplateSourcePath = this->pageTemplatePath + "/lasmap_template.html";
 		templateDir = this->pageTemplatePath;
 	}
 
 	string templateTargetPath = pagedir + "/" + name + ".html";
-	string mapTemplateTargetPath = pagedir + "/lasmap_" + name + ".html";
+	//string mapTemplateTargetPath = pagedir + "/lasmap_" + name + ".html";
 
     Potree::copyDir(fs::path(templateDir), fs::path(pagedir));
 	fs::remove(pagedir + "/viewer_template.html");
-	fs::remove(pagedir + "/lasmap_template.html");
+	//fs::remove(pagedir + "/lasmap_template.html");
 
 	if(!this->sourceListingOnly){ // change viewer template
 		ifstream in( templateSourcePath );
@@ -374,7 +374,7 @@ void PotreeConverter::generatePage(string name){
 
 				out << "\t\t\tviewer.scene.addPointCloud(pointcloud);" << endl;
 
-				out << "\t\t\t" << "material.pointColorType = Potree.PointColorType." << material << "; // any Potree.PointColorType.XXXX \n";
+				out << "\t\t\t//material.activeAttributeName = \"rgba\"; //[rgba, intensity, classification, ...]\n";
 				out << "\t\t\tmaterial.size = 1;\n";
 				out << "\t\t\tmaterial.pointSizeType = Potree.PointSizeType.ADAPTIVE;\n";
 				out << "\t\t\tmaterial.shape = Potree.PointShape.SQUARE;\n";
@@ -406,23 +406,23 @@ void PotreeConverter::generatePage(string name){
 	}
 
 	// change lasmap template
-	if(!this->projection.empty()){ 
-		ifstream in( mapTemplateSourcePath );
-		ofstream out( mapTemplateTargetPath );
+	//if(!this->projection.empty()){ 
+	//	ifstream in( mapTemplateSourcePath );
+	//	ofstream out( mapTemplateTargetPath );
 
-		string line;
-		while(getline(in, line)){
-			if(line.find("<!-- INCLUDE SOURCE -->") != string::npos){
-				out << "\tvar source = \"" << "pointclouds/" << name << "/sources.json" << "\";";
-			}else{
-				out << line << endl;
-			}
-			
-		}
+	//	string line;
+	//	while(getline(in, line)){
+	//		if(line.find("<!-- INCLUDE SOURCE -->") != string::npos){
+	//			out << "\tvar source = \"" << "pointclouds/" << name << "/sources.json" << "\";";
+	//		}else{
+	//			out << line << endl;
+	//		}
+	//		
+	//	}
 
-		in.close();
-		out.close();
-	}
+	//	in.close();
+	//	out.close();
+	//}
 
 	//{ // write settings
 	//	stringstream ssSettings;
