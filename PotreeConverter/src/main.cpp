@@ -61,7 +61,7 @@ struct PotreeArguments {
 	string description = "";
 	bool edlEnabled = false;
 	bool showSkybox = false;
-	string material = "RGB";
+	string material = "rgba";
     string executablePath;
 	int storeSize;
 	int flushLimit;
@@ -224,15 +224,15 @@ PotreeArguments parseArguments(int argc, char **argv){
 	a.description = args.get("description").as<string>();
 	a.edlEnabled = args.has("edl-enabled");
 	a.showSkybox = args.has("show-skybox");
-	a.material = args.get("material").as<string>("RGB");
+	a.material = args.get("material").as<string>("rgba");
 
-	vector<string> validMaterialNames = {"RGB", "ELEVATION", "INTENSITY", "INTENSITY_GRADIENT", "CLASSIFICATION", "RETURN_NUMBER", "SOURCE", "LEVEL_OF_DETAIL"};
-	if(std::find(validMaterialNames.begin(), validMaterialNames.end(), a.material) == validMaterialNames.end()){
-		cout << args.usage();
-		cout << endl;
-		cout << "ERROR: " << "invalid material name specified" << endl;
-		exit(1);
-	}
+	//vector<string> validMaterialNames = {"rgba", "ELEVATION", "INTENSITY", "INTENSITY_GRADIENT", "CLASSIFICATION", "RETURN_NUMBER", "SOURCE", "LEVEL_OF_DETAIL"};
+	//if(std::find(validMaterialNames.begin(), validMaterialNames.end(), a.material) == validMaterialNames.end()){
+	//	cout << args.usage();
+	//	cout << endl;
+	//	cout << "ERROR: " << "invalid material name specified" << endl;
+	//	exit(1);
+	//}
 
 	// set default parameters 
 	fs::path pSource(a.source[0]);

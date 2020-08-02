@@ -59,7 +59,7 @@ public:
 	string description = "";
 	bool edlEnabled = false;
 	bool showSkybox = false;
-	string material = "RGB";
+	string material = "rgba";
     string executablePath;
 	int storeSize = 20'000;
 	int flushLimit = 10'000'000;
