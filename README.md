@@ -1,158 +1,126 @@
-# Potree Converter
 
-Master: [![Build Status](https://travis-ci.org/potree/PotreeConverter.svg?branch=master)](https://travis-ci.org/potree/PotreeConverter)
-Develop: [![Build Status](https://travis-ci.org/potree/PotreeConverter.svg?branch=develop)](https://travis-ci.org/potree/PotreeConverter)
+# About
 
-Builds a potree octree from las, laz, binary ply, xyz or ptx files.
+PotreeConverter generates an octree LOD structure for streaming and real-time rendering of massive point clouds. The results can be viewed in web browsers with [Potree](https://github.com/potree/potree) or as a desktop application with [PotreeDesktop](https://github.com/potree/PotreeDesktop). 
 
-## Downloads
+Version 2.0 is a complete rewrite with following differences over the previous version 1.7:
 
-* [Source Code and windows 64bit releases](https://github.com/potree/PotreeConverter/releases)
+* About 10 to 50 times faster than PotreeConverter 1.7 on SSDs.
+* Produces a total of 3 files instead of thousands to tens of millions of files. The reduction of the number of files improves file system operations such as copy, delete and upload to servers from hours and days to seconds and minutes. 
+* Better support for standard LAS attributes and arbitrary extra attributes. Full support (e.g. int64 and uint64) in development.
+* Optional compression is not yet available in the new converter but on the roadmap for a future update.
 
-## Dependencies
+Altough the converter made a major step to version 2.0, the format it produces is also supported by Potree 1.7. The Potree viewer is scheduled to make the major step to version 2.0 in 2021, with a rewrite in WebGPU. 
 
-* [lastools(LASzip)](https://github.com/LAStools/LAStools) or [fork of lastools with cmake for LASzip](https://github.com/m-schuetz/LAStools)
+To fund the future development of this project, PotreeConverter 2.0 will be available for use under a free license for non-commercial and non-government entities, and under a paid license for commercial and government entities - see license and pricing section below. [PotreeConverter 1.7](https://github.com/potree/PotreeConverter/releases/tag/1.7) source and binaries continue to be available for free for anyone to use, as well as the alternative [Entwine](https://entwine.io/).
 
-## Build
+# Publications
 
-### linux / gcc 4.9
+* [Potree: Rendering Large Point Clouds in Web Browsers](https://www.cg.tuwien.ac.at/research/publications/2016/SCHUETZ-2016-POT/SCHUETZ-2016-POT-thesis.pdf)
+* [Fast Out-of-Core Octree Generation for Massive Point Clouds](https://www.cg.tuwien.ac.at/research/publications/2020/SCHUETZ-2020-MPC/), _Schütz M., Ohrhallinger S., Wimmer M._
 
+# Getting Started
 
-lastools (from fork with cmake)
+1. Download windows binaries or
+    * Download source code
+    * Open Visual Studio 2019 Project ./Converter/Converter.sln
+    * Compile in release mode
+2. run ```Converter.exe <input> -o <outputDir>```
 
-```
-cd ~/dev/workspaces/lastools
-git clone https://github.com/m-schuetz/LAStools.git master
-cd master/LASzip
-mkdir build
-cd build
-cmake -DCMAKE_BUILD_TYPE=Release ..
-make
+In Potree, modify one of the examples with following load command:
 
-```
+```javascript
+let url = "../pointclouds/D/temp/test/metadata.json";
+Potree.loadPointCloud(url).then(e => {
+	let pointcloud = e.pointcloud;
+	let material = pointcloud.material;
 
-PotreeConverter
+	material.activeAttributeName = "rgba";
+	material.minSize = 2;
+	material.pointSizeType = Potree.PointSizeType.ADAPTIVE;
 
-```
-cd ~/dev/workspaces/PotreeConverter
-git clone https://github.com/potree/PotreeConverter.git master
-cd master
-mkdir build
-cd build
-cmake -DCMAKE_BUILD_TYPE=Release -DLASZIP_INCLUDE_DIRS=~/dev/workspaces/lastools/master/LASzip/dll -DLASZIP_LIBRARY=~/dev/workspaces/lastools/master/LASzip/build/src/liblaszip.so ..
-make
-
-# copy ./PotreeConverter/resources/page_template to your binary working directory.
-
-```
-
-### OS X
-
-Same as the linux instructions above, except:
-
-1. Give cmake absolute paths to the LASzip tools you just built. (Otherwise make might not be able to find them)
-2. LASZip library will be called `liblaszip.dylib`, not `liblaszip.so `
-
-```
-...
-
-cmake -DCMAKE_BUILD_TYPE=Release -DLASZIP_INCLUDE_DIRS=[ABSOLUTE_PATH_TO_LASTOOLS]/master/LASzip/dll -DLASZIP_LIBRARY=[ABSOLUTE_PATH_TO_LASTOOLS]/master/LASzip/build/src/liblaszip.dylib ..
-make
+	viewer.scene.addPointCloud(pointcloud);
+	viewer.fitToScreen();
+});
 
 ```
 
-### Windows / Microsoft Visual Studio 2019:
+# Alternatives
 
-Use the cmd command line. Power Shell might now work.
+PotreeConverter 2.0 is only free for non-commercial and non-government use. The following table lists free and open source alternatives if PotreeConveter 2.0 doesn't suit you. All of them produce LOD structures that can be loaded and rendered with Potree. 
 
-lastools
+<table>
+	<tr>
+		<th></th>
+		<th>PotreeConverter 2.0</th>
+		<th><a href="https://github.com/potree/PotreeConverter/releases/tag/1.7">PotreeConverter 1.7</a></th>
+		<th><a href="https://entwine.io/">Entwine</a></th>
+	</tr>
+	<tr>
+		<th>license</th>
+		<td>
+			free for non-commercial
+		</td>
+		<td>
+			free, BSD 2-clause
+		</td>
+		<td>
+			free, LGPL
+		</td>
+	</tr>
+	<tr>
+		<th>#generated files</th>
+		<td>
+			3 files total
+		</td>
+		<td>
+			1 per node
+		</td>
+		<td>
+			1 per node
+		</td>
+	</tr>
+	<tr>
+		<th>compression</th>
+		<td>
+			none (TODO)
+		</td>
+		<td>
+			LAZ (optional)
+		</td>
+		<td>
+			LAZ
+		</td>
+	</tr>
+</table>
 
-```
-cd D:/dev/workspaces/lastools/
-git clone https://github.com/m-schuetz/LAStools.git master
-cd master/LASzip
-mkdir build
-cd build
-cmake ../
-```
+Performance comparison (Ryzen 2700, NVMe SSD):
 
-PotreeConverter
+![](./docs/images/performance_chart.png)
 
-```
-# make sure you've got these environment variables set with your directory structure
-set LASZIP_INCLUDE_DIRS=C:\dev\workspaces\lastools\master\LASzip\dll
-set LASZIP_LIBRARY=C:\dev\workspaces\lastools\master\LASzip\build\src\Release\laszip.lib
+# License and Pricing
 
-# checkout PotreeConverter
-cd D:/dev/workspaces/PotreeConverter
-git clone https://github.com/potree/PotreeConverter.git master
-cd master
-mkdir build
-cd build
+Summary: 
+* Free for non-commercial and non-government use, including universities and research institutions as long as Potree is not used for or part of a commercial product or service.
+* Paid license for commercial and government uses.
+* If the licensing terms don't fit your use case (e.g. integration as an exporter in your software, art projects, ...),  please contact licensing@potree.org for special conditions and exceptions. 
 
-# Visual Studio project
-cmake -DLASZIP_INCLUDE_DIRS=%LASZIP_INCLUDE_DIRS% -DLASZIP_LIBRARY=%LASZIP_LIBRARY%  ../
+See [LICENSE](LICENSE) for detailed information. 
 
-# copy ./PotreeConverter/resources/page_template to your binary working directory.
+## Pricing
 
-```
+You can evaluate PotreeConverter for free for three months before you need to purchase a license. Licenses are per simultaneously running instance of PotreeConverter 2.0. The licensee can install PotreeConverter on multiple devices of the licensee, but only keep one instance of the converter running at a time. 
 
-## PotreeConverter Usage
+1. 240€ per instance for a perpetual license of the software at the date of purchase, plus one year of updates. 
+2. 1200€ per instance and year for fully automated SaaS hosting services that include PotreeConverter. This applies to online services that provide customers a platform to upload their data, which is then automatically processed by a converter instance, and finally made available online publicly or behind authentication (e.g. youtube or sketchfab for point clouds). 
+3. Anyone who has donated to or funded Potree before August 2020 is considered to have a perpetual license under bullet point [1], plus additional numbers of [1] or [2] that match the amount of donation/funding. 
 
-Converts las files to the potree file format.
-You can list multiple input files. If a directory is specified, all files
-inside the directory will be converted.
+* Note that this only applies to the licensee using PotreeConverter 2.0. You're allowed to convert your customers data with PotreeConverter 2.0 and host it online via Potree 1.7(free), without the need to aquire additional licenses for customers. You're also allowed to distribute converted data via PotreeDesktop 1.7 without the need for additional licenses. The customer will only need to purchase licenses if they decide to convert point cloud data with the converter themselves. 
+* If in doubt, just start using it for the three month trial period and ask for clarifications via licensing@potree.org
+* Licensees will have priority support. I'll reply to smaller issues as fast as possible, and offer support plans for larger issues. 
 
-Options:
+Licenses can be purchased with following options:
 
-
-```
-$ PotreeConverter -h                                      
-  -i [ --source ]                        input files
-  -h [ --help ]                          prints usage
-  -p [ --generate-page ]                 Generates a ready to use web page with the given name.
-  -o [ --outdir ]                        output directory
-  -s [ --spacing ]                       Distance between points at root level. Distance halves each level.
-  -d [ --spacing-by-diagonal-fraction ]  Maximum number of points on the diagonal in the first level (sets spacing). spacing = diagonal value
-  -l [ --levels ]                        Number of levels that will be generated. 0: only root, 1: root and its children, ...
-  -f [ --input-format ]                  Input format. xyz: cartesian coordinates as floats, rgb: colors as numbers, i: intensity as number
-  --color-range
-  --intensity-range
-  --output-format                        Output format can be BINARY, LAS or LAZ. Default is BINARY
-  -a [ --output-attributes ]             can be any combination of RGB, INTENSITY and CLASSIFICATION. Default is RGB.
-  --scale                                Scale of the X, Y, Z coordinate in LAS and LAZ files.
-  --aabb                                 Bounding cube as "minX minY minZ maxX maxY maxZ". If not provided it is automatically computed
-  --incremental                          Add new points to existing conversion
-  --overwrite                            Replace existing conversion at target directory
-  --source-listing-only                  Create a sources.json but no octree.
-  --projection                           Specify projection in proj4 format.
-  --list-of-files                        A text file containing a list of files to be converted.
-  --source                               Source file. Can be LAS, LAZ, PTX or PLY
-  --title                                Page title
-  --description                          Description to be shown in the page.
-  --edl-enabled                          Enable Eye-Dome-Lighting.
-  --show-skybox
-  --material                             RGB, ELEVATION, INTENSITY, INTENSITY_GRADIENT, RETURN_NUMBER, SOURCE, LEVEL_OF_DETAIL
-```
-
-Examples:
-
-    # convert data.las and generate web page.
-    ./PotreeConverter.exe C:/data.las -o C:/potree_converted -p pageName
-
-    # generate compressed LAZ files instead of the default BIN format.
-    ./PotreeConverter.exe C:/data.las -o C:/potree_converted --output-format LAZ
-
-    # convert all files inside the data directory
-    ./PotreeConverter.exe C:/data -o C:/potree_converted
-
-    # first, convert with custom bounding box and then append new_data.las afterwards.
-    # points in new_data MUST fit into bounding box!
-    ./PotreeConverter.exe C:/data -o C:/potree_converted -aabb "-0.748 -2.780 2.547 3.899 1.867 7.195"
-    ./PotreeConverter.exe C:/new_data.las -o C:/potree_converted --incremental
-
-	# tell the converter that coordinates are in a UTM zone 10N projection. Also, create output in LAZ format
-	./PotreeConverter.exe C:/data -o C:/potree_converted -p pageName --projection "+proj=utm +zone=10 +ellps=GRS80 +datum=NAD83 +units=m +no_defs" --overwrite --output-format LAZ
-
-	# using a swiss projection. Use http://spatialreference.org/ to find projections in proj4 format
-	./PotreeConverter.exe C:/data -o C:/potree_converted -p pageName --projection "+proj=somerc +lat_0=46.95240555555556 +lon_0=7.439583333333333 +k_0=1 +x_0=600000 +y_0=200000 +ellps=bessel +towgs84=674.4,15.1,405.3,0,0,0,0 +units=m +no_defs" --overwrite
+* Paypal (TODO - create payment page)
+* Github Sponsorship over https://github.com/potree (TODO - create fitting sponsorship tiers)
+* Via invoice and wire transfer - contact licensing@potree.org

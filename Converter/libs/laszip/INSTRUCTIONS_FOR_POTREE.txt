@@ -1,0 +1,15 @@
+
+
+in laszip folder, run: 
+	
+	cmake ./
+	
+Open generated visual studio solution. 
+Change output file extension from dll to lib
+Change compile type from dll to static lib 
+Change target path from "/bin" to "./bin"
+Compile release and debug lib files, rename as needed.
+	
+	
+
+
