@@ -26,6 +26,9 @@ To fund the future development of this project, PotreeConverter 2.0 will be avai
     * Open Visual Studio 2019 Project ./Converter/Converter.sln
     * Compile in release mode
 2. run ```Converter.exe <input> -o <outputDir>```
+    * Optionally specify the sampling strategy:
+	* Poisson-disk sampling (default): ```Converter.exe <input> -o <outputDir> -m poisson```
+	* Random sampling: ```Converter.exe <input> -o <outputDir> -m random```
 
 In Potree, modify one of the examples with following load command:
 
@@ -44,6 +47,16 @@ Potree.loadPointCloud(url).then(e => {
 });
 
 ```
+
+## Using Visual Studio Code launch interface
+
+If you've compiled from source, you can use visual studio code as an easy interface to run the converter. 
+* Install [Visual Studio Code](https://code.visualstudio.com/)
+* Open the vscode from the base folder (shift + right click -> "Open with Code")
+* Open the file .vscode/launch.json (ctrl + e, then enter "launch.json")
+* Modify the arguments as necessary. You can specify multiple comma separated input files, followed by "-o" and the output file. You can also specify optional parameters such as "-m", "poisson" or "-m", "random" to specify the sampling strategy. 
+* Press ctrl + F5 to start the converter.
+* Open "Debug Console" tab to see the output of the converter. The Debug Console tab is located right next to the terminal tab. 
 
 # Alternatives
 
