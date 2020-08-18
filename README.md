@@ -134,6 +134,6 @@ You can evaluate PotreeConverter for free for three months before you need to pu
 
 Licenses can be purchased with following options:
 
-* Via invoice and wire transfer - contact licensing@potree.org
-* Github Sponsorship over https://github.com/potree
-* <a href="http://potree.org/licensing.html">Paypal</a>
+* [Paypal](http://potree.org/licensing.html) (with volume licenses)
+* Github Sponsorship, see "Sponsor" button at the top. (monthly single license)
+* Via invoice and wire transfer - contact licensing@potree.org 
