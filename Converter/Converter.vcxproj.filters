@@ -36,16 +36,10 @@
     <ClCompile Include="src\main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="modules\LASLoader\LasLoader.cpp">
-      <Filter>modules\LasLoader</Filter>
-    </ClCompile>
     <ClCompile Include="modules\unsuck\unsuck_platform_specific.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\chunker_countsort_laszip.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\chunker_countsort.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\indexer.cpp">
@@ -87,9 +81,6 @@
       <Filter>modules\arguments</Filter>
     </ClInclude>
     <ClInclude Include="include\ChunkRefiner.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="include\chunker_countsort.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="modules\tools\sort_pointcloud.h">

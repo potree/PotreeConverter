@@ -148,13 +148,11 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="modules\LASLoader\LasLoader.cpp" />
     <ClCompile Include="modules\unsuck\unsuck_platform_specific.cpp" />
     <ClCompile Include="src\indexer.cpp" />
     <ClCompile Include="src\indexer_poissondisk.cpp" />
     <ClCompile Include="src\indexer_random.cpp" />
     <ClCompile Include="src\main.cpp" />
-    <ClCompile Include="src\chunker_countsort.cpp" />
     <ClCompile Include="src\chunker_countsort_laszip.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -165,7 +163,6 @@
     <ClInclude Include="include\indexer.h" />
     <ClInclude Include="include\indexer_poissondisk.h" />
     <ClInclude Include="include\indexer_random.h" />
-    <ClInclude Include="include\chunker_countsort.h" />
     <ClInclude Include="include\chunker_countsort_laszip.h" />
     <ClInclude Include="include\prototyping.h" />
     <ClInclude Include="include\sampler_poisson.h" />

@@ -5,7 +5,6 @@
 
 #include "LasLoader/LasLoader.h"
 #include "unsuck/unsuck.hpp"
-#include "chunker_countsort.h"
 #include "chunker_countsort_laszip.h"
 #include "indexer.h"
 #include "sampler_poisson.h"
@@ -104,11 +103,11 @@ Curated curateSources(vector<string> paths) {
 	auto parallel = std::execution::par;
 	for_each(parallel, paths.begin(), paths.end(), [&mtx, &sources](string path) {
 
-		auto header = loadHeader(path);
+		auto header = loadLasHeader(path);
 		auto filesize = fs::file_size(path);
 
-		Vector3 min = { header.min[0], header.min[1], header.min[2] };
-		Vector3 max = { header.max[0], header.max[1], header.max[2] };
+		Vector3 min = { header.min.x, header.min.y, header.min.z };
+		Vector3 max = { header.max.x, header.max.y, header.max.z };
 
 		Source source;
 		source.path = path;
@@ -204,12 +203,12 @@ vector<Attribute> parseExtraAttributes(LasHeader& header) {
 		}
 	}
 
-	for (auto& vlr : header.extendedVLRs) {
-		if (vlr.recordID == 4) {
-			extraData = vlr.data;
-			break;
-		}
-	}
+	//for (auto& vlr : header.extendedVLRs) {
+	//	if (vlr.recordID == 4) {
+	//		extraData = vlr.data;
+	//		break;
+	//	}
+	//}
 
 	constexpr int recordSize = 192;
 	int numExtraAttributes = extraData.size() / recordSize;
@@ -245,7 +244,7 @@ Attributes computeOutputAttributes(vector<Source>& sources, Options& options) {
 
 	{ // compute list of attributes from first source
 
-		auto header = loadHeader(sources[0].path);
+		auto header = loadLasHeader(sources[0].path);
 		auto format = header.pointDataFormat;
 
 		Attribute xyz("position", 12, 3, 4, AttributeType::INT32);
@@ -310,15 +309,13 @@ Attributes computeOutputAttributes(vector<Source>& sources, Options& options) {
 		auto parallel = std::execution::par;
 		for_each(parallel, sources.begin(), sources.end(), [&mtx, &sources, &scale, &offset](Source source) {
 
-			auto header = loadHeader(source.path);
+			auto header = loadLasHeader(source.path);
 
 			mtx.lock();
 
-			scale.x = std::min(scale.x, header.scale[0]);
-			scale.y = std::min(scale.y, header.scale[1]);
-			scale.z = std::min(scale.z, header.scale[2]);
-
-			
+			scale.x = std::min(scale.x, header.scale.x);
+			scale.y = std::min(scale.y, header.scale.y);
+			scale.z = std::min(scale.z, header.scale.z);
 
 			offset.x = std::min(offset.x, source.min.x);
 			offset.y = std::min(offset.y, source.min.y);
@@ -528,7 +525,7 @@ void chunking(Options& options, vector<Source>& sources, string targetDir, Stats
 
 	} else if (options.chunkMethod == "LAS_CUSTOM") {
 
-		chunker_countsort::doChunking(sources[0].path, targetDir, state);
+		//chunker_countsort::doChunking(sources[0].path, targetDir, state);
 
 	} else if (options.chunkMethod == "SKIP") {
 
