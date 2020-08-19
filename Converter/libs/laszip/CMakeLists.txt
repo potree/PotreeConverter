@@ -30,7 +30,7 @@ list(FILTER source_files EXCLUDE REGEX ".*dll/laszip_api.c$")
 #message("${source_files}") 
 
 
-add_library(laszip SHARED  ${source_files})
+add_library(laszip SHARED ${source_files})
 target_include_directories(laszip PRIVATE 
 	./dll
 	./src

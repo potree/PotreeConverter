@@ -7,9 +7,11 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 set(CMAKE_BUILD_TYPE "Release" CACHE STRING "" FORCE)
 
-add_subdirectory("${PROJECT_SOURCE_DIR}/Converter/libs/laszip")
+set(LASZIP_DIR "${PROJECT_SOURCE_DIR}/Converter/libs/laszip")
 
-message(${PROJECT_SOURCE_DIR})
+add_subdirectory(${LASZIP_DIR})
+
+#message(${PROJECT_SOURCE_DIR})
 
 set(HEADER_FILES  
 	Converter/include/Attributes.h
@@ -43,3 +45,19 @@ target_link_libraries(PotreeConverter laszip)
 target_include_directories(PotreeConverter PRIVATE "./Converter/include")
 target_include_directories(PotreeConverter PRIVATE "./Converter/modules")
 target_include_directories(PotreeConverter PRIVATE "./Converter/libs")
+
+###############################################
+# COPY LICENSE FILES TO BINARY DIRECTORY
+###############################################
+add_custom_command(
+	TARGET PotreeConverter POST_BUILD
+	COMMAND ${CMAKE_COMMAND} -E copy
+		${LASZIP_DIR}/LICENSE.txt
+		$<TARGET_FILE_DIR:${PROJECT_NAME}>/licenses/license_laszip.txt)
+
+add_custom_command(
+	TARGET PotreeConverter POST_BUILD
+	COMMAND ${CMAKE_COMMAND} -E copy
+		${PROJECT_SOURCE_DIR}/LICENSE
+		$<TARGET_FILE_DIR:${PROJECT_NAME}>/licenses/license_potree_converter.txt)
+
