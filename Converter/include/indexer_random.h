@@ -14,6 +14,7 @@
 #include <thread>
 #include <chrono>
 #include <mutex>
+#include <condition_variable>
 
 #include "json/json.hpp"
 

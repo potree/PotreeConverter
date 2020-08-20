@@ -164,4 +164,93 @@ CpuData getCpuData() {
 	return data;
 }
 
+#elif defined(__linux__)
+
+// see https://stackoverflow.com/questions/63166/how-to-determine-cpu-and-memory-consumption-from-inside-a-process
+MemoryData getMemoryData() {
+
+	MemoryData data;
+
+	{
+		data.virtual_total = 10'000'000'000;
+		data.virtual_used = 2'000'000'000;
+		data.physical_total = 10'000'000'000;
+		data.physical_used = 2'000'000'000;
+
+	}
+
+	{
+		data.virtual_usedByProcess = 10'000'000'000;
+		data.virtual_usedByProcess_max = 2'000'000'000;
+		data.physical_usedByProcess = 10'000'000'000;
+		data.physical_usedByProcess_max = 2'000'000'000;
+	}
+
+
+	return data;
+}
+
+
+void printMemoryReport() {
+
+	auto memoryData = getMemoryData();
+	double vm = double(memoryData.virtual_usedByProcess) / (1024.0 * 1024.0 * 1024.0);
+	double pm = double(memoryData.physical_usedByProcess) / (1024.0 * 1024.0 * 1024.0);
+
+	stringstream ss;
+	ss << "memory usage: "
+		<< "virtual: " << formatNumber(vm, 1) << " GB, "
+		<< "physical: " << formatNumber(pm, 1) << " GB"
+		<< endl;
+
+	cout << ss.str();
+
+}
+
+void launchMemoryChecker(int64_t maxMB, double checkInterval) {
+
+	auto interval = std::chrono::milliseconds(int64_t(checkInterval * 1000));
+
+	thread t([maxMB, interval]() {
+
+		static double lastReport = 0.0;
+		static double reportInterval = 1.0;
+		static double lastUsage = 0.0;
+		static double largestUsage = 0.0;
+
+		while (true) {
+			auto memdata = getMemoryData();
+
+			using namespace std::chrono_literals;
+			std::this_thread::sleep_for(interval);
+		}
+
+	});
+	t.detach();
+
+}
+
+static int numProcessors;
+static bool initialized = false;
+
+void init() {
+	numProcessors = 32;
+
+	initialized = true;
+}
+
+CpuData getCpuData() {
+	
+	if (!initialized) {
+		init();
+	}
+
+	CpuData data;
+	data.numProcessors = numProcessors;
+	data.usage = 50;
+
+	return data;
+}
+
+
 #endif

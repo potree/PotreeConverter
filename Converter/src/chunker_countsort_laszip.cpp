@@ -159,11 +159,6 @@ namespace chunker_countsort_laszip {
 			Vector3 min = task->min;
 			Vector3 max = task->max;
 
-			//static int dbg = 0;
-			//int dbgCurr = dbg;
-			//dbg++;
-			//cout << ("start: " + formatNumber(dbgCurr)) << endl;
-
 			thread_local unique_ptr<void, void(*)(void*)> buffer(nullptr, free);
 			thread_local int64_t bufferSize = -1;
 
@@ -662,7 +657,6 @@ namespace chunker_countsort_laszip {
 			thread_local int64_t bufferSize = -1;
 
 			if (bufferSize < numBytes) {
-
 				buffer.reset(malloc(numBytes));
 				bufferSize = numBytes;
 			}
@@ -825,7 +819,7 @@ namespace chunker_countsort_laszip {
 
 		};
 
-		TaskPool<Task> pool(12, processor);
+		TaskPool<Task> pool(numChunkerThreads, processor);
 
 		for (auto source: sources) {
 
@@ -1077,7 +1071,8 @@ namespace chunker_countsort_laszip {
 
 		auto tStart = now();
 
-		maxPointsPerChunk = std::min(state.pointsTotal / 20, 10'000'000ll);
+		int64_t tmp = state.pointsTotal / 20;
+		maxPointsPerChunk = std::min(tmp, int64_t(10'000'000));
 		cout << "maxPointsPerChunk: " << maxPointsPerChunk << endl;
 
 		if (state.pointsTotal < 100'000'000) {

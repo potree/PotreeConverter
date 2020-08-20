@@ -172,6 +172,8 @@ struct Attributes {
 				return &attribute;
 			}
 		}
+		
+		return nullptr;
 	}
 
 };

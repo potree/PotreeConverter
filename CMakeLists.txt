@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.16)
 set(CMAKE_SUPPRESS_REGENERATION true)
 
-project(PotreeConverter)
+project(PotreeConverter LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
@@ -45,6 +45,19 @@ target_link_libraries(PotreeConverter laszip)
 target_include_directories(PotreeConverter PRIVATE "./Converter/include")
 target_include_directories(PotreeConverter PRIVATE "./Converter/modules")
 target_include_directories(PotreeConverter PRIVATE "./Converter/libs")
+
+
+if (UNIX)
+	find_package(Threads REQUIRED)
+	find_package(TBB REQUIRED)
+	
+	target_link_libraries(${PROJECT_NAME} Threads::Threads)
+	target_link_libraries(${PROJECT_NAME} tbb)
+
+
+	#SET(CMAKE_CXX_FLAGS "-pthread -ltbb")
+endif (UNIX)
+
 
 ###############################################
 # COPY LICENSE FILES TO BINARY DIRECTORY

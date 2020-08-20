@@ -761,9 +761,9 @@ void buildHierarchy(Indexer* indexer, Node* node, shared_ptr<Buffer> points, int
 		int64_t iy = double(counterGridSize) * (y - min.y) / size.y;
 		int64_t iz = double(counterGridSize) * (z - min.z) / size.z;
 
-		ix = std::max(0ll, std::min(ix, counterGridSize - 1));
-		iy = std::max(0ll, std::min(iy, counterGridSize - 1));
-		iz = std::max(0ll, std::min(iz, counterGridSize - 1));
+		ix = std::max(int64_t(0), std::min(ix, counterGridSize - 1));
+		iy = std::max(int64_t(0), std::min(iy, counterGridSize - 1));
+		iz = std::max(int64_t(0), std::min(iz, counterGridSize - 1));
 
 		int64_t index = mortonEncode_magicbits(iz, iy, ix);
 

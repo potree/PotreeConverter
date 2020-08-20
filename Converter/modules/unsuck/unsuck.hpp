@@ -14,6 +14,7 @@
 #include <algorithm>
 #include <thread>
 #include <cstdint>
+#include <cstring>
 
 using std::cout;
 using std::endl;
@@ -36,6 +37,10 @@ namespace fs = std::filesystem;
 static long long unsuck_start_time = high_resolution_clock::now().time_since_epoch().count();
 
 static double Infinity = std::numeric_limits<double>::infinity();
+
+
+#define _fseeki64 fseeko64
+
 
 struct MemoryData {
 	size_t virtual_total = 0;
@@ -541,7 +546,8 @@ T read(vector<uint8_t>& buffer, int offset) {
 
 inline string leftPad(string in, int length, const char character = ' ') {
 
-	auto reps = std::max(length - in.size(), 0ull);
+	int tmp = length - in.size();
+	auto reps = std::max(tmp, 0);
 	string result = string(reps, character) + in;
 
 	return result;
