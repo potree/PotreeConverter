@@ -20,8 +20,6 @@ set(HEADER_FILES
 	Converter/include/ConcurrentWriter.h
 	Converter/include/converter_utils.h
 	Converter/include/indexer.h
-	Converter/include/indexer_poissondisk.h
-	Converter/include/indexer_random.h
 	Converter/include/prototyping.h
 	Converter/include/sampler_poisson.h
 	Converter/include/sampler_poisson_average.h
@@ -33,8 +31,6 @@ set(HEADER_FILES
 add_executable(PotreeConverter 
 	./Converter/src/chunker_countsort_laszip.cpp
 	./Converter/src/indexer.cpp 
-	./Converter/src/indexer_poissondisk.cpp 
-	./Converter/src/indexer_random.cpp 
 	./Converter/src/main.cpp
 	./Converter/modules/unsuck/unsuck_platform_specific.cpp
 	${HEADER_FILES}
