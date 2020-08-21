@@ -11,6 +11,7 @@
 #include "sampler_poisson_average.h"
 #include "sampler_random.h"
 #include "Attributes.h"
+#include "PotreeConverter.h"
 
 #include "arguments/Arguments.hpp"
 
@@ -300,29 +301,46 @@ Attributes computeOutputAttributes(vector<Source>& sources, Options& options) {
 		list.insert(list.end(), extraAttributes.begin(), extraAttributes.end());
 	}
 
-	Vector3 scale = { Infinity, Infinity, Infinity};
-	Vector3 offset = { Infinity, Infinity, Infinity};
+	Vector3 scaleMin = { Infinity, Infinity, Infinity};
+	//Vector3 offset = { Infinity, Infinity, Infinity};
+	Vector3 min = { Infinity, Infinity, Infinity };
+	Vector3 max = { -Infinity, -Infinity, -Infinity };
+	Vector3 scale, offset;
 
 	// compute scale and offset from all sources
 	{
 		mutex mtx;
 		auto parallel = std::execution::par;
-		for_each(parallel, sources.begin(), sources.end(), [&mtx, &sources, &scale, &offset](Source source) {
+		for_each(parallel, sources.begin(), sources.end(), [&mtx, &sources, &scaleMin, &min, &max](Source source) {
 
 			auto header = loadLasHeader(source.path);
 
 			mtx.lock();
 
-			scale.x = std::min(scale.x, header.scale.x);
-			scale.y = std::min(scale.y, header.scale.y);
-			scale.z = std::min(scale.z, header.scale.z);
+			scaleMin.x = std::min(scaleMin.x, header.scale.x);
+			scaleMin.y = std::min(scaleMin.y, header.scale.y);
+			scaleMin.z = std::min(scaleMin.z, header.scale.z);
 
-			offset.x = std::min(offset.x, source.min.x);
-			offset.y = std::min(offset.y, source.min.y);
-			offset.z = std::min(offset.z, source.min.z);
+			min.x = std::min(min.x, header.min.x);
+			min.y = std::min(min.y, header.min.y);
+			min.z = std::min(min.z, header.min.z);
+
+			max.x = std::max(max.x, header.max.x);
+			max.y = std::max(max.y, header.max.y);
+			max.z = std::max(max.z, header.max.z);
 
 			mtx.unlock();
 		});
+
+		auto scaleOffset = computeScaleOffset(min, max, scaleMin);
+		scale = scaleOffset.scale;
+		offset = scaleOffset.offset;
+
+		if (scaleMin.x != scale.x || scaleMin.y != scale.y || scaleMin.z != scale.z) {
+			GENERATE_WARN_MESSAGE << "scale/offset/bounding box were adjusted. "
+				<< "new scale: " << scale.toString() << ", "
+				<< "new offset: " << offset.toString() << endl;
+		}
 	}
 
 	// filter down to optionally specified attributes

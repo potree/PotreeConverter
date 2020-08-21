@@ -8,8 +8,12 @@
 			"name": "(Windows) Launch",
 			"type": "cppvsdbg",
 			"request": "launch",
-			"program": "${workspaceFolder}/Converter/bin/x64_Release/Converter.exe",
+			"program": "${workspaceFolder}/build/Release/PotreeConverter.exe",
 			"args": [
+
+
+
+
 				// ===================
 				// SYSTEM 1
 				// ===================
@@ -24,20 +28,25 @@
 
 				// "D:/dev/pointclouds/CA13/ot_35120D8108C_1.laz",
 				// "D:/dev/pointclouds/CA13/ot_35120D8108D_1.laz",
-				"D:/dev/pointclouds/CA13/ot_35120D8109A_1.laz",
+				// "D:/dev/pointclouds/CA13/ot_35120D8109A_1.laz",
 				// "D:/dev/pointclouds/CA13/ot_35120D8109B_1.laz",
 				// "D:/dev/pointclouds/CA13/ot_35120D8109C_1.laz",
 				// "D:/dev/pointclouds/CA13/ot_35120D8109D_1.laz",
 
+				// "D:/temp/crashreport2/cube.laz",
+				// "D:/temp/crashreport2/trott_crashing",
+				// "D:/temp/crashreport/3dbuildings_walls_azimuth.laz",
+				// "-o", "D:/temp/crashreport2/converted",
+
 				// "D:/dev/pointclouds/CA13/ot_35120B4122C_1.laz",
 				// "D:/dev/pointclouds/CA13/ot_35120B4121D_1.laz",
 				// "D:/dev/pointclouds/CA13/ot_35120B4301B_1.laz",
-				// "D:/dev/pointclouds/CA13/ot_35120B4301D_1.laz",
-				// "D:/dev/pointclouds/CA13/ot_35120B4302C_1.laz",
-				// "D:/dev/pointclouds/CA13/ot_35120B4302B_1.laz",
-				// "D:/dev/pointclouds/CA13/ot_35120B4122D_1.laz",
-				// "D:/dev/pointclouds/CA13/ot_35120B4302D_1.laz",
-				// "D:/dev/pointclouds/CA13/ot_35120B4302A_1.laz",
+				"D:/dev/pointclouds/CA13/ot_35120B4301D_1.laz",
+				"D:/dev/pointclouds/CA13/ot_35120B4302C_1.laz",
+				"D:/dev/pointclouds/CA13/ot_35120B4302B_1.laz",
+				"D:/dev/pointclouds/CA13/ot_35120B4122D_1.laz",
+				"D:/dev/pointclouds/CA13/ot_35120B4302D_1.laz",
+				"D:/dev/pointclouds/CA13/ot_35120B4302A_1.laz",
 
 				// "D:/dev/pointclouds/tuwien_baugeschichte/candi Banyunibo",
 
@@ -45,7 +54,7 @@
 				// "D:/dev/pointclouds/sitn/potree2/aerial_lidar2019_2524_1197_laz14_dip.laz",
 				// "D:/dev/pointclouds/sitn/potree2/aerial_lidar2019_2524_1197_las14.las",
 
-				"-o", "D:/temp/test",
+				"-o", "D:/temp/crashreport2/cube_converted",
 				// "-o", "F:/temp/CA13",
 				// "-o", "F:/temp/affandi",
 				// "-o", "C:/dev/workspaces/potree/develop/test/converted",
@@ -65,7 +74,7 @@
 				// "--flags", "no-chunking",
 				// "--flags", "no-indexing", "keep-chunks",
 				// "--flags", "no-chunking", "keep-chunks",
-				// "--flags", "keep-chunks",
+				"--flags", "keep-chunks",
 				// "-m", "poisson", // ["poisson", "poisson_average", "random"]
 				// "--chunkMethod", "SKIP" // [LASZIP, LAS_CUSTOM, SKIP]
 				// "--attributes", "rgb", "Dip (degrees)", "Dip direction (degrees)", "NormalX", "NormalY", "NormalZ",

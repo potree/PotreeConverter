@@ -566,6 +566,6 @@ inline string rightPad(string in, int64_t length, const char character = ' ') {
 }
 
 
-
-
+#define GENERATE_ERROR_MESSAGE cout << "ERROR(" << __FILE__ << ":" << __LINE__ << "): "
+#define GENERATE_WARN_MESSAGE cout << "WARNING: "
 
