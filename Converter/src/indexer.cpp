@@ -917,6 +917,8 @@ void Writer::writeAndUnload(Node* node) {
 			activeBuffer = make_shared<Buffer>(capacity);
 		} else if (activeBuffer->pos + byteSize > capacity) {
 			backlog.push_back(activeBuffer);
+
+			capacity = std::max(capacity, byteSize);
 			activeBuffer = make_shared<Buffer>(capacity);
 		}
 
