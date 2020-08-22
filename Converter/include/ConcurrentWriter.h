@@ -74,18 +74,6 @@ struct ConcurrentWriter {
 					double throughput = mbDone / duration;
 
 					state.name = "DISTRIBUTING";
-					//state.duration = duration;
-					//state.progress = 
-					//state.values["written"] = formatNumber(mbDone) + "MB";
-					//state.values["writing"] = formatNumber(mbTodo) + "MB";
-					//state.values["throughput"] = formatNumber(throughput) + "MBs";
-
-
-
-					// string msg = "DISTRIBUTING: " + formatNumber(mbDone) 
-					// 	+ "MB, currently writing: " + formatNumber(mbTodo) + "MB, "
-					// 	+ "throughput: " + formatNumber(throughput) + "MB / sec\n";
-					// cout << msg;
 				}
 
 				

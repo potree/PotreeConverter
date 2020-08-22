@@ -14,6 +14,7 @@
 #include <algorithm>
 #include <thread>
 #include <cstdint>
+#include <cstring>
 
 using std::cout;
 using std::endl;
@@ -36,6 +37,14 @@ namespace fs = std::filesystem;
 static long long unsuck_start_time = high_resolution_clock::now().time_since_epoch().count();
 
 static double Infinity = std::numeric_limits<double>::infinity();
+
+
+#if defined(__linux__)
+constexpr auto fseek_64_all_platforms = fseeko64;
+#elif defined(WIN32)
+constexpr auto fseek_64_all_platforms = _fseeki64;
+#endif
+
 
 struct MemoryData {
 	size_t virtual_total = 0;
@@ -406,7 +415,7 @@ inline vector<uint8_t> readBinaryFile(string path, uint64_t start, uint64_t size
 		vector<uint8_t> buffer(clampedSize);
 		//file.seekg(start, ios::beg);
 		//file.read(reinterpret_cast<char*>(buffer.data()), clampedSize);
-		_fseeki64(file, start, SEEK_SET);
+		fseek_64_all_platforms(file, start, SEEK_SET);
 		fread(buffer.data(), 1, clampedSize, file);
 		fclose(file);
 
@@ -415,7 +424,7 @@ inline vector<uint8_t> readBinaryFile(string path, uint64_t start, uint64_t size
 		vector<uint8_t> buffer(size);
 		//file.seekg(start, ios::beg);
 		//file.read(reinterpret_cast<char*>(buffer.data()), size);
-		_fseeki64(file, start, SEEK_SET);
+		fseek_64_all_platforms(file, start, SEEK_SET);
 		fread(buffer.data(), 1, size, file);
 		fclose(file);
 
@@ -433,11 +442,11 @@ inline void readBinaryFile(string path, uint64_t start, uint64_t size, void* tar
 	}if (start + size > totalSize) {
 		auto clampedSize = totalSize - start;
 
-		_fseeki64(file, start, SEEK_SET);
+		fseek_64_all_platforms(file, start, SEEK_SET);
 		fread(target, 1, clampedSize, file);
 		fclose(file);
 	} else {
-		_fseeki64(file, start, SEEK_SET);
+		fseek_64_all_platforms(file, start, SEEK_SET);
 		fread(target, 1, size, file);
 		fclose(file);
 	}
@@ -541,7 +550,8 @@ T read(vector<uint8_t>& buffer, int offset) {
 
 inline string leftPad(string in, int length, const char character = ' ') {
 
-	auto reps = std::max(length - in.size(), 0ull);
+	int tmp = length - in.size();
+	auto reps = std::max(tmp, 0);
 	string result = string(reps, character) + in;
 
 	return result;
@@ -556,6 +566,6 @@ inline string rightPad(string in, int64_t length, const char character = ' ') {
 }
 
 
-
-
+#define GENERATE_ERROR_MESSAGE cout << "ERROR(" << __FILE__ << ":" << __LINE__ << "): "
+#define GENERATE_WARN_MESSAGE cout << "WARNING: "
 

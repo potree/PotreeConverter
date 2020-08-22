@@ -4,6 +4,8 @@ in laszip folder, run:
 	
 	cmake ./
 	
+Libraries/laszip3
+	
 Open generated visual studio solution. 
 Change output file extension from dll to lib
 Change compile type from dll to static lib 

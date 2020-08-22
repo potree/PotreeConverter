@@ -3,7 +3,6 @@
 #include <iostream>
 #include <execution>
 
-#include "LasLoader/LasLoader.h"
 #include "unsuck/unsuck.hpp"
 #include "chunker_countsort_laszip.h"
 #include "indexer.h"
@@ -11,6 +10,7 @@
 #include "sampler_poisson_average.h"
 #include "sampler_random.h"
 #include "Attributes.h"
+#include "PotreeConverter.h"
 
 #include "arguments/Arguments.hpp"
 
@@ -123,268 +123,7 @@ Curated curateSources(vector<string> paths) {
 	return {name, sources};
 }
 
-struct LasTypeInfo {
-	AttributeType type = AttributeType::UNDEFINED;
-	int numElements = 0;
-};
 
-LasTypeInfo lasTypeInfo(int typeID) {
-
-	unordered_map<int, AttributeType> mapping = {
-		{0, AttributeType::UNDEFINED},
-		{1, AttributeType::UINT8},
-		{2, AttributeType::INT8},
-		{3, AttributeType::UINT16},
-		{4, AttributeType::INT16},
-		{5, AttributeType::UINT32},
-		{6, AttributeType::INT32},
-		{7, AttributeType::UINT64},
-		{8, AttributeType::INT64},
-		{9, AttributeType::FLOAT},
-		{10, AttributeType::DOUBLE},
-
-		{11, AttributeType::UINT8},
-		{12, AttributeType::INT8},
-		{13, AttributeType::UINT16},
-		{14, AttributeType::INT16},
-		{15, AttributeType::UINT32},
-		{16, AttributeType::INT32},
-		{17, AttributeType::UINT64},
-		{18, AttributeType::INT64},
-		{19, AttributeType::FLOAT},
-		{20, AttributeType::DOUBLE},
-
-		{21, AttributeType::UINT8},
-		{22, AttributeType::INT8},
-		{23, AttributeType::UINT16},
-		{24, AttributeType::INT16},
-		{25, AttributeType::UINT32},
-		{26, AttributeType::INT32},
-		{27, AttributeType::UINT64},
-		{28, AttributeType::INT64},
-		{29, AttributeType::FLOAT},
-		{30, AttributeType::DOUBLE},
-	};
-
-	if (mapping.find(typeID) != mapping.end()) {
-
-		AttributeType type = mapping[typeID];
-
-		int numElements = 0;
-		if (typeID <= 10) {
-			numElements = 1;
-		} else if (typeID <= 20) {
-			numElements = 2;
-		} else if (typeID <= 30) {
-			numElements = 3;
-		}
-
-		LasTypeInfo info;
-		info.type = type;
-		info.numElements = numElements;
-
-		return info;
-	} else {
-		cout << "ERROR: unkown extra attribute type: " << typeID << endl;
-		exit(123);
-	}
-
-
-}
-
-vector<Attribute> parseExtraAttributes(LasHeader& header) {
-
-	vector<uint8_t> extraData;
-
-	for (auto& vlr : header.vlrs) {
-		if (vlr.recordID == 4) {
-			extraData = vlr.data;
-			break;
-		}
-	}
-
-	//for (auto& vlr : header.extendedVLRs) {
-	//	if (vlr.recordID == 4) {
-	//		extraData = vlr.data;
-	//		break;
-	//	}
-	//}
-
-	constexpr int recordSize = 192;
-	int numExtraAttributes = extraData.size() / recordSize;
-	vector<Attribute> attributes;
-
-	for (int i = 0; i < numExtraAttributes; i++) {
-
-		int offset = i * recordSize;
-		uint8_t type = read<uint8_t>(extraData, offset + 2);
-		uint8_t options = read<uint8_t>(extraData, offset + 3);
-		char chrName[32];
-		memcpy(chrName, extraData.data() + offset + 4, 32);
-		string name(chrName);
-
-		auto info = lasTypeInfo(type);
-		string typeName = getAttributeTypename(info.type);
-		int elementSize = getAttributeTypeSize(info.type);
-
-		int size = info.numElements * elementSize;
-		Attribute xyz(name, size, info.numElements, elementSize, info.type);
-
-		attributes.push_back(xyz);
-	}
-
-	return attributes;
-}
-
-Attributes computeOutputAttributes(vector<Source>& sources, Options& options) {
-	// TODO: take all source files into account when computing the output attributes
-	// TODO: a bit wasteful to iterate over source files and load headers twice
-
-	vector<Attribute> list;
-
-	{ // compute list of attributes from first source
-
-		auto header = loadLasHeader(sources[0].path);
-		auto format = header.pointDataFormat;
-
-		Attribute xyz("position", 12, 3, 4, AttributeType::INT32);
-		Attribute intensity("intensity", 2, 1, 2, AttributeType::UINT16);
-		Attribute returns("returns", 1, 1, 1, AttributeType::UINT8);
-		Attribute returnNumber("return number", 1, 1, 1, AttributeType::UINT8);
-		Attribute numberOfReturns("number of returns", 1, 1, 1, AttributeType::UINT8);
-		Attribute classification("classification", 1, 1, 1, AttributeType::UINT8);
-		Attribute scanAngleRank("scan angle rank", 1, 1, 1, AttributeType::UINT8);
-		Attribute userData("user data", 1, 1, 1, AttributeType::UINT8);
-		Attribute pointSourceId("point source id", 2, 1, 2, AttributeType::UINT16);
-		Attribute gpsTime("gps-time", 8, 1, 8, AttributeType::DOUBLE);
-		Attribute rgb("rgb", 6, 3, 2, AttributeType::UINT16);
-		Attribute wavePacketDescriptorIndex("wave packet descriptor index", 1, 1, 1, AttributeType::UINT8);
-		Attribute byteOffsetToWaveformData("byte offset to waveform data", 8, 1, 8, AttributeType::UINT64);
-		Attribute waveformPacketSize("waveform packet size", 4, 1, 4, AttributeType::UINT32);
-		Attribute returnPointWaveformLocation("return point waveform location", 4, 1, 4, AttributeType::FLOAT);
-		Attribute XYZt("XYZ(t)", 12, 3, 4, AttributeType::FLOAT);
-		Attribute classificationFlags("classification flags", 1, 1, 1, AttributeType::UINT8);
-		Attribute scanAngle("scan angle", 2, 1, 2, AttributeType::INT16);
-	
-
-		if (format == 0) {
-			list = { xyz, intensity, returnNumber, numberOfReturns, classification, scanAngleRank, userData, pointSourceId };
-		} else if (format == 1) {
-			list = { xyz, intensity, returnNumber, numberOfReturns, classification, scanAngleRank, userData, pointSourceId, gpsTime };
-		} else if (format == 2) {
-			list = { xyz, intensity, returnNumber, numberOfReturns, classification, scanAngleRank, userData, pointSourceId, rgb };
-		} else if (format == 3) {
-			list = { xyz, intensity, returnNumber, numberOfReturns, classification, scanAngleRank, userData, pointSourceId, gpsTime, rgb };
-		} else if (format == 4) {
-			list = { xyz, intensity, returnNumber, numberOfReturns, classification, scanAngleRank, userData, pointSourceId, gpsTime,
-				wavePacketDescriptorIndex, byteOffsetToWaveformData, waveformPacketSize, returnPointWaveformLocation,
-				XYZt
-			};
-		} else if (format == 5) {
-			list = { xyz, intensity, returnNumber, numberOfReturns, classification, scanAngleRank, userData, pointSourceId, gpsTime, rgb,
-				wavePacketDescriptorIndex, byteOffsetToWaveformData, waveformPacketSize, returnPointWaveformLocation,
-				XYZt
-			};
-		} else if (format == 6) {
-			list = { xyz, intensity, returnNumber, numberOfReturns, classificationFlags, classification, userData, scanAngle, pointSourceId, gpsTime };
-		} else if (format == 7) {
-			list = { xyz, intensity, returnNumber, numberOfReturns, classificationFlags, classification, userData, scanAngle, pointSourceId, gpsTime, rgb };
-		} else {
-			cout << "ERROR: currently unsupported LAS format: " << int(format) << endl;
-
-			exit(123);
-		}
-
-		vector<Attribute> extraAttributes = parseExtraAttributes(header);
-
-		list.insert(list.end(), extraAttributes.begin(), extraAttributes.end());
-	}
-
-	Vector3 scale = { Infinity, Infinity, Infinity};
-	Vector3 offset = { Infinity, Infinity, Infinity};
-
-	// compute scale and offset from all sources
-	{
-		mutex mtx;
-		auto parallel = std::execution::par;
-		for_each(parallel, sources.begin(), sources.end(), [&mtx, &sources, &scale, &offset](Source source) {
-
-			auto header = loadLasHeader(source.path);
-
-			mtx.lock();
-
-			scale.x = std::min(scale.x, header.scale.x);
-			scale.y = std::min(scale.y, header.scale.y);
-			scale.z = std::min(scale.z, header.scale.z);
-
-			offset.x = std::min(offset.x, source.min.x);
-			offset.y = std::min(offset.y, source.min.y);
-			offset.z = std::min(offset.z, source.min.z);
-
-			mtx.unlock();
-		});
-	}
-
-	// filter down to optionally specified attributes
-	if(options.attributes.size() > 0){ 
-		auto should = options.attributes;
-		auto is = list;
-
-		// always add position
-		should.insert(should.begin(), { "position" });
-
-		vector<Attribute> filtered;
-
-		for (string name : should) {
-			auto it = find_if(is.begin(), is.end(), [name](auto& value){
-				return value.name == name;
-			});
-
-			if (it != is.end()) {
-				filtered.push_back(*it);
-			}
-		}
-
-		list = filtered;
-	}
-
-	auto attributes = Attributes(list);
-	attributes.posScale = scale;
-	attributes.posOffset = offset;
-
-	{ // print infos
-
-
-		cout << endl << "output attributes: " << endl;
-
-		int c0 = 30;
-		int c1 = 10;
-		int c2 = 8;
-		int ct = c0 + c1 + c2;
-
-		cout << rightPad("name", c0) << leftPad("offset", c1) << leftPad("size", c2) << endl;
-		cout << string(ct, '=') << endl;
-
-		int offset = 0;
-		for (auto attribute : attributes.list) {
-			cout << rightPad(attribute.name, c0)
-				<< leftPad(formatNumber(offset), c1)
-				<< leftPad(formatNumber(attribute.size), c2)
-				<< endl;
-
-			offset += attribute.size;
-		}
-		cout << string(ct, '=') << endl;
-
-		//cout << "bytes per point: " << attributes.bytes << endl;
-		cout << leftPad(formatNumber(attributes.bytes), ct) << endl;
-		cout << string(ct, '=') << endl;
-
-		//exit(1234);
-	}
-
-	return attributes;
-}
 
 struct Stats {
 	Vector3 min = { Infinity , Infinity , Infinity };
@@ -617,6 +356,9 @@ int main(int argc, char** argv) {
 	double tStart = now(); 
 
 	launchMemoryChecker(2 * 1024, 0.1);
+	auto cpuData = getCpuData();
+
+	cout << "#threads: " << cpuData.numProcessors << endl;
 
 	auto options = parseArguments(argc, argv);
 
@@ -625,7 +367,8 @@ int main(int argc, char** argv) {
 		options.name = name;
 	}
 
-	auto outputAttributes = computeOutputAttributes(sources, options);
+	auto outputAttributes = computeOutputAttributes(sources, options.attributes);
+	cout << toString(outputAttributes);
 
 	auto stats = computeStats(sources);
 
