@@ -1149,6 +1149,22 @@ void doIndexing(string targetDir, State& state, Options& options, Sampler& sampl
 
 	printElapsedTime("metadata & hierarchy", tStart);
 
+	{
+		cout << "deleting temporary files" << endl;
+
+		// delete chunk directory
+		if (!options.hasFlag("keep-chunks")) {
+			string chunksMetadataPath = targetDir + "/chunks/metadata.json";
+
+			fs::remove(chunksMetadataPath);
+			fs::remove(targetDir + "/chunks");
+		}
+
+		// delete chunk roots data
+		string octreePath = targetDir + "/tmpChunkRoots.bin";
+		fs::remove(octreePath);
+	}
+
 	double duration = now() - tStart;
 	state.values["duration(indexing)"] = formatNumber(duration, 3);
 

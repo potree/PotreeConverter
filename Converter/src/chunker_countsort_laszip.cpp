@@ -18,6 +18,8 @@
 
 #include "json/json.hpp"
 #include "laszip/laszip_api.h"
+#include "LasLoader/LasLoader.h"
+#include "PotreeConverter.h"
 
 using json = nlohmann::json;
 
@@ -336,7 +338,7 @@ namespace chunker_countsort_laszip {
 		}
 	}
 
-	vector<function<void(int64_t)>> createAttributeHandlers(laszip_header* header, uint8_t* data, laszip_point* point, Attributes& outputAttributes) {
+	vector<function<void(int64_t)>> createAttributeHandlers(laszip_header* header, uint8_t* data, laszip_point* point, Attributes& inputAttributes, Attributes& outputAttributes) {
 
 		vector<function<void(int64_t)>> handlers;
 		int attributeOffset = 0;
@@ -349,7 +351,6 @@ namespace chunker_countsort_laszip {
 
 		{ // STANDARD LAS ATTRIBUTES
 
-		
 			int offsetRGB = outputAttributes.getOffset("rgb");
 			Attribute* attributeRGB = outputAttributes.get("rgb");
 			auto rgb = [data, point, header, offsetRGB, attributeRGB](int64_t offset) {
@@ -465,8 +466,6 @@ namespace chunker_countsort_laszip {
 				attributeClassificationFlags->max.x = std::max(attributeClassificationFlags->max.x, double(point->extended_classification_flags));
 			};
 
-		
-
 			unordered_map<string, function<void(int64_t)>> mapping = {
 				{"rgb", rgb},
 				{"intensity", intensity},
@@ -481,7 +480,7 @@ namespace chunker_countsort_laszip {
 				{"classification flags", classificationFlags},
 			};
 
-			for (auto& attribute : outputAttributes.list) {
+			for (auto& attribute : inputAttributes.list) {
 
 				attributeOffset += attribute.size;
 
@@ -518,32 +517,21 @@ namespace chunker_countsort_laszip {
 				exit(123);
 			}
 
-			// just copy extra bytes in one handler
-			//auto extraBytes = [data, point, header, attributeOffset, &outputAttributes](int64_t offset) {
-
-			//	if (point->num_extra_bytes == 0) {
-			//		return;
-			//	}
-
-			//	memcpy(data + offset + attributeOffset, point->extra_bytes, point->num_extra_bytes);
-			//};
-
-			//handlers.push_back(extraBytes);
-
-
 			// handle extra bytes individually to compute per-attribute information
 			int firstExtraIndex = formatToExtraIndex[header->point_data_format];
 			int sourceOffset = 0;
 
 			int attributeOffset = 0;
 			for (int i = 0; i < firstExtraIndex; i++) {
-				attributeOffset += outputAttributes.list[i].size;
+				attributeOffset += inputAttributes.list[i].size;
 			}
 
-			for (int i = firstExtraIndex; i < outputAttributes.list.size(); i++) {
-				Attribute& attribute = outputAttributes.list[i];
+			for (int i = firstExtraIndex; i < inputAttributes.list.size(); i++) {
+				Attribute& attribute = inputAttributes.list[i];
 
 				int attributeSize = attribute.size;
+				int targetOffset = outputAttributes.getOffset(attribute.name);
+
 				auto handleAttribute = [data, point, header, attributeSize, attributeOffset, sourceOffset, &attribute](int64_t offset) {
 					memcpy(data + offset + attributeOffset, point->extra_bytes + sourceOffset, attributeSize);
 
@@ -603,7 +591,9 @@ namespace chunker_countsort_laszip {
 
 				};
 
-				handlers.push_back(handleAttribute);
+				if(targetOffset >= 0){
+					handlers.push_back(handleAttribute);
+				}
 
 				sourceOffset += attribute.size;
 				attributeOffset += attribute.size;
@@ -645,7 +635,7 @@ namespace chunker_countsort_laszip {
 			Vector3 offset;
 			Vector3 min;
 			Vector3 max;
-			Attributes outputAttributes;
+			Attributes inputAttributes;
 		};
 
 		mutex mtx_push_point;
@@ -663,6 +653,7 @@ namespace chunker_countsort_laszip {
 			Vector3 offset = task->offset;
 			Vector3 min = task->min;
 			Vector3 max = task->max;
+			Attributes inputAttributes = task->inputAttributes;
 
 			auto gridSize = lut->gridSize;
 			auto& grid = lut->grid;
@@ -677,6 +668,10 @@ namespace chunker_countsort_laszip {
 			}
 
 			uint8_t* data = reinterpret_cast<uint8_t*>(buffer.get());
+			// memset necessary if attribute handlers don't set all values. 
+			// previous handlers from input with different point formats
+			// may have set the values before.
+			memset(data, 0, bufferSize); 
 
 			writer->waitUntilMemoryBelow(2'000);
 
@@ -700,7 +695,7 @@ namespace chunker_countsort_laszip {
 
 				laszip_seek_point(laszip_reader, task->firstPoint);
 				
-				auto attributeHandlers = createAttributeHandlers(header, data, point, outputAttributesCopy);
+				auto attributeHandlers = createAttributeHandlers(header, data, point, inputAttributes, outputAttributesCopy);
 
 				double coordinates[3];
 				auto aPosition = outputAttributes.get("position");
@@ -883,6 +878,9 @@ namespace chunker_countsort_laszip {
 			int64_t maxBatchSize = 1'000'000;
 			int64_t numRead = 0;
 
+			vector<Source> tmpSources = { source };
+			Attributes inputAttributes = computeOutputAttributes(tmpSources, {});
+
 			while (pointsLeft > 0) {
 
 				int64_t numToRead;
@@ -905,7 +903,7 @@ namespace chunker_countsort_laszip {
 				task->offset = outputAttributes.posOffset;
 				task->min = min;
 				task->max = max;
-				task->outputAttributes = outputAttributes;
+				task->inputAttributes = inputAttributes;
 
 				pool.addTask(task);
 
