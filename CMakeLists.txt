@@ -27,14 +27,14 @@ set(HEADER_FILES
 	Converter/include/structures.h
 	Converter/include/Vector3.h
 	Converter/include/PotreeConverter.h
-	Converter/modules/LasLoader.h
+	Converter/modules/LasLoader/LasLoader.h
 )
 
 add_executable(PotreeConverter 
 	./Converter/src/chunker_countsort_laszip.cpp
 	./Converter/src/indexer.cpp 
 	./Converter/src/main.cpp
-	./Converter/src/LasLoader.cpp
+	./Converter/modules/LasLoader/LasLoader.cpp
 	./Converter/modules/unsuck/unsuck_platform_specific.cpp
 	${HEADER_FILES}
 )
@@ -72,4 +72,10 @@ add_custom_command(
 	COMMAND ${CMAKE_COMMAND} -E copy
 		${PROJECT_SOURCE_DIR}/LICENSE
 		$<TARGET_FILE_DIR:${PROJECT_NAME}>/licenses/license_potree_converter.txt)
+
+add_custom_command(
+	TARGET PotreeConverter POST_BUILD
+	COMMAND ${CMAKE_COMMAND} -E copy
+		${PROJECT_SOURCE_DIR}/README.md
+		$<TARGET_FILE_DIR:${PROJECT_NAME}>/README.md)
 
