@@ -82,26 +82,6 @@ void launchMemoryChecker(int64_t maxMB, double checkInterval) {
 		while (true) {
 			auto memdata = getMemoryData();
 
-			// don't print, just query memory in intervals so that the highest value is getting updated.
-
-			//int64_t threshold = maxMB * 1024 * 1024;
-
-			//if (memdata.virtual_usedByProcess > threshold) {
-
-			//	double usage = double(memdata.virtual_usedByProcess) / (1024.0 * 1024.0 * 1024.0);
-			//	largestUsage = largestUsage > usage ? largestUsage : usage;
-
-			//	if (lastReport + reportInterval < now() || usage > largestUsage) {
-
-			//		cout << "WARNING: memory checker detected large memory usage: " 
-			//			<< formatNumber(usage, 2) << " GB" 
-			//			<< ", largest detected: " << formatNumber(largestUsage, 2) << endl;
-
-			//		lastReport = now();
-			//	}
-
-			//}
-
 			using namespace std::chrono_literals;
 			std::this_thread::sleep_for(interval);
 		}
@@ -121,7 +101,8 @@ void init() {
 	FILETIME ftime, fsys, fuser;
 
 	GetSystemInfo(&sysInfo);
-	numProcessors = sysInfo.dwNumberOfProcessors;
+	// numProcessors = sysInfo.dwNumberOfProcessors;
+	numProcessors = std::thread::hardware_concurrency();
 
 	GetSystemTimeAsFileTime(&ftime);
 	memcpy(&lastCPU, &ftime, sizeof(FILETIME));
@@ -167,23 +148,110 @@ CpuData getCpuData() {
 #elif defined(__linux__)
 
 // see https://stackoverflow.com/questions/63166/how-to-determine-cpu-and-memory-consumption-from-inside-a-process
+
+#include "sys/types.h"
+#include "sys/sysinfo.h"
+
+#include "stdlib.h"
+#include "stdio.h"
+#include "string.h"
+
+int parseLine(char* line){
+    // This assumes that a digit will be found and the line ends in " Kb".
+    int i = strlen(line);
+    const char* p = line;
+    
+	while (*p < '0' || *p > '9'){ 
+		p++;
+	}
+	
+    line[i - 3] = '\0';
+    i = atoi(p);
+	
+    return i;
+}
+
+int64_t getVirtualMemoryUsedByProcess(){ //Note: this value is in KB!
+    FILE* file = fopen("/proc/self/status", "r");
+    int64_t result = -1;
+    char line[128];
+
+    while (fgets(line, 128, file) != NULL){
+        if (strncmp(line, "VmSize:", 7) == 0){
+            result = parseLine(line);
+            break;
+        }
+    }
+    fclose(file);
+	
+	result = result * 1024;
+	
+    return result;
+}
+
+int64_t getPhysicalMemoryUsedByProcess(){ //Note: this value is in KB!
+    FILE* file = fopen("/proc/self/status", "r");
+    int64_t result = -1;
+    char line[128];
+
+    while (fgets(line, 128, file) != NULL){
+        if (strncmp(line, "VmRSS:", 6) == 0){
+            result = parseLine(line);
+            break;
+        }
+    }
+    fclose(file);
+	
+	result = result * 1024;
+	
+    return result;
+}
+
+
 MemoryData getMemoryData() {
+	
+	struct sysinfo memInfo;
+
+	sysinfo (&memInfo);
+	int64_t totalVirtualMem = memInfo.totalram;
+	totalVirtualMem += memInfo.totalswap;
+	totalVirtualMem *= memInfo.mem_unit;
+
+	int64_t virtualMemUsed = memInfo.totalram - memInfo.freeram;
+	virtualMemUsed += memInfo.totalswap - memInfo.freeswap;
+	virtualMemUsed *= memInfo.mem_unit;
+	
+	int64_t totalPhysMem = memInfo.totalram;
+	totalPhysMem *= memInfo.mem_unit;
+	
+	long long physMemUsed = memInfo.totalram - memInfo.freeram;
+	physMemUsed *= memInfo.mem_unit;
+
+	int64_t virtualMemUsedByMe = getVirtualMemoryUsedByProcess();
+	int64_t physMemUsedByMe = getPhysicalMemoryUsedByProcess();
+
 
 	MemoryData data;
+	
+	static int64_t virtualUsedMax = 0;
+	static int64_t physicalUsedMax = 0;
+
+	virtualUsedMax = std::max(virtualMemUsedByMe, virtualUsedMax);
+	physicalUsedMax = std::max(physMemUsedByMe, physicalUsedMax);
 
 	{
-		data.virtual_total = 10'000'000'000;
-		data.virtual_used = 2'000'000'000;
-		data.physical_total = 10'000'000'000;
-		data.physical_used = 2'000'000'000;
+		data.virtual_total = totalVirtualMem;
+		data.virtual_used = virtualMemUsed;
+		data.physical_total = totalPhysMem;
+		data.physical_used = physMemUsed;
 
 	}
 
 	{
-		data.virtual_usedByProcess = 10'000'000'000;
-		data.virtual_usedByProcess_max = 2'000'000'000;
-		data.physical_usedByProcess = 10'000'000'000;
-		data.physical_usedByProcess_max = 2'000'000'000;
+		data.virtual_usedByProcess = virtualMemUsedByMe;
+		data.virtual_usedByProcess_max = virtualUsedMax;
+		data.physical_usedByProcess = physMemUsedByMe;
+		data.physical_usedByProcess_max = physicalUsedMax;
 	}
 
 
@@ -232,11 +300,47 @@ void launchMemoryChecker(int64_t maxMB, double checkInterval) {
 
 static int numProcessors;
 static bool initialized = false;
+static unsigned long long lastTotalUser, lastTotalUserLow, lastTotalSys, lastTotalIdle;
 
 void init() {
-	numProcessors = 32;
+	numProcessors = std::thread::hardware_concurrency();
+	
+	FILE* file = fopen("/proc/stat", "r");
+    fscanf(file, "cpu %llu %llu %llu %llu", &lastTotalUser, &lastTotalUserLow, &lastTotalSys, &lastTotalIdle);
+    fclose(file);
 
 	initialized = true;
+}
+
+double getCpuUsage(){
+    double percent;
+    FILE* file;
+    unsigned long long totalUser, totalUserLow, totalSys, totalIdle, total;
+
+    file = fopen("/proc/stat", "r");
+    fscanf(file, "cpu %llu %llu %llu %llu", &totalUser, &totalUserLow, &totalSys, &totalIdle);
+    fclose(file);
+
+    if (totalUser < lastTotalUser || totalUserLow < lastTotalUserLow ||
+        totalSys < lastTotalSys || totalIdle < lastTotalIdle){
+        //Overflow detection. Just skip this value.
+        percent = -1.0;
+    }else{
+        total = (totalUser - lastTotalUser) 
+			+ (totalUserLow - lastTotalUserLow) 
+			+ (totalSys - lastTotalSys);
+        percent = total;
+        total += (totalIdle - lastTotalIdle);
+        percent /= total;
+        percent *= 100;
+    }
+
+    lastTotalUser = totalUser;
+    lastTotalUserLow = totalUserLow;
+    lastTotalSys = totalSys;
+    lastTotalIdle = totalIdle;
+
+    return percent;
 }
 
 CpuData getCpuData() {
@@ -247,7 +351,7 @@ CpuData getCpuData() {
 
 	CpuData data;
 	data.numProcessors = numProcessors;
-	data.usage = 50;
+	data.usage = getCpuUsage();
 
 	return data;
 }

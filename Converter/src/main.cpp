@@ -356,6 +356,9 @@ int main(int argc, char** argv) {
 	double tStart = now(); 
 
 	launchMemoryChecker(2 * 1024, 0.1);
+	auto cpuData = getCpuData();
+
+	cout << "#threads: " << cpuData.numProcessors << endl;
 
 	auto options = parseArguments(argc, argv);
 
