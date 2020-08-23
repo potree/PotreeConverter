@@ -488,7 +488,9 @@ namespace chunker_countsort_laszip {
 					continue;
 				}
 
-				if (mapping.find(attribute.name) != mapping.end()) {
+				bool standardMappingExists = mapping.find(attribute.name) != mapping.end();
+				bool isIncludedInOutput = outputAttributes.get(attribute.name) != nullptr;
+				if (standardMappingExists && isIncludedInOutput) {
 					handlers.push_back(mapping[attribute.name]);
 				}
 			}
@@ -527,76 +529,77 @@ namespace chunker_countsort_laszip {
 			}
 
 			for (int i = firstExtraIndex; i < inputAttributes.list.size(); i++) {
-				Attribute& attribute = inputAttributes.list[i];
+				Attribute& inputAttribute = inputAttributes.list[i];
+				Attribute* attribute = outputAttributes.get(inputAttribute.name);
+				int targetOffset = outputAttributes.getOffset(inputAttribute.name);
 
-				int attributeSize = attribute.size;
-				int targetOffset = outputAttributes.getOffset(attribute.name);
+				int attributeSize = inputAttribute.size;
 
-				auto handleAttribute = [data, point, header, attributeSize, attributeOffset, sourceOffset, &attribute](int64_t offset) {
-					memcpy(data + offset + attributeOffset, point->extra_bytes + sourceOffset, attributeSize);
+				if (attribute != nullptr) {
+					auto handleAttribute = [data, point, header, attributeSize, attributeOffset, sourceOffset, attribute](int64_t offset) {
+						memcpy(data + offset + attributeOffset, point->extra_bytes + sourceOffset, attributeSize);
 
-					std::function<double(uint8_t*)> f;
+						std::function<double(uint8_t*)> f;
 
-					// TODO: shouldn't use DOUBLE as a unifying type
-					// it won't work with uint64_t and int64_t
-					if (attribute.type == AttributeType::INT8) {
-						f = asDouble<int8_t>;
-					} else if (attribute.type == AttributeType::INT16) {
-						f = asDouble<int16_t>;
-					} else if (attribute.type == AttributeType::INT32) {
-						f = asDouble<int32_t>;
-					} else if (attribute.type == AttributeType::INT64) {
-						f = asDouble<int64_t>;
-					} else if (attribute.type == AttributeType::UINT8) {
-						f = asDouble<uint8_t>;
-					} else if (attribute.type == AttributeType::UINT16) {
-						f = asDouble<uint16_t>;
-					} else if (attribute.type == AttributeType::UINT32) {
-						f = asDouble<uint32_t>;
-					} else if (attribute.type == AttributeType::UINT64) {
-						f = asDouble<uint64_t>;
-					} else if (attribute.type == AttributeType::FLOAT) {
-						f = asDouble<float>;
-					} else if (attribute.type == AttributeType::DOUBLE) {
-						f = asDouble<double>;
-					}
+						// TODO: shouldn't use DOUBLE as a unifying type
+						// it won't work with uint64_t and int64_t
+						if (attribute->type == AttributeType::INT8) {
+							f = asDouble<int8_t>;
+						} else if (attribute->type == AttributeType::INT16) {
+							f = asDouble<int16_t>;
+						} else if (attribute->type == AttributeType::INT32) {
+							f = asDouble<int32_t>;
+						} else if (attribute->type == AttributeType::INT64) {
+							f = asDouble<int64_t>;
+						} else if (attribute->type == AttributeType::UINT8) {
+							f = asDouble<uint8_t>;
+						} else if (attribute->type == AttributeType::UINT16) {
+							f = asDouble<uint16_t>;
+						} else if (attribute->type == AttributeType::UINT32) {
+							f = asDouble<uint32_t>;
+						} else if (attribute->type == AttributeType::UINT64) {
+							f = asDouble<uint64_t>;
+						} else if (attribute->type == AttributeType::FLOAT) {
+							f = asDouble<float>;
+						} else if (attribute->type == AttributeType::DOUBLE) {
+							f = asDouble<double>;
+						}
 
-					if (attribute.numElements == 1) {
-						double x = f(point->extra_bytes + sourceOffset);
+						if (attribute->numElements == 1) {
+							double x = f(point->extra_bytes + sourceOffset);
 
-						attribute.min.x = std::min(attribute.min.x, x);
-						attribute.max.x = std::max(attribute.max.x, x);
-					} else if (attribute.numElements == 2) {
-						double x = f(point->extra_bytes + sourceOffset + 0 * attribute.elementSize);
-						double y = f(point->extra_bytes + sourceOffset + 1 * attribute.elementSize);
+							attribute->min.x = std::min(attribute->min.x, x);
+							attribute->max.x = std::max(attribute->max.x, x);
+						} else if (attribute->numElements == 2) {
+							double x = f(point->extra_bytes + sourceOffset + 0 * attribute->elementSize);
+							double y = f(point->extra_bytes + sourceOffset + 1 * attribute->elementSize);
 
-						attribute.min.x = std::min(attribute.min.x, x);
-						attribute.min.y = std::min(attribute.min.y, y);
-						attribute.max.x = std::max(attribute.max.x, x);
-						attribute.max.y = std::max(attribute.max.y, y);
+							attribute->min.x = std::min(attribute->min.x, x);
+							attribute->min.y = std::min(attribute->min.y, y);
+							attribute->max.x = std::max(attribute->max.x, x);
+							attribute->max.y = std::max(attribute->max.y, y);
 
-					} else if (attribute.numElements == 3) {
-						double x = f(point->extra_bytes + sourceOffset + 0 * attribute.elementSize);
-						double y = f(point->extra_bytes + sourceOffset + 1 * attribute.elementSize);
-						double z = f(point->extra_bytes + sourceOffset + 2 * attribute.elementSize);
+						} else if (attribute->numElements == 3) {
+							double x = f(point->extra_bytes + sourceOffset + 0 * attribute->elementSize);
+							double y = f(point->extra_bytes + sourceOffset + 1 * attribute->elementSize);
+							double z = f(point->extra_bytes + sourceOffset + 2 * attribute->elementSize);
 
-						attribute.min.x = std::min(attribute.min.x, x);
-						attribute.min.y = std::min(attribute.min.y, y);
-						attribute.min.z = std::min(attribute.min.z, z);
-						attribute.max.x = std::max(attribute.max.x, x);
-						attribute.max.y = std::max(attribute.max.y, y);
-						attribute.max.z = std::max(attribute.max.z, z);
-					}
+							attribute->min.x = std::min(attribute->min.x, x);
+							attribute->min.y = std::min(attribute->min.y, y);
+							attribute->min.z = std::min(attribute->min.z, z);
+							attribute->max.x = std::max(attribute->max.x, x);
+							attribute->max.y = std::max(attribute->max.y, y);
+							attribute->max.z = std::max(attribute->max.z, z);
+						}
 
 
-				};
+					};
 
-				if(targetOffset >= 0){
 					handlers.push_back(handleAttribute);
 				}
 
-				sourceOffset += attribute.size;
-				attributeOffset += attribute.size;
+				sourceOffset += attribute->size;
+				attributeOffset += attribute->size;
 			}
 
 		}
