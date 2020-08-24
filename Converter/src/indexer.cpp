@@ -869,12 +869,41 @@ void buildHierarchy(Indexer* indexer, Node* node, shared_ptr<Buffer> points, int
 		if (subject->numPoints == numPoints) {
 			// the subsplit has the same number of points than the input -> ERROR
 
+			
+
+			unordered_map<string, int> counters;
+
+			auto bpp = attributes.bytes;
+
+			for (int i = 0; i < numPoints; i++) {
+
+				int64_t sourceOffset = i * bpp;
+
+				int32_t X, Y, Z;
+				memcpy(&X, buffer->data_u8 + sourceOffset + 0, 4);
+				memcpy(&Y, buffer->data_u8 + sourceOffset + 4, 4);
+				memcpy(&Z, buffer->data_u8 + sourceOffset + 8, 4);
+
+				stringstream ss;
+				ss << X << ", " << Y << ", " << Z;
+
+				string key = ss.str();
+				counters[key]++;
+			}
+
+			int64_t numPointsInBox = subject->numPoints;
+			int64_t numUniquePoints = counters.size();
+
+
+
 			stringstream ss;
 			ss << "a non-partitionable sequence of points was encountered, which may be caused by a large number of duplicates. "
-				<< "The converter will proceed without further partitioning. If you encounter any issues, consider checking for and removing duplicate entries. " 
-				<< "min: " << subject->min.toString() << ", max: " << subject->max.toString() << ", numPoints: " << subject->numPoints;
+				<< "#points in box: " << numPointsInBox << ", #unique points in box: " << numUniquePoints << ", "
+				<< "min: " << subject->min.toString() << ", max: " << subject->max.toString();
 
-			GENERATE_WARN_MESSAGE << ss.str() << endl;
+			GENERATE_ERROR_MESSAGE << ss.str() << endl;
+
+			exit(123);
 
 			//auto bpp = attributes.bytes;
 			//vector<int32_t> xyz(3 * numPoints, 0);
@@ -890,8 +919,6 @@ void buildHierarchy(Indexer* indexer, Node* node, shared_ptr<Buffer> points, int
 			//}
 
 			//int a = 10;
-
-			return;
 		}
 
 		int nextNumPoins = subject->numPoints;

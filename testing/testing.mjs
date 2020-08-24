@@ -1,7 +1,7 @@
 
 import {spawn} from "child_process";
 
-let cmd = "../build/Release/PotreeConverter.exe";
+let cmd = "./build/Release/PotreeConverter.exe";
 
 let testcases = [
 
@@ -76,6 +76,10 @@ let testcases = [
 	},{
 		input: ["D:/dev/pointclouds/testdata/railway_000039.laz"],
 		output: "D:/temp/test/railway_000039.laz",
+		arguments: [],
+	},{
+		input: ["D:/dev/pointclouds/testdata/Bargello10Mtest.las"],
+		output: "D:/temp/test/Bargello10Mtest.las",
 		arguments: [],
 	}
 
