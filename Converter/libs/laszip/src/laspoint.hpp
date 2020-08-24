@@ -182,14 +182,7 @@ public:
     }
     if (other.extra_bytes && extra_bytes)
     {
-      if (other.extra_bytes_number >= extra_bytes_number)
-      {
-        memcpy(extra_bytes, other.extra_bytes, extra_bytes_number);
-      }
-      else
-      {
-        memcpy(extra_bytes, other.extra_bytes, other.extra_bytes_number);
-      }
+      memcpy(extra_bytes, other.extra_bytes, extra_bytes_number);
     }
     if (other.extended_point_type)
     {
@@ -322,7 +315,6 @@ public:
       case LASitem::BYTE14:
         extra_bytes_number = items[i].size;
         extra_bytes = new U8[extra_bytes_number];
-        memset(extra_bytes, 0, extra_bytes_number);
         this->point[i] = extra_bytes;
         break;
       default:
@@ -382,7 +374,6 @@ public:
       case LASitem::BYTE14:
         extra_bytes_number = items[i].size;
         extra_bytes = new U8[extra_bytes_number];
-        memset(extra_bytes, 0, extra_bytes_number);
         this->point[i] = extra_bytes;
         break;
       default:
@@ -442,6 +433,36 @@ public:
     if (xyz < min_y || xyz > max_y) return FALSE;
     xyz = get_z();
     if (xyz < min_z || xyz > max_z) return FALSE;
+    return TRUE;
+  }
+
+  BOOL is_zero() const
+  {
+    if (((U32*)&(this->X))[0] || ((U32*)&(this->X))[1] || ((U32*)&(this->X))[2] || ((U32*)&(this->X))[3] || ((U32*)&(this->X))[4])
+    {
+      return FALSE;
+    }
+    if (have_gps_time)
+    {
+      if (this->gps_time)
+      {
+        return FALSE;
+      }
+    }
+    if (have_rgb)
+    {
+      if (this->rgb[0] || this->rgb[1] || this->rgb[2])
+      {
+        return FALSE;
+      }
+      if (have_nir)
+      {
+        if (this->rgb[3])
+        {
+          return FALSE;
+        }
+      }
+    }
     return TRUE;
   }
 
@@ -526,7 +547,6 @@ public:
   inline I32 get_X() const { return X; };
   inline I32 get_Y() const { return Y; };
   inline I32 get_Z() const { return Z; };
-  inline const I32* get_XYZ() const { return &X; };
   inline U16 get_intensity() const { return intensity; };
   inline U8 get_return_number() const { return return_number; };
   inline U8 get_number_of_returns() const { return number_of_returns; };

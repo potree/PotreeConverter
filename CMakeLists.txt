@@ -64,7 +64,7 @@ endif (UNIX)
 add_custom_command(
 	TARGET PotreeConverter POST_BUILD
 	COMMAND ${CMAKE_COMMAND} -E copy
-		${LASZIP_DIR}/LICENSE.txt
+		${LASZIP_DIR}/COPYING
 		$<TARGET_FILE_DIR:${PROJECT_NAME}>/licenses/license_laszip.txt)
 
 add_custom_command(

@@ -6,6 +6,10 @@ project(LASzip LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
+set (CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
+set (CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
+
+
 set(ROOT_DIR "${PROJECT_SOURCE_DIR}")
 
 # the next line is the ONLY place in the entire laszip system where
@@ -34,6 +38,7 @@ add_library(laszip SHARED ${source_files})
 target_include_directories(laszip PRIVATE 
 	./dll
 	./src
+	../
 )
 
 set(CMAKE_BUILD_TYPE "Release" CACHE STRING "" FORCE)
