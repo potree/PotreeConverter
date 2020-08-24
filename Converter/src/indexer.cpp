@@ -864,12 +864,42 @@ void buildHierarchy(Indexer* indexer, Node* node, shared_ptr<Buffer> points, int
 
 	for (auto subject : needRefinement) {
 		auto buffer = subject->points;
-		auto numPoints = subject->numPoints;
+		//auto numPoints = subject->numPoints;
+
+		if (subject->numPoints == numPoints) {
+			// the subsplit has the same number of points than the input -> ERROR
+
+			stringstream ss;
+			ss << "a non-partitionable sequence of points was encountered, which may be caused by a large number of duplicates. "
+				<< "The converter will proceed without further partitioning. If you encounter any issues, consider checking for and removing duplicate entries. " 
+				<< "min: " << subject->min.toString() << ", max: " << subject->max.toString() << ", numPoints: " << subject->numPoints;
+
+			GENERATE_WARN_MESSAGE << ss.str() << endl;
+
+			//auto bpp = attributes.bytes;
+			//vector<int32_t> xyz(3 * numPoints, 0);
+			//uint8_t* dbg = reinterpret_cast<uint8_t*>(xyz.data());
+
+			//for (int i = 0; i < numPoints; i++) {
+
+			//	int64_t targetOffset = 12 * i;
+			//	int64_t sourceOffset = i * bpp;
+			//	int targetSize = xyz.size() * 4;
+
+			//	memcpy(dbg + targetOffset, buffer->data_u8 + sourceOffset, 12);
+			//}
+
+			//int a = 10;
+
+			return;
+		}
+
+		int nextNumPoins = subject->numPoints;
 
 		subject->points = nullptr;
 		subject->numPoints = 0;
 
-		buildHierarchy(indexer, subject, buffer, numPoints, depth + 1);
+		buildHierarchy(indexer, subject, buffer, nextNumPoins, depth + 1);
 	}
 
 }

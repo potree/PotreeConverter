@@ -42,6 +42,10 @@ namespace chunker_countsort_laszip {
 
 	auto numChunkerThreads = getCpuData().numProcessors;
 	auto numFlushThreads = getCpuData().numProcessors;
+
+	// auto numChunkerThreads = 1;
+	// auto numFlushThreads = 1;
+
 	int maxPointsPerChunk = 5'000'000;
 	int gridSize = 128;
 	mutex mtx_attributes;
