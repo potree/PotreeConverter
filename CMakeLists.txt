@@ -70,6 +70,12 @@ add_custom_command(
 add_custom_command(
 	TARGET PotreeConverter POST_BUILD
 	COMMAND ${CMAKE_COMMAND} -E copy
+		${PROJECT_SOURCE_DIR}/Converter/libs/json/LICENSE
+		$<TARGET_FILE_DIR:${PROJECT_NAME}>/licenses/license_json.txt)
+
+add_custom_command(
+	TARGET PotreeConverter POST_BUILD
+	COMMAND ${CMAKE_COMMAND} -E copy
 		${PROJECT_SOURCE_DIR}/LICENSE
 		$<TARGET_FILE_DIR:${PROJECT_NAME}>/licenses/license_potree_converter.txt)
 

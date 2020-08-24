@@ -33,16 +33,54 @@ Options parseArguments(int argc, char** argv) {
 	}
 
 	vector<string> source = args.get("source").as<vector<string>>();
-	string outdir = args.get("outdir").as<string>();
-
-	string method = args.get("method").as<string>("poisson");
-	string chunkMethod = args.get("chunkMethod").as<string>("LASZIP");
 
 	if (source.size() == 0) {
 		cout << "/Converter <source> -o <outdir>" << endl;
 
 		exit(1);
 	}
+
+	string method = args.get("method").as<string>("poisson");
+	string chunkMethod = args.get("chunkMethod").as<string>("LASZIP");
+
+	string outdir = "";
+	if (args.has("outdir")) {
+		outdir = args.get("outdir").as<string>();
+	} else {
+
+		string sourcepath = source[0];
+		fs::path path(sourcepath);
+
+		//cout << fs::canonical(source[0]) << endl;
+		//exit(123);
+
+		if (!fs::exists(path)) {
+			GENERATE_ERROR_MESSAGE << "file does not exist: " << source[0] << endl;
+
+			exit(123);
+		} 
+
+		path = fs::canonical(path);
+
+		string suggestedBaseName = path.filename().string() + "_converted";
+		outdir = sourcepath + "/../" + suggestedBaseName;
+
+		int i = 1;
+		while(fs::exists(outdir)) {
+			outdir = sourcepath + "/../" + suggestedBaseName + "_" + std::to_string(i);
+
+			if (i > 100) {
+				GENERATE_ERROR_MESSAGE << "unsuccessfully tried to find empty output directory. stopped at 100 iterations: " << outdir << endl;
+
+				exit(123);
+			}
+
+			i++;
+		}
+
+	}
+
+	outdir = fs::weakly_canonical(fs::path(outdir)).string();
 
 	vector<string> flags = args.get("flags").as<vector<string>>();
 	vector<string> attributes = args.get("attributes").as<vector<string>>();
@@ -376,7 +414,9 @@ int main(int argc, char** argv) {
 		exit(0);
 	}
 
+	
 	string targetDir = options.outdir;
+	cout << "target directory: '" << targetDir << "'" << endl;
 
 	State state;
 	state.pointsTotal = stats.totalPoints;

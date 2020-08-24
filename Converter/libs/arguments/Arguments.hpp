@@ -284,13 +284,16 @@ public:
 	AValue get(string name) {
 		Argument *arg = getArgument(name);
 
+		vector<string> values;
+
 		for (auto entry : map) {
 			if (arg->is(entry.first)) {
-				return AValue(entry.second);
+				values.insert(values.end(), entry.second.begin(), entry.second.end());
+				//return AValue(entry.second);
 			}
 		}
 
-		return AValue({});
+		return AValue(values);
 	}
 
 
