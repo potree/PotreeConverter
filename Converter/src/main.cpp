@@ -11,6 +11,7 @@
 #include "sampler_random.h"
 #include "Attributes.h"
 #include "PotreeConverter.h"
+#include "logger.h"
 
 #include "arguments/Arguments.hpp"
 
@@ -55,7 +56,8 @@ Options parseArguments(int argc, char** argv) {
 		//exit(123);
 
 		if (!fs::exists(path)) {
-			GENERATE_ERROR_MESSAGE << "file does not exist: " << source[0] << endl;
+
+			logger::ERROR("file does not exist: " + source[0]);
 
 			exit(123);
 		} 
@@ -70,7 +72,8 @@ Options parseArguments(int argc, char** argv) {
 			outdir = sourcepath + "/../" + suggestedBaseName + "_" + std::to_string(i);
 
 			if (i > 100) {
-				GENERATE_ERROR_MESSAGE << "unsuccessfully tried to find empty output directory. stopped at 100 iterations: " << outdir << endl;
+
+				logger::ERROR("unsuccessfully tried to find empty output directory. stopped at 100 iterations: " + outdir);
 
 				exit(123);
 			}
@@ -227,6 +230,16 @@ Stats computeStats(vector<Source> sources){
 
 	cout << "#points: " << formatNumber(totalPoints) << endl;
 	cout << "total file size: " << strTotalFileSize << endl;
+
+	{ // sanity check
+		bool sizeError = (size.x == 0.0) || (size.x == 0.0) || (size.z == 0);
+		if (sizeError) {
+			logger::ERROR("invalid bounding box. at least one axis has a size of zero.");
+
+			exit(123);
+		}
+		
+	}
 
 	return { min, max, totalBytes, totalPoints };
 }
@@ -399,6 +412,8 @@ int main(int argc, char** argv) {
 	cout << "#threads: " << cpuData.numProcessors << endl;
 
 	auto options = parseArguments(argc, argv);
+
+	logger::addOutputFile(options.outdir + "/log.txt");
 
 	auto [name, sources] = curateSources(options.source);
 	if (options.name.size() == 0) {

@@ -6,6 +6,7 @@
 #include "indexer.h"
 
 #include "Attributes.h"
+#include "logger.h"
 
 using std::unique_lock;
 
@@ -171,6 +172,8 @@ namespace indexer{
 
 		fChunkRoots.close();
 
+		logger::INFO("start reloadChunkRoots");
+
 		struct LoadTask {
 			shared_ptr<Node> node;
 			int64_t offset;
@@ -203,6 +206,8 @@ namespace indexer{
 		}
 
 		pool.close();
+
+		logger::INFO("end reloadChunkRoots");
 	}
 
 	void Indexer::waitUntilWriterBacklogBelow(int maxMegabytes) {
@@ -782,6 +787,20 @@ void buildHierarchy(Indexer* indexer, Node* node, shared_ptr<Buffer> points, int
 			offsets[i] = offsets[i - 1] + counters[i - 1];
 		}
 
+		if(numPoints * bpp < 0){
+			stringstream ss;
+
+			auto size = numPoints * bpp;
+			ss << "invalid call to malloc(" << to_string(size) << ")\n";
+			ss << "in function buildHierarchy()\n";
+			ss << "node: " << node->name << "\n";
+			ss << "#points: " << node->numPoints<< "\n";
+			ss << "min: " << node->min.toString() << "\n";
+			ss << "max: " << node->max.toString() << "\n";
+
+			logger::ERROR(ss.str());
+		}
+
 		Buffer tmp(numPoints * bpp);
 
 		for (int i = 0; i < numPoints; i++) {
@@ -841,6 +860,20 @@ void buildHierarchy(Indexer* indexer, Node* node, shared_ptr<Buffer> points, int
 		realization->indexStart = candidate.indexStart;
 		realization->numPoints = candidate.numPoints;
 		int64_t bytes = candidate.numPoints * bpp;
+
+		if (bytes < 0) {
+			stringstream ss;
+
+			ss << "invalid call to malloc(" << to_string(bytes) << ")\n";
+			ss << "in function buildHierarchy()\n";
+			ss << "node: " << node->name << "\n";
+			ss << "#points: " << node->numPoints << "\n";
+			ss << "min: " << node->min.toString() << "\n";
+			ss << "max: " << node->max.toString() << "\n";
+
+			logger::ERROR(ss.str());
+		}
+
 		auto buffer = make_shared<Buffer>(bytes);
 		memcpy(buffer->data,
 			points->data_u8 + candidate.indexStart * bpp,
@@ -901,7 +934,7 @@ void buildHierarchy(Indexer* indexer, Node* node, shared_ptr<Buffer> points, int
 				<< "#points in box: " << numPointsInBox << ", #unique points in box: " << numUniquePoints << ", "
 				<< "min: " << subject->min.toString() << ", max: " << subject->max.toString();
 
-			GENERATE_ERROR_MESSAGE << ss.str() << endl;
+			logger::ERROR(ss.str());
 
 			exit(123);
 
@@ -962,6 +995,21 @@ void Writer::writeAndUnload(Node* node) {
 
 	node->byteSize = byteSize;
 
+	auto errorCheck = [node](int64_t size) {
+		if (size < 0) {
+			stringstream ss;
+
+			ss << "invalid call to malloc(" << to_string(size) << ")\n";
+			ss << "in function writeAndUnload()\n";
+			ss << "node: " << node->name << "\n";
+			ss << "#points: " << node->numPoints << "\n";
+			ss << "min: " << node->min.toString() << "\n";
+			ss << "max: " << node->max.toString() << "\n";
+
+			logger::ERROR(ss.str());
+		}
+	};
+
 	shared_ptr<Buffer> buffer = nullptr;
 	int64_t targetOffset = 0;
 	{
@@ -971,11 +1019,13 @@ void Writer::writeAndUnload(Node* node) {
 		node->byteOffset = byteOffset;
 
 		if (activeBuffer == nullptr) {
+			errorCheck(capacity);
 			activeBuffer = make_shared<Buffer>(capacity);
 		} else if (activeBuffer->pos + byteSize > capacity) {
 			backlog.push_back(activeBuffer);
 
 			capacity = std::max(capacity, byteSize);
+			errorCheck(capacity);
 			activeBuffer = make_shared<Buffer>(capacity);
 		}
 
@@ -1113,6 +1163,14 @@ void doIndexing(string targetDir, State& state, Options& options, Sampler& sampl
 		activeThreads++;
 
 		auto filesize = fs::file_size(chunk->file);
+
+		stringstream msg;
+		msg << "start indexing chunk " + chunk->id << "\n";
+		msg << "filesize: " << formatNumber(filesize) << "\n";
+		msg << "min: " << chunk->min.toString() << "\n";
+		msg << "max: " << chunk->max.toString();
+		logger::INFO(msg.str());
+
 		indexer.bytesInMemory += filesize;
 		auto pointBuffer = readBinaryFile(chunk->file);
 
@@ -1154,13 +1212,7 @@ void doIndexing(string targetDir, State& state, Options& options, Sampler& sampl
 
 		nodes.push_back(chunkRoot);
 
-		//{ // debug
-		//	auto duration = now() - tStartChunking;
-		//	double throughput = (double(numPoints) / duration) / 1'000'000.0;
-		//	string msg = "indexing chunk: " + formatNumber(duration, 3) + "s, " + formatNumber(numPoints) + " points, " + formatNumber(throughput, 1) + " MP/s \n";
-		//	cout << msg;
-		//}
-		
+		logger::INFO("finished indexing chunk " + chunk->id);
 
 		activeThreads--;
 	});

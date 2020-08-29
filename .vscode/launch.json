@@ -41,12 +41,12 @@
 				// "D:/dev/pointclouds/CA13/ot_35120B4122C_1.laz",
 				// "D:/dev/pointclouds/CA13/ot_35120B4121D_1.laz",
 				// "D:/dev/pointclouds/CA13/ot_35120B4301B_1.laz",
-				"D:/dev/pointclouds/CA13/ot_35120B4301D_1.laz",
-				"D:/dev/pointclouds/CA13/ot_35120B4302C_1.laz",
-				"D:/dev/pointclouds/CA13/ot_35120B4302B_1.laz",
-				"D:/dev/pointclouds/CA13/ot_35120B4122D_1.laz",
-				"D:/dev/pointclouds/CA13/ot_35120B4302D_1.laz",
-				"D:/dev/pointclouds/CA13/ot_35120B4302A_1.laz",
+				// "D:/dev/pointclouds/CA13/ot_35120B4301D_1.laz",
+				// "D:/dev/pointclouds/CA13/ot_35120B4302C_1.laz",
+				// "D:/dev/pointclouds/CA13/ot_35120B4302B_1.laz",
+				// "D:/dev/pointclouds/CA13/ot_35120B4122D_1.laz",
+				// "D:/dev/pointclouds/CA13/ot_35120B4302D_1.laz",
+				// "D:/dev/pointclouds/CA13/ot_35120B4302A_1.laz",
 
 				// "D:/dev/pointclouds/tuwien_baugeschichte/candi Banyunibo",
 
@@ -54,7 +54,17 @@
 				// "D:/dev/pointclouds/sitn/potree2/aerial_lidar2019_2524_1197_laz14_dip.laz",
 				// "D:/dev/pointclouds/sitn/potree2/aerial_lidar2019_2524_1197_las14.las",
 
-				"-o", "D:/temp/crashreport2/cube_converted",
+				// "D:/temp/Bargello10Mtest.las",
+
+
+				// "D:/dev/pointclouds/testdata/crash.las",
+				"D:/dev/pointclouds/testdata/eclepens.laz",
+				// "D:/dev/pointclouds/testdata/Grab15.laz",
+				// "D:/dev/pointclouds/testdata/heidentor.las",
+				// "D:/dev/pointclouds/testdata/lion.laz",
+				// "D:/dev/pointclouds/testdata/3dbuildings_walls_azimuth.laz",
+
+				"-o", "D:/temp/converted",
 				// "-o", "F:/temp/CA13",
 				// "-o", "F:/temp/affandi",
 				// "-o", "C:/dev/workspaces/potree/develop/test/converted",
@@ -74,7 +84,7 @@
 				// "--flags", "no-chunking",
 				// "--flags", "no-indexing", "keep-chunks",
 				// "--flags", "no-chunking", "keep-chunks",
-				"--flags", "keep-chunks",
+				// "--flags", "keep-chunks",
 				// "-m", "poisson", // ["poisson", "poisson_average", "random"]
 				// "--chunkMethod", "SKIP" // [LASZIP, LAS_CUSTOM, SKIP]
 				// "--attributes", "rgb", "Dip (degrees)", "Dip direction (degrees)", "NormalX", "NormalY", "NormalZ",

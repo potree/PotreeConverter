@@ -20,6 +20,7 @@
 #include "laszip/laszip_api.h"
 #include "LasLoader/LasLoader.h"
 #include "PotreeConverter.h"
+#include "logger.h"
 
 using json = nlohmann::json;
 
@@ -167,6 +168,12 @@ namespace chunker_countsort_laszip {
 
 			thread_local unique_ptr<void, void(*)(void*)> buffer(nullptr, free);
 			thread_local int64_t bufferSize = -1;
+
+			{ // sanity checks
+				if(numBytes < 0){
+					logger::ERROR("invalid malloc size: " + formatNumber(numBytes));
+				}
+			}
 
 			if (bufferSize < numBytes){
 				buffer.reset(malloc(numBytes));
@@ -669,6 +676,13 @@ namespace chunker_countsort_laszip {
 			thread_local unique_ptr<void, void(*)(void*)> buffer(nullptr, free);
 			thread_local int64_t bufferSize = -1;
 
+			{ // sanity checks
+				if(numBytes < 0){
+					logger::ERROR("invalid malloc size: " + formatNumber(numBytes));
+
+				}
+			}
+
 			if (bufferSize < numBytes) {
 				buffer.reset(malloc(numBytes));
 				bufferSize = numBytes;
@@ -800,10 +814,14 @@ namespace chunker_countsort_laszip {
 
 					int64_t index = ix + iy * gridSize + iz * gridSize * gridSize;
 
-					GENERATE_ERROR_MESSAGE << "point to node lookup failed, no node found." << endl;
-					GENERATE_ERROR_MESSAGE << "point: " << formatNumber(x, 3) << ", " << formatNumber(y, 3) << ", " << formatNumber(z, 3) << endl;
-					GENERATE_ERROR_MESSAGE << "3d grid index: " << ix << ", " << iy << ", " << iz << endl;
-					GENERATE_ERROR_MESSAGE << "1d grid index: " << index << endl;
+					stringstream ss;
+					ss << "point to node lookup failed, no node found." << endl;
+					ss << "point: " << formatNumber(x, 3) << ", " << formatNumber(y, 3) << ", " << formatNumber(z, 3) << endl;
+					ss << "3d grid index: " << ix << ", " << iy << ", " << iz << endl;
+					ss << "1d grid index: " << index << endl;
+
+
+					logger::ERROR(ss.str());
 
 					exit(123);
 				}

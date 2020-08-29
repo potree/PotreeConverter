@@ -27,6 +27,7 @@ set(HEADER_FILES
 	Converter/include/structures.h
 	Converter/include/Vector3.h
 	Converter/include/PotreeConverter.h
+	Converter/include/logger.h
 	Converter/modules/LasLoader/LasLoader.h
 )
 
@@ -34,6 +35,7 @@ add_executable(PotreeConverter
 	./Converter/src/chunker_countsort_laszip.cpp
 	./Converter/src/indexer.cpp 
 	./Converter/src/main.cpp
+	./Converter/src/logger.cpp
 	./Converter/modules/LasLoader/LasLoader.cpp
 	./Converter/modules/unsuck/unsuck_platform_specific.cpp
 	${HEADER_FILES}
