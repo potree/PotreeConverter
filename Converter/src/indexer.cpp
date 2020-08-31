@@ -7,6 +7,7 @@
 
 #include "Attributes.h"
 #include "logger.h"
+#include "PotreeConverter.h"
 
 using std::unique_lock;
 
@@ -926,17 +927,32 @@ void buildHierarchy(Indexer* indexer, Node* node, shared_ptr<Buffer> points, int
 
 			int64_t numPointsInBox = subject->numPoints;
 			int64_t numUniquePoints = counters.size();
+			int64_t numDuplicates = numPointsInBox - numUniquePoints;
 
+			if (numDuplicates < maxPointsPerChunk / 2) {
+				// no uniques, just unfavouribly distributed points
+				// print warning but continue
 
+				stringstream ss;
+				ss << "Encountered unfavourable point distribution. Conversion continues anyway because not many duplicates were encountered. ";
+				ss << "However, issues may arise. If you find an error, please report it at github. \n";
+				ss << "#points in box: " << numPointsInBox << ", #unique points in box: " << numUniquePoints << ", ";
+				ss << "min: " << subject->min.toString() << ", max: " << subject->max.toString();
 
-			stringstream ss;
-			ss << "a non-partitionable sequence of points was encountered, which may be caused by a large number of duplicates. "
-				<< "#points in box: " << numPointsInBox << ", #unique points in box: " << numUniquePoints << ", "
-				<< "min: " << subject->min.toString() << ", max: " << subject->max.toString();
+				logger::WARN(ss.str());
+			} else {
+				// unique points, quit here
+				stringstream ss;
+				ss << "a non-partitionable sequence of points was encountered, which may be caused by a large number of duplicates. "
+					<< "#points in box: " << numPointsInBox << ", #unique points in box: " << numUniquePoints << ", "
+					<< "min: " << subject->min.toString() << ", max: " << subject->max.toString();
 
-			logger::ERROR(ss.str());
+				logger::ERROR(ss.str());
 
-			exit(123);
+				exit(123);
+			}
+
+			
 
 			//auto bpp = attributes.bytes;
 			//vector<int32_t> xyz(3 * numPoints, 0);
@@ -1226,6 +1242,8 @@ void doIndexing(string targetDir, State& state, Options& options, Sampler& sampl
 	pool.close();
 
 	indexer.reloadChunkRoots();
+
+	//Dbg::instance()->isDebug = true;
 
 	if (chunks->list.size() == 1) {
 		auto node = nodes[0];

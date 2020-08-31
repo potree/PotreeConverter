@@ -14,21 +14,22 @@ add_subdirectory(${LASZIP_DIR})
 #message(${PROJECT_SOURCE_DIR})
 
 set(HEADER_FILES  
-	Converter/include/Attributes.h
-	Converter/include/chunker_countsort_laszip.h
-	Converter/include/ChunkRefiner.h
-	Converter/include/ConcurrentWriter.h
-	Converter/include/converter_utils.h
-	Converter/include/indexer.h
-	Converter/include/prototyping.h
-	Converter/include/sampler_poisson.h
-	Converter/include/sampler_poisson_average.h
-	Converter/include/sampler_random.h
-	Converter/include/structures.h
-	Converter/include/Vector3.h
-	Converter/include/PotreeConverter.h
-	Converter/include/logger.h
-	Converter/modules/LasLoader/LasLoader.h
+	./Converter/include/Attributes.h
+	./Converter/include/chunker_countsort_laszip.h
+	./Converter/include/ChunkRefiner.h
+	./Converter/include/ConcurrentWriter.h
+	./Converter/include/converter_utils.h
+	./Converter/include/indexer.h
+	./Converter/include/prototyping.h
+	./Converter/include/sampler_poisson.h
+	./Converter/include/sampler_poisson_average.h
+	./Converter/include/sampler_random.h
+	./Converter/include/structures.h
+	./Converter/include/Vector3.h
+	./Converter/include/PotreeConverter.h
+	./Converter/include/logger.h
+	./Converter/modules/LasLoader/LasLoader.h
+	./Converter/modules/unsuck/unsuck.hpp
 )
 
 add_executable(PotreeConverter 

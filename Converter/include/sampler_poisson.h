@@ -5,7 +5,7 @@
 
 #include "structures.h"
 #include "Attributes.h"
-
+#include "PotreeConverter.h"
 
 
 struct SamplerPoisson : public Sampler {
@@ -265,7 +265,7 @@ struct SamplerPoisson : public Sampler {
 					}
 				}
 
-				if (numRejected == 0) {
+				if (numRejected == 0 && child->isLeaf()) {
 					node->children[childIndex] = nullptr;
 				} if (numRejected > 0) {
 					child->points = rejected;

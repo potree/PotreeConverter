@@ -6,6 +6,19 @@
 #include "Vector3.h"
 #include "LasLoader/LasLoader.h"
 
+struct Dbg {
+
+	bool isDebug = false;
+
+	static Dbg* instance() {
+
+		static Dbg* inst = new Dbg();
+
+		return inst;
+	}
+
+};
+
 
 struct ScaleOffset {
 	Vector3 scale;
