@@ -402,7 +402,22 @@ void createReport(Options& options, vector<Source> sources, string targetDir, St
 
 }
 
+#include "LaszipReader.h"
+
 int main(int argc, char** argv) {
+
+	auto points = readLasLaz("D:/dev/pointclouds/mschuetz/lion.las", 0, 10);
+
+	for (int i = 0; i < points.numPoints; i++) {
+
+
+
+	}
+
+
+
+	exit(123);
+
 
 	double tStart = now(); 
 

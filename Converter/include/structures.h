@@ -7,15 +7,18 @@
 #include <string>
 #include <functional>
 #include <mutex>
+#include <thread>
 
 #include "Vector3.h"
 #include "unsuck/unsuck.hpp"
 #include "Attributes.h"
+#include "converter_utils.h"
 
 using std::vector;
 using std::shared_ptr;
 using std::function;
 using std::mutex;
+using std::lock_guard;
 
 struct CumulativeColor {
 	int64_t r = 0;
@@ -143,3 +146,22 @@ struct Sampler {
 	virtual void sample(shared_ptr<Node> node, Attributes attributes, double baseSpacing, function<void(Node*)> callbackNodeCompleted) = 0;
 
 };
+
+
+
+struct Points {
+	shared_ptr<Buffer> data;
+	Attributes attributes;
+	int64_t numPoints = 0;
+
+	
+};
+
+
+
+
+
+
+
+
+

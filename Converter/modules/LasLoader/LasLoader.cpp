@@ -121,7 +121,6 @@ LasHeader loadLasHeader(string path) {
 
 
 
-
 	laszip_close_reader(laszip_reader);
 	laszip_destroy(laszip_reader);
 
