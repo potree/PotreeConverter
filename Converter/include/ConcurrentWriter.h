@@ -46,7 +46,7 @@ struct ConcurrentWriter {
 
 		this->tStart = now();
 
-		for (int i = 0; i < numThreads; i++) {
+		for (int64_t i = 0; i < numThreads; i++) {
 			threads.emplace_back([&]() {
 				flushThread();
 			});

@@ -130,9 +130,9 @@ async function runTestcase(testcase){
 
 async function run(){
 
-	let testcases = [problematicCases[0]];
+	// let testcases = [problematicCases[0]];
 
-	// let testcases = [...easyCases, ...problematicCases];
+	let testcases = [...easyCases, ...problematicCases];
 
 	for(let testcase of testcases){
 		await runTestcase(testcase);

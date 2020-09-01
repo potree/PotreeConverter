@@ -32,7 +32,7 @@ struct SamplerPoisson : public Sampler {
 			callback(node);
 		};
 
-		int bytesPerPoint = attributes.bytes;
+		int64_t bytesPerPoint = attributes.bytes;
 		Vector3 scale = attributes.posScale;
 		Vector3 offset = attributes.posOffset;
 
@@ -60,7 +60,7 @@ struct SamplerPoisson : public Sampler {
 			// first, check for each point whether it's accepted or rejected
 			// save result in an array with one element for each point
 
-			int numPointsInChildren = 0;
+			int64_t numPointsInChildren = 0;
 			for (auto child : node->children) {
 				if (child == nullptr) {
 					continue;
@@ -76,7 +76,7 @@ struct SamplerPoisson : public Sampler {
 			vector<int64_t> numRejectedPerChild(8, 0);
 			int64_t numAccepted = 0;
 
-			for (int childIndex = 0; childIndex < 8; childIndex++) {
+			for (int64_t childIndex = 0; childIndex < 8; childIndex++) {
 				auto child = node->children[childIndex];
 
 				if (child == nullptr) {
@@ -89,7 +89,7 @@ struct SamplerPoisson : public Sampler {
 				vector<int8_t> acceptedFlags(child->numPoints, 0);
 				acceptedChildPointFlags.push_back(acceptedFlags);
 
-				for (int i = 0; i < child->numPoints; i++) {
+				for (int64_t i = 0; i < child->numPoints; i++) {
 					int64_t pointOffset = i * attributes.bytes;
 					int32_t* xyz = reinterpret_cast<int32_t*>(child->points->data_u8 + pointOffset);
 
@@ -107,7 +107,7 @@ struct SamplerPoisson : public Sampler {
 			unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
 
 			thread_local vector<Point> dbgAccepted(1'000'000);
-			int dbgNumAccepted = 0;
+			int64_t dbgNumAccepted = 0;
 			double spacing = baseSpacing / pow(2.0, node->level());
 			double squaredSpacing = spacing * spacing;
 
@@ -137,8 +137,8 @@ struct SamplerPoisson : public Sampler {
 				auto limit = (cd - spacing);
 				auto limitSquared = limit * limit;
 
-				int j = 0;
-				for (int i = dbgNumAccepted - 1; i >= 0; i--) {
+				int64_t j = 0;
+				for (int64_t i = dbgNumAccepted - 1; i >= 0; i--) {
 
 					auto& point = dbgAccepted[i];
 
@@ -242,7 +242,7 @@ struct SamplerPoisson : public Sampler {
 			}
 
 			auto accepted = make_shared<Buffer>(numAccepted * attributes.bytes);
-			for (int childIndex = 0; childIndex < 8; childIndex++) {
+			for (int64_t childIndex = 0; childIndex < 8; childIndex++) {
 				auto child = node->children[childIndex];
 
 				if (child == nullptr) {
@@ -253,7 +253,7 @@ struct SamplerPoisson : public Sampler {
 				auto& acceptedFlags = acceptedChildPointFlags[childIndex];
 				auto rejected = make_shared<Buffer>(numRejected * attributes.bytes);
 
-				for (int i = 0; i < child->numPoints; i++) {
+				for (int64_t i = 0; i < child->numPoints; i++) {
 					auto isAccepted = acceptedFlags[i];
 					int64_t pointOffset = i * attributes.bytes;
 

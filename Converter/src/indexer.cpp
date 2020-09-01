@@ -34,7 +34,7 @@ namespace indexer{
 	uint8_t childMaskOf(Node* node) {
 		uint8_t mask = 0;
 
-		for (int i = 0; i < 8; i++) {
+		for (int64_t i = 0; i < 8; i++) {
 			auto child = node->children[i];
 
 			if (child != nullptr) {
@@ -69,9 +69,9 @@ namespace indexer{
 
 			string name = jsAttribute["name"];
 			string description = jsAttribute["description"];
-			int size = jsAttribute["size"];
-			int numElements = jsAttribute["numElements"];
-			int elementSize = jsAttribute["elementSize"];
+			int64_t size = jsAttribute["size"];
+			int64_t numElements = jsAttribute["numElements"];
+			int64_t elementSize = jsAttribute["elementSize"];
 			AttributeType type = typenameToType(jsAttribute["type"]);
 
 			auto jsMin = jsAttribute["min"];
@@ -726,7 +726,7 @@ vector<NodeCandidate> createNodes(vector<vector<int64_t>>& pyramid) {
 // 2. Hierarchy from counter grid
 // 3. identify nodes that need further refinment
 // 4. Recursively repeat at 1. for identified nodes
-void buildHierarchy(Indexer* indexer, Node* node, shared_ptr<Buffer> points, int numPoints, int depth = 0) {
+void buildHierarchy(Indexer* indexer, Node* node, shared_ptr<Buffer> points, int64_t numPoints, int64_t depth = 0) {
 
 	if (numPoints < maxPointsPerChunk) {
 		Node* realization = node;
@@ -748,7 +748,7 @@ void buildHierarchy(Indexer* indexer, Node* node, shared_ptr<Buffer> points, int
 	auto max = node->max;
 	auto size = max - min;
 	auto attributes = indexer->attributes;
-	int bpp = attributes.bytes;
+	int64_t bpp = attributes.bytes;
 	auto scale = attributes.posScale;
 	auto offset = attributes.posOffset;
 
@@ -777,14 +777,14 @@ void buildHierarchy(Indexer* indexer, Node* node, shared_ptr<Buffer> points, int
 	};
 
 	// COUNTING
-	for (int i = 0; i < numPoints; i++) {
+	for (int64_t i = 0; i < numPoints; i++) {
 		auto index = gridIndexOf(i);
 		counters[index]++;
 	}
 
 	{ // DISTRIBUTING
 		vector<int64_t> offsets(counters.size(), 0);
-		for (int i = 1; i < counters.size(); i++) {
+		for (int64_t i = 1; i < counters.size(); i++) {
 			offsets[i] = offsets[i - 1] + counters[i - 1];
 		}
 
@@ -804,7 +804,7 @@ void buildHierarchy(Indexer* indexer, Node* node, shared_ptr<Buffer> points, int
 
 		Buffer tmp(numPoints * bpp);
 
-		for (int i = 0; i < numPoints; i++) {
+		for (int64_t i = 0; i < numPoints; i++) {
 			auto index = gridIndexOf(i);
 			auto targetIndex = offsets[index]++;
 
@@ -827,8 +827,8 @@ void buildHierarchy(Indexer* indexer, Node* node, shared_ptr<Buffer> points, int
 		// start iteration with char at index 1: "0"
 
 		Node* currentNode = node;
-		for (int i = startName.size(); i < fullName.size(); i++) {
-			int index = fullName.at(i) - '0';
+		for (int64_t i = startName.size(); i < fullName.size(); i++) {
+			int64_t index = fullName.at(i) - '0';
 
 			if (currentNode->children[index] == nullptr) {
 				auto childBox = childBoundingBoxOf(currentNode->min, currentNode->max, index);
@@ -909,7 +909,7 @@ void buildHierarchy(Indexer* indexer, Node* node, shared_ptr<Buffer> points, int
 
 			auto bpp = attributes.bytes;
 
-			for (int i = 0; i < numPoints; i++) {
+			for (int64_t i = 0; i < numPoints; i++) {
 
 				int64_t sourceOffset = i * bpp;
 
@@ -970,7 +970,7 @@ void buildHierarchy(Indexer* indexer, Node* node, shared_ptr<Buffer> points, int
 			//int a = 10;
 		}
 
-		int nextNumPoins = subject->numPoints;
+		int64_t nextNumPoins = subject->numPoints;
 
 		subject->points = nullptr;
 		subject->numPoints = 0;
@@ -1173,7 +1173,7 @@ void doIndexing(string targetDir, State& state, Options& options, Sampler& sampl
 		auto chunk = task->chunk;
 		auto chunkRoot = make_shared<Node>(chunk->id, chunk->min, chunk->max);
 		auto attributes = chunks->attributes;
-		int bpp = attributes.bytes;
+		int64_t bpp = attributes.bytes;
 
 		indexer.waitUntilWriterBacklogBelow(1'000);
 		activeThreads++;
