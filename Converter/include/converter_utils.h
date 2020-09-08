@@ -162,16 +162,23 @@ struct Options {
 	string name = "";
 	string method = "";
 	string chunkMethod = "";
-	vector<string> flags;
+	//vector<string> flags;
 	vector<string> attributes;
+	bool generatePage = false;
+	string pageName = "";
+	string pageTitle = "";
 
-	bool hasFlag(string flag) {
-		for (string f : flags) {
-			if (f == flag) {
-				return true;
-			}
-		}
+	bool keepChunks = false;
+	bool noChunking = false;
+	bool noIndexing = false;
 
-		return false;
-	}
+	//bool hasFlag(string flag) {
+	//	for (string f : flags) {
+	//		if (f == flag) {
+	//			return true;
+	//		}
+	//	}
+
+	//	return false;
+	//}
 };

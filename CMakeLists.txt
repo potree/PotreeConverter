@@ -60,6 +60,15 @@ if (UNIX)
 	#SET(CMAKE_CXX_FLAGS "-pthread -ltbb")
 endif (UNIX)
 
+###############################################
+# COPY PAGE TEMPLATE TO BINARY DIRECTORY
+###############################################
+
+add_custom_command(
+	TARGET PotreeConverter POST_BUILD
+	COMMAND ${CMAKE_COMMAND} -E copy_directory
+		${PROJECT_SOURCE_DIR}/resources/page_template
+		$<TARGET_FILE_DIR:${PROJECT_NAME}>/resources/page_template)
 
 ###############################################
 # COPY LICENSE FILES TO BINARY DIRECTORY

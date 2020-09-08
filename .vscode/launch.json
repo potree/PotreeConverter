@@ -22,9 +22,9 @@
 				// "D:/dev/pointclouds/riegl/retz.laz",
 				// "D:/dev/pointclouds/pix4d/eclepens.las",
 				// "D:/dev/pointclouds/pix4d/matterhorn.laz",
-				// "D:/dev/pointclouds/archpro/heidentor.las",
+				"D:/dev/pointclouds/archpro/heidentor.las",
 				// "D:/dev/pointclouds/hg_v2_clip.las",
-				// "F:/pointclouds/CA13",
+				// "D:/dev/pointclouds/CA13",
 
 				// "D:/dev/pointclouds/CA13/ot_35120D8108C_1.laz",
 				// "D:/dev/pointclouds/CA13/ot_35120D8108D_1.laz",
@@ -48,6 +48,15 @@
 				// "D:/dev/pointclouds/CA13/ot_35120B4302D_1.laz",
 				// "D:/dev/pointclouds/CA13/ot_35120B4302A_1.laz",
 
+				// "F:/pointclouds/AHN3/files/C_25ez1.laz",
+				// "F:/pointclouds/AHN3/files/C_25gn1.laz",
+				// "F:/pointclouds/AHN3/files/C_25bz1.laz",
+				// "F:/pointclouds/AHN3/files/C_25bz2.laz",
+				// "F:/pointclouds/AHN3/files/C_25ez2.laz",
+				// "F:/pointclouds/AHN3/files/C_25dn1.laz",
+				// "F:/pointclouds/AHN3/files/C_25dn2.laz",
+				// "F:/pointclouds/AHN3/files/C_25gn2.laz",
+
 				// "D:/dev/pointclouds/tuwien_baugeschichte/candi Banyunibo",
 
 
@@ -58,7 +67,7 @@
 
 
 				// "D:/dev/pointclouds/testdata/crash.las",
-				"D:/dev/pointclouds/testdata/eclepens.laz",
+				// "D:/dev/pointclouds/testdata/eclepens.laz",
 				// "D:/dev/pointclouds/testdata/Grab15.laz",
 				// "D:/dev/pointclouds/testdata/heidentor.las",
 				// "D:/dev/pointclouds/testdata/lion.laz",
@@ -85,6 +94,8 @@
 				// "--flags", "no-indexing", "keep-chunks",
 				// "--flags", "no-chunking", "keep-chunks",
 				// "--flags", "keep-chunks",
+				// "--keep-chunks", 
+				"--generate-page", "heidentor",
 				// "-m", "poisson", // ["poisson", "poisson_average", "random"]
 				// "--chunkMethod", "SKIP" // [LASZIP, LAS_CUSTOM, SKIP]
 				// "--attributes", "rgb", "Dip (degrees)", "Dip direction (degrees)", "NormalX", "NormalY", "NormalZ",

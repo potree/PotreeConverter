@@ -24,8 +24,14 @@ Options parseArguments(int argc, char** argv) {
 	args.addArgument("outdir,o", "output directory");
 	args.addArgument("method,m", "sampling method");
 	args.addArgument("chunkMethod", "chunking method");
-	args.addArgument("flags", "flags");
+	//args.addArgument("flags", "flags");
+	args.addArgument("keep-chunks", "");
+	args.addArgument("no-chunking", "");
+	args.addArgument("no-indexing", "");
 	args.addArgument("attributes", "attributes in output file");
+	args.addArgument("generate-page,p", "Generates a ready to use web page with the given name.");
+	args.addArgument("title", "Page title");
+
 
 	if(!args.has("source")) {
 		cout << "/Converter <source> -o <outdir>" << endl;
@@ -85,22 +91,41 @@ Options parseArguments(int argc, char** argv) {
 
 	outdir = fs::weakly_canonical(fs::path(outdir)).string();
 
-	vector<string> flags = args.get("flags").as<vector<string>>();
+	//vector<string> flags = args.get("flags").as<vector<string>>();
+
 	vector<string> attributes = args.get("attributes").as<vector<string>>();
+
+	bool generatePage = args.has("generate-page");
+	string pageName = "";
+	if (generatePage) {
+		pageName = args.get("generate-page").as<string>();
+	}
+	string pageTitle = args.get("title").as<string>();
+
+	bool keepChunks = args.has("keep-chunks");
+	bool noChunking = args.has("no-chunking");
+	bool noIndexing = args.has("no-indexing");
 
 	Options options;
 	options.source = source;
 	options.outdir = outdir;
 	options.method = method;
 	options.chunkMethod = chunkMethod;
-	options.flags = flags;
+	//options.flags = flags;
 	options.attributes = attributes;
+	options.generatePage = generatePage;
+	options.pageName = pageName;
+	options.pageTitle = pageTitle;
 
-	cout << "flags: ";
-	for (string flag : options.flags) {
-		cout << flag << ", ";
-	}
-	cout << endl;
+	options.keepChunks = keepChunks;
+	options.noChunking = noChunking;
+	options.noIndexing = noIndexing;
+
+	//cout << "flags: ";
+	//for (string flag : options.flags) {
+	//	cout << flag << ", ";
+	//}
+	//cout << endl;
 
 	return options;
 }
@@ -305,7 +330,7 @@ shared_ptr<Monitor> startMonitoring(State& state) {
 
 void chunking(Options& options, vector<Source>& sources, string targetDir, Stats& stats, State& state, Attributes outputAttributes) {
 
-	if (options.hasFlag("no-chunking")) {
+	if (options.noChunking) {
 		return;
 	}
 
@@ -331,7 +356,7 @@ void chunking(Options& options, vector<Source>& sources, string targetDir, Stats
 
 void indexing(Options& options, string targetDir, State& state) {
 
-	if (options.hasFlag("no-indexing")) {
+	if (options.noIndexing) {
 		return;
 	}
 
@@ -398,7 +423,58 @@ void createReport(Options& options, vector<Source> sources, string targetDir, St
 		cout << key << ": \t" << value << endl;
 	}
 
-	
+
+}
+
+void generatePage(string exePath, string pagedir, string pagename) {
+	string templateDir = exePath + "/resources/page_template";
+	string templateSourcePath = templateDir + "/viewer_template.html";
+
+	string pageTargetPath = pagedir + "/" + pagename + ".html";
+
+	try{
+		fs::copy(templateDir, pagedir, fs::copy_options::overwrite_existing | fs::copy_options::recursive);
+	} catch (std::exception & e) {
+		string msg = e.what();
+		logger::ERROR(msg);
+	}
+
+	fs::remove(pagedir + "/viewer_template.html");
+
+	{ // configure page template
+		string strTemplate = readFile(templateSourcePath);
+
+		string strPointcloudTemplate = 
+		R"V0G0N(
+
+		Potree.loadPointCloud("<!-- URL -->", "<!-- NAME -->", e => {
+			let scene = viewer.scene;
+			let pointcloud = e.pointcloud;
+			
+			let material = pointcloud.material;
+			material.size = 1;
+			material.pointSizeType = Potree.PointSizeType.ADAPTIVE;
+			material.shape = Potree.PointShape.SQUARE;
+			material.activeAttributeName = "rgba";
+			
+			scene.addPointCloud(pointcloud);
+			
+			viewer.fitToScreen();
+		});
+
+		)V0G0N";
+
+		string url = "./pointclouds/" + pagename + "/metadata.json";
+
+		string strPointcloud = stringReplace(strPointcloudTemplate, "<!-- URL -->", url);
+		strPointcloud = stringReplace(strPointcloud, "<!-- NAME -->", pagename);
+
+		string strPage = stringReplace(strTemplate, "<!-- INCLUDE POINTCLOUD -->", strPointcloud);
+
+
+		writeFile(pageTargetPath, strPage);
+
+	}
 
 }
 
@@ -406,14 +482,14 @@ int main(int argc, char** argv) {
 
 	double tStart = now(); 
 
+	auto exePath = fs::canonical(fs::absolute(argv[0])).parent_path().string();
+
 	launchMemoryChecker(2 * 1024, 0.1);
 	auto cpuData = getCpuData();
 
 	cout << "#threads: " << cpuData.numProcessors << endl;
 
 	auto options = parseArguments(argc, argv);
-
-	logger::addOutputFile(options.outdir + "/log.txt");
 
 	auto [name, sources] = curateSources(options.source);
 	if (options.name.size() == 0) {
@@ -424,14 +500,17 @@ int main(int argc, char** argv) {
 	cout << toString(outputAttributes);
 
 	auto stats = computeStats(sources);
-
-	if (options.hasFlag("just-stats")) {
-		exit(0);
-	}
-
 	
 	string targetDir = options.outdir;
+	if (options.generatePage) {
+
+		string pagedir = targetDir;
+		generatePage(exePath, pagedir, options.pageName);
+
+		targetDir = targetDir + "/pointclouds/" + options.pageName;
+	}
 	cout << "target directory: '" << targetDir << "'" << endl;
+	logger::addOutputFile(targetDir + "/log.txt");
 
 	State state;
 	state.pointsTotal = stats.totalPoints;

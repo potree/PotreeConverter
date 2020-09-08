@@ -1192,7 +1192,7 @@ void doIndexing(string targetDir, State& state, Options& options, Sampler& sampl
 
 		auto tStartChunking = now();
 
-		if (!options.hasFlag("keep-chunks")) {
+		if (!options.keepChunks) {
 			fs::remove(chunk->file);
 		}
 
@@ -1280,7 +1280,7 @@ void doIndexing(string targetDir, State& state, Options& options, Sampler& sampl
 		cout << "deleting temporary files" << endl;
 
 		// delete chunk directory
-		if (!options.hasFlag("keep-chunks")) {
+		if (!options.keepChunks) {
 			string chunksMetadataPath = targetDir + "/chunks/metadata.json";
 
 			fs::remove(chunksMetadataPath);
