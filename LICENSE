@@ -1,53 +1,10 @@
-========================
-== Potree Converter 
-========================
 
-http://potree.org
-https://github.com/potree/PotreeConverter
+Copyright 2020 Markus Schütz
 
-Copyright (c) 2011-2020, Markus Schütz
-All rights reserved.
+Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
 
-Contact: licensing@potree.org
+1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
 
-PotreeConverter comprises a free and a paid part.
+2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
 
-1. Non-commercial and non-government users may use and modify the 
-source code and binaries for free.
-This includes universities and research institutions as long as the 
-application is not used for or part of a commercial product or service.
-2. Commercial and government users may use and modify the 
-source code and binaries after purchasing a commercial license. 
-3. Commercial and government users may use PotreeConverer 
-for free for three months, before deciding whether to purchase a license. 
-4. Paid licenses are per simultaneously running instance. A single license 
-may be used to install PotreeConverter on multiple devices of the licensee, 
-as long as only one instance runs at a time. 
-5. Anyone may redistribute source, binaries, and modifications of either, but 
-redistributions and modifications must retain this LICENSE file and recipients 
-are also subject to its conditions. The recipients must be made aware of the 
-license conditions. If the recipient is a commercial or government user, 
-then the recipient must also purchase a license. 
-
-Exceptions: If you feel that the terms above don't fit your use case or that you 
-can't afford a paid license for your project (e.g., art, indie, ...), 
-feel free to inquire for different terms or exceptions at licensing@potree.org. 
-Note that the first three months are free in any case. 
-
-The warranty/damage exclusion section of the BSD 2 clause license holds as well, for convenience quoted here:
-=================================================================================
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR
-ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
-(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
-LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
-ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-- ( warranty section of BSD 2 clause license)
-=================================================================================
-
-For questions and clarifications, please contact licensing@potree.org.
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
