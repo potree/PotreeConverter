@@ -896,14 +896,17 @@ void buildHierarchy(Indexer* indexer, Node* node, shared_ptr<Buffer> points, int
 		indexer->octreeDepth = std::max(indexer->octreeDepth, octreeDepth);
 	}
 
-	for (auto subject : needRefinement) {
+	int64_t sanityCheck = 0;
+	for (int64_t nodeIndex = 0; nodeIndex < needRefinement.size(); nodeIndex++) {
+		auto subject = needRefinement[nodeIndex];
 		auto buffer = subject->points;
-		//auto numPoints = subject->numPoints;
+		
+		if (sanityCheck > needRefinement.size() * 2) {
+			logger::ERROR("failed to partition point cloud in indexer::buildHierarchy().");
+		}
 
 		if (subject->numPoints == numPoints) {
 			// the subsplit has the same number of points than the input -> ERROR
-
-			
 
 			unordered_map<string, int> counters;
 
@@ -930,10 +933,10 @@ void buildHierarchy(Indexer* indexer, Node* node, shared_ptr<Buffer> points, int
 			int64_t numDuplicates = numPointsInBox - numUniquePoints;
 
 			if (numDuplicates < maxPointsPerChunk / 2) {
-				// no uniques, just unfavouribly distributed points
+				// few uniques, just unfavouribly distributed points
 				// print warning but continue
 
-				stringstream ss;
+				stringstream ss;	
 				ss << "Encountered unfavourable point distribution. Conversion continues anyway because not many duplicates were encountered. ";
 				ss << "However, issues may arise. If you find an error, please report it at github. \n";
 				ss << "#points in box: " << numPointsInBox << ", #unique points in box: " << numUniquePoints << ", ";
@@ -941,15 +944,73 @@ void buildHierarchy(Indexer* indexer, Node* node, shared_ptr<Buffer> points, int
 
 				logger::WARN(ss.str());
 			} else {
-				// unique points, quit here
-				stringstream ss;
-				ss << "a non-partitionable sequence of points was encountered, which may be caused by a large number of duplicates. "
-					<< "#points in box: " << numPointsInBox << ", #unique points in box: " << numUniquePoints << ", "
-					<< "min: " << subject->min.toString() << ", max: " << subject->max.toString();
 
-				logger::ERROR(ss.str());
+				// remove the duplicates, then try again
 
-				exit(123);
+				vector<int64_t> distinct;
+				unordered_map<string, int> handled;
+
+				auto contains = [](auto map, auto key) {
+					return map.find(key) != map.end();
+				};
+
+				for (int64_t i = 0; i < numPoints; i++) {
+
+					int64_t sourceOffset = i * bpp;
+
+					int32_t X, Y, Z;
+					memcpy(&X, buffer->data_u8 + sourceOffset + 0, 4);
+					memcpy(&Y, buffer->data_u8 + sourceOffset + 4, 4);
+					memcpy(&Z, buffer->data_u8 + sourceOffset + 8, 4);
+
+					stringstream ss;
+					ss << X << ", " << Y << ", " << Z;
+
+					string key = ss.str();
+					
+					if (contains(counters, key)) {
+						if (!contains(handled, key)) {
+							distinct.push_back(i);
+							handled[key] = true;
+						}
+					} else {
+						distinct.push_back(i);
+					}
+
+				}
+
+				//cout << "#distinct: " << distinct.size() << endl;
+
+				stringstream msg;
+				msg << "Too many duplicate points were encountered. #points: " << subject->numPoints;
+				msg << ", #unique points: " << distinct.size() << endl;
+				msg << "Duplicates inside node will be dropped! ";
+				msg << "min: " << subject->min.toString() << ", max: " << subject->max.toString();
+
+				logger::WARN(msg.str());
+
+				shared_ptr<Buffer> distinctBuffer = make_shared<Buffer>(distinct.size() * bpp);
+
+				for(int64_t i = 0; i < distinct.size(); i++){
+					distinctBuffer->write(buffer->data_u8 + i * bpp, bpp);
+				}
+
+				subject->points = distinctBuffer;
+				subject->numPoints = distinct.size();
+
+				// try again
+				nodeIndex--;
+
+
+				//// unique points, quit here
+				//stringstream ss;
+				//ss << "a non-partitionable sequence of points was encountered, which may be caused by a large number of duplicates. "
+				//	<< "#points in box: " << numPointsInBox << ", #unique points in box: " << numUniquePoints << ", "
+				//	<< "min: " << subject->min.toString() << ", max: " << subject->max.toString();
+
+				//logger::ERROR(ss.str());
+
+				//exit(123);
 			}
 
 			
