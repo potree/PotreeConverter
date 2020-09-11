@@ -95,9 +95,11 @@ struct Buffer {
 	uint8_t* data_u8 = nullptr;
 	uint16_t* data_u16 = nullptr;
 	uint32_t* data_u32 = nullptr;
+	uint64_t* data_u64 = nullptr;
 	int8_t* data_i8 = nullptr;
 	int16_t* data_i16 = nullptr;
 	int32_t* data_i32 = nullptr;
+	int64_t* data_i64 = nullptr;
 	float* data_f32 = nullptr;
 	double* data_f64 = nullptr;
 	char* data_char = nullptr;
@@ -141,9 +143,11 @@ struct Buffer {
 		data_u8 = reinterpret_cast<uint8_t*>(data);
 		data_u16 = reinterpret_cast<uint16_t*>(data);
 		data_u32 = reinterpret_cast<uint32_t*>(data);
+		data_u64 = reinterpret_cast<uint64_t*>(data);
 		data_i8 = reinterpret_cast<int8_t*>(data);
 		data_i16 = reinterpret_cast<int16_t*>(data);
 		data_i32 = reinterpret_cast<int32_t*>(data);
+		data_i64 = reinterpret_cast<int64_t*>(data);
 		data_f32 = reinterpret_cast<float*>(data);
 		data_f64 = reinterpret_cast<double*>(data);
 		data_char = reinterpret_cast<char*>(data);
@@ -452,25 +456,6 @@ inline void readBinaryFile(string path, uint64_t start, uint64_t size, void* tar
 	}
 }
 
-//template<typename T>
-//inline void writeBinaryFile(string path, vector<T>& data) {
-//	auto file = fopen(path.c_str(), "wb");
-//
-//	fwrite(data.data(), 1, data.size() * sizeof(T), file);
-//
-//	fclose(file);
-//}
-
-//template<typename T>
-//inline void writeBinaryFile(string path, vector<T>& data) {
-//	std::ios_base::sync_with_stdio(false);
-//	auto of = fstream(path, ios::out | ios::binary);
-//
-//	of.write(reinterpret_cast<char*>(data.data()), data.size() * sizeof(T));
-//
-//	of.close();
-//}
-
 // writing smaller batches of 1-4MB seems to be faster sometimes?!?
 // it's not very significant, though. ~0.94s instead of 0.96s.
 template<typename T>
@@ -490,6 +475,26 @@ inline void writeBinaryFile(string path, vector<T>& data) {
 		remaining -= batchSize;
 	}
 	
+
+	of.close();
+}
+
+inline void writeBinaryFile(string path, Buffer& data) {
+	std::ios_base::sync_with_stdio(false);
+	auto of = fstream(path, ios::out | ios::binary);
+
+	int64_t remaining = data.size;
+	int64_t offset = 0;
+
+	while (remaining > 0) {
+		constexpr int64_t mb4 = int64_t(4 * 1024 * 1024);
+		int batchSize = std::min(remaining, mb4);
+		of.write(reinterpret_cast<char*>(data.data) + offset, batchSize);
+
+		offset += batchSize;
+		remaining -= batchSize;
+	}
+
 
 	of.close();
 }

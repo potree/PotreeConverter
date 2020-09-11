@@ -8,6 +8,7 @@
 #include "Attributes.h"
 #include "logger.h"
 #include "PotreeConverter.h"
+#include "DbgWriter.h"
 
 using std::unique_lock;
 
@@ -1063,6 +1064,17 @@ int64_t Writer::backlogSizeMB() {
 
 void Writer::writeAndUnload(Node* node) {
 	auto attributes = indexer->attributes;
+
+	{
+		static int counter = 0;
+
+		if (node->level() <= 1 || (counter % 10'000) == 0) {
+		//if(node->level() == 0){
+			dbgwriter::writeNode(node, attributes);
+		}
+
+		counter++;
+	}
 
 	static int64_t counter = 0;
 	counter += node->numPoints;

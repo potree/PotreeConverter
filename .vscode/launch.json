@@ -22,7 +22,7 @@
 				// "D:/dev/pointclouds/riegl/retz.laz",
 				// "D:/dev/pointclouds/pix4d/eclepens.las",
 				// "D:/dev/pointclouds/pix4d/matterhorn.laz",
-				"D:/dev/pointclouds/archpro/heidentor.las",
+				// "D:/dev/pointclouds/archpro/heidentor.las",
 				// "D:/dev/pointclouds/hg_v2_clip.las",
 				// "D:/dev/pointclouds/CA13",
 
@@ -38,7 +38,7 @@
 				// "D:/temp/crashreport/3dbuildings_walls_azimuth.laz",
 				// "-o", "D:/temp/crashreport2/converted",
 
-				// "D:/dev/pointclouds/CA13/ot_35120B4122C_1.laz",
+				"D:/dev/pointclouds/CA13/ot_35120B4122C_1.laz",
 				// "D:/dev/pointclouds/CA13/ot_35120B4121D_1.laz",
 				// "D:/dev/pointclouds/CA13/ot_35120B4301B_1.laz",
 				// "D:/dev/pointclouds/CA13/ot_35120B4301D_1.laz",
@@ -66,6 +66,7 @@
 				// "D:/temp/Bargello10Mtest.las",
 
 
+				// "D:/dev/pointclouds/testdata/Bargello10Mtest.las",
 				// "D:/dev/pointclouds/testdata/crash.las",
 				// "D:/dev/pointclouds/testdata/eclepens.laz",
 				// "D:/dev/pointclouds/testdata/Grab15.laz",
@@ -95,7 +96,7 @@
 				// "--flags", "no-chunking", "keep-chunks",
 				// "--flags", "keep-chunks",
 				// "--keep-chunks", 
-				"--generate-page", "heidentor",
+				// "--generate-page", "heidentor",
 				// "-m", "poisson", // ["poisson", "poisson_average", "random"]
 				// "--chunkMethod", "SKIP" // [LASZIP, LAS_CUSTOM, SKIP]
 				// "--attributes", "rgb", "Dip (degrees)", "Dip direction (degrees)", "NormalX", "NormalY", "NormalZ",
