@@ -38,7 +38,7 @@
 				// "D:/temp/crashreport/3dbuildings_walls_azimuth.laz",
 				// "-o", "D:/temp/crashreport2/converted",
 
-				"D:/dev/pointclouds/CA13/ot_35120B4122C_1.laz",
+				// "D:/dev/pointclouds/CA13/ot_35120B4122C_1.laz",
 				// "D:/dev/pointclouds/CA13/ot_35120B4121D_1.laz",
 				// "D:/dev/pointclouds/CA13/ot_35120B4301B_1.laz",
 				// "D:/dev/pointclouds/CA13/ot_35120B4301D_1.laz",
@@ -56,6 +56,8 @@
 				// "F:/pointclouds/AHN3/files/C_25dn1.laz",
 				// "F:/pointclouds/AHN3/files/C_25dn2.laz",
 				// "F:/pointclouds/AHN3/files/C_25gn2.laz",
+
+				"D:/temp/compression/C_05DN2.LAZ",
 
 				// "D:/dev/pointclouds/tuwien_baugeschichte/candi Banyunibo",
 

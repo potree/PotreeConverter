@@ -7,10 +7,6 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 set(CMAKE_BUILD_TYPE "Release" CACHE STRING "" FORCE)
 
-set(LASZIP_DIR "${PROJECT_SOURCE_DIR}/Converter/libs/laszip")
-
-add_subdirectory(${LASZIP_DIR})
-
 #message(${PROJECT_SOURCE_DIR})
 
 set(HEADER_FILES  
@@ -42,7 +38,15 @@ add_executable(PotreeConverter
 	${HEADER_FILES}
 )
 
+set(LASZIP_DIR "${PROJECT_SOURCE_DIR}/Converter/libs/laszip")
+add_subdirectory(${LASZIP_DIR})
 target_link_libraries(PotreeConverter laszip)
+
+set(BROTLI_DIR "${PROJECT_SOURCE_DIR}/Converter/libs/brotli")
+add_subdirectory(${BROTLI_DIR})
+target_link_libraries(PotreeConverter brotlienc-static)
+target_link_libraries(PotreeConverter brotlidec-static)
+
 
 target_include_directories(PotreeConverter PRIVATE "./Converter/include")
 target_include_directories(PotreeConverter PRIVATE "./Converter/modules")
@@ -78,6 +82,12 @@ add_custom_command(
 	COMMAND ${CMAKE_COMMAND} -E copy
 		${LASZIP_DIR}/COPYING
 		$<TARGET_FILE_DIR:${PROJECT_NAME}>/licenses/license_laszip.txt)
+
+add_custom_command(
+	TARGET PotreeConverter POST_BUILD
+	COMMAND ${CMAKE_COMMAND} -E copy
+		${BROTLI_DIR}/LICENSE
+		$<TARGET_FILE_DIR:${PROJECT_NAME}>/licenses/license_brotli.txt)
 
 add_custom_command(
 	TARGET PotreeConverter POST_BUILD

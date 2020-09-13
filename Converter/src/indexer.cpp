@@ -9,6 +9,7 @@
 #include "logger.h"
 #include "PotreeConverter.h"
 #include "DbgWriter.h"
+#include "brotli/encode.h"
 
 using std::unique_lock;
 
@@ -1074,6 +1075,42 @@ void Writer::writeAndUnload(Node* node) {
 		}
 
 		counter++;
+	}
+
+	{ // DBG BROTLI TEST
+
+		//node->points
+
+		//int quality = BROTLI_DEFAULT_QUALITY;
+		int quality = 6;
+		int lgwin = BROTLI_DEFAULT_WINDOW;
+		auto mode = BROTLI_DEFAULT_MODE;
+		uint8_t* input_buffer = node->points->data_u8;
+		size_t input_size = node->points->size;
+
+		//thread_local Buffer outputBuffer(10'000'000);
+
+		Buffer outputBuffer(input_size * 1.5);
+		uint8_t* encoded_buffer = outputBuffer.data_u8;
+		size_t encoded_size = outputBuffer.size;
+
+		auto result = BrotliEncoderCompress(quality, lgwin, mode, input_size, input_buffer, &encoded_size, encoded_buffer);
+
+		static int64_t totalUncompressed = 0;
+		static int64_t totalCompressed = 0;
+
+		totalUncompressed += input_size;
+		totalCompressed += encoded_size;
+
+		if (result == BROTLI_TRUE) {
+			cout << "totalUncompressed: " << formatNumber(totalUncompressed) << endl;
+			cout << "totalCompressed: " << formatNumber(totalCompressed) << endl;
+		} else {
+			cout << "brotli error..." << endl;
+			exit(123);
+		}
+
+
 	}
 
 	static int64_t counter = 0;
