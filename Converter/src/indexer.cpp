@@ -1044,6 +1044,43 @@ void buildHierarchy(Indexer* indexer, Node* node, shared_ptr<Buffer> points, int
 }
 
 
+unordered_map<string, shared_ptr<Buffer>> toStructOfArrays(Node* node, Attributes attributes) {
+
+	auto numPoints = node->numPoints;
+	uint8_t* source = node->points->data_u8;
+
+	unordered_map<string, shared_ptr<Buffer>> buffers;
+
+	for (Attribute attribute : attributes.list) {
+
+		int64_t bytes = attribute.size * numPoints;
+		auto buffer = make_shared<Buffer>(bytes);
+		auto attributeOffset = attributes.getOffset(attribute.name);
+
+		for (int64_t i = 0; i < numPoints; i++) {
+
+			int64_t pointOffset = i * attributes.bytes;
+
+			buffer->write(source + pointOffset + attributeOffset, attribute.size);
+		}
+
+		vector<uint8_t> dbg1(buffer->data_u8, buffer->data_u8 + buffer->size);
+
+		buffers[attribute.name] = buffer;
+	}
+
+	return buffers;
+}
+
+
+
+
+
+
+
+
+
+
 Writer::Writer(Indexer* indexer) {
 	this->indexer = indexer;
 
@@ -1063,6 +1100,9 @@ int64_t Writer::backlogSizeMB() {
 	return backlogMB;
 }
 
+static int64_t totalUncompressed = 0;
+static int64_t totalCompressed = 0;
+
 void Writer::writeAndUnload(Node* node) {
 	auto attributes = indexer->attributes;
 
@@ -1077,41 +1117,150 @@ void Writer::writeAndUnload(Node* node) {
 		counter++;
 	}
 
-	{ // DBG BROTLI TEST
+	{
+		// DBG BROTLI TEST SoA
 
-		//node->points
+		auto buffers = toStructOfArrays(node, attributes);
 
-		//int quality = BROTLI_DEFAULT_QUALITY;
-		int quality = 6;
-		int lgwin = BROTLI_DEFAULT_WINDOW;
-		auto mode = BROTLI_DEFAULT_MODE;
-		uint8_t* input_buffer = node->points->data_u8;
-		size_t input_size = node->points->size;
 
-		//thread_local Buffer outputBuffer(10'000'000);
+		auto compress = [](shared_ptr<Buffer> buffer, string attributeName) {
+			int quality = 11;
+			int lgwin = BROTLI_DEFAULT_WINDOW;
+			auto mode = BROTLI_DEFAULT_MODE;
+			uint8_t* input_buffer = buffer->data_u8;
+			size_t input_size = buffer->size;
 
-		Buffer outputBuffer(input_size * 1.5);
-		uint8_t* encoded_buffer = outputBuffer.data_u8;
-		size_t encoded_size = outputBuffer.size;
+			Buffer outputBuffer(input_size * 1.5 + 1'000);
+			uint8_t* encoded_buffer = outputBuffer.data_u8;
+			size_t encoded_size = outputBuffer.size;
 
-		auto result = BrotliEncoderCompress(quality, lgwin, mode, input_size, input_buffer, &encoded_size, encoded_buffer);
+			auto result = BrotliEncoderCompress(quality, lgwin, mode, input_size, input_buffer, &encoded_size, encoded_buffer);
 
-		static int64_t totalUncompressed = 0;
-		static int64_t totalCompressed = 0;
+			//static int64_t totalUncompressed = 0;
+			//static int64_t totalCompressed = 0;
 
-		totalUncompressed += input_size;
-		totalCompressed += encoded_size;
+			totalUncompressed += input_size;
+			totalCompressed += encoded_size;
 
-		if (result == BROTLI_TRUE) {
-			cout << "totalUncompressed: " << formatNumber(totalUncompressed) << endl;
-			cout << "totalCompressed: " << formatNumber(totalCompressed) << endl;
-		} else {
-			cout << "brotli error..." << endl;
-			exit(123);
+			if (result == BROTLI_TRUE) {
+
+				double ratio = double(encoded_size) / double(input_size);
+
+				stringstream ss;
+				ss << "[" << attributeName << "] " << formatNumber(input_size) << " > " << formatNumber(encoded_size) << " - " << formatNumber(100.0 * ratio, 1) << "%" << endl;
+				cout << ss.str();
+
+			} else {
+				cout << "brotli error..." << endl;
+				exit(123);
+			}
+
+		};
+
+		int64_t offset = 0;
+		for (auto [attributeName, attributeBuffer] : buffers) {
+
+			compress(attributeBuffer, attributeName);
+			
 		}
 
+		double ratio = double(totalCompressed) / double(totalUncompressed);
 
+		stringstream ss;
+		ss << "[total] " << formatNumber(totalUncompressed) << " > " << formatNumber(totalCompressed) << " - " << formatNumber(100.0 * ratio, 1) << endl;
+		cout << ss.str();
+		
+
+
+		
+
+		
+
+		
 	}
+
+	//{
+	//	// DBG BROTLI TEST SoA
+
+	//	auto buffers = toStructOfArrays(node, attributes);
+
+	//	Buffer merged(node->numPoints * attributes.bytes);
+
+	//	int64_t offset = 0;
+	//	for (auto [attributeName, attributeBuffer] : buffers) {
+
+	//		vector<uint8_t> dbg1(attributeBuffer->data_u8, attributeBuffer->data_u8 + attributeBuffer->size);
+
+	//		memcpy(merged.data_u8 + offset, attributeBuffer->data_u8, attributeBuffer->size);
+
+	//		offset += attributeBuffer->size;
+	//	}
+	//	vector<uint8_t> dbg2(merged.data_u8, merged.data_u8 + merged.size);
+
+
+	//	int quality = 6;
+	//	int lgwin = BROTLI_DEFAULT_WINDOW;
+	//	auto mode = BROTLI_DEFAULT_MODE;
+	//	uint8_t* input_buffer = merged.data_u8;
+	//	size_t input_size = merged.size;
+
+	//	Buffer outputBuffer(input_size * 1.5);
+	//	uint8_t* encoded_buffer = outputBuffer.data_u8;
+	//	size_t encoded_size = outputBuffer.size;
+
+	//	auto result = BrotliEncoderCompress(quality, lgwin, mode, input_size, input_buffer, &encoded_size, encoded_buffer);
+
+	//	static int64_t totalUncompressed = 0;
+	//	static int64_t totalCompressed = 0;
+
+	//	totalUncompressed += input_size;
+	//	totalCompressed += encoded_size;
+
+	//	if (result == BROTLI_TRUE) {
+	//		cout << "[merged]totalUncompressed: " << formatNumber(totalUncompressed) << endl;
+	//		cout << "[merged]totalCompressed: " << formatNumber(totalCompressed) << endl;
+	//	} else {
+	//		cout << "brotli error..." << endl;
+	//		exit(123);
+	//	}
+
+	//}
+
+	//{ // DBG BROTLI TEST
+
+	//	//node->points
+
+	//	//int quality = BROTLI_DEFAULT_QUALITY;
+	//	int quality = 6;
+	//	int lgwin = BROTLI_DEFAULT_WINDOW;
+	//	auto mode = BROTLI_DEFAULT_MODE;
+	//	uint8_t* input_buffer = node->points->data_u8;
+	//	size_t input_size = node->points->size;
+
+	//	//thread_local Buffer outputBuffer(10'000'000);
+
+	//	Buffer outputBuffer(input_size * 1.5);
+	//	uint8_t* encoded_buffer = outputBuffer.data_u8;
+	//	size_t encoded_size = outputBuffer.size;
+
+	//	auto result = BrotliEncoderCompress(quality, lgwin, mode, input_size, input_buffer, &encoded_size, encoded_buffer);
+
+	//	static int64_t totalUncompressed = 0;
+	//	static int64_t totalCompressed = 0;
+
+	//	totalUncompressed += input_size;
+	//	totalCompressed += encoded_size;
+
+	//	if (result == BROTLI_TRUE) {
+	//		cout << "[interleaved]totalUncompressed: " << formatNumber(totalUncompressed) << endl;
+	//		cout << "[interleaved]totalCompressed: " << formatNumber(totalCompressed) << endl;
+	//	} else {
+	//		cout << "brotli error..." << endl;
+	//		exit(123);
+	//	}
+
+
+	//}
 
 	static int64_t counter = 0;
 	counter += node->numPoints;
