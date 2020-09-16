@@ -1057,14 +1057,206 @@ unordered_map<string, shared_ptr<Buffer>> toStructOfArrays(Node* node, Attribute
 		auto buffer = make_shared<Buffer>(bytes);
 		auto attributeOffset = attributes.getOffset(attribute.name);
 
-		for (int64_t i = 0; i < numPoints; i++) {
+		if (attribute.name == "rgb") {
+			
+			buffer = make_shared<Buffer>(numPoints * 3);
+			auto buffer_high = make_shared<Buffer>(numPoints * 3);
 
-			int64_t pointOffset = i * attributes.bytes;
+			int64_t lowOffset = 0;
+			int64_t highOffset =  0;
 
-			buffer->write(source + pointOffset + attributeOffset, attribute.size);
+			auto bufferMC = make_shared<Buffer>(8 * numPoints);
+
+			auto buffer_r = make_shared<Buffer>(2 * numPoints);
+			auto buffer_g = make_shared<Buffer>(2 * numPoints);
+			auto buffer_b = make_shared<Buffer>(2 * numPoints);
+
+			for (int64_t i = 0; i < numPoints; i++) {
+
+				int64_t pointOffset = i * attributes.bytes;
+
+				uint8_t rgb[6];
+				uint16_t rgb_u16[3];
+				memcpy(rgb, source + pointOffset + attributeOffset, 6);
+				memcpy(rgb_u16, source + pointOffset + attributeOffset, 6);
+
+				buffer->data_u8[lowOffset + 0] = rgb[0];
+				buffer->data_u8[lowOffset + 1] = rgb[2];
+				buffer->data_u8[lowOffset + 2] = rgb[4];
+				buffer_high->data_u8[highOffset + 0] = rgb[1];
+				buffer_high->data_u8[highOffset + 1] = rgb[3];
+				buffer_high->data_u8[highOffset + 2] = rgb[5];
+
+				lowOffset += 3;
+				highOffset += 3;
+
+				uint16_t r, g, b;
+				memcpy(&r, source + pointOffset + attributeOffset + 0, 2);
+				memcpy(&g, source + pointOffset + attributeOffset + 2, 2);
+				memcpy(&b, source + pointOffset + attributeOffset + 4, 2);
+
+				buffer_r->write(&r, 2);
+				buffer_g->write(&g, 2);
+				buffer_b->write(&b, 2);
+
+				auto mc = mortonEncode_magicbits(r, g, b);
+				bufferMC->write(&mc, 8);
+			}
+
+			buffers["rgb_r"] = buffer_r;
+			buffers["rgb_g"] = buffer_g;
+			buffers["rgb_b"] = buffer_b;
+			buffers["rgb_high"] = buffer_high;
+			buffers["rgb_morton"] = bufferMC;
+
+			
+
+
+
+		} else if (attribute.name == "position"){
+
+			struct P {
+				int32_t x, y, z;
+			};
+			vector<P> ps;
+			P min;
+			min.x = std::numeric_limits<int64_t>::max();
+			min.y = std::numeric_limits<int64_t>::max();
+			min.z = std::numeric_limits<int64_t>::max();
+		
+			for (int64_t i = 0; i < numPoints; i++) {
+
+				int64_t pointOffset = i * attributes.bytes;
+
+				buffer->write(source + pointOffset + attributeOffset, attribute.size);
+
+
+				// MORTON
+
+				int32_t XYZ[3];
+				memcpy(XYZ, source + pointOffset + attributeOffset, 12);
+
+				P p;
+				p.x = XYZ[0];
+				p.y = XYZ[1];
+				p.z = XYZ[2];
+
+				min.x = std::min(min.x, p.x);
+				min.y = std::min(min.y, p.y);
+				min.z = std::min(min.z, p.z);
+
+				ps.push_back(p);
+			}
+
+			struct MortonCode {
+				uint64_t lower; 
+				uint64_t upper;
+				uint64_t whatever;
+			};
+
+			vector<MortonCode> mcs;
+			for (P p : ps) {
+
+				uint32_t mx = p.x - min.x;
+				uint32_t my = p.y - min.y;
+				uint32_t mz = p.z - min.z;
+
+				uint32_t mx_l = (mx & 0x0000'ffff);
+				uint32_t my_l = (my & 0x0000'ffff);
+				uint32_t mz_l = (mz & 0x0000'ffff);
+
+				uint32_t mx_h = mx >> 16;
+				uint32_t my_h = my >> 16;
+				uint32_t mz_h = mz >> 16;
+
+				auto mc_l = mortonEncode_magicbits(mx_l, my_l, mz_l);
+				auto mc_h = mortonEncode_magicbits(mx_h, my_h, mz_h);
+
+				{ // try decode and compare
+
+					uint32_t x_decoded = 0;
+					uint32_t y_decoded = 0;
+					uint32_t z_decoded = 0;
+
+					for (int i = 0; i < 21; i++) {
+
+						uint64_t mask = (mc_l >> (3 * i)) & 0b111;
+
+						x_decoded = x_decoded | (((mask >> 0) & 0b001) << i);
+						y_decoded = y_decoded | (((mask >> 1) & 0b001) << i);
+						z_decoded = z_decoded | (((mask >> 2) & 0b001) << i);
+
+
+					}
+
+					bool okayX = x_decoded == mx_l;
+					bool okayY = y_decoded == my_l;
+					bool okayZ = z_decoded == mz_l;
+
+					if (!okayX || !okayY || !okayZ) {
+						int a = 10;
+						//exit(123);
+					}
+
+				}
+
+
+
+				MortonCode mc;
+				mc.lower = mc_l;
+				mc.upper = mc_h;
+				mc.whatever = mortonEncode_magicbits(mx, my, mz);
+
+				mcs.push_back(mc);
+			}
+
+			{
+				auto bufferMc = make_shared<Buffer>(16 * numPoints);
+
+				for (int i = 0; i < numPoints; i++) {
+					auto mc = mcs[i];
+
+					bufferMc->write(&mc.upper, 8);
+					bufferMc->write(&mc.lower, 8);
+				}
+
+
+				
+				buffers["morton"] = bufferMc;
+			}
+			
+			{
+				std::sort(mcs.begin(), mcs.end(), [](MortonCode& a, MortonCode& b) {
+					return a.whatever < b.whatever;
+				});
+				auto bufferMCSorted = make_shared<Buffer>(16 * numPoints);
+				
+				for (int i = 0; i < numPoints; i++) {
+					auto mc = mcs[i];
+
+					bufferMCSorted->write(&mc.upper, 8);
+					bufferMCSorted->write(&mc.lower, 8);
+				}
+
+				buffers["morton_sorted"] = bufferMCSorted;
+			}
+			
+
+		
+		} else {
+
+			for (int64_t i = 0; i < numPoints; i++) {
+
+				int64_t pointOffset = i * attributes.bytes;
+
+				buffer->write(source + pointOffset + attributeOffset, attribute.size);
+			}
+
 		}
 
-		vector<uint8_t> dbg1(buffer->data_u8, buffer->data_u8 + buffer->size);
+		
+
+		//vector<uint8_t> dbg1(buffer->data_u8, buffer->data_u8 + buffer->size);
 
 		buffers[attribute.name] = buffer;
 	}
@@ -1102,6 +1294,9 @@ int64_t Writer::backlogSizeMB() {
 
 static int64_t totalUncompressed = 0;
 static int64_t totalCompressed = 0;
+static unordered_map<string, int64_t> uncompressedCounters;
+static unordered_map<string, int64_t> compressedCounters;
+static mutex mtx_dbg_compress;
 
 void Writer::writeAndUnload(Node* node) {
 	auto attributes = indexer->attributes;
@@ -1124,7 +1319,7 @@ void Writer::writeAndUnload(Node* node) {
 
 
 		auto compress = [](shared_ptr<Buffer> buffer, string attributeName) {
-			int quality = 11;
+			int quality = 6;
 			int lgwin = BROTLI_DEFAULT_WINDOW;
 			auto mode = BROTLI_DEFAULT_MODE;
 			uint8_t* input_buffer = buffer->data_u8;
@@ -1139,16 +1334,21 @@ void Writer::writeAndUnload(Node* node) {
 			//static int64_t totalUncompressed = 0;
 			//static int64_t totalCompressed = 0;
 
+			lock_guard<mutex> lock(mtx_dbg_compress);
+
+			uncompressedCounters[attributeName] += input_size;
+			compressedCounters[attributeName] += encoded_size;
+
 			totalUncompressed += input_size;
 			totalCompressed += encoded_size;
 
 			if (result == BROTLI_TRUE) {
 
-				double ratio = double(encoded_size) / double(input_size);
+				//double ratio = double(encoded_size) / double(input_size);
 
-				stringstream ss;
-				ss << "[" << attributeName << "] " << formatNumber(input_size) << " > " << formatNumber(encoded_size) << " - " << formatNumber(100.0 * ratio, 1) << "%" << endl;
-				cout << ss.str();
+				//stringstream ss;
+				//ss << "[" << attributeName << "] " << formatNumber(input_size) << " > " << formatNumber(encoded_size) << " - " << formatNumber(100.0 * ratio, 1) << "%" << endl;
+				//cout << ss.str();
 
 			} else {
 				cout << "brotli error..." << endl;
@@ -1164,18 +1364,39 @@ void Writer::writeAndUnload(Node* node) {
 			
 		}
 
-		double ratio = double(totalCompressed) / double(totalUncompressed);
+		{
+			lock_guard<mutex> lock(mtx_dbg_compress);
 
-		stringstream ss;
-		ss << "[total] " << formatNumber(totalUncompressed) << " > " << formatNumber(totalCompressed) << " - " << formatNumber(100.0 * ratio, 1) << endl;
-		cout << ss.str();
+			static int i = 0;
+			if ((i % 100) == 0) {
+
+				stringstream ss;
+				ss << "===================================================" << endl;
+
+				for (auto [attributeName, attributeBuffer] : buffers) {
+					auto input_size = uncompressedCounters[attributeName];
+					auto encoded_size = compressedCounters[attributeName];
+					double ratio = double(encoded_size) / double(input_size);
+
+					ss << "[" << attributeName << "] " << formatNumber(input_size) << " > " << formatNumber(encoded_size) << " - " << formatNumber(100.0 * ratio, 1) << "%" << endl;
+				}
+
+				{
+					double ratio = double(totalCompressed) / double(totalUncompressed);
+
+					ss << "[total] " << formatNumber(totalUncompressed) << " > " << formatNumber(totalCompressed) << " - " << formatNumber(100.0 * ratio, 1) << endl;
+					cout << ss.str();
+				}
+
+				cout << ss.str();
+
+			}
+			i++;
+
+			
+		}
+
 		
-
-
-		
-
-		
-
 		
 	}
 

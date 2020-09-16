@@ -24,8 +24,8 @@ $mx=20
 # POSITION - ENCODINGS
 ########################
 
-$codec = "lzma"
-$mx ="20"
+$codec = "brotli"
+$mx ="6"
 
 7za a "./test/#_${codec}_position.7z" position.bin -m0="$codec" -mx="${mx}"
 7za a "./test/#_${codec}_mortoncode.7z" "mortoncode.bin" -m0="$codec" -mx="${mx}"
