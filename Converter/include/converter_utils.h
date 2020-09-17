@@ -158,6 +158,7 @@ inline void dbgPrint_ts_later(string message, bool now = false) {
 
 struct Options {
 	vector<string> source;
+	string encoding = "DEFAULT"; // "BROTLI", "UNCOMPRESSED"
 	string outdir = "";
 	string name = "";
 	string method = "";
@@ -172,13 +173,4 @@ struct Options {
 	bool noChunking = false;
 	bool noIndexing = false;
 
-	//bool hasFlag(string flag) {
-	//	for (string f : flags) {
-	//		if (f == flag) {
-	//			return true;
-	//		}
-	//	}
-
-	//	return false;
-	//}
 };

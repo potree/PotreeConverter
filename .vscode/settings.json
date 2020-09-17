@@ -75,7 +75,11 @@
 		"xutility": "cpp",
 		"random": "cpp",
 		"hash_map": "cpp",
-		"set": "cpp"
+		"set": "cpp",
+		"condition_variable": "cpp",
+		"regex": "cpp",
+		"stack": "cpp",
+		"variant": "cpp"
 	},
 	"files.trimTrailingWhitespace": false,
 	"editor.fontSize": 28,

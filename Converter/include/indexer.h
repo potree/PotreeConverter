@@ -132,6 +132,8 @@ namespace indexer{
 
 		string targetDir = "";
 
+		Options options;
+
 		Attributes attributes;
 		shared_ptr<Node> root;
 

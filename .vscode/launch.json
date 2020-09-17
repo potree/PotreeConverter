@@ -26,7 +26,7 @@
 				// "D:/dev/pointclouds/hg_v2_clip.las",
 				// "D:/dev/pointclouds/CA13",
 
-				"D:/dev/pointclouds/CA13/ot_35120D8108C_1.laz",
+				// "D:/dev/pointclouds/CA13/ot_35120D8108C_1.laz",
 				// "D:/dev/pointclouds/CA13/ot_35120D8108D_1.laz",
 				// "D:/dev/pointclouds/CA13/ot_35120D8109A_1.laz",
 				// "D:/dev/pointclouds/CA13/ot_35120D8109B_1.laz",
@@ -38,7 +38,7 @@
 				// "D:/temp/crashreport/3dbuildings_walls_azimuth.laz",
 				// "-o", "D:/temp/crashreport2/converted",
 
-				// "D:/dev/pointclouds/CA13/ot_35120B4122C_1.laz",
+				"D:/dev/pointclouds/CA13/ot_35120B4122C_1.laz",
 				// "D:/dev/pointclouds/CA13/ot_35120B4121D_1.laz",
 				// "D:/dev/pointclouds/CA13/ot_35120B4301B_1.laz",
 				// "D:/dev/pointclouds/CA13/ot_35120B4301D_1.laz",
@@ -47,6 +47,8 @@
 				// "D:/dev/pointclouds/CA13/ot_35120B4122D_1.laz",
 				// "D:/dev/pointclouds/CA13/ot_35120B4302D_1.laz",
 				// "D:/dev/pointclouds/CA13/ot_35120B4302A_1.laz",
+
+				// "D:/temp/C_25ez1.laz",
 
 				// "F:/pointclouds/AHN3/files/C_25ez1.laz",
 				// "F:/pointclouds/AHN3/files/C_25gn1.laz",
@@ -76,7 +78,7 @@
 				// "D:/dev/pointclouds/testdata/lion.laz",
 				// "D:/dev/pointclouds/testdata/3dbuildings_walls_azimuth.laz",
 
-				"-o", "D:/temp/converted",
+				"-o", "D:/temp/converted_brotli",
 				// "-o", "F:/temp/CA13",
 				// "-o", "F:/temp/affandi",
 				// "-o", "C:/dev/workspaces/potree/develop/test/converted",
@@ -102,6 +104,8 @@
 				// "-m", "poisson", // ["poisson", "poisson_average", "random"]
 				// "--chunkMethod", "SKIP" // [LASZIP, LAS_CUSTOM, SKIP]
 				// "--attributes", "rgb", "Dip (degrees)", "Dip direction (degrees)", "NormalX", "NormalY", "NormalZ",
+				"--attributes" , "rgb", "intensity", "classification", "mjpmie",
+				"--encoding", "BROTLI",
 			],
 			"stopAtEntry": false,
 			"cwd": "${workspaceFolder}",

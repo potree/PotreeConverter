@@ -12,8 +12,6 @@
 #include "Attributes.h"
 #include "PotreeConverter.h"
 #include "logger.h"
-#include "brotli/encode.h"
-#include "brotli/decode.h"
 
 #include "arguments/Arguments.hpp"
 
@@ -24,9 +22,9 @@ Options parseArguments(int argc, char** argv) {
 
 	args.addArgument("source,i,", "input files");
 	args.addArgument("outdir,o", "output directory");
+	args.addArgument("encoding", "Encoding type. \"BROTLI\", \"UNCOMPRESSED\"");
 	args.addArgument("method,m", "sampling method");
 	args.addArgument("chunkMethod", "chunking method");
-	//args.addArgument("flags", "flags");
 	args.addArgument("keep-chunks", "");
 	args.addArgument("no-chunking", "");
 	args.addArgument("no-indexing", "");
@@ -49,6 +47,7 @@ Options parseArguments(int argc, char** argv) {
 		exit(1);
 	}
 
+	string encoding = args.get("encoding").as<string>("DEFAULT");
 	string method = args.get("method").as<string>("poisson");
 	string chunkMethod = args.get("chunkMethod").as<string>("LASZIP");
 
@@ -112,6 +111,7 @@ Options parseArguments(int argc, char** argv) {
 	options.source = source;
 	options.outdir = outdir;
 	options.method = method;
+	options.encoding = encoding;
 	options.chunkMethod = chunkMethod;
 	//options.flags = flags;
 	options.attributes = attributes;
@@ -479,61 +479,6 @@ void generatePage(string exePath, string pagedir, string pagename) {
 	}
 
 }
-//
-//void brotli() {
-//
-//	string path = "D:/temp/compression/r.las";
-//	auto buffer = readBinaryFile(path);
-//
-//	int quality = BROTLI_DEFAULT_QUALITY;
-//	int lgwin = BROTLI_DEFAULT_WINDOW;
-//	auto mode = BROTLI_DEFAULT_MODE;
-//	uint8_t* input_buffer = buffer->data_u8;
-//	size_t input_size = buffer->size;
-//
-//	Buffer outputBuffer(input_size);
-//	uint8_t* encoded_buffer = outputBuffer.data_u8;
-//	size_t encoded_size = outputBuffer.size;
-//
-//	auto result = BrotliEncoderCompress(quality, lgwin, mode, input_size, input_buffer, &encoded_size, encoded_buffer);
-//
-//	if (result == BROTLI_FALSE) {
-//		cout << "damn..." << endl;
-//	} else {
-//		cout << "input size: " << formatNumber(input_size) << endl;
-//		cout << "output size: " << formatNumber(encoded_size) << endl;
-//	}
-//
-//
-//
-//
-//
-//	{
-//		Buffer buffer(300'000);
-//		size_t decoded_size = buffer.size;
-//		uint8_t* decoded_buffer = buffer.data_u8;
-//
-//		auto result = BrotliDecoderDecompress(encoded_size, encoded_buffer, &decoded_size, decoded_buffer);
-//
-//		if (result == BROTLI_DECODER_RESULT_SUCCESS) {
-//			cout << "yeah!";
-//		} else if(result == BROTLI_DECODER_RESULT_ERROR){
-//			cout << "BROTLI_DECODER_RESULT_ERROR";
-//		} else if (result == BROTLI_DECODER_RESULT_NEEDS_MORE_INPUT) {
-//			cout << "BROTLI_DECODER_RESULT_NEEDS_MORE_INPUT ";
-//		} else if (result == BROTLI_DECODER_RESULT_NEEDS_MORE_OUTPUT) {
-//			cout << "BROTLI_DECODER_RESULT_NEEDS_MORE_OUTPUT  ";
-//		} else {
-//			cout << "????" << endl;
-//		}
-//
-//
-//
-//	}
-//
-//	exit(123);
-//}
-
 
 int main(int argc, char** argv) {
 

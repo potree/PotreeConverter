@@ -372,66 +372,12 @@ string Indexer::createMetadata(Options options, State& state, Hierarchy hierarch
 	ss << t(1) << s("scale") << ": " << toJson(attributes.posScale) << "," << endl;
 	ss << t(1) << s("spacing") << ": " << d(spacing) << "," << endl;
 	ss << t(1) << s("boundingBox") << ": " << getBoundingBoxJsonString() << "," << endl;
+	ss << t(1) << s("encoding") << ": " << s(options.encoding) << "," << endl;
 	ss << t(1) << s("attributes") << ": " << getAttributesJsonString() << endl;
 	ss << t(0) << "}" << endl;
 
 	string str = ss.str();
 
-	//json js;
-
-	//js["name"] = "abc";
-	//js["boundingBox"]["min"] = { min.x, min.y, min.z };
-	//js["boundingBox"]["max"] = { max.x, max.y, max.z };
-	//js["projection"] = "";
-	//js["description"] = "";
-	//js["points"] = int64_t(state.pointsTotal);
-	//js["spacing"] = spacing;
-
-	//js["scale"] = vector<double>{
-	//	attributes.posScale.x,
-	//	attributes.posScale.y,
-	//	attributes.posScale.z
-	//};
-
-	//js["offset"] = vector<double>{
-	//	attributes.posOffset.x,
-	//	attributes.posOffset.y,
-	//	attributes.posOffset.z
-	//};
-
-	//js["hierarchy"] = {
-	//	{"stepSize", hierarchy.stepSize},
-	//	{"firstChunkSize", hierarchy.firstChunkSize}
-	//};
-
-	//json jsAttributes;
-	//for (auto attribute : attributes.list) {
-	//	json jsAttribute;
-
-	//	jsAttribute["name"] = attribute.name;
-	//	jsAttribute["description"] = attribute.description;
-	//	jsAttribute["size"] = attribute.size;
-	//	jsAttribute["numElements"] = attribute.numElements;
-	//	jsAttribute["elementSize"] = attribute.elementSize;
-	//	jsAttribute["type"] = getAttributeTypename(attribute.type);
-
-	//	if (attribute.numElements == 1) {
-	//		jsAttribute["min"] = vector<double>{ attribute.min.x };
-	//		jsAttribute["max"] = vector<double>{ attribute.max.x };
-	//	} else if (attribute.numElements == 2) {
-	//		jsAttribute["min"] = vector<double>{ attribute.min.x, attribute.min.y };
-	//		jsAttribute["max"] = vector<double>{ attribute.max.x, attribute.max.y };
-	//	} else if (attribute.numElements == 3) {
-	//		jsAttribute["min"] = vector<double>{ attribute.min.x, attribute.min.y, attribute.min.z };
-	//		jsAttribute["max"] = vector<double>{ attribute.max.x, attribute.max.y, attribute.max.z };
-	//	}
-
-	//	jsAttributes.push_back(jsAttribute);
-	//}
-
-	//js["attributes"] = jsAttributes;
-
-	//string str = js.dump(4);
 
 	return str;
 }
@@ -1043,75 +989,52 @@ void buildHierarchy(Indexer* indexer, Node* node, shared_ptr<Buffer> points, int
 
 }
 
+struct MortonCode {
+	uint64_t lower;
+	uint64_t upper;
+	uint64_t whatever;
+	uint64_t index;
+};
 
-unordered_map<string, shared_ptr<Buffer>> toStructOfArrays(Node* node, Attributes attributes) {
+struct SoA {
+	unordered_map<string, shared_ptr<Buffer>> buffers;
+	vector<MortonCode> mcs;
+};
+
+SoA toStructOfArrays(Node* node, Attributes attributes) {
 
 	auto numPoints = node->numPoints;
 	uint8_t* source = node->points->data_u8;
 
 	unordered_map<string, shared_ptr<Buffer>> buffers;
+	vector<MortonCode> mcs;
 
 	for (Attribute attribute : attributes.list) {
 
 		int64_t bytes = attribute.size * numPoints;
-		auto buffer = make_shared<Buffer>(bytes);
+		//auto buffer = make_shared<Buffer>(bytes);
 		auto attributeOffset = attributes.getOffset(attribute.name);
 
 		if (attribute.name == "rgb") {
-			
-			buffer = make_shared<Buffer>(numPoints * 3);
-			auto buffer_high = make_shared<Buffer>(numPoints * 3);
-
-			int64_t lowOffset = 0;
-			int64_t highOffset =  0;
 
 			auto bufferMC = make_shared<Buffer>(8 * numPoints);
-
-			auto buffer_r = make_shared<Buffer>(2 * numPoints);
-			auto buffer_g = make_shared<Buffer>(2 * numPoints);
-			auto buffer_b = make_shared<Buffer>(2 * numPoints);
 
 			for (int64_t i = 0; i < numPoints; i++) {
 
 				int64_t pointOffset = i * attributes.bytes;
 
-				uint8_t rgb[6];
-				uint16_t rgb_u16[3];
-				memcpy(rgb, source + pointOffset + attributeOffset, 6);
-				memcpy(rgb_u16, source + pointOffset + attributeOffset, 6);
-
-				buffer->data_u8[lowOffset + 0] = rgb[0];
-				buffer->data_u8[lowOffset + 1] = rgb[2];
-				buffer->data_u8[lowOffset + 2] = rgb[4];
-				buffer_high->data_u8[highOffset + 0] = rgb[1];
-				buffer_high->data_u8[highOffset + 1] = rgb[3];
-				buffer_high->data_u8[highOffset + 2] = rgb[5];
-
-				lowOffset += 3;
-				highOffset += 3;
 
 				uint16_t r, g, b;
 				memcpy(&r, source + pointOffset + attributeOffset + 0, 2);
 				memcpy(&g, source + pointOffset + attributeOffset + 2, 2);
 				memcpy(&b, source + pointOffset + attributeOffset + 4, 2);
 
-				buffer_r->write(&r, 2);
-				buffer_g->write(&g, 2);
-				buffer_b->write(&b, 2);
 
 				auto mc = mortonEncode_magicbits(r, g, b);
 				bufferMC->write(&mc, 8);
 			}
 
-			buffers["rgb_r"] = buffer_r;
-			buffers["rgb_g"] = buffer_g;
-			buffers["rgb_b"] = buffer_b;
-			buffers["rgb_high"] = buffer_high;
 			buffers["rgb_morton"] = bufferMC;
-
-			
-
-
 
 		} else if (attribute.name == "position"){
 
@@ -1127,9 +1050,6 @@ unordered_map<string, shared_ptr<Buffer>> toStructOfArrays(Node* node, Attribute
 			for (int64_t i = 0; i < numPoints; i++) {
 
 				int64_t pointOffset = i * attributes.bytes;
-
-				buffer->write(source + pointOffset + attributeOffset, attribute.size);
-
 
 				// MORTON
 
@@ -1148,13 +1068,8 @@ unordered_map<string, shared_ptr<Buffer>> toStructOfArrays(Node* node, Attribute
 				ps.push_back(p);
 			}
 
-			struct MortonCode {
-				uint64_t lower; 
-				uint64_t upper;
-				uint64_t whatever;
-			};
 
-			vector<MortonCode> mcs;
+			int64_t i = 0;
 			for (P p : ps) {
 
 				uint32_t mx = p.x - min.x;
@@ -1195,19 +1110,25 @@ unordered_map<string, shared_ptr<Buffer>> toStructOfArrays(Node* node, Attribute
 
 					if (!okayX || !okayY || !okayZ) {
 						int a = 10;
-						//exit(123);
+
+						cout << "could not revert morton code!!!" << endl;
+
+						exit(123);
 					}
 
 				}
-
 
 
 				MortonCode mc;
 				mc.lower = mc_l;
 				mc.upper = mc_h;
 				mc.whatever = mortonEncode_magicbits(mx, my, mz);
+				mc.index = i;
 
 				mcs.push_back(mc);
+
+				i++;
+
 			}
 
 			{
@@ -1222,28 +1143,16 @@ unordered_map<string, shared_ptr<Buffer>> toStructOfArrays(Node* node, Attribute
 
 
 				
-				buffers["morton"] = bufferMc;
+				buffers["position_morton"] = bufferMc;
 			}
-			
-			{
-				std::sort(mcs.begin(), mcs.end(), [](MortonCode& a, MortonCode& b) {
-					return a.whatever < b.whatever;
-				});
-				auto bufferMCSorted = make_shared<Buffer>(16 * numPoints);
-				
-				for (int i = 0; i < numPoints; i++) {
-					auto mc = mcs[i];
 
-					bufferMCSorted->write(&mc.upper, 8);
-					bufferMCSorted->write(&mc.lower, 8);
-				}
-
-				buffers["morton_sorted"] = bufferMCSorted;
-			}
-			
 
 		
-		} else {
+		} 
+
+		{
+
+			auto buffer = make_shared<Buffer>(bytes);
 
 			for (int64_t i = 0; i < numPoints; i++) {
 
@@ -1252,24 +1161,155 @@ unordered_map<string, shared_ptr<Buffer>> toStructOfArrays(Node* node, Attribute
 				buffer->write(source + pointOffset + attributeOffset, attribute.size);
 			}
 
+			buffers[attribute.name] = buffer;
 		}
 
 		
 
 		//vector<uint8_t> dbg1(buffer->data_u8, buffer->data_u8 + buffer->size);
 
-		buffers[attribute.name] = buffer;
 	}
 
-	return buffers;
+	SoA soa;
+	soa.buffers = buffers;
+	soa.mcs = mcs;
+
+	return soa;
 }
 
 
 
 
+//static int64_t totalUncompressed = 0;
+//static int64_t totalCompressed = 0;
+//static unordered_map<string, int64_t> uncompressedCounters;
+//static unordered_map<string, int64_t> compressedCounters;
+//static mutex mtx_dbg_compress;
+
+shared_ptr<Buffer> compress(Node* node, Attributes attributes) {
+
+	auto numPoints = node->numPoints;
+	auto soa = toStructOfArrays(node, attributes);
+
+	std::sort(soa.mcs.begin(), soa.mcs.end(), [](MortonCode& a, MortonCode& b) {
+
+		if (a.upper == b.upper) {
+			return a.lower < b.lower;
+		} else {
+			return a.upper < b.upper;
+		}
+
+	});
+
+	auto mapName = [](string name) {
+		if (name == "position") {
+			return string("position_morton");
+		} else if (name == "rgb") {
+			return string("rgb_morton");
+		} else {
+			return name;
+		}
+	};
+
+	int64_t bufferSize = 0;
+	for (Attribute& attribute : attributes.list) {
+		string name = mapName(attribute.name);
+		auto buffer = soa.buffers[name];
+
+		bufferSize += buffer->size;
+	}
+
+	auto bufferMerged = make_shared<Buffer>(bufferSize);
+	for (Attribute& attribute : attributes.list) {
+
+		string name = mapName(attribute.name);
+
+		auto buffer = soa.buffers[name];
+
+		int64_t bufferAttributeSize = buffer->size / numPoints;
+
+		for (int i = 0; i < numPoints; i++) {
+			int sourceIndex = soa.mcs[i].index;
+
+			bufferMerged->write(buffer->data_u8 + sourceIndex * bufferAttributeSize, bufferAttributeSize);
+		}
+	}
+
+	shared_ptr<Buffer> out;
+	{
+		auto buffer = bufferMerged;
+
+		int quality = 6;
+		int lgwin = BROTLI_DEFAULT_WINDOW;
+		auto mode = BROTLI_DEFAULT_MODE;
+		uint8_t* input_buffer = buffer->data_u8;
+		size_t input_size = buffer->size;
+
+		size_t encoded_size = input_size * 1.5 + 1'000;
+		shared_ptr<Buffer> outputBuffer = make_shared<Buffer>(encoded_size);
+		uint8_t* encoded_buffer = outputBuffer->data_u8;
+
+		BROTLI_BOOL success = BROTLI_FALSE;
+
+		for (int i = 0; i < 5; i++) {
+			success = BrotliEncoderCompress(quality, lgwin, mode, input_size, input_buffer, &encoded_size, encoded_buffer);
+
+			if (success == BROTLI_TRUE) {
+				break;
+			} else {
+				encoded_size = (encoded_size + 1024) * 1.5;
+				outputBuffer = make_shared<Buffer>(encoded_size);
+				encoded_buffer = outputBuffer->data_u8;
+
+				logger::WARN("reserved encoded_buffer size was too small. Trying again with size " + formatNumber(encoded_size) + ".");
+			}
+		}
+
+		if (success == BROTLI_FALSE) {
+			stringstream ss;
+			ss << "failed to compress node " << node->name << ". aborting conversion." ;
+			logger::ERROR(ss.str());
+
+			exit(123);
+		}
+
+		out = make_shared<Buffer>(encoded_size);
+		memcpy(out->data, encoded_buffer, encoded_size);
+		
+		//{ // DEBUG
+		//	lock_guard<mutex> lock(mtx_dbg_compress);
+
+		//	totalUncompressed += input_size;
+		//	totalCompressed += encoded_size;
+		//}
+	}
+
+	//{
+	//	lock_guard<mutex> lock(mtx_dbg_compress);
+
+	//	static int i = 0;
+	//	if ((i % 100) == 0) {
+
+	//		stringstream ss;
+	//		ss << "===================================================" << endl;
+
+	//		{
+	//			double ratio = double(totalCompressed) / double(totalUncompressed);
+
+	//			ss << "[total] " << formatNumber(totalUncompressed) << " > " << formatNumber(totalCompressed) << " - " << formatNumber(100.0 * ratio, 1) << endl;
+	//			cout << ss.str();
+	//		}
+
+	//		cout << ss.str();
+
+	//	}
+	//	i++;
 
 
+	//}
 
+	return out;
+}
 
 
 
@@ -1292,202 +1332,20 @@ int64_t Writer::backlogSizeMB() {
 	return backlogMB;
 }
 
-static int64_t totalUncompressed = 0;
-static int64_t totalCompressed = 0;
-static unordered_map<string, int64_t> uncompressedCounters;
-static unordered_map<string, int64_t> compressedCounters;
-static mutex mtx_dbg_compress;
-
 void Writer::writeAndUnload(Node* node) {
 	auto attributes = indexer->attributes;
+	string encoding = indexer->options.encoding;
 
-	{
-		static int counter = 0;
+	shared_ptr<Buffer> sourceBuffer;
 
-		if (node->level() <= 1 || (counter % 10'000) == 0) {
-		//if(node->level() == 0){
-			dbgwriter::writeNode(node, attributes);
-		}
-
-		counter++;
+	if (encoding == "BROTLI") {
+		sourceBuffer = compress(node, attributes);
+	} else {
+		sourceBuffer = node->points;
 	}
+	
 
-	{
-		// DBG BROTLI TEST SoA
-
-		auto buffers = toStructOfArrays(node, attributes);
-
-
-		auto compress = [](shared_ptr<Buffer> buffer, string attributeName) {
-			int quality = 6;
-			int lgwin = BROTLI_DEFAULT_WINDOW;
-			auto mode = BROTLI_DEFAULT_MODE;
-			uint8_t* input_buffer = buffer->data_u8;
-			size_t input_size = buffer->size;
-
-			Buffer outputBuffer(input_size * 1.5 + 1'000);
-			uint8_t* encoded_buffer = outputBuffer.data_u8;
-			size_t encoded_size = outputBuffer.size;
-
-			auto result = BrotliEncoderCompress(quality, lgwin, mode, input_size, input_buffer, &encoded_size, encoded_buffer);
-
-			//static int64_t totalUncompressed = 0;
-			//static int64_t totalCompressed = 0;
-
-			lock_guard<mutex> lock(mtx_dbg_compress);
-
-			uncompressedCounters[attributeName] += input_size;
-			compressedCounters[attributeName] += encoded_size;
-
-			totalUncompressed += input_size;
-			totalCompressed += encoded_size;
-
-			if (result == BROTLI_TRUE) {
-
-				//double ratio = double(encoded_size) / double(input_size);
-
-				//stringstream ss;
-				//ss << "[" << attributeName << "] " << formatNumber(input_size) << " > " << formatNumber(encoded_size) << " - " << formatNumber(100.0 * ratio, 1) << "%" << endl;
-				//cout << ss.str();
-
-			} else {
-				cout << "brotli error..." << endl;
-				exit(123);
-			}
-
-		};
-
-		int64_t offset = 0;
-		for (auto [attributeName, attributeBuffer] : buffers) {
-
-			compress(attributeBuffer, attributeName);
-			
-		}
-
-		{
-			lock_guard<mutex> lock(mtx_dbg_compress);
-
-			static int i = 0;
-			if ((i % 100) == 0) {
-
-				stringstream ss;
-				ss << "===================================================" << endl;
-
-				for (auto [attributeName, attributeBuffer] : buffers) {
-					auto input_size = uncompressedCounters[attributeName];
-					auto encoded_size = compressedCounters[attributeName];
-					double ratio = double(encoded_size) / double(input_size);
-
-					ss << "[" << attributeName << "] " << formatNumber(input_size) << " > " << formatNumber(encoded_size) << " - " << formatNumber(100.0 * ratio, 1) << "%" << endl;
-				}
-
-				{
-					double ratio = double(totalCompressed) / double(totalUncompressed);
-
-					ss << "[total] " << formatNumber(totalUncompressed) << " > " << formatNumber(totalCompressed) << " - " << formatNumber(100.0 * ratio, 1) << endl;
-					cout << ss.str();
-				}
-
-				cout << ss.str();
-
-			}
-			i++;
-
-			
-		}
-
-		
-		
-	}
-
-	//{
-	//	// DBG BROTLI TEST SoA
-
-	//	auto buffers = toStructOfArrays(node, attributes);
-
-	//	Buffer merged(node->numPoints * attributes.bytes);
-
-	//	int64_t offset = 0;
-	//	for (auto [attributeName, attributeBuffer] : buffers) {
-
-	//		vector<uint8_t> dbg1(attributeBuffer->data_u8, attributeBuffer->data_u8 + attributeBuffer->size);
-
-	//		memcpy(merged.data_u8 + offset, attributeBuffer->data_u8, attributeBuffer->size);
-
-	//		offset += attributeBuffer->size;
-	//	}
-	//	vector<uint8_t> dbg2(merged.data_u8, merged.data_u8 + merged.size);
-
-
-	//	int quality = 6;
-	//	int lgwin = BROTLI_DEFAULT_WINDOW;
-	//	auto mode = BROTLI_DEFAULT_MODE;
-	//	uint8_t* input_buffer = merged.data_u8;
-	//	size_t input_size = merged.size;
-
-	//	Buffer outputBuffer(input_size * 1.5);
-	//	uint8_t* encoded_buffer = outputBuffer.data_u8;
-	//	size_t encoded_size = outputBuffer.size;
-
-	//	auto result = BrotliEncoderCompress(quality, lgwin, mode, input_size, input_buffer, &encoded_size, encoded_buffer);
-
-	//	static int64_t totalUncompressed = 0;
-	//	static int64_t totalCompressed = 0;
-
-	//	totalUncompressed += input_size;
-	//	totalCompressed += encoded_size;
-
-	//	if (result == BROTLI_TRUE) {
-	//		cout << "[merged]totalUncompressed: " << formatNumber(totalUncompressed) << endl;
-	//		cout << "[merged]totalCompressed: " << formatNumber(totalCompressed) << endl;
-	//	} else {
-	//		cout << "brotli error..." << endl;
-	//		exit(123);
-	//	}
-
-	//}
-
-	//{ // DBG BROTLI TEST
-
-	//	//node->points
-
-	//	//int quality = BROTLI_DEFAULT_QUALITY;
-	//	int quality = 6;
-	//	int lgwin = BROTLI_DEFAULT_WINDOW;
-	//	auto mode = BROTLI_DEFAULT_MODE;
-	//	uint8_t* input_buffer = node->points->data_u8;
-	//	size_t input_size = node->points->size;
-
-	//	//thread_local Buffer outputBuffer(10'000'000);
-
-	//	Buffer outputBuffer(input_size * 1.5);
-	//	uint8_t* encoded_buffer = outputBuffer.data_u8;
-	//	size_t encoded_size = outputBuffer.size;
-
-	//	auto result = BrotliEncoderCompress(quality, lgwin, mode, input_size, input_buffer, &encoded_size, encoded_buffer);
-
-	//	static int64_t totalUncompressed = 0;
-	//	static int64_t totalCompressed = 0;
-
-	//	totalUncompressed += input_size;
-	//	totalCompressed += encoded_size;
-
-	//	if (result == BROTLI_TRUE) {
-	//		cout << "[interleaved]totalUncompressed: " << formatNumber(totalUncompressed) << endl;
-	//		cout << "[interleaved]totalCompressed: " << formatNumber(totalCompressed) << endl;
-	//	} else {
-	//		cout << "brotli error..." << endl;
-	//		exit(123);
-	//	}
-
-
-	//}
-
-	static int64_t counter = 0;
-	counter += node->numPoints;
-
-	int64_t numPoints = node->numPoints;
-	int64_t byteSize = numPoints * attributes.bytes;
+	int64_t byteSize = sourceBuffer->size;
 
 	node->byteSize = byteSize;
 
@@ -1531,7 +1389,7 @@ void Writer::writeAndUnload(Node* node) {
 		activeBuffer->pos += byteSize;
 	}	
 
-	memcpy(buffer->data_char + targetOffset, node->points->data_char, byteSize);
+	memcpy(buffer->data_char + targetOffset, sourceBuffer->data, byteSize);
 
 	node->points = nullptr;
 }
@@ -1618,6 +1476,7 @@ void doIndexing(string targetDir, State& state, Options& options, Sampler& sampl
 	auto attributes = chunks->attributes;
 
 	Indexer indexer(targetDir);
+	indexer.options = options;
 	indexer.attributes = attributes;
 	indexer.root = make_shared<Node>("r", chunks->min, chunks->max);
 	indexer.spacing = (chunks->max - chunks->min).x / 128.0;
