@@ -22,9 +22,9 @@ Options parseArguments(int argc, char** argv) {
 
 	args.addArgument("source,i,", "input files");
 	args.addArgument("outdir,o", "output directory");
+	args.addArgument("encoding", "Encoding type. \"BROTLI\", \"UNCOMPRESSED\"");
 	args.addArgument("method,m", "sampling method");
 	args.addArgument("chunkMethod", "chunking method");
-	//args.addArgument("flags", "flags");
 	args.addArgument("keep-chunks", "");
 	args.addArgument("no-chunking", "");
 	args.addArgument("no-indexing", "");
@@ -47,6 +47,7 @@ Options parseArguments(int argc, char** argv) {
 		exit(1);
 	}
 
+	string encoding = args.get("encoding").as<string>("DEFAULT");
 	string method = args.get("method").as<string>("poisson");
 	string chunkMethod = args.get("chunkMethod").as<string>("LASZIP");
 
@@ -110,6 +111,7 @@ Options parseArguments(int argc, char** argv) {
 	options.source = source;
 	options.outdir = outdir;
 	options.method = method;
+	options.encoding = encoding;
 	options.chunkMethod = chunkMethod;
 	//options.flags = flags;
 	options.attributes = attributes;
@@ -479,6 +481,7 @@ void generatePage(string exePath, string pagedir, string pagename) {
 }
 
 int main(int argc, char** argv) {
+
 
 	double tStart = now(); 
 

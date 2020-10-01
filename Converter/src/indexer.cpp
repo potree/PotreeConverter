@@ -8,6 +8,8 @@
 #include "Attributes.h"
 #include "logger.h"
 #include "PotreeConverter.h"
+#include "DbgWriter.h"
+#include "brotli/encode.h"
 
 using std::unique_lock;
 
@@ -370,66 +372,12 @@ string Indexer::createMetadata(Options options, State& state, Hierarchy hierarch
 	ss << t(1) << s("scale") << ": " << toJson(attributes.posScale) << "," << endl;
 	ss << t(1) << s("spacing") << ": " << d(spacing) << "," << endl;
 	ss << t(1) << s("boundingBox") << ": " << getBoundingBoxJsonString() << "," << endl;
+	ss << t(1) << s("encoding") << ": " << s(options.encoding) << "," << endl;
 	ss << t(1) << s("attributes") << ": " << getAttributesJsonString() << endl;
 	ss << t(0) << "}" << endl;
 
 	string str = ss.str();
 
-	//json js;
-
-	//js["name"] = "abc";
-	//js["boundingBox"]["min"] = { min.x, min.y, min.z };
-	//js["boundingBox"]["max"] = { max.x, max.y, max.z };
-	//js["projection"] = "";
-	//js["description"] = "";
-	//js["points"] = int64_t(state.pointsTotal);
-	//js["spacing"] = spacing;
-
-	//js["scale"] = vector<double>{
-	//	attributes.posScale.x,
-	//	attributes.posScale.y,
-	//	attributes.posScale.z
-	//};
-
-	//js["offset"] = vector<double>{
-	//	attributes.posOffset.x,
-	//	attributes.posOffset.y,
-	//	attributes.posOffset.z
-	//};
-
-	//js["hierarchy"] = {
-	//	{"stepSize", hierarchy.stepSize},
-	//	{"firstChunkSize", hierarchy.firstChunkSize}
-	//};
-
-	//json jsAttributes;
-	//for (auto attribute : attributes.list) {
-	//	json jsAttribute;
-
-	//	jsAttribute["name"] = attribute.name;
-	//	jsAttribute["description"] = attribute.description;
-	//	jsAttribute["size"] = attribute.size;
-	//	jsAttribute["numElements"] = attribute.numElements;
-	//	jsAttribute["elementSize"] = attribute.elementSize;
-	//	jsAttribute["type"] = getAttributeTypename(attribute.type);
-
-	//	if (attribute.numElements == 1) {
-	//		jsAttribute["min"] = vector<double>{ attribute.min.x };
-	//		jsAttribute["max"] = vector<double>{ attribute.max.x };
-	//	} else if (attribute.numElements == 2) {
-	//		jsAttribute["min"] = vector<double>{ attribute.min.x, attribute.min.y };
-	//		jsAttribute["max"] = vector<double>{ attribute.max.x, attribute.max.y };
-	//	} else if (attribute.numElements == 3) {
-	//		jsAttribute["min"] = vector<double>{ attribute.min.x, attribute.min.y, attribute.min.z };
-	//		jsAttribute["max"] = vector<double>{ attribute.max.x, attribute.max.y, attribute.max.z };
-	//	}
-
-	//	jsAttributes.push_back(jsAttribute);
-	//}
-
-	//js["attributes"] = jsAttributes;
-
-	//string str = js.dump(4);
 
 	return str;
 }
@@ -614,10 +562,6 @@ vector<vector<int64_t>> createSumPyramid(vector<int64_t>& grid, int gridSize) {
 				sum += sumPyramid[level + 1][index_p1 + i];
 			}
 
-			if (sum > 0) {
-				int a = 10;
-			}
-
 			sumPyramid[level][index] = sum;
 
 		}
@@ -705,10 +649,6 @@ vector<NodeCandidate> createNodes(vector<vector<int64_t>>& pyramid) {
 					child.z = 2 * z + ((i & 0b001) >> 0);
 
 					stack.push_back(child);
-
-					if (child.name == "75") {
-						int a = 10;
-					}
 				}
 			}
 
@@ -1000,35 +940,8 @@ void buildHierarchy(Indexer* indexer, Node* node, shared_ptr<Buffer> points, int
 
 				// try again
 				nodeIndex--;
-
-
-				//// unique points, quit here
-				//stringstream ss;
-				//ss << "a non-partitionable sequence of points was encountered, which may be caused by a large number of duplicates. "
-				//	<< "#points in box: " << numPointsInBox << ", #unique points in box: " << numUniquePoints << ", "
-				//	<< "min: " << subject->min.toString() << ", max: " << subject->max.toString();
-
-				//logger::ERROR(ss.str());
-
-				//exit(123);
 			}
 
-			
-
-			//auto bpp = attributes.bytes;
-			//vector<int32_t> xyz(3 * numPoints, 0);
-			//uint8_t* dbg = reinterpret_cast<uint8_t*>(xyz.data());
-
-			//for (int i = 0; i < numPoints; i++) {
-
-			//	int64_t targetOffset = 12 * i;
-			//	int64_t sourceOffset = i * bpp;
-			//	int targetSize = xyz.size() * 4;
-
-			//	memcpy(dbg + targetOffset, buffer->data_u8 + sourceOffset, 12);
-			//}
-
-			//int a = 10;
 		}
 
 		int64_t nextNumPoins = subject->numPoints;
@@ -1040,6 +953,329 @@ void buildHierarchy(Indexer* indexer, Node* node, shared_ptr<Buffer> points, int
 	}
 
 }
+
+struct MortonCode {
+	uint64_t lower;
+	uint64_t upper;
+	uint64_t whatever;
+	uint64_t index;
+};
+
+struct SoA {
+	unordered_map<string, shared_ptr<Buffer>> buffers;
+	vector<MortonCode> mcs;
+};
+
+SoA toStructOfArrays(Node* node, Attributes attributes) {
+
+	auto numPoints = node->numPoints;
+	uint8_t* source = node->points->data_u8;
+
+	unordered_map<string, shared_ptr<Buffer>> buffers;
+	vector<MortonCode> mcs;
+
+	for (Attribute attribute : attributes.list) {
+
+		int64_t bytes = attribute.size * numPoints;
+		//auto buffer = make_shared<Buffer>(bytes);
+		auto attributeOffset = attributes.getOffset(attribute.name);
+
+		if (attribute.name == "rgb") {
+
+			auto bufferMC = make_shared<Buffer>(8 * numPoints);
+
+			for (int64_t i = 0; i < numPoints; i++) {
+
+				int64_t pointOffset = i * attributes.bytes;
+
+
+				uint16_t r, g, b;
+				memcpy(&r, source + pointOffset + attributeOffset + 0, 2);
+				memcpy(&g, source + pointOffset + attributeOffset + 2, 2);
+				memcpy(&b, source + pointOffset + attributeOffset + 4, 2);
+
+
+				auto mc = mortonEncode_magicbits(r, g, b);
+				bufferMC->write(&mc, 8);
+			}
+
+			buffers["rgb_morton"] = bufferMC;
+
+		} else if (attribute.name == "position"){
+
+			struct P {
+				int32_t x, y, z;
+			};
+			vector<P> ps;
+			P min;
+			min.x = std::numeric_limits<int64_t>::max();
+			min.y = std::numeric_limits<int64_t>::max();
+			min.z = std::numeric_limits<int64_t>::max();
+		
+			for (int64_t i = 0; i < numPoints; i++) {
+
+				int64_t pointOffset = i * attributes.bytes;
+
+				// MORTON
+
+				int32_t XYZ[3];
+				memcpy(XYZ, source + pointOffset + attributeOffset, 12);
+
+				P p;
+				p.x = XYZ[0];
+				p.y = XYZ[1];
+				p.z = XYZ[2];
+
+				min.x = std::min(min.x, p.x);
+				min.y = std::min(min.y, p.y);
+				min.z = std::min(min.z, p.z);
+
+				ps.push_back(p);
+			}
+
+
+			int64_t i = 0;
+			for (P p : ps) {
+
+				uint32_t mx = p.x - min.x;
+				uint32_t my = p.y - min.y;
+				uint32_t mz = p.z - min.z;
+
+				uint32_t mx_l = (mx & 0x0000'ffff);
+				uint32_t my_l = (my & 0x0000'ffff);
+				uint32_t mz_l = (mz & 0x0000'ffff);
+
+				uint32_t mx_h = mx >> 16;
+				uint32_t my_h = my >> 16;
+				uint32_t mz_h = mz >> 16;
+
+				auto mc_l = mortonEncode_magicbits(mx_l, my_l, mz_l);
+				auto mc_h = mortonEncode_magicbits(mx_h, my_h, mz_h);
+
+				{ // try decode and compare
+
+					uint32_t x_decoded = 0;
+					uint32_t y_decoded = 0;
+					uint32_t z_decoded = 0;
+
+					for (int i = 0; i < 21; i++) {
+
+						uint64_t mask = (mc_l >> (3 * i)) & 0b111;
+
+						x_decoded = x_decoded | (((mask >> 0) & 0b001) << i);
+						y_decoded = y_decoded | (((mask >> 1) & 0b001) << i);
+						z_decoded = z_decoded | (((mask >> 2) & 0b001) << i);
+
+
+					}
+
+					bool okayX = x_decoded == mx_l;
+					bool okayY = y_decoded == my_l;
+					bool okayZ = z_decoded == mz_l;
+
+					if (!okayX || !okayY || !okayZ) {
+						int a = 10;
+
+						cout << "could not revert morton code!!!" << endl;
+
+						exit(123);
+					}
+
+				}
+
+
+				MortonCode mc;
+				mc.lower = mc_l;
+				mc.upper = mc_h;
+				mc.whatever = mortonEncode_magicbits(mx, my, mz);
+				mc.index = i;
+
+				mcs.push_back(mc);
+
+				i++;
+
+			}
+
+			{
+				auto bufferMc = make_shared<Buffer>(16 * numPoints);
+
+				for (int i = 0; i < numPoints; i++) {
+					auto mc = mcs[i];
+
+					bufferMc->write(&mc.upper, 8);
+					bufferMc->write(&mc.lower, 8);
+				}
+
+
+				
+				buffers["position_morton"] = bufferMc;
+			}
+
+
+		
+		} 
+
+		{
+
+			auto buffer = make_shared<Buffer>(bytes);
+
+			for (int64_t i = 0; i < numPoints; i++) {
+
+				int64_t pointOffset = i * attributes.bytes;
+
+				buffer->write(source + pointOffset + attributeOffset, attribute.size);
+			}
+
+			buffers[attribute.name] = buffer;
+		}
+
+		
+
+		//vector<uint8_t> dbg1(buffer->data_u8, buffer->data_u8 + buffer->size);
+
+	}
+
+	SoA soa;
+	soa.buffers = buffers;
+	soa.mcs = mcs;
+
+	return soa;
+}
+
+
+
+
+//static int64_t totalUncompressed = 0;
+//static int64_t totalCompressed = 0;
+//static unordered_map<string, int64_t> uncompressedCounters;
+//static unordered_map<string, int64_t> compressedCounters;
+//static mutex mtx_dbg_compress;
+
+shared_ptr<Buffer> compress(Node* node, Attributes attributes) {
+
+	auto numPoints = node->numPoints;
+	auto soa = toStructOfArrays(node, attributes);
+
+	std::sort(soa.mcs.begin(), soa.mcs.end(), [](MortonCode& a, MortonCode& b) {
+
+		if (a.upper == b.upper) {
+			return a.lower < b.lower;
+		} else {
+			return a.upper < b.upper;
+		}
+
+	});
+
+	auto mapName = [](string name) {
+		if (name == "position") {
+			return string("position_morton");
+		} else if (name == "rgb") {
+			return string("rgb_morton");
+		} else {
+			return name;
+		}
+	};
+
+	int64_t bufferSize = 0;
+	for (Attribute& attribute : attributes.list) {
+		string name = mapName(attribute.name);
+		auto buffer = soa.buffers[name];
+
+		bufferSize += buffer->size;
+	}
+
+	auto bufferMerged = make_shared<Buffer>(bufferSize);
+	for (Attribute& attribute : attributes.list) {
+
+		string name = mapName(attribute.name);
+
+		auto buffer = soa.buffers[name];
+
+		int64_t bufferAttributeSize = buffer->size / numPoints;
+
+		for (int i = 0; i < numPoints; i++) {
+			int sourceIndex = soa.mcs[i].index;
+
+			bufferMerged->write(buffer->data_u8 + sourceIndex * bufferAttributeSize, bufferAttributeSize);
+		}
+	}
+
+	shared_ptr<Buffer> out;
+	{
+		auto buffer = bufferMerged;
+
+		int quality = 6;
+		int lgwin = BROTLI_DEFAULT_WINDOW;
+		auto mode = BROTLI_DEFAULT_MODE;
+		uint8_t* input_buffer = buffer->data_u8;
+		size_t input_size = buffer->size;
+
+		size_t encoded_size = input_size * 1.5 + 1'000;
+		shared_ptr<Buffer> outputBuffer = make_shared<Buffer>(encoded_size);
+		uint8_t* encoded_buffer = outputBuffer->data_u8;
+
+		BROTLI_BOOL success = BROTLI_FALSE;
+
+		for (int i = 0; i < 5; i++) {
+			success = BrotliEncoderCompress(quality, lgwin, mode, input_size, input_buffer, &encoded_size, encoded_buffer);
+
+			if (success == BROTLI_TRUE) {
+				break;
+			} else {
+				encoded_size = (encoded_size + 1024) * 1.5;
+				outputBuffer = make_shared<Buffer>(encoded_size);
+				encoded_buffer = outputBuffer->data_u8;
+
+				logger::WARN("reserved encoded_buffer size was too small. Trying again with size " + formatNumber(encoded_size) + ".");
+			}
+		}
+
+		if (success == BROTLI_FALSE) {
+			stringstream ss;
+			ss << "failed to compress node " << node->name << ". aborting conversion." ;
+			logger::ERROR(ss.str());
+
+			exit(123);
+		}
+
+		out = make_shared<Buffer>(encoded_size);
+		memcpy(out->data, encoded_buffer, encoded_size);
+		
+		//{ // DEBUG
+		//	lock_guard<mutex> lock(mtx_dbg_compress);
+
+		//	totalUncompressed += input_size;
+		//	totalCompressed += encoded_size;
+		//}
+	}
+
+	//{
+	//	lock_guard<mutex> lock(mtx_dbg_compress);
+
+	//	static int i = 0;
+	//	if ((i % 100) == 0) {
+
+	//		stringstream ss;
+	//		ss << "===================================================" << endl;
+
+	//		{
+	//			double ratio = double(totalCompressed) / double(totalUncompressed);
+
+	//			ss << "[total] " << formatNumber(totalUncompressed) << " > " << formatNumber(totalCompressed) << " - " << formatNumber(100.0 * ratio, 1) << endl;
+	//			cout << ss.str();
+	//		}
+
+	//		cout << ss.str();
+
+	//	}
+	//	i++;
+
+
+	//}
+
+	return out;
+}
+
 
 
 Writer::Writer(Indexer* indexer) {
@@ -1063,12 +1299,18 @@ int64_t Writer::backlogSizeMB() {
 
 void Writer::writeAndUnload(Node* node) {
 	auto attributes = indexer->attributes;
+	string encoding = indexer->options.encoding;
 
-	static int64_t counter = 0;
-	counter += node->numPoints;
+	shared_ptr<Buffer> sourceBuffer;
 
-	int64_t numPoints = node->numPoints;
-	int64_t byteSize = numPoints * attributes.bytes;
+	if (encoding == "BROTLI") {
+		sourceBuffer = compress(node, attributes);
+	} else {
+		sourceBuffer = node->points;
+	}
+	
+
+	int64_t byteSize = sourceBuffer->size;
 
 	node->byteSize = byteSize;
 
@@ -1112,7 +1354,7 @@ void Writer::writeAndUnload(Node* node) {
 		activeBuffer->pos += byteSize;
 	}	
 
-	memcpy(buffer->data_char + targetOffset, node->points->data_char, byteSize);
+	memcpy(buffer->data_char + targetOffset, sourceBuffer->data, byteSize);
 
 	node->points = nullptr;
 }
@@ -1199,6 +1441,7 @@ void doIndexing(string targetDir, State& state, Options& options, Sampler& sampl
 	auto attributes = chunks->attributes;
 
 	Indexer indexer(targetDir);
+	indexer.options = options;
 	indexer.attributes = attributes;
 	indexer.root = make_shared<Node>("r", chunks->min, chunks->max);
 	indexer.spacing = (chunks->max - chunks->min).x / 128.0;
@@ -1303,8 +1546,6 @@ void doIndexing(string targetDir, State& state, Options& options, Sampler& sampl
 	pool.close();
 
 	indexer.reloadChunkRoots();
-
-	//Dbg::instance()->isDebug = true;
 
 	if (chunks->list.size() == 1) {
 		auto node = nodes[0];

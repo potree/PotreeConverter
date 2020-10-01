@@ -22,7 +22,7 @@
 				// "D:/dev/pointclouds/riegl/retz.laz",
 				// "D:/dev/pointclouds/pix4d/eclepens.las",
 				// "D:/dev/pointclouds/pix4d/matterhorn.laz",
-				"D:/dev/pointclouds/archpro/heidentor.las",
+				// "D:/dev/pointclouds/archpro/heidentor.las",
 				// "D:/dev/pointclouds/hg_v2_clip.las",
 				// "D:/dev/pointclouds/CA13",
 
@@ -38,7 +38,7 @@
 				// "D:/temp/crashreport/3dbuildings_walls_azimuth.laz",
 				// "-o", "D:/temp/crashreport2/converted",
 
-				// "D:/dev/pointclouds/CA13/ot_35120B4122C_1.laz",
+				"D:/dev/pointclouds/CA13/ot_35120B4122C_1.laz",
 				// "D:/dev/pointclouds/CA13/ot_35120B4121D_1.laz",
 				// "D:/dev/pointclouds/CA13/ot_35120B4301B_1.laz",
 				// "D:/dev/pointclouds/CA13/ot_35120B4301D_1.laz",
@@ -47,6 +47,8 @@
 				// "D:/dev/pointclouds/CA13/ot_35120B4122D_1.laz",
 				// "D:/dev/pointclouds/CA13/ot_35120B4302D_1.laz",
 				// "D:/dev/pointclouds/CA13/ot_35120B4302A_1.laz",
+
+				// "D:/temp/C_25ez1.laz",
 
 				// "F:/pointclouds/AHN3/files/C_25ez1.laz",
 				// "F:/pointclouds/AHN3/files/C_25gn1.laz",
@@ -57,6 +59,8 @@
 				// "F:/pointclouds/AHN3/files/C_25dn2.laz",
 				// "F:/pointclouds/AHN3/files/C_25gn2.laz",
 
+				// "D:/temp/compression/C_05DN2.LAZ",
+
 				// "D:/dev/pointclouds/tuwien_baugeschichte/candi Banyunibo",
 
 
@@ -66,6 +70,7 @@
 				// "D:/temp/Bargello10Mtest.las",
 
 
+				// "D:/dev/pointclouds/testdata/Bargello10Mtest.las",
 				// "D:/dev/pointclouds/testdata/crash.las",
 				// "D:/dev/pointclouds/testdata/eclepens.laz",
 				// "D:/dev/pointclouds/testdata/Grab15.laz",
@@ -73,7 +78,7 @@
 				// "D:/dev/pointclouds/testdata/lion.laz",
 				// "D:/dev/pointclouds/testdata/3dbuildings_walls_azimuth.laz",
 
-				"-o", "D:/temp/converted",
+				"-o", "D:/temp/converted_brotli",
 				// "-o", "F:/temp/CA13",
 				// "-o", "F:/temp/affandi",
 				// "-o", "C:/dev/workspaces/potree/develop/test/converted",
@@ -95,10 +100,12 @@
 				// "--flags", "no-chunking", "keep-chunks",
 				// "--flags", "keep-chunks",
 				// "--keep-chunks", 
-				"--generate-page", "heidentor",
+				// "--generate-page", "heidentor",
 				// "-m", "poisson", // ["poisson", "poisson_average", "random"]
 				// "--chunkMethod", "SKIP" // [LASZIP, LAS_CUSTOM, SKIP]
 				// "--attributes", "rgb", "Dip (degrees)", "Dip direction (degrees)", "NormalX", "NormalY", "NormalZ",
+				"--attributes" , "rgb", "intensity", "classification", "mjpmie",
+				"--encoding", "BROTLI",
 			],
 			"stopAtEntry": false,
 			"cwd": "${workspaceFolder}",
