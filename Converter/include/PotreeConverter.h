@@ -50,9 +50,27 @@ inline ScaleOffset computeScaleOffset(Vector3 min, Vector3 max, Vector3 targetSc
 	scale.y = std::max(scale.y, min_scale_y);
 	scale.z = std::max(scale.z, min_scale_z);
 
+	//auto round = [](double number, double step) {
+	//	double residue = fmod(number, step);
+	//	double n = (step - abs(residue)) * (residue < 0 ? -1.0 : 1.0);
+
+	//	return number + n;
+	//};
+
+	//Vector3 roundedOffset = {
+	//	round(offset.x, scale.x),
+	//	round(offset.y, scale.y),
+	//	round(offset.z, scale.z),
+	//};
+	
+	//cout << "offset: " << offset.toString() << endl;
+	//cout << "roundedOffset: " << roundedOffset.toString() << endl;
+
 	ScaleOffset scaleOffset;
 	scaleOffset.scale = scale;
 	scaleOffset.offset = offset;
+	//scaleOffset.offset = roundedOffset;
+	//scaleOffset.offset = { 0.0, 0.0, 0.0 };
 
 	return scaleOffset;
 }
@@ -242,6 +260,8 @@ inline Attributes computeOutputAttributes(vector<Source>& sources, vector<string
 	auto attributes = Attributes(filteredAttributeList);
 	attributes.posScale = scale;
 	attributes.posOffset = offset;
+
+
 
 	// { // print infos
 

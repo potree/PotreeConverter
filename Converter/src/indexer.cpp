@@ -562,10 +562,6 @@ vector<vector<int64_t>> createSumPyramid(vector<int64_t>& grid, int gridSize) {
 				sum += sumPyramid[level + 1][index_p1 + i];
 			}
 
-			if (sum > 0) {
-				int a = 10;
-			}
-
 			sumPyramid[level][index] = sum;
 
 		}
@@ -653,10 +649,6 @@ vector<NodeCandidate> createNodes(vector<vector<int64_t>>& pyramid) {
 					child.z = 2 * z + ((i & 0b001) >> 0);
 
 					stack.push_back(child);
-
-					if (child.name == "75") {
-						int a = 10;
-					}
 				}
 			}
 
@@ -948,35 +940,8 @@ void buildHierarchy(Indexer* indexer, Node* node, shared_ptr<Buffer> points, int
 
 				// try again
 				nodeIndex--;
-
-
-				//// unique points, quit here
-				//stringstream ss;
-				//ss << "a non-partitionable sequence of points was encountered, which may be caused by a large number of duplicates. "
-				//	<< "#points in box: " << numPointsInBox << ", #unique points in box: " << numUniquePoints << ", "
-				//	<< "min: " << subject->min.toString() << ", max: " << subject->max.toString();
-
-				//logger::ERROR(ss.str());
-
-				//exit(123);
 			}
 
-			
-
-			//auto bpp = attributes.bytes;
-			//vector<int32_t> xyz(3 * numPoints, 0);
-			//uint8_t* dbg = reinterpret_cast<uint8_t*>(xyz.data());
-
-			//for (int i = 0; i < numPoints; i++) {
-
-			//	int64_t targetOffset = 12 * i;
-			//	int64_t sourceOffset = i * bpp;
-			//	int targetSize = xyz.size() * 4;
-
-			//	memcpy(dbg + targetOffset, buffer->data_u8 + sourceOffset, 12);
-			//}
-
-			//int a = 10;
 		}
 
 		int64_t nextNumPoins = subject->numPoints;
@@ -1581,8 +1546,6 @@ void doIndexing(string targetDir, State& state, Options& options, Sampler& sampl
 	pool.close();
 
 	indexer.reloadChunkRoots();
-
-	//Dbg::instance()->isDebug = true;
 
 	if (chunks->list.size() == 1) {
 		auto node = nodes[0];
