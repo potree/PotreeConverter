@@ -14,6 +14,10 @@ let easyCases = [
 		output: "D:/temp/test/heidentor.laz",
 		arguments: [],
 	},{
+		input: ["D:/dev/pointclouds/testdata/heidentor_out_of_bounds.laz"],
+		output: "D:/temp/test/heidentor_out_of_bounds.laz",
+		arguments: [],
+	},{
 		input: ["D:/dev/pointclouds/testdata/heidentor.laz"],
 		output: "D:/temp/test/heidentor.laz_only_rgb",
 		arguments: ["--attributes", "rgb"],
@@ -94,6 +98,7 @@ async function runTestcase(testcase){
 		testcase.input, 
 		"-o", testcase.output,
 		...testcase.arguments,
+		"--encoding", "BROTLI",
 	];
 
 	let strArgs = args.join(" ");
@@ -103,6 +108,7 @@ async function runTestcase(testcase){
 
 	return new Promise(resolve => {
 
+		let tStart = Date.now() / 1000.0;
 		let process = spawn(cmd, args);
 
 		process.stdout.on('data', (data) => {
@@ -115,9 +121,10 @@ async function runTestcase(testcase){
 
 		process.on('close', (code) => {
 			// console.log(`child process exited with code ${code}`);
+			let duration = Date.now() / 1000.0 - tStart;
 
 			if(code === 0){
-				console.log("SUCCESS!");
+				console.log(`SUCCESS! duration: ${duration.toFixed(1)}s`);
 			}else if(code !== 0){
 				console.error(`ERROR: exited with code ${code}`);
 			}

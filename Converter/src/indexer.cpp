@@ -1052,36 +1052,35 @@ SoA toStructOfArrays(Node* node, Attributes attributes) {
 				auto mc_l = mortonEncode_magicbits(mx_l, my_l, mz_l);
 				auto mc_h = mortonEncode_magicbits(mx_h, my_h, mz_h);
 
-				{ // try decode and compare
+				//{ // try decode and compare
 
-					uint32_t x_decoded = 0;
-					uint32_t y_decoded = 0;
-					uint32_t z_decoded = 0;
+				//	uint32_t x_decoded = 0;
+				//	uint32_t y_decoded = 0;
+				//	uint32_t z_decoded = 0;
 
-					for (int i = 0; i < 21; i++) {
+				//	for (int i = 0; i < 21; i++) {
 
-						uint64_t mask = (mc_l >> (3 * i)) & 0b111;
+				//		uint64_t mask = (mc_l >> (3 * i)) & 0b111;
 
-						x_decoded = x_decoded | (((mask >> 0) & 0b001) << i);
-						y_decoded = y_decoded | (((mask >> 1) & 0b001) << i);
-						z_decoded = z_decoded | (((mask >> 2) & 0b001) << i);
+				//		x_decoded = x_decoded | (((mask >> 0) & 0b001) << i);
+				//		y_decoded = y_decoded | (((mask >> 1) & 0b001) << i);
+				//		z_decoded = z_decoded | (((mask >> 2) & 0b001) << i);
 
 
-					}
+				//	}
 
-					bool okayX = x_decoded == mx_l;
-					bool okayY = y_decoded == my_l;
-					bool okayZ = z_decoded == mz_l;
+				//	bool okayX = x_decoded == mx_l;
+				//	bool okayY = y_decoded == my_l;
+				//	bool okayZ = z_decoded == mz_l;
 
-					if (!okayX || !okayY || !okayZ) {
-						int a = 10;
+				//	if (!okayX || !okayY || !okayZ) {
 
-						cout << "could not revert morton code!!!" << endl;
+				//		cout << "could not revert morton code!!!" << endl;
 
-						exit(123);
-					}
+				//		exit(123);
+				//	}
 
-				}
+				//}
 
 
 				MortonCode mc;

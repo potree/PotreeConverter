@@ -222,6 +222,23 @@ namespace chunker_countsort_laszip {
 					double uy = (double(Y) * posScale.y + posOffset.y - min.y) / size.y;
 					double uz = (double(Z) * posScale.z + posOffset.z - min.z) / size.z;
 
+					bool inBox = ux >= 0.0 && uy >= 0.0 && uz >= 0.0;
+					inBox = inBox && ux <= 1.0 && uy <= 1.0 && uz <= 1.0;
+
+					if (!inBox) {
+						stringstream ss;
+						ss << "encountered point outside bounding box." << endl;
+						ss << "box.min: " << min.toString() << endl;
+						ss << "box.max: " << max.toString() << endl;
+						ss << "point: " << Vector3(x, y, z).toString() << endl;
+						ss << "file: " << path << endl;
+						ss << "PotreeConverter requires a valid bounding box to operate." << endl;
+						ss << "Please try to repair the bounding box, e.g. using lasinfo with the -repair_bb argument." << endl;
+						logger::ERROR(ss.str());
+
+						exit(123);
+					}
+
 					int64_t ix = int64_t(std::min(dGridSize * ux, dGridSize - 1.0));
 					int64_t iy = int64_t(std::min(dGridSize * uy, dGridSize - 1.0));
 					int64_t iz = int64_t(std::min(dGridSize * uz, dGridSize - 1.0));
