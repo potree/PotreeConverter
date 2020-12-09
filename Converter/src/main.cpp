@@ -259,7 +259,7 @@ Stats computeStats(vector<Source> sources){
 	cout << "total file size: " << strTotalFileSize << endl;
 
 	{ // sanity check
-		bool sizeError = (size.x == 0.0) || (size.x == 0.0) || (size.z == 0);
+		bool sizeError = (size.x == 0.0) || (size.y == 0.0) || (size.z == 0);
 		if (sizeError) {
 			logger::ERROR("invalid bounding box. at least one axis has a size of zero.");
 
