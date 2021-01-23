@@ -20,17 +20,17 @@ using namespace std;
 Options parseArguments(int argc, char** argv) {
 	Arguments args(argc, argv);
 
-	args.addArgument("source,i,", "input files");
-	args.addArgument("outdir,o", "output directory");
-	args.addArgument("encoding", "Encoding type. \"BROTLI\", \"UNCOMPRESSED\"");
-	args.addArgument("method,m", "sampling method");
-	args.addArgument("chunkMethod", "chunking method");
-	args.addArgument("keep-chunks", "");
-	args.addArgument("no-chunking", "");
-	args.addArgument("no-indexing", "");
-	args.addArgument("attributes", "attributes in output file");
-	args.addArgument("generate-page,p", "Generates a ready to use web page with the given name.");
-	args.addArgument("title", "Page title");
+	args.addArgument("source,i", "Input files");
+	args.addArgument("outdir,o", "Output directory");
+	args.addArgument("encoding", "Encoding type \"BROTLI\", \"UNCOMPRESSED\" (default)");
+	args.addArgument("method,m", "Point sampling method \"poisson\", \"poisson_average\", \"random\"");
+	args.addArgument("chunkMethod", "Chunking method");
+	args.addArgument("keep-chunks", "Skip deleting temporary chunks during conversion");
+	args.addArgument("no-chunking", "Disable chunking phase");
+	args.addArgument("no-indexing", "Disable indexing phase");
+	args.addArgument("attributes", "Attributes in output file");
+	args.addArgument("generate-page,p", "Generate a ready to use web page with the given name");
+	args.addArgument("title", "Page title used when generating a web page");
 
 
 	if(!args.has("source")) {
