@@ -35,12 +35,13 @@ Options parseArguments(int argc, char** argv) {
 
 	if (args.has("help")) {
 		cout << "PotreeConverter <source> -o <outdir>" << endl;
-		cout << args.usage() << endl;
+		cout << endl << args.usage() << endl;
 		exit(0);
 	}
 
-	if(!args.has("source")) {
+	if (!args.has("source")) {
 		cout << "PotreeConverter <source> -o <outdir>" << endl;
+		cout << endl << "For a list of options, use --help or -h" << endl;
 
 		exit(1);
 	}
@@ -49,6 +50,7 @@ Options parseArguments(int argc, char** argv) {
 
 	if (source.size() == 0) {
 		cout << "PotreeConverter <source> -o <outdir>" << endl;
+		cout << endl << "For a list of options, use --help or -h" << endl;
 
 		exit(1);
 	}
