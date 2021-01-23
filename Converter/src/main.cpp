@@ -34,13 +34,13 @@ Options parseArguments(int argc, char** argv) {
 	args.addArgument("title", "Page title used when generating a web page");
 
 	if (args.has("help")) {
-		cout << "/Converter <source> -o <outdir>" << endl;
+		cout << "PotreeConverter <source> -o <outdir>" << endl;
 		cout << args.usage() << endl;
 		exit(0);
 	}
 
 	if(!args.has("source")) {
-		cout << "/Converter <source> -o <outdir>" << endl;
+		cout << "PotreeConverter <source> -o <outdir>" << endl;
 
 		exit(1);
 	}
@@ -48,7 +48,7 @@ Options parseArguments(int argc, char** argv) {
 	vector<string> source = args.get("source").as<vector<string>>();
 
 	if (source.size() == 0) {
-		cout << "/Converter <source> -o <outdir>" << endl;
+		cout << "PotreeConverter <source> -o <outdir>" << endl;
 
 		exit(1);
 	}
