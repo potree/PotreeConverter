@@ -20,7 +20,7 @@ using namespace std;
 Options parseArguments(int argc, char** argv) {
 	Arguments args(argc, argv);
 
-	args.addArgument("source,i", "Input files");
+	args.addArgument("source,i,", "Input file(s)");
 	args.addArgument("help,h", "Display help information");
 	args.addArgument("outdir,o", "Output directory");
 	args.addArgument("encoding", "Encoding type \"BROTLI\", \"UNCOMPRESSED\" (default)");
