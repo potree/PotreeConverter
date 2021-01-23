@@ -21,6 +21,7 @@ Options parseArguments(int argc, char** argv) {
 	Arguments args(argc, argv);
 
 	args.addArgument("source,i", "Input files");
+	args.addArgument("help,h", "Display help information");
 	args.addArgument("outdir,o", "Output directory");
 	args.addArgument("encoding", "Encoding type \"BROTLI\", \"UNCOMPRESSED\" (default)");
 	args.addArgument("method,m", "Point sampling method \"poisson\", \"poisson_average\", \"random\"");
@@ -32,6 +33,11 @@ Options parseArguments(int argc, char** argv) {
 	args.addArgument("generate-page,p", "Generate a ready to use web page with the given name");
 	args.addArgument("title", "Page title used when generating a web page");
 
+	if (args.has("help")) {
+		cout << "/Converter <source> -o <outdir>" << endl;
+		cout << args.usage() << endl;
+		exit(0);
+	}
 
 	if(!args.has("source")) {
 		cout << "/Converter <source> -o <outdir>" << endl;
