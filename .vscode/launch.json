@@ -38,7 +38,7 @@
 				// "D:/temp/crashreport/3dbuildings_walls_azimuth.laz",
 				// "-o", "D:/temp/crashreport2/converted",
 
-				"D:/dev/pointclouds/CA13/ot_35120B4122C_1.laz",
+				// "D:/dev/pointclouds/CA13/ot_35120B4122C_1.laz",
 				// "D:/dev/pointclouds/CA13/ot_35120B4121D_1.laz",
 				// "D:/dev/pointclouds/CA13/ot_35120B4301B_1.laz",
 				// "D:/dev/pointclouds/CA13/ot_35120B4301D_1.laz",
@@ -64,7 +64,7 @@
 				// "D:/dev/pointclouds/tuwien_baugeschichte/candi Banyunibo",
 
 
-				// "D:/dev/pointclouds/sitn/potree2/aerial_lidar2019_2524_1197_laz14_dip.laz",
+				"D:/dev/pointclouds/sitn/potree2/aerial_lidar2019_2524_1197_laz14_dip.laz",
 				// "D:/dev/pointclouds/sitn/potree2/aerial_lidar2019_2524_1197_las14.las",
 
 				// "D:/temp/Bargello10Mtest.las",
@@ -78,11 +78,8 @@
 				// "D:/dev/pointclouds/testdata/lion.laz",
 				// "D:/dev/pointclouds/testdata/3dbuildings_walls_azimuth.laz",
 
-				"-o", "D:/temp/converted_brotli",
-				// "-o", "F:/temp/CA13",
-				// "-o", "F:/temp/affandi",
-				// "-o", "C:/dev/workspaces/potree/develop/test/converted",
-				//"-o", "C:/dev/workspaces/potree/develop/test/eclepens",
+
+				"-o", "D:/temp/cpotree/sitn_dip_2.0",
 
 				// ===================
 				// SYSTEM 2
@@ -104,7 +101,7 @@
 				// "-m", "poisson", // ["poisson", "poisson_average", "random"]
 				// "--chunkMethod", "SKIP" // [LASZIP, LAS_CUSTOM, SKIP]
 				// "--attributes", "rgb", "Dip (degrees)", "Dip direction (degrees)", "NormalX", "NormalY", "NormalZ",
-				"--attributes" , "rgb", "intensity", "classification", "mjpmie",
+				// "--attributes" , "rgb", "intensity", "classification", "mjpmie",
 				"--encoding", "BROTLI",
 			],
 			"stopAtEntry": false,
