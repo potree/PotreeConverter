@@ -1,0 +1,74 @@
+
+cd D:\temp\compression\r
+
+$codec = "brotli"
+$mx=20
+
+7za a "#_${codec}_all.7z" all.bin -m0="$codec" -mx="${mx}"
+
+7za a "#_${codec}_classification.7z" classification.bin -m0="$codec" -mx="${mx}"
+7za a "#_${codec}_gps-time.7z" "gps-time.bin" -m0="$codec" -mx="${mx}"
+7za a "#_${codec}_intensity.7z" intensity.bin -m0="$codec" -mx="${mx}"
+7za a "#_${codec}_number of returns.7z" "number of returns.bin" -m0="$codec" -mx="${mx}"
+7za a "#_${codec}_point source id.7z" "point source id.bin" -m0="$codec" -mx="${mx}"
+7za a "#_${codec}_return number.7z" "return number.bin" -m0="$codec" -mx="${mx}"
+7za a "#_${codec}_rgb.7z" "rgb.bin" -m0="$codec" -mx="${mx}"
+7za a "#_${codec}_scan angle rank.7z" "scan angle rank.bin" -m0="$codec" -mx="${mx}"
+7za a "#_${codec}_user data.7z" "user data.bin" -m0="$codec" -mx="${mx}"
+
+7za a "#_${codec}_mortoncode.7z" "mortoncode.bin" -m0="$codec" -mx="${mx}"
+7za a "#_${codec}_mortoncode_diff.7z" "mortoncode_diff.bin" -m0="$codec" -mx="${mx}"
+7za a "#_${codec}_position.7z" position.bin -m0="$codec" -mx="${mx}"
+
+########################
+# POSITION - ENCODINGS
+########################
+
+$codec = "brotli"
+$mx ="6"
+
+7za a "./test/#_${codec}_position.7z" position.bin -m0="$codec" -mx="${mx}"
+7za a "./test/#_${codec}_mortoncode.7z" "mortoncode.bin" -m0="$codec" -mx="${mx}"
+7za a "./test/#_${codec}_mortoncode_diff.7z" "mortoncode_diff.bin" -m0="$codec" -mx="${mx}"
+
+7za a "./test/#_${codec}_X.7z" X.bin -m0="$codec" -mx="${mx}"
+7za a "./test/#_${codec}_Y.7z" Y.bin -m0="$codec" -mx="${mx}"
+7za a "./test/#_${codec}_Z.7z" Z.bin -m0="$codec" -mx="${mx}"
+
+7za a "./test/#_${codec}_X.7z" diffX.bin -m0="$codec" -mx="${mx}"
+7za a "./test/#_${codec}_Y.7z" diffY.bin -m0="$codec" -mx="${mx}"
+7za a "./test/#_${codec}_Z.7z" diffZ.bin -m0="$codec" -mx="${mx}"
+
+7za a "./test/#_${codec}_quantized_X.7z" "quantized_X.bin" -m0="$codec" -mx="${mx}"
+7za a "./test/#_${codec}_quantized_Y.7z" "quantized_Y.bin" -m0="$codec" -mx="${mx}"
+7za a "./test/#_${codec}_quantized_Z.7z" "quantized_Z.bin" -m0="$codec" -mx="${mx}"
+
+
+
+########################
+# POSITION - CODECS
+########################
+
+$attribute = "return number"
+$codecs = @("lzma","lzma2","ppmd","bzip2","brotli","lizard","zstd","deflate")
+foreach ($codec in $codecs){
+	7za a "./test/#_${codec}_${attribute}.7z" "${attribute}.bin" -m0="${codec}" -mx="100"
+}
+
+
+
+
+
+7za a "./position/#_${codec}_position.7z" position.bin -m0="$codec" -mx="${mx}"
+
+
+
+
+$attribute = "X"
+
+7za a "#brotli_${attribute}.7z" "${attribute}.bin" -m0=brotli -mx=9
+7za a "#lzma_${attribute}.7z" "${attribute}.bin" -m0=lzma -mx=9
+7za a "#zstd_${attribute}.7z" "${attribute}.bin" -m0=zstd -mx=9
+7za a "#deflate_${attribute}.7z" "${attribute}.bin" -m0=deflate -mx=9
+
+
