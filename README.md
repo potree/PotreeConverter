@@ -56,6 +56,25 @@ Potree.loadPointCloud(url).then(e => {
 
 ```
 
+# Command-line use
+
+```shell
+PotreeConverter <source> -o <outdir>
+
+  -i [ --source ]         Input file(s)
+  -h [ --help ]           Display help information
+  -o [ --outdir ]         Output directory
+  --encoding              Encoding type "BROTLI", "UNCOMPRESSED" (default)
+  -m [ --method ]         Point sampling method "poisson", "poisson_average", "random"
+  --chunkMethod           Chunking method
+  --keep-chunks           Skip deleting temporary chunks during conversion
+  --no-chunking           Disable chunking phase
+  --no-indexing           Disable indexing phase
+  --attributes            Attributes in output file
+  -p [ --generate-page ]  Generate a ready to use web page with the given name
+  --title                 Page title used when generating a web page
+```
+
 # Alternatives
 
 PotreeConverter 2.0 produces a very different format than previous iterations. If you find issues, you can still try previous converters or alternatives:
