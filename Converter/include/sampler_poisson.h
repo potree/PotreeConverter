@@ -260,18 +260,19 @@ struct SamplerPoisson : public Sampler {
 					if (isAccepted) {
 						accepted->write(child->points->data_u8 + pointOffset, attributes.bytes);
 						// rejected->write(child->points->data_u8 + pointOffset, attributes.bytes);
-					} else {
+					} else if(numrejected > 0){
 						rejected->write(child->points->data_u8 + pointOffset, attributes.bytes);
 					}
 				}
 
 				if (numRejected == 0 && child->isLeaf()) {
 					node->children[childIndex] = nullptr;
-				} if (numRejected > 0) {
+				} 
+				if (numRejected >= 0) {
 					child->points = rejected;
 					child->numPoints = numRejected;
-
-					onNodeCompleted(child.get());
+					if(numRejected > 0)
+						onNodeCompleted(child.get());
 				}
 			}
 
