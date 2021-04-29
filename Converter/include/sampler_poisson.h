@@ -260,7 +260,7 @@ struct SamplerPoisson : public Sampler {
 					if (isAccepted) {
 						accepted->write(child->points->data_u8 + pointOffset, attributes.bytes);
 						// rejected->write(child->points->data_u8 + pointOffset, attributes.bytes);
-					} else if(numrejected > 0){
+					} else if(numRejected > 0){
 						rejected->write(child->points->data_u8 + pointOffset, attributes.bytes);
 					}
 				}
