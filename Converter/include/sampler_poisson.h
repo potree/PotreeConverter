@@ -267,12 +267,11 @@ struct SamplerPoisson : public Sampler {
 
 				if (numRejected == 0 && child->isLeaf()) {
 					node->children[childIndex] = nullptr;
-				} if (numRejected > 0) {
-					child->points = rejected;
-					child->numPoints = numRejected;
-
+				} 
+				child->points = rejected;
+				child->numPoints = numRejected;
+				if(numRejected > 0)
 					onNodeCompleted(child.get());
-				}
 			}
 
 			node->points = accepted;
