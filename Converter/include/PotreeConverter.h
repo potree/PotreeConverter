@@ -81,35 +81,59 @@ inline vector<Attribute> parseExtraAttributes(LasHeader& header) {
 
 	vector<uint8_t> extraData;
 
+	constexpr int recordSize = 192;
+	vector<Attribute> attributes;
+
+	auto readString = [](uint8_t* data, uint64_t size){
+		char chr[32];
+		memcpy(chr, data, size);
+		string str(chr);
+
+		return str;
+	};
+
 	for (auto& vlr : header.vlrs) {
 		if (vlr.recordID == 4) {
 			extraData = vlr.data;
-			break;
+			
+			int numExtraAttributes = extraData.size() / recordSize;
+
+			for (int i = 0; i < numExtraAttributes; i++) {
+
+				int offset = i * recordSize;
+				uint8_t type = read<uint8_t>(extraData, offset + 2);
+				uint8_t options = read<uint8_t>(extraData, offset + 3);
+
+				string name = readString(extraData.data() + offset + 4, 32);
+
+				double scale[3];
+				memcpy(&scale, extraData.data() + offset + 112, 24);
+
+				double aOffset[3];
+				memcpy(&aOffset, extraData.data() + offset + 136, 24);
+
+				string description = readString(extraData.data() + offset + 160, 32);
+
+				auto info = lasTypeInfo(type);
+				string typeName = getAttributeTypename(info.type);
+				int elementSize = getAttributeTypeSize(info.type);
+
+				int size = info.numElements * elementSize;
+				Attribute xyz(name, size, info.numElements, elementSize, info.type);
+				xyz.description = description;
+				xyz.scale = Vector3(scale[0], scale[1], scale[2]);
+				xyz.offset = Vector3(aOffset[0], aOffset[1], aOffset[2]);
+
+				attributes.push_back(xyz);
+
+				cout << name << ", scale: " << xyz.scale.toString() << ", offset: " << xyz.offset.toString() << endl;
+			}
+
 		}
 	}
 
-	constexpr int recordSize = 192;
-	int numExtraAttributes = extraData.size() / recordSize;
-	vector<Attribute> attributes;
-
-	for (int i = 0; i < numExtraAttributes; i++) {
-
-		int offset = i * recordSize;
-		uint8_t type = read<uint8_t>(extraData, offset + 2);
-		uint8_t options = read<uint8_t>(extraData, offset + 3);
-		char chrName[32];
-		memcpy(chrName, extraData.data() + offset + 4, 32);
-		string name(chrName);
-
-		auto info = lasTypeInfo(type);
-		string typeName = getAttributeTypename(info.type);
-		int elementSize = getAttributeTypeSize(info.type);
-
-		int size = info.numElements * elementSize;
-		Attribute xyz(name, size, info.numElements, elementSize, info.type);
-
-		attributes.push_back(xyz);
-	}
+	
+	
 
 	return attributes;
 }

@@ -117,6 +117,8 @@ struct Attribute {
 	// TODO: should be type-dependent, not always double. won't work properly with 64 bit integers
 	Vector3 min = {Infinity, Infinity, Infinity};
 	Vector3 max = {-Infinity, -Infinity, -Infinity};
+	Vector3 scale = {1.0, 1.0, 1.0};
+	Vector3 offset = {0.0, 0.0, 0.0};
 
 	Attribute() {
 
