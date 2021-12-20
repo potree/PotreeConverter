@@ -171,14 +171,10 @@ struct SamplerPoissonAverage : public Sampler {
 
 			auto center = (node->min + node->max) * 0.5;
 
-			//int dbgChecks = -1;
-			//int dbgSumChecks = 0;
-			//int dbgMaxChecks = 0;
-
 			double acceptGridSize = 16;
 			vector<vector<Point>> gridAccepted(acceptGridSize * acceptGridSize * acceptGridSize);
 
-			auto checkAccept = [/*&dbgChecks, &dbgSumChecks, &dbgNumAccepted,*/ spacing, squaredSpacing, &squaredDistance, center, min, max, size, &gridAccepted, acceptGridSize](Point candidate) {
+			auto checkAccept = [spacing, squaredSpacing, &squaredDistance, center, min, max, size, &gridAccepted, acceptGridSize](Point candidate) {
 
 				double dx = acceptGridSize * (candidate.x - min.x) / size.x;
 				double dy = acceptGridSize * (candidate.y - min.y) / size.y;
@@ -226,53 +222,6 @@ struct SamplerPoissonAverage : public Sampler {
 				int indexCurr = ix + iy * acceptGridSize + iz * acceptGridSize * acceptGridSize;
 				gridAccepted[indexCurr].push_back(candidate);
 
-				//=====================================================
-				// outside-in distance checking as described in paper
-				// superseded by distance checking in a grid-neighbourhood
-				//=====================================================
-				//auto cx = candidate.x - center.x;
-				//auto cy = candidate.y - center.y;
-				//auto cz = candidate.z - center.z;
-				//auto cdd = cx * cx + cy * cy + cz * cz;
-				//auto cd = sqrt(cdd);
-				//auto limit = (cd - spacing);
-				//auto limitSquared = limit * limit;
-
-				//int j = 0;
-				//for (int i = dbgNumAccepted - 1; i >= 0; i--) {
-
-				//	auto& point = dbgAccepted[i];
-
-				//	//dbgChecks++;
-				//	//dbgSumChecks++;
-
-				//	// check distance to center
-				//	auto px = point.x - center.x;
-				//	auto py = point.y - center.y;
-				//	auto pz = point.z - center.z;
-				//	auto pdd = px * px + py * py + pz * pz;
-				//	//auto pd = sqrt(pdd);
-
-				//	// stop when differences to center between candidate and accepted exceeds the spacing
-				//	// any other previously accepted point will be even closer to the center.
-				//	if (pdd < limitSquared) {
-				//		return true;
-				//	}
-
-				//	double dd = squaredDistance(point, candidate);
-
-				//	if (dd < squaredSpacing) {
-				//		return false;
-				//	}
-
-				//	j++;
-
-				//	// also put a limit at x distance checks
-				//	if (j > 10'000) {
-				//		return true;
-				//	}
-				//}
-
 				return true;
 
 			};
@@ -308,18 +257,9 @@ struct SamplerPoissonAverage : public Sampler {
 			//int abc = 0;
 			for (Point& point : points) {
 
-				//dbgChecks = 0;
-
-				//point.mainIndex = abc;
-				//abc++;
-
 				bool isAccepted = checkAccept(point);
 
-				//dbgMaxChecks = std::max(dbgChecks, dbgMaxChecks);
-
 				if (isAccepted) {
-					//dbgAccepted[numAccepted] = point;
-					//dbgNumAccepted++;
 					numAccepted++;
 				} else {
 					numRejectedPerChild[point.childIndex]++;
@@ -346,22 +286,35 @@ struct SamplerPoissonAverage : public Sampler {
 				//}
 
 				acceptedChildPointFlags[point.childIndex][point.pointIndex] = isAccepted ? 1 : 0;
+			}
 
-				//abc++;
-
+			vector<CumulativeColor> sums(points.size());
+			for(int i = 0; i < points.size(); i++){
+				sums[i].r = points[i].r;
+				sums[i].g = points[i].g;
+				sums[i].b = points[i].b;
+				sums[i].w = 1;
 			}
 
 			{// compute average color
 				int offsetRGB = attributes.getOffset("rgb");
 
-				auto addCandidateToAverage = [node](Point& candidate, Point& average) {
-					average.r = average.r + candidate.r;
-					average.g = average.g + candidate.g;
-					average.b = average.b + candidate.b;
-					average.w = average.w + candidate.w;
+				//auto addCandidateToAverage = [node](Point& candidate, Point& average) {
+				//	average.r = average.r + candidate.r;
+				//	average.g = average.g + candidate.g;
+				//	average.b = average.b + candidate.b;
+				//	average.w = average.w + candidate.w;
+				//};
 
+				auto addCandidateToAverage = [node, &sums](Point& point, int targetIndex, double weight) {
+
+					CumulativeColor& pointSum = sums[targetIndex];
+
+					pointSum.r = pointSum.r + weight * point.r;
+					pointSum.g = pointSum.g + weight * point.g;
+					pointSum.b = pointSum.b + weight * point.b;
+					pointSum.w = pointSum.w + weight;
 				};
-
 
 				for (Point& candidate : points) {
 					double dx = acceptGridSize * (candidate.x - min.x) / size.x;
@@ -400,8 +353,12 @@ struct SamplerPoissonAverage : public Sampler {
 
 									if (dd < squaredSpacing) {
 
-										
-										addCandidateToAverage(candidate, points[mainToSortMapping[point.mainIndex]]);
+										double d = sqrt(dd);
+										double u = d / spacing;
+										double w = 255.0 * exp(- (u * u) / 0.2);
+										int targetIndex = mainToSortMapping[point.mainIndex];
+
+										addCandidateToAverage(candidate, targetIndex, w);
 
 									}
 								}
@@ -435,21 +392,25 @@ struct SamplerPoissonAverage : public Sampler {
 
 					
 					Point& p = points[mainToSortMapping[j]];
+					CumulativeColor& sum = sums[mainToSortMapping[j]];
 
 					uint16_t* rgbTarget = reinterpret_cast<uint16_t*>(child->points->data_u8 + i * attributes.bytes + offsetRGB);
-					rgbTarget[0] = p.r / p.w;
-					rgbTarget[1] = p.g / p.w;
-					rgbTarget[2] = p.b / p.w;
+					if(sum.w == 0){
+						sum.w = 1;
+					}
+					rgbTarget[0] = sum.r / sum.w;
+					rgbTarget[1] = sum.g / sum.w;
+					rgbTarget[2] = sum.b / sum.w;
 
 					if (isAccepted) {
 						accepted->write(child->points->data_u8 + pointOffset, attributes.bytes);
 
-						CumulativeColor color;
-						color.r = p.r;
-						color.g = p.g;
-						color.b = p.b;
-						color.w = p.w;
-						averagedColors.push_back(color);
+						//CumulativeColor color;
+						//color.r = p.r;
+						//color.g = p.g;
+						//color.b = p.b;
+						//color.w = p.w;
+						averagedColors.push_back(sum);
 
 						rejected->write(child->points->data_u8 + pointOffset, attributes.bytes);
 					} else {
