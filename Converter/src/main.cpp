@@ -32,6 +32,7 @@ Options parseArguments(int argc, char** argv) {
 	args.addArgument("attributes", "Attributes in output file");
 	args.addArgument("generate-page,p", "Generate a ready to use web page with the given name");
 	args.addArgument("title", "Page title used when generating a web page");
+	args.addArgument("threads,t", "Overrides the default number of threads setting based on number of CPU cores");
 
 	if (args.has("help")) {
 		cout << "PotreeConverter <source> -o <outdir>" << endl;
@@ -130,6 +131,20 @@ Options parseArguments(int argc, char** argv) {
 	options.keepChunks = keepChunks;
 	options.noChunking = noChunking;
 	options.noIndexing = noIndexing;
+
+	auto cpuData = getCpuData();
+	cout << "#threads: " << cpuData.numThreads << endl;
+
+	if (args.has("threads")) {
+		int threads = args.get("threads").as<int>();
+		if (threads > 0) {
+			cout << "Overriding #threads default to: " << threads << endl;
+			setNumThreadsOverride(threads);
+		} else {
+			cout << "Invalid number of threads specified: " << threads << endl;
+			exit(123);
+		}
+	}
 
 	//cout << "flags: ";
 	//for (string flag : options.flags) {
@@ -496,9 +511,6 @@ int main(int argc, char** argv) {
 	auto exePath = fs::canonical(fs::absolute(argv[0])).parent_path().string();
 
 	launchMemoryChecker(2 * 1024, 0.1);
-	auto cpuData = getCpuData();
-
-	cout << "#threads: " << cpuData.numProcessors << endl;
 
 	auto options = parseArguments(argc, argv);
 

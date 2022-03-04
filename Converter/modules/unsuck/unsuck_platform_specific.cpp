@@ -1,6 +1,11 @@
 
 #include "unsuck.hpp"
 
+static int numThreads;
+void setNumThreadsOverride(size_t numThreadsOverride) {
+	numThreads = numThreadsOverride;
+}
+
 #ifdef _WIN32
 	#include "TCHAR.h"
 	#include "pdh.h"
@@ -103,6 +108,7 @@ void init() {
 	GetSystemInfo(&sysInfo);
 	// numProcessors = sysInfo.dwNumberOfProcessors;
 	numProcessors = std::thread::hardware_concurrency();
+	numThreads = numProcessors;
 
 	GetSystemTimeAsFileTime(&ftime);
 	memcpy(&lastCPU, &ftime, sizeof(FILETIME));
@@ -141,6 +147,7 @@ CpuData getCpuData() {
 	CpuData data;
 	data.numProcessors = numProcessors;
 	data.usage = percent * 100.0;
+	data.numThreads = numThreads;
 
 	return data;
 }
@@ -304,7 +311,8 @@ static unsigned long long lastTotalUser, lastTotalUserLow, lastTotalSys, lastTot
 
 void init() {
 	numProcessors = std::thread::hardware_concurrency();
-	
+	numThreads = numProcessors;
+
 	FILE* file = fopen("/proc/stat", "r");
     fscanf(file, "cpu %llu %llu %llu %llu", &lastTotalUser, &lastTotalUserLow, &lastTotalSys, &lastTotalIdle);
     fclose(file);
@@ -352,6 +360,7 @@ CpuData getCpuData() {
 	CpuData data;
 	data.numProcessors = numProcessors;
 	data.usage = getCpuUsage();
+	data.numThreads = numThreads;
 
 	return data;
 }
