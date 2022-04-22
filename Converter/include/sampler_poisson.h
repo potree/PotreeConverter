@@ -97,7 +97,10 @@ struct SamplerPoisson : public Sampler {
 					double y = (xyz[1] * scale.y) + offset.y;
 					double z = (xyz[2] * scale.z) + offset.z;
 
-					Point point = { x, y, z, i, childIndex };
+					int32_t tt = i;
+					int32_t ttt = childIndex;
+					
+					Point point = { x, y, z, tt, ttt };
 
 					points.push_back(point);
 				}
@@ -176,8 +179,8 @@ struct SamplerPoisson : public Sampler {
 
 			};
 
-			auto parallel = std::execution::par_unseq;
-			std::sort(parallel, points.begin(), points.end(), [center](Point a, Point b) -> bool {
+			// auto parallel = std::execution::par_unseq;
+			std::sort(points.begin(), points.end(), [center](Point a, Point b) -> bool {
 
 				auto ax = a.x - center.x;
 				auto ay = a.y - center.y;

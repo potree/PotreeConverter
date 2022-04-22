@@ -43,6 +43,8 @@ static double Infinity = std::numeric_limits<double>::infinity();
 constexpr auto fseek_64_all_platforms = fseeko64;
 #elif defined(WIN32)
 constexpr auto fseek_64_all_platforms = _fseeki64;
+#elif defined(__APPLE__)
+constexpr auto fseek_64_all_platforms = fseeko;
 #endif
 
 
@@ -574,3 +576,49 @@ inline string rightPad(string in, int64_t length, const char character = ' ') {
 #define GENERATE_ERROR_MESSAGE cout << "ERROR(" << __FILE__ << ":" << __LINE__ << "): "
 #define GENERATE_WARN_MESSAGE cout << "WARNING: "
 
+
+#ifndef CPU_H_
+#define CPU_H_
+
+#include <sys/types.h>
+
+#if defined(__APPLE__) && defined(__MACH__)
+  #define CP_USER 0
+  #define CP_SYS  1
+  #define CP_IDLE 2
+  #define CP_NICE 3
+  #define CP_STATES 4
+#else
+  #define CP_USER   0
+  #define CP_NICE   1
+  #define CP_SYS    2
+
+  #if defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__)
+    // *BSD or OSX
+    #define CP_INTR   3
+    #define CP_IDLE   4
+    #define CP_STATES 5
+  #else
+    //linux
+    #define CP_IDLE 3
+    #define CP_STATES 4
+  #endif
+#endif
+
+double cpu_percentage( unsigned );
+uint32_t get_cpu_count();
+
+/** CPU percentage output mode.
+ *
+ * Examples:
+ *
+ * CPU_MODE_DEFAULT: 100%
+ * CPU_MODE_THREADS: 800% (8 cores, fully loaded)
+ */
+enum CPU_MODE
+{
+  CPU_MODE_DEFAULT,
+  CPU_MODE_THREADS
+};
+
+#endif

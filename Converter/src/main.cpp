@@ -176,8 +176,8 @@ Curated curateSources(vector<string> paths) {
 	sources.reserve(paths.size());
 
 	mutex mtx;
-	auto parallel = std::execution::par;
-	for_each(parallel, paths.begin(), paths.end(), [&mtx, &sources](string path) {
+	// auto parallel = std::execution::par;
+	for_each(paths.begin(), paths.end(), [&mtx, &sources](string path) {
 
 		auto header = loadLasHeader(path);
 		auto filesize = fs::file_size(path);
