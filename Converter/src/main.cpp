@@ -176,8 +176,13 @@ Curated curateSources(vector<string> paths) {
 	sources.reserve(paths.size());
 
 	mutex mtx;
-	// auto parallel = std::execution::par;
+
+#if defined(__APPLE__)
 	for_each(paths.begin(), paths.end(), [&mtx, &sources](string path) {
+#else
+	auto parallel = std::execution::par;
+	for_each(parallel, paths.begin(), paths.end(), [&mtx, &sources](string path) {
+#endif
 
 		auto header = loadLasHeader(path);
 		auto filesize = fs::file_size(path);

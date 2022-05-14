@@ -356,8 +356,6 @@ CpuData getCpuData() {
 	return data;
 }
 
-
-
 #elif defined(__APPLE__)
 
 // see https://stackoverflow.com/questions/63166/how-to-determine-cpu-and-memory-consumption-from-inside-a-process
@@ -367,15 +365,30 @@ CpuData getCpuData() {
 #include <mach/mach.h>
 #include <sys/sysctl.h> // for sysctl
 
-#include "memory.h"
-
 #include <unistd.h> // usleep()
 
-// #include "cpu.h"
+enum BYTE_UNITS
+{
+  BYTES = 0,
+  KILOBYTES = 1,
+  MEGABYTES = 2,
+  GIGABYTES = 3
+};
 
-int64_t mem_status()
+template <class T>
+inline T convert_unit( T num, int to, int from = BYTES)
+{
+  for( ; from < to; from++)
+  {
+    num /= 1024;
+  }
+  return num;
+}
+
+void mem_status(MemoryStatus & status)
 {
   // These values are in bytes
+  u_int64_t total_mem;
   float used_mem;
   float percentage_mem;
   float free_mem;
@@ -384,6 +397,11 @@ int64_t mem_status()
 
   vm_size_t page_size;
   vm_statistics_data_t vm_stats;
+
+  // Get total physical memory
+  int mib[] = { CTL_HW, HW_MEMSIZE };
+  size_t length = sizeof( total_mem );
+  sysctl( mib, 2, &total_mem, &length, NULL, 0 );
 
   mach_port_t mach_port = mach_host_self();
   mach_msg_type_number_t count = sizeof( vm_stats ) / sizeof( natural_t );
@@ -398,68 +416,30 @@ int64_t mem_status()
         ( vm_stats.active_count + vm_stats.wire_count ) * page_size);
   }
 
-  return used_mem;
+  status.used_mem = convert_unit(static_cast< float >( used_mem ), BYTES );
+  status.total_mem = convert_unit(static_cast< float >( total_mem ), BYTES );
 }
-
-int64_t getPhysicalMemoryUsedByProcess(){ //Note: this value is in KB!
-    int64_t result = mem_status();
-	
-	result = result * 1024;
-	
-    return result;
-}
-
 
 MemoryData getMemoryData() {
-  	u_int64_t total_mem;
+	MemoryStatus status;
 
-	int mib[] = { CTL_HW, HW_MEMSIZE };
-  	size_t length = sizeof( total_mem );
-  	sysctl( mib, 2, &total_mem, &length, NULL, 0 );
-
-	int64_t totalVirtualMem = 0;
-	totalVirtualMem += 0;
-	totalVirtualMem *= 0;
-
-	int64_t virtualMemUsed = 0;
-	virtualMemUsed += 0;
-	virtualMemUsed *= 0;
-	
-	int64_t totalPhysMem = total_mem;
-	totalPhysMem *= 1;
-	
-
-	int64_t virtualMemUsedByMe = 0;
-	int64_t physMemUsedByMe = getPhysicalMemoryUsedByProcess();
-
-	
-	long long physMemUsed = total_mem - physMemUsedByMe;
-	physMemUsed *= 1;
-
+	mem_status(status);
 
 	MemoryData data;
-	
-	static int64_t virtualUsedMax = 0;
-	static int64_t physicalUsedMax = 0;
-
-	virtualUsedMax = std::max(virtualMemUsedByMe, virtualUsedMax);
-	physicalUsedMax = std::max(physMemUsedByMe, physicalUsedMax);
 
 	{
-		data.virtual_total = totalVirtualMem;
-		data.virtual_used = virtualMemUsed;
-		data.physical_total = totalPhysMem;
-		data.physical_used = physMemUsed;
-
+		data.virtual_total = status.total_mem;
+		data.virtual_used = status.used_mem;
+		data.physical_total = status.total_mem;
+		data.physical_used = status.used_mem;
 	}
 
 	{
-		data.virtual_usedByProcess = virtualMemUsedByMe;
-		data.virtual_usedByProcess_max = virtualUsedMax;
-		data.physical_usedByProcess = physMemUsedByMe;
-		data.physical_usedByProcess_max = physicalUsedMax;
+		data.virtual_usedByProcess = status.used_mem;
+		data.virtual_usedByProcess_max = status.used_mem;
+		data.physical_usedByProcess = status.used_mem;
+		data.physical_usedByProcess_max = status.used_mem;
 	}
-
 
 	return data;
 }
@@ -478,7 +458,6 @@ void printMemoryReport() {
 		<< endl;
 
 	cout << ss.str();
-
 }
 
 void launchMemoryChecker(int64_t maxMB, double checkInterval) {
@@ -501,7 +480,6 @@ void launchMemoryChecker(int64_t maxMB, double checkInterval) {
 
 	});
 	t.detach();
-
 }
 
 static int numProcessors;
@@ -520,7 +498,7 @@ uint32_t get_cpu_count()
 
 double getCpuUsage(){
   
-    return cpu_percentage(0);
+    return cpu_percentage(99000);
 }
 
 host_cpu_load_info_data_t _get_cpu_percentage()
@@ -543,7 +521,7 @@ host_cpu_load_info_data_t _get_cpu_percentage()
   return r_load;
 }
 
-double cpu_percentage( unsigned int cpu_usage_delay )
+float cpu_percentage( unsigned int cpu_usage_delay )
 {
   // Get the load times from the XNU kernel
   host_cpu_load_info_data_t load1 = _get_cpu_percentage();
@@ -566,8 +544,10 @@ double cpu_percentage( unsigned int cpu_usage_delay )
   unsigned long long diff_nice = next_nice - current_nice;
   unsigned long long diff_idle = next_idle - current_idle;
 
-  return static_cast<double>( diff_user + diff_system + diff_nice ) / 
-    static_cast<double>( diff_user + diff_system + diff_nice + diff_idle ) * 
+//   return static_cast<float>(diff_user) / static_cast<float>(diff_user + diff_idle) * 100;
+
+  return static_cast<float>( diff_user + diff_system + diff_nice ) / 
+    static_cast<float>( diff_user + diff_system + diff_nice + diff_idle ) * 
     100.0;
 }
 

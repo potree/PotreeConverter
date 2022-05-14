@@ -97,10 +97,15 @@ struct SamplerPoisson : public Sampler {
 					double y = (xyz[1] * scale.y) + offset.y;
 					double z = (xyz[2] * scale.z) + offset.z;
 
-					int32_t tt = i;
-					int32_t ttt = childIndex;
+					#if defined(__APPLE__)
+						// convert int64_t to int32_t for apple to be happy
+						int32_t apple_i = i;
+						int32_t apple_childIndex = childIndex;
 					
-					Point point = { x, y, z, tt, ttt };
+						Point point = { x, y, z, apple_i, apple_childIndex };
+					#else
+						Point point = { x, y, z, tt, ttt };
+					#endif
 
 					points.push_back(point);
 				}
@@ -179,8 +184,12 @@ struct SamplerPoisson : public Sampler {
 
 			};
 
-			// auto parallel = std::execution::par_unseq;
+		#if defined(__APPLE__)
 			std::sort(points.begin(), points.end(), [center](Point a, Point b) -> bool {
+		#else
+			auto parallel = std::execution::par_unseq;
+			std::sort(parallel, points.begin(), points.end(), [center](Point a, Point b) -> bool {
+		#endif
 
 				auto ax = a.x - center.x;
 				auto ay = a.y - center.y;
