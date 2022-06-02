@@ -746,7 +746,7 @@ namespace chunker_countsort_laszip {
 				auto attributeHandlers = createAttributeHandlers(header, data, point, inputAttributes, outputAttributesCopy);
 
 				double coordinates[3];
-				auto aPosition = outputAttributes.get("position");
+				auto aPosition = outputAttributesCopy.get("position");
 
 				for (int64_t i = 0; i < batchSize; i++) {
 					laszip_read_point(laszip_reader);
