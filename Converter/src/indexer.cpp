@@ -373,11 +373,17 @@ string Indexer::createMetadata(Options options, State& state, Hierarchy hierarch
 			ss << t(3) << s("numElements") << ": " << attribute.numElements << "," << endl;
 			ss << t(3) << s("elementSize") << ": " << attribute.elementSize << "," << endl;
 			ss << t(3) << s("type") << ": " << s(getAttributeTypename(attribute.type)) << "," << endl;
-			ss << t(3) << s("mask") << ": " << attribute.mask << "," << endl;
 
-			// if(attribute.mask != 0 && attribute.size == 1){
-			// 	ss << t(3) << s("histogram") << ": " << vecI64ToJson(attribute.histogram) << ", " << endl;
-			// }
+			bool emptyHistogram = true;
+			for(int i = 0; i < attribute.histogram.size(); i++){
+				if(attribute.histogram[i] != 0){
+					emptyHistogram = false;
+				}
+			}
+
+			 if(attribute.size == 1 && !emptyHistogram){
+			 	ss << t(3) << s("histogram") << ": " << vecI64ToJson(attribute.histogram) << ", " << endl;
+			 }
 
 			if (attribute.numElements == 1) {
 				ss << t(3) << s("min") << ": " << vecToJson(vector<double>{ attribute.min.x }) << "," << endl;

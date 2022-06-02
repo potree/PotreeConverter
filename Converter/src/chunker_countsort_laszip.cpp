@@ -459,13 +459,19 @@ namespace chunker_countsort_laszip {
 			int offsetClassification = outputAttributes.getOffset("classification");
 			Attribute* attributeClassification = outputAttributes.get("classification");
 			auto classification = [data, point, header, offsetClassification, attributeClassification](int64_t offset) {
-				auto value = point->classification;
+				
+				uint8_t value = 0;
+				if (point->extended_classification > 31){
+					value = point->extended_classification;
+				}else{
+					value = point->classification;
+				}
+
 				data[offset + offsetClassification] = value;
+				attributeClassification->histogram[value]++;
 
 				attributeClassification->min.x = std::min(attributeClassification->min.x, double(value));
 				attributeClassification->max.x = std::max(attributeClassification->max.x, double(value));
-
-				attributeClassification->histogram[value]++;
 			};
 
 			int offsetSourceId = outputAttributes.getOffset("point source id");
@@ -739,7 +745,7 @@ namespace chunker_countsort_laszip {
 				auto attributeHandlers = createAttributeHandlers(header, data, point, inputAttributes, outputAttributesCopy);
 
 				double coordinates[3];
-				auto aPosition = outputAttributes.get("position");
+				auto aPosition = outputAttributesCopy.get("position");
 
 				for (int64_t i = 0; i < batchSize; i++) {
 					laszip_read_point(laszip_reader);
@@ -1010,9 +1016,14 @@ namespace chunker_countsort_laszip {
 				jsAttribute["offset"] = vector<double>{ attribute.offset.x, attribute.offset.y, attribute.offset.z };
 			}
 
-			jsAttribute["mask"] = attribute.mask;
+			bool emptyHistogram = true;
+			for(int i = 0; i < attribute.histogram.size(); i++){
+				if(attribute.histogram[i] != 0){
+					emptyHistogram = false;
+				}
+			}
 
-			if(attribute.mask != 0 && attribute.size == 1){
+			if(attribute.size == 1 && !emptyHistogram){
 				json jsHistogram = attribute.histogram;
 
 				jsAttribute["histogram"] = jsHistogram;
