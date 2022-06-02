@@ -79,37 +79,55 @@ inline ScaleOffset computeScaleOffset(Vector3 min, Vector3 max, Vector3 targetSc
 
 inline vector<Attribute> parseExtraAttributes(LasHeader& header) {
 
-	vector<uint8_t> extraData;
+	// vector<uint8_t> extraData;
+	vector<Attribute> attributes;
 
 	for (auto& vlr : header.vlrs) {
 		if (vlr.recordID == 4) {
-			extraData = vlr.data;
-			break;
+			auto extraData = vlr.data;
+
+			constexpr int recordSize = 192;
+			int numExtraAttributes = extraData.size() / recordSize;
+
+			for (int i = 0; i < numExtraAttributes; i++) {
+
+				int offset = i * recordSize;
+				uint8_t type = read<uint8_t>(extraData, offset + 2);
+				uint8_t options = read<uint8_t>(extraData, offset + 3);
+				
+				char chrName[32];
+				memcpy(chrName, extraData.data() + offset + 4, 32);
+				string name(chrName);
+
+				Vector3 aScale = {1.0, 1.0, 1.0};
+				Vector3 aOffset = {0.0, 0.0, 0.0};
+				if((options & 0b01000) != 0){
+					memcpy(&aScale, extraData.data() + offset + 112, 24);
+				}
+				if((options & 0b10000) != 0){
+					memcpy(&aOffset, extraData.data() + offset + 136, 24);
+				}
+
+				char chrDescription[32];
+				memcpy(chrDescription, extraData.data() + offset + 160, 32);
+				string description(chrDescription);
+
+				auto info = lasTypeInfo(type);
+				string typeName = getAttributeTypename(info.type);
+				int elementSize = getAttributeTypeSize(info.type);
+
+				int size = info.numElements * elementSize;
+				Attribute xyz(name, size, info.numElements, elementSize, info.type);
+				xyz.description = description;
+				xyz.scale = aScale;
+				xyz.offset = aOffset;
+
+				attributes.push_back(xyz);
+			}
 		}
 	}
 
-	constexpr int recordSize = 192;
-	int numExtraAttributes = extraData.size() / recordSize;
-	vector<Attribute> attributes;
-
-	for (int i = 0; i < numExtraAttributes; i++) {
-
-		int offset = i * recordSize;
-		uint8_t type = read<uint8_t>(extraData, offset + 2);
-		uint8_t options = read<uint8_t>(extraData, offset + 3);
-		char chrName[32];
-		memcpy(chrName, extraData.data() + offset + 4, 32);
-		string name(chrName);
-
-		auto info = lasTypeInfo(type);
-		string typeName = getAttributeTypename(info.type);
-		int elementSize = getAttributeTypeSize(info.type);
-
-		int size = info.numElements * elementSize;
-		Attribute xyz(name, size, info.numElements, elementSize, info.type);
-
-		attributes.push_back(xyz);
-	}
+	
 
 	return attributes;
 }
