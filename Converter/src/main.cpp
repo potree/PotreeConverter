@@ -20,21 +20,28 @@ using namespace std;
 Options parseArguments(int argc, char** argv) {
 	Arguments args(argc, argv);
 
-	args.addArgument("source,i,", "input files");
-	args.addArgument("outdir,o", "output directory");
-	args.addArgument("encoding", "Encoding type. \"BROTLI\", \"UNCOMPRESSED\"");
-	args.addArgument("method,m", "sampling method");
-	args.addArgument("chunkMethod", "chunking method");
-	args.addArgument("keep-chunks", "");
-	args.addArgument("no-chunking", "");
-	args.addArgument("no-indexing", "");
-	args.addArgument("attributes", "attributes in output file");
-	args.addArgument("generate-page,p", "Generates a ready to use web page with the given name.");
-	args.addArgument("title", "Page title");
+	args.addArgument("source,i,", "Input file(s)");
+	args.addArgument("help,h", "Display help information");
+	args.addArgument("outdir,o", "Output directory");
+	args.addArgument("encoding", "Encoding type \"BROTLI\", \"UNCOMPRESSED\" (default)");
+	args.addArgument("method,m", "Point sampling method \"poisson\", \"poisson_average\", \"random\"");
+	args.addArgument("chunkMethod", "Chunking method");
+	args.addArgument("keep-chunks", "Skip deleting temporary chunks during conversion");
+	args.addArgument("no-chunking", "Disable chunking phase");
+	args.addArgument("no-indexing", "Disable indexing phase");
+	args.addArgument("attributes", "Attributes in output file");
+	args.addArgument("generate-page,p", "Generate a ready to use web page with the given name");
+	args.addArgument("title", "Page title used when generating a web page");
 
+	if (args.has("help")) {
+		cout << "PotreeConverter <source> -o <outdir>" << endl;
+		cout << endl << args.usage() << endl;
+		exit(0);
+	}
 
-	if(!args.has("source")) {
-		cout << "/Converter <source> -o <outdir>" << endl;
+	if (!args.has("source")) {
+		cout << "PotreeConverter <source> -o <outdir>" << endl;
+		cout << endl << "For a list of options, use --help or -h" << endl;
 
 		exit(1);
 	}
@@ -42,7 +49,8 @@ Options parseArguments(int argc, char** argv) {
 	vector<string> source = args.get("source").as<vector<string>>();
 
 	if (source.size() == 0) {
-		cout << "/Converter <source> -o <outdir>" << endl;
+		cout << "PotreeConverter <source> -o <outdir>" << endl;
+		cout << endl << "For a list of options, use --help or -h" << endl;
 
 		exit(1);
 	}
@@ -259,7 +267,7 @@ Stats computeStats(vector<Source> sources){
 	cout << "total file size: " << strTotalFileSize << endl;
 
 	{ // sanity check
-		bool sizeError = (size.x == 0.0) || (size.x == 0.0) || (size.z == 0);
+		bool sizeError = (size.x == 0.0) || (size.y == 0.0) || (size.z == 0);
 		if (sizeError) {
 			logger::ERROR("invalid bounding box. at least one axis has a size of zero.");
 
