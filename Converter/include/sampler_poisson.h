@@ -272,6 +272,15 @@ struct SamplerPoisson : public Sampler {
 					child->numPoints = numRejected;
 
 					onNodeCompleted(child.get());
+				} else if(numRejected == 0) {
+					// the parent has taken all points from this child, 
+					// so make this child an empty inner node.
+					// Otherwise, the hierarchy file will claim that 
+					// this node has points but because it doesn't have any,
+					// decompressing the nonexistent point buffer fails
+					// https://github.com/potree/potree/issues/1125
+					child->points = rejected;
+					child->numPoints = numRejected;
 				}
 			}
 
