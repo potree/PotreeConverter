@@ -168,6 +168,7 @@ struct Options {
 	bool generatePage = false;
 	string pageName = "";
 	string pageTitle = "";
+	string projection = "";
 
 	bool keepChunks = false;
 	bool noChunking = false;
