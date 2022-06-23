@@ -5,15 +5,19 @@
 
 #include "unsuck/unsuck.hpp"
 #include "chunker_countsort_laszip.h"
+#include "chunker_sparse.h"
 #include "indexer.h"
+#include "indexer_voxels.h"
 #include "sampler_poisson.h"
 #include "sampler_poisson_average.h"
 #include "sampler_random.h"
+#include "sampler_voxels.h"
 #include "Attributes.h"
 #include "PotreeConverter.h"
 #include "logger.h"
 
 #include "arguments/Arguments.hpp"
+
 
 using namespace std;
 
@@ -343,6 +347,8 @@ shared_ptr<Monitor> startMonitoring(State& state) {
 
 void chunking(Options& options, vector<Source>& sources, string targetDir, Stats& stats, State& state, Attributes outputAttributes) {
 
+	// chunker_sparse::run(sources, targetDir, stats.min, stats.max, state, outputAttributes);
+
 	if (options.noChunking) {
 		return;
 	}
@@ -365,30 +371,36 @@ void chunking(Options& options, vector<Source>& sources, string targetDir, Stats
 		exit(123);
 
 	}
+
 }
 
 void indexing(Options& options, string targetDir, State& state) {
 
-	if (options.noIndexing) {
-		return;
+	{
+		SamplerVoxels sampler;
+		indexer_voxels::doIndexing(targetDir, state, options, sampler);
 	}
 
-	if (options.method == "random") {
+	// if (options.noIndexing) {
+	// 	return;
+	// }
 
-		SamplerRandom sampler;
-		indexer::doIndexing(targetDir, state, options, sampler);
+	// if (options.method == "random") {
 
-	} else if (options.method == "poisson") {
+	// 	SamplerRandom sampler;
+	// 	indexer::doIndexing(targetDir, state, options, sampler);
 
-		SamplerPoisson sampler;
-		indexer::doIndexing(targetDir, state, options, sampler);
+	// } else if (options.method == "poisson") {
 
-	} else if (options.method == "poisson_average") {
+	// 	SamplerPoisson sampler;
+	// 	indexer::doIndexing(targetDir, state, options, sampler);
 
-		SamplerPoissonAverage sampler;
-		indexer::doIndexing(targetDir, state, options, sampler);
+	// } else if (options.method == "poisson_average") {
 
-	}
+	// 	SamplerPoissonAverage sampler;
+	// 	indexer::doIndexing(targetDir, state, options, sampler);
+
+	// }
 }
 
 void createReport(Options& options, vector<Source> sources, string targetDir, Stats& stats, State& state, double tStart) {

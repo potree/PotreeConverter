@@ -160,6 +160,16 @@ struct Buffer {
 	}
 
 	template<class T>
+	T get(int64_t position) {
+
+		T value;
+
+		memcpy(&value, data_u8 + position, sizeof(T));
+
+		return value;
+	}
+
+	template<class T>
 	void set(T value, int64_t position) {
 		memcpy(data_u8 + position, &value, sizeof(T));
 	}

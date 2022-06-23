@@ -11,6 +11,7 @@
 #include "Vector3.h"
 #include "unsuck/unsuck.hpp"
 #include "Attributes.h"
+#include "converter_utils.h"
 
 using std::vector;
 using std::shared_ptr;
@@ -24,12 +25,23 @@ struct CumulativeColor {
 	int64_t w = 0;
 };
 
+struct Voxel{
+	double r = 0.0;
+	double g = 0.0;
+	double b = 0.0;
+	double w = 0.0;
+	int x = 0;
+	int y = 0;
+	int z = 0;
+};
+
 struct Node {
 
 	vector<shared_ptr<Node>> children;
 
 	string name;
 	shared_ptr<Buffer> points;
+	vector<Voxel> voxels;
 	vector<CumulativeColor> colors;
 	Vector3 min;
 	Vector3 max;
