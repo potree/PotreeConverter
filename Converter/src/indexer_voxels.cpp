@@ -1375,54 +1375,59 @@ int64_t Writer::backlogSizeMB() {
 void Writer::writeAndUnload(Node* node, Attributes attributes) {
 
 
-	if(node->name == "r" || node->name == "r0" || node->name == "r00" || node->name == "r001" || node->name == "r0011"){
-		// stringstream ss;
-		// ss << node->name << endl;
-		// ss << "points: " << node->numPoints << endl;
-		// ss << "voxels: " << node->voxels.size() << endl;
+	if(node->name == "r" || node->name == "r0" || node->name == "r00" || node->name == "r001" || node->name == "r0011")
+	{
 
-		// string path = "D:/temp/test/" + node->name;
-		// writeFile(path, ss.str());
+		if(node->numPoints > 0)
+		{
+			stringstream ss;
+			int stride = attributes.bytes;
+			int rgbOffset = attributes.getOffset("rgb");
+			for(int i = 0; i < node->numPoints; i++){
 
-		stringstream ss;
+				double x = double(node->points->get<int32_t>(i * stride + 0)) * attributes.posScale.x + attributes.posOffset.x;
+				double y = double(node->points->get<int32_t>(i * stride + 4)) * attributes.posScale.y + attributes.posOffset.y;
+				double z = double(node->points->get<int32_t>(i * stride + 8)) * attributes.posScale.z + attributes.posOffset.z;
 
-		int stride = attributes.bytes;
-		int rgbOffset = attributes.getOffset("rgb");
-		for(int i = 0; i < node->numPoints; i++){
+				int r = node->points->get<uint16_t>(i * stride + rgbOffset + 0);
+				int g = node->points->get<uint16_t>(i * stride + rgbOffset + 2);
+				int b = node->points->get<uint16_t>(i * stride + rgbOffset + 4);
 
-			double x = double(node->points->get<int32_t>(i * stride + 0)) * attributes.posScale.x + attributes.posOffset.x;
-			double y = double(node->points->get<int32_t>(i * stride + 4)) * attributes.posScale.y + attributes.posOffset.y;
-			double z = double(node->points->get<int32_t>(i * stride + 8)) * attributes.posScale.z + attributes.posOffset.z;
+				r = r > 255 ? r / 256 : r;
+				g = g > 255 ? g / 256 : g;
+				b = b > 255 ? b / 256 : b;
 
-			int r = node->points->get<uint16_t>(i * stride + rgbOffset + 0);
-			int g = node->points->get<uint16_t>(i * stride + rgbOffset + 2);
-			int b = node->points->get<uint16_t>(i * stride + rgbOffset + 4);
+				ss << x << ", " << y << ", " << z << ", " 
+					<< r << ", " << g << ", " << b << endl;
+			}
 
-			r = r > 255 ? r / 256 : r;
-			g = g > 255 ? g / 256 : g;
-			b = b > 255 ? b / 256 : b;
-
-			ss << x << ", " << y << ", " << z << ", " 
-				<< r << ", " << g << ", " << b << endl;
+			string path = "D:/temp/test/" + node->name  + "_points.csv";
+			writeFile(path, ss.str());
 		}
 
-		Vector3 nodeSize = node->max - node->min;
-		for(Voxel voxel : node->voxels){
+		{
+			stringstream ss;
+			Vector3 nodeSize = node->max - node->min;
+			for(Voxel voxel : node->voxels){
 
-			double x = nodeSize.x * (double(voxel.x) / 256.0) + node->min.x;
-			double y = nodeSize.y * (double(voxel.y) / 256.0) + node->min.y;
-			double z = nodeSize.z * (double(voxel.z) / 256.0) + node->min.z;
+				double x = nodeSize.x * (double(voxel.x) / 256.0) + node->min.x;
+				double y = nodeSize.y * (double(voxel.y) / 256.0) + node->min.y;
+				double z = nodeSize.z * (double(voxel.z) / 256.0) + node->min.z;
 
-			int r = voxel.r / voxel.w;
-			int g = voxel.g / voxel.w;
-			int b = voxel.b / voxel.w;
+				int r = voxel.r / voxel.w;
+				int g = voxel.g / voxel.w;
+				int b = voxel.b / voxel.w;
 
-			ss << x << ", " << y << ", " << z << ", " 
-				<< r << ", " << g << ", " << b << endl;
+				if(voxel.w > 20.0){
+					ss << x << ", " << y << ", " << z << ", " 
+						<< r << ", " << g << ", " << b << endl;
+				}
+				
+			}
+
+			string path = "D:/temp/test/" + node->name  + "_voxels.csv";
+			writeFile(path, ss.str());
 		}
-
-		string path = "D:/temp/test/" + node->name  + ".csv";
-		writeFile(path, ss.str());
 	}
 
 	node->numPoints = 0;

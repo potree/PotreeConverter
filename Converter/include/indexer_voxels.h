@@ -47,8 +47,8 @@ namespace indexer_voxels{
 	constexpr int maxPointsPerChunk = 50'000;
 
 	inline int numSampleThreads() {
-		// return getCpuData().numProcessors;
-		return 1;
+		return getCpuData().numProcessors;
+		// return 1;
 	}
 
 	struct Hierarchy {

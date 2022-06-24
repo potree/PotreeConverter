@@ -83,23 +83,67 @@ struct BoundingBox {
 	}
 };
 
+// TODO: LICENSE
+inline uint64_t everyThirdBit(uint64_t mask){
+	// see https://stackoverflow.com/questions/45694690/how-i-can-remove-all-odds-bits-in-c
+
+	// input alignment of desired bits:
+	//                a..b..c..d..e..f..g..h..i..j..k..l..m..n..o..p..q..r..s..t..u..v
+
+	uint64_t bits = mask;
+
+	//                a..b..c..d..e..f..g..h..i..j..k..l..m..n..o..p..q..r..s..t..u..v                      a..b..c..d..e..f..g..h..i..j..k..l..m..n..o..p..q..r..s..t..u..v
+	//                a.....c.....e.....g.....i.....k.....m.....o.....q.....s.....u...                      ...b.....d.....f.....h.....j.....l.....n.....p.....r.....t.....v
+	//                ..a.....c.....e.....g.....i.....k.....m.....o.....q.....s.....u.                      ...b.....d.....f.....h.....j.....l.....n.....p.....r.....t.....v
+	bits = ((bits & 0b1000001000001000001000001000001000001000001000001000001000001000) >>  2) | ((bits & 0b0001000001000001000001000001000001000001000001000001000001000001) >> 0);
+	//                ..ab....cd....ef....gh....ij....kl....mn....op....qr....st....uv                      ..ab....cd....ef....gh....ij....kl....mn....op....qr....st....uv
+	//                ........cd..........gh..........kl..........op..........st......                      ..ab..........ef..........ij..........mn..........qr..........uv
+	//                ............cd..........gh..........kl..........op..........st..                      ..ab..........ef..........ij..........mn..........qr..........uv
+	bits = ((bits & 0b0000000011000000000011000000000011000000000011000000000011000000) >>  4) | ((bits & 0b0011000000000011000000000011000000000011000000000011000000000011) >> 0);
+
+	//                ..ab........cdef........ghij........klmn........opqr........stuv                      ..ab........cdef........ghij........klmn........opqr........stuv
+	//                ..ab....................ghij....................opqr............                      ............cdef....................klmn....................stuv
+	//                ..........ab....................ghij....................opqr....                      ............cdef....................klmn....................stuv
+	bits = ((bits & 0b1111000000000000000000001111000000000000000000001111000000000000) >>  8) | ((bits & 0b0000000000001111000000000000000000001111000000000000000000001111) >> 0);
+
+	//                ..........abcdef................ghijklmn................opqrstuv                      ..........abcdef................ghijklmn................opqrstuv
+	//                ................................ghijklmn........................                      ..........abcdef........................................opqrstuv
+	//                ................................................ghijklmn........                      ..........abcdef........................................opqrstuv
+	bits = ((bits & 0b0000000000000000000000000000000011111111000000000000000000000000) >> 16) | ((bits & 0b0000000011111111000000000000000000000000000000000000000011111111) >> 0);
+	
+	//                ..........abcdef................................ghijklmnopqrstuv                      ..........abcdef................................ghijklmnopqrstuv
+	//                ..........abcdef................................................                      ................................................ghijklmnopqrstuv
+	//                ..........................................abcdef................                      ................................................ghijklmnopqrstuv
+	bits = ((bits & 0b1111111111111111000000000000000000000000000000000000000000000000) >> 32) | ((bits & 0b0000000000000000000000000000000000000000000000001111111111111111) >> 0);
+
+	// sucessfully realigned! 
+	// bits = ..........................................abcdefghijklmnopqrstuv
+
+	return bits;
+}
 
 // see https://www.forceflow.be/2013/10/07/morton-encodingdecoding-through-bit-interleaving-implementations/
 // method to seperate bits from a given integer 3 positions apart
+// TODO: LICENSE
 inline uint64_t splitBy3(unsigned int a) {
+
 	uint64_t x = a & 0x1fffff; // we only look at the first 21 bits
 	x = (x | x << 32) & 0x1f00000000ffff; // shift left 32 bits, OR with self, and 00011111000000000000000000000000000000001111111111111111
 	x = (x | x << 16) & 0x1f0000ff0000ff; // shift left 32 bits, OR with self, and 00011111000000000000000011111111000000000000000011111111
 	x = (x | x << 8) & 0x100f00f00f00f00f; // shift left 32 bits, OR with self, and 0001000000001111000000001111000000001111000000001111000000000000
 	x = (x | x << 4) & 0x10c30c30c30c30c3; // shift left 32 bits, OR with self, and 0001000011000011000011000011000011000011000011000011000100000000
 	x = (x | x << 2) & 0x1249249249249249;
+
 	return x;
 }
 
 // see https://www.forceflow.be/2013/10/07/morton-encodingdecoding-through-bit-interleaving-implementations/
+// TODO: LICENSE
 inline uint64_t mortonEncode_magicbits(unsigned int x, unsigned int y, unsigned int z) {
+
 	uint64_t answer = 0;
 	answer |= splitBy3(x) | splitBy3(y) << 1 | splitBy3(z) << 2;
+
 	return answer;
 }
 
