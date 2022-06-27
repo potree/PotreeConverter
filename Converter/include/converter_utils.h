@@ -173,4 +173,6 @@ struct Options {
 	bool noChunking = false;
 	bool noIndexing = false;
 
+	int numThreads = 0;
+
 };

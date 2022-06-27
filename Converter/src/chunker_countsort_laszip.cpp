@@ -41,11 +41,8 @@ namespace fs = std::filesystem;
 
 namespace chunker_countsort_laszip {
 
-	auto numChunkerThreads = getCpuData().numProcessors;
-	auto numFlushThreads = getCpuData().numProcessors;
-
-	// auto numChunkerThreads = 1;
-	// auto numFlushThreads = 1;
+	auto numChunkerThreads = 0;
+	auto numFlushThreads = 0;
 
 	int maxPointsPerChunk = 5'000'000;
 	int gridSize = 128;
@@ -1183,9 +1180,14 @@ namespace chunker_countsort_laszip {
 		return {gridSize, lut};
 	}
 
-	void doChunking(vector<Source> sources, string targetDir, Vector3 min, Vector3 max, State& state, Attributes outputAttributes) {
+	void doChunking(vector<Source> sources, string targetDir, Vector3 min, Vector3 max, State& state, Attributes outputAttributes, Options& options) {
 
 		auto tStart = now();
+
+		numChunkerThreads = options.numThreads;
+		numFlushThreads = options.numThreads;
+		cout << "numChunkerThreads: " << numChunkerThreads << endl;
+		cout << "numFlushThreads: " << numFlushThreads << endl;
 
 		int64_t tmp = state.pointsTotal / 20;
 		maxPointsPerChunk = std::min(tmp, int64_t(10'000'000));
