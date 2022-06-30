@@ -1,3 +1,10 @@
+if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+  message(STATUS "Setting build type to Release as none was specified.")
+  set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Choose the type of build." FORCE)
+endif()
+
+message(STATUS "Build type is '${CMAKE_BUILD_TYPE}'")
+
 cmake_minimum_required(VERSION 3.16)
 set(CMAKE_SUPPRESS_REGENERATION true)
 
@@ -5,9 +12,6 @@ project(PotreeConverter LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
-set(CMAKE_BUILD_TYPE "Release" CACHE STRING "" FORCE)
-
-#message(${PROJECT_SOURCE_DIR})
 
 set(HEADER_FILES  
 	./Converter/include/Attributes.h
