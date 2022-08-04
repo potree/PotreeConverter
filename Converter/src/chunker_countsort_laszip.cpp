@@ -726,6 +726,15 @@ namespace chunker_countsort_laszip {
 			// per-thread copy of outputAttributes to compute min/max in a thread-safe way
 			// will be merged to global outputAttributes instance at the end of this function
 			Attributes outputAttributesCopy = outputAttributes;
+			
+			for(auto& attribute: outputAttributesCopy.list){
+				if(attribute.name == "classification"){
+					for(int i = 0; i < attribute.histogram.size(); i++){
+						attribute.histogram[i] = 0;
+					}
+				}
+			}
+
 			{
 				laszip_POINTER laszip_reader;
 				laszip_header* header;
