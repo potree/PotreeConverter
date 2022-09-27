@@ -15,6 +15,8 @@ using std::unique_lock;
 
 namespace indexer{
 
+	constexpr int hierarchyStepSize = 4;
+
 	struct Point {
 		double x;
 		double y;
@@ -499,7 +501,6 @@ vector<HierarchyChunk> Indexer::createHierarchyChunks(Node* root, int hierarchyS
 
 Hierarchy Indexer::createHierarchy(string path) {
 
-	constexpr int hierarchyStepSize = 4;
 	// type + childMask + numPoints + offset + size
 	constexpr int bytesPerNode = 1 + 1 + 4 + 8 + 8;
 
@@ -508,6 +509,20 @@ Hierarchy Indexer::createHierarchy(string path) {
 	};
 
 	auto chunks = createHierarchyChunks(root.get(), hierarchyStepSize);
+
+	// string dbgChunksPath = path + "/../dbg_chunks";
+	// fs::create_directories(dbgChunksPath);
+	// for(auto& chunk : chunks){
+
+	// 	stringstream ss;
+
+	// 	for(auto node : chunk.nodes){
+	// 		ss << node->name << endl;
+	// 	}
+
+
+	// 	writeFile(dbgChunksPath + "/" + chunk.name + ".txt", ss.str());
+	// }
 
 	unordered_map<string, int> chunkPointers;
 	vector<int64_t> chunkByteOffsets(chunks.size(), 0);
@@ -1566,6 +1581,23 @@ void doIndexing(string targetDir, State& state, Options& options, Sampler& sampl
 
 		sampler.sample(chunkRoot, attributes, indexer.spacing, onNodeCompleted);
 
+		{ // flush nodes of this chunk
+			vector<Node*> nodes;
+			chunkRoot->traverse([&nodes, chunkRoot](Node* node){
+				if(node == chunkRoot.get()) return;
+
+				nodes.push_back(node);
+			});
+			
+			indexer.hierarchyFlusher->write(nodes, hierarchyStepSize);
+
+			// detach anything below the chunk root. Will be reloaded from
+			// temporarily flushed hierarchy during creation of the hierarchy file
+			// TODO: check if memory is really released
+			// (no dangling shared pointers?)
+			chunkRoot->children.clear();
+		}
+
 		indexer.flushChunkRoot(chunkRoot);
 
 		// add chunk root, provided it isn't the root.
@@ -1627,6 +1659,33 @@ void doIndexing(string targetDir, State& state, Options& options, Sampler& sampl
 	string hierarchyPath = targetDir + "/hierarchy.bin";
 	Hierarchy hierarchy = indexer.createHierarchy(hierarchyPath);
 	writeBinaryFile(hierarchyPath, hierarchy.buffer);
+
+	{ // new hierarchy creation procedure
+		auto flusher = indexer.hierarchyFlusher;
+
+		{ // flush all the chunk root nodes 
+			vector<Node*> nodes;
+			for(auto chunk : chunks->list){
+				auto node = indexer.root->find(chunk->id);
+
+				nodes.push_back(node);
+			}
+
+			flusher->write(nodes, hierarchyStepSize);
+		}
+
+		// now start processing all flushed hierarchy chunks
+
+		// - load list of chunks in flushed hierarchy dir
+		//     - root chunk must be the first one
+		//     - make sure that metadata stores the right firstChunkSize
+		// - proxy nodes point to next chunk and have chunk byte sizes
+		//     - we will need to compute descendant chunks and their sizes first
+		//     - so root chunk must be stored first, but computed last?!
+		// 
+
+		
+	}
 
 	string metadataPath = targetDir + "/metadata.json";
 	string metadata = indexer.createMetadata(options, state, hierarchy);

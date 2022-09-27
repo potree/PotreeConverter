@@ -121,6 +121,22 @@ struct Node {
 
 		return true;
 	}
+
+	Node* find(string name){
+
+		Node* current = this;
+
+		int depth = name.size() - 1;
+
+		for(int level = 1; level <= depth; level++){
+			int index = name.at(level) - '0';
+
+			current = current->children[index].get();
+		}
+
+		return current;
+	}
+
 };
 
 struct SamplerState {

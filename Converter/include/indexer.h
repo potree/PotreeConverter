@@ -117,6 +117,67 @@ namespace indexer{
 
 	};
 
+	struct HierarchyFlusher{
+
+		mutex mtx;
+		string path;
+
+		HierarchyFlusher(string path){
+			this->path = path;
+
+			this->clear();
+		}
+
+		void clear(){
+			fs::remove_all(path);
+
+			fs::create_directories(path);
+		}
+
+		void write(vector<Node*> nodes, int hierarchyStepSize){
+
+			unordered_map<string, vector<Node*>> groups;
+
+			for(auto node : nodes){
+				string key = node->name.substr(0, hierarchyStepSize + 1);
+				if(node->name.size() <= hierarchyStepSize + 1){
+					key = "r";
+				}
+
+				if(groups.find(key) == groups.end()){
+					groups[key] = vector<Node*>();
+				}
+
+				groups[key].push_back(node);
+			}
+
+			lock_guard<mutex> lock(mtx);
+
+			fs::create_directories(path);
+
+			for(auto [key, groupedNodes] : groups){
+
+				stringstream ss;
+
+				for(auto node : groupedNodes){
+					ss << node->name << " " 
+					<< node->numPoints << " " 
+					<< node->byteOffset << " " 
+					<< node->byteSize << endl;
+				}
+
+				string filepath = path + "/" + key + ".txt";
+				fstream fout(filepath, ios::app | ios::out);
+				fout << ss.str();
+				fout.close();
+			}
+
+
+
+		}
+
+	};
+
 	struct HierarchyChunk {
 		string name = "";
 		vector<Node*> nodes;
@@ -138,6 +199,7 @@ namespace indexer{
 		shared_ptr<Node> root;
 
 		shared_ptr<Writer> writer;
+		shared_ptr<HierarchyFlusher> hierarchyFlusher;
 
 		vector<shared_ptr<Node>> detachedParts;
 
@@ -165,6 +227,7 @@ namespace indexer{
 			this->targetDir = targetDir;
 
 			writer = make_shared<Writer>(this);
+			hierarchyFlusher = make_shared<HierarchyFlusher>(targetDir + "/.hierarchyChunks");
 
 			string chunkRootFile = targetDir + "/tmpChunkRoots.bin";
 			fChunkRoots.open(chunkRootFile, ios::out | ios::binary);
