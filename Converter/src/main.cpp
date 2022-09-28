@@ -491,7 +491,24 @@ void generatePage(string exePath, string pagedir, string pagename) {
 
 }
 
+#include "HierarchyBuilder.h"
+
 int main(int argc, char** argv) {
+
+	
+	{ // DEBUG STUFF
+
+		string hierarchyDir = "D:/dev/pointclouds/Riegl/retz_converted/.hierarchyChunks";
+		int hierarchyStepSize = 4;
+
+		//HierarchyBuilder::build(hierarchyDir, hierarchyStepSize);
+
+		HierarchyBuilder builder(hierarchyDir, hierarchyStepSize);
+		builder.build();
+
+		return 0;
+	}
+
 
 
 	double tStart = now(); 

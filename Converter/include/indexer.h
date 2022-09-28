@@ -121,6 +121,7 @@ namespace indexer{
 
 		mutex mtx;
 		string path;
+		unordered_map<string, int> chunks;
 
 		HierarchyFlusher(string path){
 			this->path = path;
@@ -155,21 +156,65 @@ namespace indexer{
 
 			fs::create_directories(path);
 
+			// this structure, but guaranteed to be packed
+			// struct Record{                 size   offset
+			// 	uint8_t name[31];               31        0
+			// 	uint32_t numPoints;              4       31
+			// 	int64_t byteOffset;              8       35
+			// 	int32_t byteSize;                4       43
+			// 	uint8_t end = '\n';              1       47
+			// };                              ===
+			//                                  48
+
+			
 			for(auto [key, groupedNodes] : groups){
 
-				stringstream ss;
+				Buffer buffer(48 * groupedNodes.size());
 
-				for(auto node : groupedNodes){
-					ss << node->name << " " 
-					<< node->numPoints << " " 
-					<< node->byteOffset << " " 
-					<< node->byteSize << endl;
+				for(int i = 0; i < groupedNodes.size(); i++){
+					auto node = groupedNodes[i];
+
+					// buffer.set<uint8_t >('r',              48 * i +  0);
+					// for(int j = 0; j < 31; j++){
+					// 	if()
+					// 	buffer.set<uint8_t>(node->name.at(j) - '0', 48 * i + j);
+					// }
+
+					auto name = node->name.c_str();
+					memset(buffer.data_u8 + 48 * i, ' ', 31);
+					memcpy(buffer.data_u8 + 48 * i, name, node->name.size());
+					buffer.set<uint32_t>(node->numPoints,  48 * i + 31);
+					buffer.set<uint64_t>(node->byteOffset, 48 * i + 35);
+					buffer.set<uint32_t>(node->byteSize,   48 * i + 43);
+					buffer.set<char    >('\n',             48 * i + 47);
 				}
 
 				string filepath = path + "/" + key + ".txt";
-				fstream fout(filepath, ios::app | ios::out);
-				fout << ss.str();
+				fstream fout(filepath, ios::app | ios::out | ios::binary);
+				fout.write(buffer.data_char, buffer.size);
 				fout.close();
+
+
+
+				// stringstream ss;
+
+				// for(auto node : groupedNodes){
+				// 	ss << node->name << " " 
+				// 	<< node->numPoints << " " 
+				// 	<< node->byteOffset << " " 
+				// 	<< node->byteSize << endl;
+				// }
+
+				// string filepath = path + "/" + key + ".txt";
+				// fstream fout(filepath, ios::app | ios::out);
+				// fout << ss.str();
+				// fout.close();
+
+				if(chunks.find(key) == chunks.end()){
+					chunks[key] = 0;
+				}
+
+				chunks[key] += groupedNodes.size();
 			}
 
 

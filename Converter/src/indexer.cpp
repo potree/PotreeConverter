@@ -1656,10 +1656,11 @@ void doIndexing(string targetDir, State& state, Options& options, Sampler& sampl
 
 	printElapsedTime("flushing", tStart);
 
-	string hierarchyPath = targetDir + "/hierarchy.bin";
-	Hierarchy hierarchy = indexer.createHierarchy(hierarchyPath);
-	writeBinaryFile(hierarchyPath, hierarchy.buffer);
+	//string hierarchyPath = targetDir + "/hierarchy.bin";
+	//Hierarchy hierarchy = indexer.createHierarchy(hierarchyPath);
+	//writeBinaryFile(hierarchyPath, hierarchy.buffer);
 
+	Hierarchy hierarchy;
 	{ // new hierarchy creation procedure
 		auto flusher = indexer.hierarchyFlusher;
 
@@ -1675,6 +1676,29 @@ void doIndexing(string targetDir, State& state, Options& options, Sampler& sampl
 		}
 
 		// now start processing all flushed hierarchy chunks
+
+		// auto flusher = indexer.hierarchyFlusher;
+		// int rootChunkSize = flusher->chunks["r"];
+		// hierarchy.firstChunkSize = 22 * rootChunkSize;
+		
+		// for(auto [chunkID, numNodes] : flusher->chunks){
+			
+		// 	if(chunkID == "r") continue;
+
+		// 	auto buffer = readBinaryFile(flusher->path + "/" + chunkID + ".txt");
+		// 	// readTextFile(flusher->path + "/" + chunkID + ".txt");
+
+
+
+
+
+		// 	break;
+		// }
+
+		// for(auto& entry : fs::directory_iterator(indexer.hierarchyFlusher->path)){
+		// 	entry.path()
+		// }
+		// // std::cout << entry.path() << std::endl;
 
 		// - load list of chunks in flushed hierarchy dir
 		//     - root chunk must be the first one
