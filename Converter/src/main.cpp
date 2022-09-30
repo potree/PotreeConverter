@@ -501,8 +501,6 @@ int main(int argc, char** argv) {
 		string hierarchyDir = "D:/dev/pointclouds/Riegl/retz_converted/.hierarchyChunks";
 		int hierarchyStepSize = 4;
 
-		//HierarchyBuilder::build(hierarchyDir, hierarchyStepSize);
-
 		HierarchyBuilder builder(hierarchyDir, hierarchyStepSize);
 		builder.build();
 

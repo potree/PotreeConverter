@@ -13,6 +13,10 @@ struct SamplerRandom : public Sampler {
 	// subsample a local octree from bottom up
 	void sample(shared_ptr<Node> node, Attributes attributes, double baseSpacing, function<void(Node*)> onNodeCompleted) {
 
+		if(node->name == "r066"){
+			int a = 10;
+		}
+
 		struct Point {
 			double x;
 			double y;
@@ -201,6 +205,10 @@ struct SamplerRandom : public Sampler {
 				}
 
 				if (numRejected == 0) {
+					//if(node->name == "r0660"){
+					//	int a = 10;
+					//}
+
 					node->children[childIndex] = nullptr;
 				} if (numRejected > 0) {
 					child->points = rejected;

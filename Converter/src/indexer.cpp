@@ -10,6 +10,7 @@
 #include "PotreeConverter.h"
 #include "DbgWriter.h"
 #include "brotli/encode.h"
+#include "HierarchyBuilder.h"
 
 using std::unique_lock;
 
@@ -1517,6 +1518,11 @@ void doIndexing(string targetDir, State& state, Options& options, Sampler& sampl
 	indexer.root = make_shared<Node>("r", chunks->min, chunks->max);
 	indexer.spacing = (chunks->max - chunks->min).x / 128.0;
 
+	auto onNodeCompleted = [&indexer](Node* node) {
+		indexer.writer->writeAndUnload(node);
+		indexer.hierarchyFlusher->write(node, hierarchyStepSize);
+	};
+
 	struct Task {
 		shared_ptr<Chunk> chunk;
 
@@ -1543,7 +1549,7 @@ void doIndexing(string targetDir, State& state, Options& options, Sampler& sampl
 	atomic_int64_t activeThreads = 0;
 	mutex mtx_nodes;
 	vector<shared_ptr<Node>> nodes;
-	TaskPool<Task> pool(numSampleThreads(), [&writeAndUnload, &state, &options, &activeThreads, tStart, &lastReport, &totalPoints, totalBytes, &pointsProcessed, chunks, &indexer, &nodes, &mtx_nodes, &sampler](auto task) {
+	TaskPool<Task> pool(numSampleThreads(), [&onNodeCompleted, &writeAndUnload, &state, &options, &activeThreads, tStart, &lastReport, &totalPoints, totalBytes, &pointsProcessed, chunks, &indexer, &nodes, &mtx_nodes, &sampler](auto task) {
 		
 		auto chunk = task->chunk;
 		auto chunkRoot = make_shared<Node>(chunk->id, chunk->min, chunk->max);
@@ -1575,21 +1581,26 @@ void doIndexing(string targetDir, State& state, Options& options, Sampler& sampl
 
 		buildHierarchy(&indexer, chunkRoot.get(), pointBuffer, numPoints);
 
-		auto onNodeCompleted = [&indexer](Node* node) {
-			indexer.writer->writeAndUnload(node);
-		};
+		// auto onNodeCompleted = [&indexer](Node* node) {
+		// 	indexer.writer->writeAndUnload(node);
+		// };
 
 		sampler.sample(chunkRoot, attributes, indexer.spacing, onNodeCompleted);
+
+		// if(chunk->id == "r06625"){
+		// 	int a = 10;
+		// }
+
 
 		{ // flush nodes of this chunk
 			vector<Node*> nodes;
 			chunkRoot->traverse([&nodes, chunkRoot](Node* node){
-				if(node == chunkRoot.get()) return;
+				//if(node == chunkRoot.get()) return;
 
 				nodes.push_back(node);
 			});
 			
-			indexer.hierarchyFlusher->write(nodes, hierarchyStepSize);
+			// indexer.hierarchyFlusher->write(nodes, hierarchyStepSize);
 
 			// detach anything below the chunk root. Will be reloaded from
 			// temporarily flushed hierarchy during creation of the hierarchy file
@@ -1633,22 +1644,28 @@ void doIndexing(string targetDir, State& state, Options& options, Sampler& sampl
 	pool.waitTillEmpty();
 	pool.close();
 
+	// {
+	// 	auto node = indexer.root->find("r06625");
+	// 	cout << node->name << endl;
+	// }
+
 	indexer.reloadChunkRoots();
+
+	// {
+	// 	auto node = indexer.root->find("r06625");
+	// 	cout << node->name << endl;
+	// }
 
 	if (chunks->list.size() == 1) {
 		auto node = nodes[0];
 
 		indexer.root = node;
 	} else {
-
-		auto onNodeCompleted = [&indexer](Node* node) {
-			indexer.writer->writeAndUnload(node);
-		};
-
 		sampler.sample(indexer.root, attributes, indexer.spacing, onNodeCompleted);
 	}
-	
-	indexer.writer->writeAndUnload(indexer.root.get());
+
+	// root is automatically finished after subsampling all descendants
+	onNodeCompleted(indexer.root.get());
 
 	printElapsedTime("sampling", tStart);
 
@@ -1656,60 +1673,21 @@ void doIndexing(string targetDir, State& state, Options& options, Sampler& sampl
 
 	printElapsedTime("flushing", tStart);
 
+
 	//string hierarchyPath = targetDir + "/hierarchy.bin";
 	//Hierarchy hierarchy = indexer.createHierarchy(hierarchyPath);
 	//writeBinaryFile(hierarchyPath, hierarchy.buffer);
 
-	Hierarchy hierarchy;
-	{ // new hierarchy creation procedure
-		auto flusher = indexer.hierarchyFlusher;
+	indexer.hierarchyFlusher->flush(hierarchyStepSize);
 
-		{ // flush all the chunk root nodes 
-			vector<Node*> nodes;
-			for(auto chunk : chunks->list){
-				auto node = indexer.root->find(chunk->id);
+	string hierarchyDir = indexer.targetDir + "/.hierarchyChunks";
+	HierarchyBuilder builder(hierarchyDir, hierarchyStepSize);
+	builder.build();
 
-				nodes.push_back(node);
-			}
-
-			flusher->write(nodes, hierarchyStepSize);
-		}
-
-		// now start processing all flushed hierarchy chunks
-
-		// auto flusher = indexer.hierarchyFlusher;
-		// int rootChunkSize = flusher->chunks["r"];
-		// hierarchy.firstChunkSize = 22 * rootChunkSize;
-		
-		// for(auto [chunkID, numNodes] : flusher->chunks){
-			
-		// 	if(chunkID == "r") continue;
-
-		// 	auto buffer = readBinaryFile(flusher->path + "/" + chunkID + ".txt");
-		// 	// readTextFile(flusher->path + "/" + chunkID + ".txt");
-
-
-
-
-
-		// 	break;
-		// }
-
-		// for(auto& entry : fs::directory_iterator(indexer.hierarchyFlusher->path)){
-		// 	entry.path()
-		// }
-		// // std::cout << entry.path() << std::endl;
-
-		// - load list of chunks in flushed hierarchy dir
-		//     - root chunk must be the first one
-		//     - make sure that metadata stores the right firstChunkSize
-		// - proxy nodes point to next chunk and have chunk byte sizes
-		//     - we will need to compute descendant chunks and their sizes first
-		//     - so root chunk must be stored first, but computed last?!
-		// 
-
-		
-	}
+	Hierarchy hierarchy = {
+		.stepSize = hierarchyStepSize,
+		.firstChunkSize = builder.batch_root->byteSize,
+	};
 
 	string metadataPath = targetDir + "/metadata.json";
 	string metadata = indexer.createMetadata(options, state, hierarchy);

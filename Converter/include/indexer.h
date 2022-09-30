@@ -119,9 +119,17 @@ namespace indexer{
 
 	struct HierarchyFlusher{
 
+		struct HNode{
+			string name;
+			int64_t byteOffset = 0;
+			int64_t byteSize = 0;
+			int64_t numPoints = 0;
+		};
+
 		mutex mtx;
 		string path;
 		unordered_map<string, int> chunks;
+		vector<HNode> buffer;
 
 		HierarchyFlusher(string path){
 			this->path = path;
@@ -135,24 +143,61 @@ namespace indexer{
 			fs::create_directories(path);
 		}
 
-		void write(vector<Node*> nodes, int hierarchyStepSize){
+		void write(Node* node, int hierarchyStepSize){
+			lock_guard<mutex> lock(mtx);
 
-			unordered_map<string, vector<Node*>> groups;
+			HNode hnode = {
+				.name       = node->name,
+				.byteOffset = node->byteOffset,
+				.byteSize   = node->byteSize,
+				.numPoints  = node->numPoints,
+			};
+
+			//if(hnode.name == "r0660"){
+			//	int a = 10;
+			//}
+
+			buffer.push_back(hnode);
+
+			if(buffer.size() > 10'000){
+				this->write(buffer, hierarchyStepSize);
+				buffer.clear();
+			}
+		}
+
+		void flush(int hierarchyStepSize){
+			lock_guard<mutex> lock(mtx);
+			
+			this->write(buffer, hierarchyStepSize);
+			buffer.clear();
+		}
+
+		void write(vector<HNode> nodes, int hierarchyStepSize){
+
+			unordered_map<string, vector<HNode>> groups;
 
 			for(auto node : nodes){
-				string key = node->name.substr(0, hierarchyStepSize + 1);
-				if(node->name.size() <= hierarchyStepSize + 1){
+
+				//if(node.name == "r0660"){
+				//	int a = 10;
+				//}
+
+				string key = node.name.substr(0, hierarchyStepSize + 1);
+				if(node.name.size() <= hierarchyStepSize + 1){
 					key = "r";
 				}
 
 				if(groups.find(key) == groups.end()){
-					groups[key] = vector<Node*>();
+					groups[key] = vector<HNode>();
 				}
 
 				groups[key].push_back(node);
-			}
 
-			lock_guard<mutex> lock(mtx);
+				// add batch roots to batches (in addition to root batch)
+				if(node.name.size() == hierarchyStepSize + 1){
+					groups[node.name].push_back(node);
+				}
+			}
 
 			fs::create_directories(path);
 
@@ -180,12 +225,12 @@ namespace indexer{
 					// 	buffer.set<uint8_t>(node->name.at(j) - '0', 48 * i + j);
 					// }
 
-					auto name = node->name.c_str();
+					auto name = node.name.c_str();
 					memset(buffer.data_u8 + 48 * i, ' ', 31);
-					memcpy(buffer.data_u8 + 48 * i, name, node->name.size());
-					buffer.set<uint32_t>(node->numPoints,  48 * i + 31);
-					buffer.set<uint64_t>(node->byteOffset, 48 * i + 35);
-					buffer.set<uint32_t>(node->byteSize,   48 * i + 43);
+					memcpy(buffer.data_u8 + 48 * i, name, node.name.size());
+					buffer.set<uint32_t>(node.numPoints,  48 * i + 31);
+					buffer.set<uint64_t>(node.byteOffset, 48 * i + 35);
+					buffer.set<uint32_t>(node.byteSize,   48 * i + 43);
 					buffer.set<char    >('\n',             48 * i + 47);
 				}
 
@@ -195,29 +240,12 @@ namespace indexer{
 				fout.close();
 
 
-
-				// stringstream ss;
-
-				// for(auto node : groupedNodes){
-				// 	ss << node->name << " " 
-				// 	<< node->numPoints << " " 
-				// 	<< node->byteOffset << " " 
-				// 	<< node->byteSize << endl;
-				// }
-
-				// string filepath = path + "/" + key + ".txt";
-				// fstream fout(filepath, ios::app | ios::out);
-				// fout << ss.str();
-				// fout.close();
-
 				if(chunks.find(key) == chunks.end()){
 					chunks[key] = 0;
 				}
 
 				chunks[key] += groupedNodes.size();
 			}
-
-
 
 		}
 
