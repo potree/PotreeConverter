@@ -120,6 +120,19 @@ struct HierarchyBuilder{
 			batch->chunkMap[key]->nodes.push_back(node);
 			batch->nodes.push_back(node);
 			batch->nodeMap[node->name] = batch->nodes[batch->nodes.size() - 1];
+
+			bool isChunkKey = ((node->name.size() - 1) % hierarchyStepSize) == 0;
+			bool isBatchSubChunk = node->name.size() > hierarchyStepSize + 1;
+			if(isChunkKey && isBatchSubChunk){
+				if(batch->chunkMap.find(node->name) == batch->chunkMap.end()){
+					auto chunk = make_shared<HChunk>();
+					chunk->name = node->name;
+					batch->chunkMap[node->name] = chunk;
+					batch->chunks.push_back(chunk);
+				}
+
+				batch->chunkMap[node->name]->nodes.push_back(node);
+			}
 		}
 
 		// breadth-first sorted list of chunks
@@ -211,16 +224,13 @@ struct HierarchyBuilder{
 					proxyNode->type = TYPE::PROXY;
 					proxyNode->proxyByteOffset = chunk->byteOffset;
 					proxyNode->proxyByteSize = 22 * chunk->nodes.size();
-
-					// cout << "make proxy: " << proxyNode->name << ", offset: " << proxyNode->byteOffset << endl;
-
 				}else{
 					cout << "ERROR: didn't find chunk " << chunk->name << endl;
 					exit(123);
 				}
 			}
 
-			byteOffset += 48 * chunk->nodes.size();
+			byteOffset += 22 * chunk->nodes.size();
 		}
 
 		batch->byteSize = byteOffset;
@@ -244,13 +254,6 @@ struct HierarchyBuilder{
 
 			for(auto node : chunk->nodes){
 
-				if(node->name == "r0022"){
-					int a = 10;
-				}
-				if(node->name == "r0222"){
-					int a = 10;
-				}
-
 				// proxy nodes exist twice - in the chunk and the parent-chunk that points to this chunk
 				// only the node in the parent-chunk is a proxy (to its non-proxy counterpart)
 				bool isProxyNode = (node->type == TYPE::PROXY) && node->name != chunk->name;
@@ -261,7 +264,7 @@ struct HierarchyBuilder{
 				}
 
 				uint64_t byteSize = isProxyNode ? node->proxyByteSize : node->byteSize;
-				uint64_t byteOffset = bytesWritten + (isProxyNode ? node->proxyByteOffset: node->byteOffset);
+				uint64_t byteOffset = (isProxyNode ? bytesWritten + node->proxyByteOffset : node->byteOffset);
 
 				buffer->set<uint8_t >(type            , 22 * recordsProcessed +  0);
 				buffer->set<uint8_t >(node->childMask , 22 * recordsProcessed +  1);
@@ -284,7 +287,7 @@ struct HierarchyBuilder{
 		fstream fout(hierarchyFilePath, ios::binary | ios::out);
 		int64_t bytesWritten = 0;
 
-		auto batch_root = loadBatch(path + "/r.txt");
+		auto batch_root = loadBatch(path + "/r.bin");
 		this->batch_root = batch_root;
 
 		{ // reserve the first <x> bytes in the file for the root chunk
@@ -301,7 +304,9 @@ struct HierarchyBuilder{
 			// r0626.txt
 
 			// skip root. it get's special treatment
-			if(entry.path().filename().string() == "r.txt") continue;
+			if(filepath.filename().string() == "r.bin") continue;
+			// skip non *.bin files
+			if(!iEndsWith(filepath.string(), ".bin")) continue;
 
 			auto batch = loadBatch(filepath.string());
 
@@ -312,7 +317,8 @@ struct HierarchyBuilder{
 				auto proxyNode = batch_root->nodeMap[batch->name];
 				proxyNode->type = TYPE::PROXY;
 				proxyNode->proxyByteOffset = bytesWritten;
-				proxyNode->proxyByteSize = batch->byteSize;
+				proxyNode->proxyByteSize = 22 * batch->chunkMap[batch->name]->nodes.size();
+				
 			}else{
 				// if there is only one node in that batch,
 				// then we flag that node as leaf in the root-batch
@@ -320,13 +326,10 @@ struct HierarchyBuilder{
 				root_batch_node->type == TYPE::LEAF;
 			}
 
-			auto dbgNode = batch_root->nodeMap[batch->name];
-			if(batch->name == "r0022"){
-				int a = 10;
-			}
-			if(batch->name == "r0222"){
-				int a = 10;
-			}
+			// auto dbgNode = batch_root->nodeMap[batch->name];
+			// if(batch->name == "r0022"){
+			// 	int a = 10;
+			// }
 
 			cout << "writing batch " << batch->name 
 				<< ". offset: " << bytesWritten 

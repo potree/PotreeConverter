@@ -215,15 +215,10 @@ namespace indexer{
 			for(auto [key, groupedNodes] : groups){
 
 				Buffer buffer(48 * groupedNodes.size());
+				stringstream ss;
 
 				for(int i = 0; i < groupedNodes.size(); i++){
 					auto node = groupedNodes[i];
-
-					// buffer.set<uint8_t >('r',              48 * i +  0);
-					// for(int j = 0; j < 31; j++){
-					// 	if()
-					// 	buffer.set<uint8_t>(node->name.at(j) - '0', 48 * i + j);
-					// }
 
 					auto name = node.name.c_str();
 					memset(buffer.data_u8 + 48 * i, ' ', 31);
@@ -232,13 +227,26 @@ namespace indexer{
 					buffer.set<uint64_t>(node.byteOffset, 48 * i + 35);
 					buffer.set<uint32_t>(node.byteSize,   48 * i + 43);
 					buffer.set<char    >('\n',             48 * i + 47);
+
+					ss << rightPad(name, 10, ' ') 
+						<< leftPad(to_string(node.numPoints), 8, ' ')
+						<< leftPad(to_string(node.byteOffset), 12, ' ')
+						<< leftPad(to_string(node.byteSize), 12, ' ')
+						<< endl;
 				}
 
-				string filepath = path + "/" + key + ".txt";
+				string filepath = path + "/" + key + ".bin";
 				fstream fout(filepath, ios::app | ios::out | ios::binary);
 				fout.write(buffer.data_char, buffer.size);
 				fout.close();
 
+				{ // dbg
+					fstream fout(path + "/" + key + ".dbg.txt", ios::app | ios::out | ios::binary);
+					fout << ss.str();
+					fout.close();
+
+					// writeFile(path + "/" + key + ".dbg.txt", ss.str());
+				}
 
 				if(chunks.find(key) == chunks.end()){
 					chunks[key] = 0;
