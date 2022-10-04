@@ -156,6 +156,9 @@ struct Sampler {
 
 	}
 
-	virtual void sample(shared_ptr<Node> node, Attributes attributes, double baseSpacing, function<void(Node*)> callbackNodeCompleted) = 0;
+	virtual void sample(Node* node, Attributes attributes, double baseSpacing, 
+		function<void(Node*)> callbackNodeCompleted,
+		function<void(Node*)> callbackNodeDiscarded
+	) = 0;
 
 };

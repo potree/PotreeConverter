@@ -496,16 +496,16 @@ void generatePage(string exePath, string pagedir, string pagename) {
 int main(int argc, char** argv) {
 
 	
-	{ // DEBUG STUFF
+	// { // DEBUG STUFF
 
-		string hierarchyDir = "D:/dev/pointclouds/Riegl/retz_converted/.hierarchyChunks";
-		int hierarchyStepSize = 4;
+	// 	string hierarchyDir = "D:/dev/pointclouds/Riegl/retz_converted/.hierarchyChunks";
+	// 	int hierarchyStepSize = 4;
 
-		HierarchyBuilder builder(hierarchyDir, hierarchyStepSize);
-		builder.build();
+	// 	HierarchyBuilder builder(hierarchyDir, hierarchyStepSize);
+	// 	builder.build();
 
-		return 0;
-	}
+	// 	return 0;
+	// }
 
 
 

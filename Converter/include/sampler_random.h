@@ -11,11 +11,11 @@
 struct SamplerRandom : public Sampler {
 
 	// subsample a local octree from bottom up
-	void sample(shared_ptr<Node> node, Attributes attributes, double baseSpacing, function<void(Node*)> onNodeCompleted) {
+	void sample(Node* node, Attributes attributes, double baseSpacing, 
+		function<void(Node*)> onNodeCompleted,
+		function<void(Node*)> onNodeDiscarded
+	) {
 
-		if(node->name == "r066"){
-			int a = 10;
-		}
 
 		struct Point {
 			double x;
@@ -40,8 +40,12 @@ struct SamplerRandom : public Sampler {
 		Vector3 scale = attributes.posScale;
 		Vector3 offset = attributes.posOffset;
 
-		traversePost(node.get(), [bytesPerPoint, baseSpacing, scale, offset, &onNodeCompleted, attributes](Node* node) {
+		traversePost(node, [bytesPerPoint, baseSpacing, scale, offset, &onNodeCompleted, &onNodeDiscarded, attributes](Node* node) {
 			node->sampled = true;
+
+			if(node->name == "r06620"){
+				int a = 10;
+			}
 
 			int64_t numPoints = node->numPoints;
 
@@ -185,9 +189,7 @@ struct SamplerRandom : public Sampler {
 			for (int childIndex = 0; childIndex < 8; childIndex++) {
 				auto child = node->children[childIndex];
 
-				if (child == nullptr) {
-					continue;
-				}
+				if (child == nullptr) continue;
 
 				auto numRejected = numRejectedPerChild[childIndex];
 				auto& acceptedFlags = acceptedChildPointFlags[childIndex];
@@ -204,16 +206,24 @@ struct SamplerRandom : public Sampler {
 					}
 				}
 
-				if (numRejected == 0) {
-					//if(node->name == "r0660"){
-					//	int a = 10;
-					//}
+				if (numRejected == 0 && child->isLeaf()) {
+					onNodeDiscarded(child.get());
 
 					node->children[childIndex] = nullptr;
 				} if (numRejected > 0) {
 					child->points = rejected;
 					child->numPoints = numRejected;
 
+					onNodeCompleted(child.get());
+				} else if(numRejected == 0) {
+					// the parent has taken all points from this child, 
+					// so make this child an empty inner node.
+					// Otherwise, the hierarchy file will claim that 
+					// this node has points but because it doesn't have any,
+					// decompressing the nonexistent point buffer fails
+					// https://github.com/potree/potree/issues/1125
+					child->points = nullptr;
+					child->numPoints = 0;
 					onNodeCompleted(child.get());
 				}
 			}

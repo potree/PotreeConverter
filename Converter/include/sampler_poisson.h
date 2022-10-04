@@ -11,7 +11,10 @@
 struct SamplerPoisson : public Sampler {
 
 	// subsample a local octree from bottom up
-	void sample(shared_ptr<Node> node, Attributes attributes, double baseSpacing, function<void(Node*)> onNodeCompleted) {
+	void sample(Node* node, Attributes attributes, double baseSpacing, 
+		function<void(Node*)> onNodeCompleted, 
+		function<void(Node*)> onNodeDiscarded
+	) {
 
 		struct Point {
 			double x;
@@ -36,7 +39,7 @@ struct SamplerPoisson : public Sampler {
 		Vector3 scale = attributes.posScale;
 		Vector3 offset = attributes.posOffset;
 
-		traversePost(node.get(), [bytesPerPoint, baseSpacing, scale, offset, &onNodeCompleted, attributes](Node* node) {
+		traversePost(node, [bytesPerPoint, baseSpacing, scale, offset, &onNodeCompleted, &onNodeDiscarded, attributes](Node* node) {
 			node->sampled = true;
 
 			int64_t numPoints = node->numPoints;
@@ -266,6 +269,8 @@ struct SamplerPoisson : public Sampler {
 				}
 
 				if (numRejected == 0 && child->isLeaf()) {
+					onNodeDiscarded(child.get());
+
 					node->children[childIndex] = nullptr;
 				} if (numRejected > 0) {
 					child->points = rejected;
@@ -279,8 +284,9 @@ struct SamplerPoisson : public Sampler {
 					// this node has points but because it doesn't have any,
 					// decompressing the nonexistent point buffer fails
 					// https://github.com/potree/potree/issues/1125
-					child->points = rejected;
-					child->numPoints = numRejected;
+					child->points = nullptr;
+					child->numPoints = 0;
+					onNodeCompleted(child.get());
 				}
 			}
 

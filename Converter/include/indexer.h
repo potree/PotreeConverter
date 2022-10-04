@@ -178,9 +178,6 @@ namespace indexer{
 
 			for(auto node : nodes){
 
-				//if(node.name == "r0660"){
-				//	int a = 10;
-				//}
 
 				string key = node.name.substr(0, hierarchyStepSize + 1);
 				if(node.name.size() <= hierarchyStepSize + 1){
@@ -270,6 +267,51 @@ namespace indexer{
 		int64_t size = 0;
 	};
 
+	struct CRNode{
+		string name = "";
+		Node* node;
+		vector<shared_ptr<CRNode>> children;
+		vector<FlushedChunkRoot> fcrs;
+		int numPoints = 0;
+
+		CRNode(){
+			children.resize(8, nullptr);
+		}
+
+		void traverse(function<void(CRNode*)> callback) {
+			callback(this);
+
+			for (auto child : children) {
+
+				if (child != nullptr) {
+					child->traverse(callback);
+				}
+
+			}
+		}
+
+		void traversePost(function<void(CRNode*)> callback) {
+			for (auto child : children) {
+
+				if (child != nullptr) {
+					child->traversePost(callback);
+				}
+			}
+
+			callback(this);
+		}
+
+		bool isLeaf() {
+			for (auto child : children) {
+				if (child != nullptr) {
+					return false;
+				}
+			}
+
+			return true;
+		}
+	};
+
 	struct Indexer{
 
 		string targetDir = "";
@@ -335,6 +377,8 @@ namespace indexer{
 		void flushChunkRoot(shared_ptr<Node> chunkRoot);
 
 		void reloadChunkRoots();
+
+		vector<CRNode> processChunkRoots();
 	};
 
 	class punct_facet : public std::numpunct<char> {

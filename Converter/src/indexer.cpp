@@ -199,6 +199,87 @@ namespace indexer{
 		offset += size;
 	}
 
+	vector<CRNode> Indexer::processChunkRoots(){
+
+		unordered_map<string, shared_ptr<CRNode>> nodesMap;
+		vector<shared_ptr<CRNode>> nodesList;
+
+		// create/copy nodes
+		this->root->traverse([&nodesMap, &nodesList](Node* node){
+			auto crnode = make_shared<CRNode>();
+			crnode->name = node->name;
+			crnode->node = node;
+			crnode->children.resize(node->children.size());
+
+			nodesList.push_back(crnode);
+			nodesMap[crnode->name] = crnode;
+		});
+
+		// establish hierarchy
+		for(auto crnode : nodesList){
+
+			string parentName = crnode->name.substr(0, crnode->name.size() - 1);
+
+			if(parentName != ""){
+				auto parent = nodesMap[parentName];
+				int index = crnode->name.at(crnode->name.size() - 1) - '0';
+
+				parent->children[index] = crnode;
+			}
+		}
+
+		// mark/flag/insert flushed chunk roots
+		for(auto fcr : flushedChunkRoots){
+			auto node = nodesMap[fcr.node->name];
+			
+			node->fcrs.push_back(fcr);
+			node->numPoints += fcr.node->numPoints;
+		}
+
+		// recursively merge leaves if sum(points) < threshold
+		auto cr_root = nodesMap["r"];
+		static int64_t threshold = 5'000'000;
+
+		cr_root->traversePost([](CRNode* node){
+			
+			if(node->isLeaf()){
+
+			}else{
+
+				int numPoints = 0;
+				for(auto child : node->children){
+					if(!child) continue;
+
+					numPoints += child->numPoints;
+				}
+				node->numPoints = numPoints;
+
+				if(node->numPoints < threshold){
+					// merge children into this node
+					for(auto child : node->children){
+						if(!child) continue;
+
+						node->fcrs.insert(node->fcrs.end(), child->fcrs.begin(), child->fcrs.end());
+					}
+
+					node->children.clear();
+				}
+			}
+		});
+
+		vector<CRNode> tasks;
+		cr_root->traverse([&tasks](CRNode* node){
+			// cout << node->name << ", #points: " << node->numPoints << ", #fcrs: " << node->fcrs.size() << endl;
+
+			if(node->fcrs.size() > 0){
+				CRNode crnode = *node;
+				tasks.push_back(crnode);
+			}
+		});
+
+		return tasks;
+	}
+
 	void Indexer::reloadChunkRoots() {
 
 		fChunkRoots.close();
@@ -1370,6 +1451,9 @@ int64_t Writer::backlogSizeMB() {
 }
 
 void Writer::writeAndUnload(Node* node) {
+
+	if(node->numPoints == 0) return;
+
 	auto attributes = indexer->attributes;
 	string encoding = indexer->options.encoding;
 
@@ -1523,6 +1607,8 @@ void doIndexing(string targetDir, State& state, Options& options, Sampler& sampl
 		indexer.hierarchyFlusher->write(node, hierarchyStepSize);
 	};
 
+	auto onNodeDiscarded = [&indexer](Node* node) {};
+
 	struct Task {
 		shared_ptr<Chunk> chunk;
 
@@ -1549,7 +1635,7 @@ void doIndexing(string targetDir, State& state, Options& options, Sampler& sampl
 	atomic_int64_t activeThreads = 0;
 	mutex mtx_nodes;
 	vector<shared_ptr<Node>> nodes;
-	TaskPool<Task> pool(numSampleThreads(), [&onNodeCompleted, &writeAndUnload, &state, &options, &activeThreads, tStart, &lastReport, &totalPoints, totalBytes, &pointsProcessed, chunks, &indexer, &nodes, &mtx_nodes, &sampler](auto task) {
+	TaskPool<Task> pool(numSampleThreads(), [&onNodeCompleted, &onNodeDiscarded, &writeAndUnload, &state, &options, &activeThreads, tStart, &lastReport, &totalPoints, totalBytes, &pointsProcessed, chunks, &indexer, &nodes, &mtx_nodes, &sampler](auto task) {
 		
 		auto chunk = task->chunk;
 		auto chunkRoot = make_shared<Node>(chunk->id, chunk->min, chunk->max);
@@ -1581,33 +1667,12 @@ void doIndexing(string targetDir, State& state, Options& options, Sampler& sampl
 
 		buildHierarchy(&indexer, chunkRoot.get(), pointBuffer, numPoints);
 
-		// auto onNodeCompleted = [&indexer](Node* node) {
-		// 	indexer.writer->writeAndUnload(node);
-		// };
+		sampler.sample(chunkRoot.get(), attributes, indexer.spacing, onNodeCompleted, onNodeDiscarded);
 
-		sampler.sample(chunkRoot, attributes, indexer.spacing, onNodeCompleted);
-
-		// if(chunk->id == "r06625"){
-		// 	int a = 10;
-		// }
-
-
-		{ // flush nodes of this chunk
-			vector<Node*> nodes;
-			chunkRoot->traverse([&nodes, chunkRoot](Node* node){
-				//if(node == chunkRoot.get()) return;
-
-				nodes.push_back(node);
-			});
-			
-			// indexer.hierarchyFlusher->write(nodes, hierarchyStepSize);
 
 			// detach anything below the chunk root. Will be reloaded from
 			// temporarily flushed hierarchy during creation of the hierarchy file
-			// TODO: check if memory is really released
-			// (no dangling shared pointers?)
 			chunkRoot->children.clear();
-		}
 
 		indexer.flushChunkRoot(chunkRoot);
 
@@ -1644,24 +1709,45 @@ void doIndexing(string targetDir, State& state, Options& options, Sampler& sampl
 	pool.waitTillEmpty();
 	pool.close();
 
-	// {
-	// 	auto node = indexer.root->find("r06625");
-	// 	cout << node->name << endl;
-	// }
+	indexer.fChunkRoots.close();
 
-	indexer.reloadChunkRoots();
+	{ // process chunk roots in batches
+		
+		string tmpChunkRootsPath = targetDir + "/tmpChunkRoots.bin";
+		auto tasks = indexer.processChunkRoots();
 
-	// {
-	// 	auto node = indexer.root->find("r06625");
-	// 	cout << node->name << endl;
-	// }
+		for(auto& task : tasks){
 
+			for(auto& fcr : task.fcrs){
+				auto buffer = make_shared<Buffer>(fcr.size);
+				readBinaryFile(tmpChunkRootsPath, fcr.offset, fcr.size, buffer->data);
+
+				if(fcr.node->name == "r06620"){
+
+					int32_t X = buffer->get<int32_t>(0);
+					int32_t Y = buffer->get<int32_t>(4);
+					int32_t Z = buffer->get<int32_t>(8);
+
+					int a = 10;
+				}
+
+				fcr.node->points = buffer;
+			}
+
+			sampler.sample(task.node, attributes, indexer.spacing, onNodeCompleted, onNodeDiscarded);
+
+			task.node->children.clear();
+		}
+	}
+
+
+	// sample up to root node
 	if (chunks->list.size() == 1) {
 		auto node = nodes[0];
 
 		indexer.root = node;
-	} else {
-		sampler.sample(indexer.root, attributes, indexer.spacing, onNodeCompleted);
+	} else if (!indexer.root->sampled){
+		sampler.sample(indexer.root.get(), attributes, indexer.spacing, onNodeCompleted, onNodeDiscarded);
 	}
 
 	// root is automatically finished after subsampling all descendants
