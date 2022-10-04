@@ -180,6 +180,7 @@ namespace dbgwriter{
 			} else if (bits <= 32) {
 				return 4;
 			}
+			return -1;
 		};
 
 		int bytesX = computeBytes(bitsX);
