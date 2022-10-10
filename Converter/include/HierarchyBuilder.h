@@ -331,9 +331,9 @@ struct HierarchyBuilder{
 			// 	int a = 10;
 			// }
 
-			cout << "writing batch " << batch->name 
-				<< ". offset: " << bytesWritten 
-				<< ", size: " << buffer->size << endl;
+			// cout << "writing batch " << batch->name 
+			// 	<< ". offset: " << bytesWritten 
+			// 	<< ", size: " << buffer->size << endl;
 
 			fout.write(buffer->data_char, buffer->size);
 			bytesWritten += buffer->size;

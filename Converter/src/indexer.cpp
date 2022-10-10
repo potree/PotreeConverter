@@ -1635,7 +1635,8 @@ void doIndexing(string targetDir, State& state, Options& options, Sampler& sampl
 	atomic_int64_t activeThreads = 0;
 	mutex mtx_nodes;
 	vector<shared_ptr<Node>> nodes;
-	TaskPool<Task> pool(numSampleThreads(), [&onNodeCompleted, &onNodeDiscarded, &writeAndUnload, &state, &options, &activeThreads, tStart, &lastReport, &totalPoints, totalBytes, &pointsProcessed, chunks, &indexer, &nodes, &mtx_nodes, &sampler](auto task) {
+	int numThreads = numSampleThreads() + 4;
+	TaskPool<Task> pool(numThreads, [&onNodeCompleted, &onNodeDiscarded, &writeAndUnload, &state, &options, &activeThreads, tStart, &lastReport, &totalPoints, totalBytes, &pointsProcessed, chunks, &indexer, &nodes, &mtx_nodes, &sampler](auto task) {
 		
 		auto chunk = task->chunk;
 		auto chunkRoot = make_shared<Node>(chunk->id, chunk->min, chunk->max);
@@ -1669,10 +1670,9 @@ void doIndexing(string targetDir, State& state, Options& options, Sampler& sampl
 
 		sampler.sample(chunkRoot.get(), attributes, indexer.spacing, onNodeCompleted, onNodeDiscarded);
 
-
-			// detach anything below the chunk root. Will be reloaded from
-			// temporarily flushed hierarchy during creation of the hierarchy file
-			chunkRoot->children.clear();
+		// detach anything below the chunk root. Will be reloaded from
+		// temporarily flushed hierarchy during creation of the hierarchy file
+		chunkRoot->children.clear();
 
 		indexer.flushChunkRoot(chunkRoot);
 
