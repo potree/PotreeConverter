@@ -118,6 +118,13 @@ struct Attribute {
 	Vector3 min = {Infinity, Infinity, Infinity};
 	Vector3 max = {-Infinity, -Infinity, -Infinity};
 
+	Vector3 scale = {1.0, 1.0, 1.0};
+	Vector3 offset = {0.0, 0.0, 0.0};
+
+	// histogram that counts occurances of points with same attribute value.
+	// only for 1 byte types, due to storage size
+	vector<int64_t> histogram = vector<int64_t>(256, 0);
+
 	Attribute() {
 
 	}

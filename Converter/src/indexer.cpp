@@ -78,20 +78,45 @@ namespace indexer{
 
 			auto jsMin = jsAttribute["min"];
 			auto jsMax = jsAttribute["max"];
+			auto jsScale = jsAttribute["scale"];
+			auto jsOffset = jsAttribute["offset"];
+
+			// int64_t mask = 0;
+			// if(jsAttribute.contains("mask")){
+			// 	mask = jsAttribute["mask"];
+			// }
+
+			vector<int64_t> histogram(256, 0);
+			if(jsAttribute.contains("histogram")){
+				auto jsHistogram = jsAttribute["histogram"];
+
+				for(int i = 0; i < jsHistogram.size(); i++){
+					histogram[i] = jsHistogram[i];
+				}
+			}
 
 			Attribute attribute(name, size, numElements, elementSize, type);
+			attribute.description = description;
+			// attribute.mask = mask;
+			attribute.histogram = histogram;
 
 			if (numElements >= 1) {
 				attribute.min.x = jsMin[0] == nullptr ? Infinity : double(jsMin[0]);
 				attribute.max.x = jsMax[0] == nullptr ? Infinity : double(jsMax[0]);
+				attribute.scale.x = jsScale[0] == nullptr ? 1.0 : double(jsScale[0]);
+				attribute.offset.x = jsOffset[0] == nullptr ? 0.0 : double(jsOffset[0]);
 			}
 			if (numElements >= 2) {
 				attribute.min.y = jsMin[1] == nullptr ? Infinity : double(jsMin[1]);
 				attribute.max.y = jsMax[1] == nullptr ? Infinity : double(jsMax[1]);
+				attribute.scale.y = jsScale[1] == nullptr ? 1.0 : double(jsScale[1]);
+				attribute.offset.y = jsOffset[1] == nullptr ? 0.0 : double(jsOffset[1]);
 			}
 			if (numElements >= 3) {
 				attribute.min.z = jsMin[2] == nullptr ? Infinity : double(jsMin[2]);
 				attribute.max.z = jsMax[2] == nullptr ? Infinity : double(jsMax[2]);
+				attribute.scale.z = jsScale[2] == nullptr ? 1.0 : double(jsScale[2]);
+				attribute.offset.z = jsOffset[2] == nullptr ? 0.0 : double(jsOffset[2]);
 			}
 
 			attributeList.push_back(attribute);
@@ -285,9 +310,24 @@ string Indexer::createMetadata(Options options, State& state, Hierarchy hierarch
 		ss << "]";
 
 		return ss.str();
+	};
 
+	auto vecI64ToJson = [](vector<int64_t> &values) {
 
-		//return "[" + d(value.x) + ", " + d(value.y) + ", " + d(value.z) + "]";
+		stringstream ss;
+		ss << "[";
+
+		for (int i = 0; i < values.size(); i++) {
+
+			ss << values[i];
+
+			if (i < values.size() - 1) {
+				ss << ", ";
+			}
+		}
+		ss << "]";
+
+		return ss.str();
 	};
 
 	auto octreeDepth = this->octreeDepth;
@@ -315,7 +355,7 @@ string Indexer::createMetadata(Options options, State& state, Hierarchy hierarch
 	};
 
 	Attributes& attributes = this->attributes;
-	auto getAttributesJsonString = [&attributes, t, s, toJson, vecToJson]() {
+	auto getAttributesJsonString = [&attributes, t, s, toJson, vecToJson, vecI64ToJson]() {
 
 		stringstream ss;
 		ss << "[" << endl;
@@ -334,15 +374,32 @@ string Indexer::createMetadata(Options options, State& state, Hierarchy hierarch
 			ss << t(3) << s("elementSize") << ": " << attribute.elementSize << "," << endl;
 			ss << t(3) << s("type") << ": " << s(getAttributeTypename(attribute.type)) << "," << endl;
 
+			bool emptyHistogram = true;
+			for(int i = 0; i < attribute.histogram.size(); i++){
+				if(attribute.histogram[i] != 0){
+					emptyHistogram = false;
+				}
+			}
+
+			 if(attribute.size == 1 && !emptyHistogram){
+			 	ss << t(3) << s("histogram") << ": " << vecI64ToJson(attribute.histogram) << ", " << endl;
+			 }
+
 			if (attribute.numElements == 1) {
 				ss << t(3) << s("min") << ": " << vecToJson(vector<double>{ attribute.min.x }) << "," << endl;
-				ss << t(3) << s("max") << ": " << vecToJson(vector<double>{ attribute.max.x }) << endl;
+				ss << t(3) << s("max") << ": " << vecToJson(vector<double>{ attribute.max.x }) << ","<< endl;
+				ss << t(3) << s("scale") << ": " << vecToJson(vector<double>{ attribute.scale.x }) << ","<< endl;
+				ss << t(3) << s("offset") << ": " << vecToJson(vector<double>{ attribute.offset.x }) << endl;
 			} else if (attribute.numElements == 2) {
 				ss << t(3) << s("min") << ": " << vecToJson(vector<double>{ attribute.min.x, attribute.min.y }) << "," << endl;
-				ss << t(3) << s("max") << ": " << vecToJson(vector<double>{ attribute.max.x, attribute.max.y }) << endl;
+				ss << t(3) << s("max") << ": " << vecToJson(vector<double>{ attribute.max.x, attribute.max.y }) << ","<< endl;
+				ss << t(3) << s("scale") << ": " << vecToJson(vector<double>{ attribute.scale.x, attribute.scale.y }) << ","<< endl;
+				ss << t(3) << s("offset") << ": " << vecToJson(vector<double>{ attribute.offset.x, attribute.offset.y }) << endl;
 			} else if (attribute.numElements == 3) {
 				ss << t(3) << s("min") << ": " << vecToJson(vector<double>{ attribute.min.x, attribute.min.y, attribute.min.z }) << "," << endl;
-				ss << t(3) << s("max") << ": " << vecToJson(vector<double>{ attribute.max.x, attribute.max.y, attribute.max.z }) << endl;
+				ss << t(3) << s("max") << ": " << vecToJson(vector<double>{ attribute.max.x, attribute.max.y, attribute.max.z }) << ","<< endl;
+				ss << t(3) << s("scale") << ": " << vecToJson(vector<double>{ attribute.scale.x, attribute.scale.y, attribute.scale.z }) << ","<< endl;
+				ss << t(3) << s("offset") << ": " << vecToJson(vector<double>{ attribute.offset.x, attribute.offset.y, attribute.offset.z }) << endl;
 			}
 
 			if (i < attributes.list.size() - 1) {
@@ -366,7 +423,7 @@ string Indexer::createMetadata(Options options, State& state, Hierarchy hierarch
 	ss << t(1) << s("name") << ": " << s(options.name) << "," << endl;
 	ss << t(1) << s("description") << ": " << s("") << "," << endl;
 	ss << t(1) << s("points") << ": " << state.pointsTotal << "," << endl;
-	ss << t(1) << s("projection") << ": " << s("") << "," << endl;
+	ss << t(1) << s("projection") << ": " << s(options.projection) << "," << endl;
 	ss << t(1) << s("hierarchy") << ": " << getHierarchyJsonString() << "," << endl;
 	ss << t(1) << s("offset") << ": " << toJson(attributes.posOffset) << "," << endl;
 	ss << t(1) << s("scale") << ": " << toJson(attributes.posScale) << "," << endl;
@@ -890,7 +947,7 @@ void buildHierarchy(Indexer* indexer, Node* node, shared_ptr<Buffer> points, int
 				vector<int64_t> distinct;
 				unordered_map<string, int> handled;
 
-				auto contains = [](auto map, auto key) {
+				auto contains = [](auto const & map, auto const & key) {
 					return map.find(key) != map.end();
 				};
 

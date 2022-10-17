@@ -30,6 +30,7 @@ Options parseArguments(int argc, char** argv) {
 	args.addArgument("no-chunking", "Disable chunking phase");
 	args.addArgument("no-indexing", "Disable indexing phase");
 	args.addArgument("attributes", "Attributes in output file");
+	args.addArgument("projection", "Add the projection of the pointcloud to the metadata");
 	args.addArgument("generate-page,p", "Generate a ready to use web page with the given name");
 	args.addArgument("title", "Page title used when generating a web page");
 
@@ -110,6 +111,7 @@ Options parseArguments(int argc, char** argv) {
 		pageName = args.get("generate-page").as<string>();
 	}
 	string pageTitle = args.get("title").as<string>();
+	string projection = args.get("projection").as<string>();
 
 	bool keepChunks = args.has("keep-chunks");
 	bool noChunking = args.has("no-chunking");
@@ -126,6 +128,7 @@ Options parseArguments(int argc, char** argv) {
 	options.generatePage = generatePage;
 	options.pageName = pageName;
 	options.pageTitle = pageTitle;
+	options.projection = projection;
 
 	options.keepChunks = keepChunks;
 	options.noChunking = noChunking;
