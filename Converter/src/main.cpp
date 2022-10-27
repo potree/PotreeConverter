@@ -33,6 +33,7 @@ Options parseArguments(int argc, char** argv) {
 	args.addArgument("projection", "Add the projection of the pointcloud to the metadata");
 	args.addArgument("generate-page,p", "Generate a ready to use web page with the given name");
 	args.addArgument("title", "Page title used when generating a web page");
+	args.addArgument("numthreads,t", "Number of concurrent threads to use (default to one thread per vcpu on host)");
 
 	if (args.has("help")) {
 		cout << "PotreeConverter <source> -o <outdir>" << endl;
@@ -117,6 +118,12 @@ Options parseArguments(int argc, char** argv) {
 	bool noChunking = args.has("no-chunking");
 	bool noIndexing = args.has("no-indexing");
 
+	auto cpuData = getCpuData();
+	int numThreads = cpuData.numProcessors;
+	if (args.has("numthreads")) {
+		numThreads = args.get("numthreads").as<int>();
+	}
+
 	Options options;
 	options.source = source;
 	options.outdir = outdir;
@@ -133,6 +140,8 @@ Options parseArguments(int argc, char** argv) {
 	options.keepChunks = keepChunks;
 	options.noChunking = noChunking;
 	options.noIndexing = noIndexing;
+
+	options.numThreads = numThreads;
 
 	//cout << "flags: ";
 	//for (string flag : options.flags) {
@@ -349,7 +358,7 @@ void chunking(Options& options, vector<Source>& sources, string targetDir, Stats
 
 	if (options.chunkMethod == "LASZIP") {
 
-		chunker_countsort_laszip::doChunking(sources, targetDir, stats.min, stats.max, state, outputAttributes);
+		chunker_countsort_laszip::doChunking(sources, targetDir, stats.min, stats.max, state, outputAttributes, options);
 
 	} else if (options.chunkMethod == "LAS_CUSTOM") {
 
@@ -429,6 +438,7 @@ void createReport(Options& options, vector<Source> sources, string targetDir, St
 	cout << "throughput (MB/s)      " << formatNumber(throughputMB) << "MB" << endl;
 	cout << "throughput (points/s)  " << formatNumber(throughputP, 1) << "M" << endl;
 	cout << "output location:       " << targetDir << endl;
+	cout << "#threads:              " << formatNumber(options.numThreads) << endl;
 
 	
 
@@ -499,11 +509,10 @@ int main(int argc, char** argv) {
 	auto exePath = fs::canonical(fs::absolute(argv[0])).parent_path().string();
 
 	launchMemoryChecker(2 * 1024, 0.1);
-	auto cpuData = getCpuData();
-
-	cout << "#threads: " << cpuData.numProcessors << endl;
 
 	auto options = parseArguments(argc, argv);
+
+	cout << "#threads: " << options.numThreads << endl;
 
 	auto [name, sources] = curateSources(options.source);
 	if (options.name.size() == 0) {
