@@ -61,11 +61,14 @@ struct MemoryData {
 struct CpuData {
 	double usage = 0;
 	size_t numProcessors = 0;
+	size_t numThreads = 0;
 };
 
 MemoryData getMemoryData();
 
 CpuData getCpuData();
+
+void setNumThreadsOverride(size_t threads);
 
 void printMemoryReport();
 
