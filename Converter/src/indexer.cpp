@@ -1722,15 +1722,6 @@ void doIndexing(string targetDir, State& state, Options& options, Sampler& sampl
 				auto buffer = make_shared<Buffer>(fcr.size);
 				readBinaryFile(tmpChunkRootsPath, fcr.offset, fcr.size, buffer->data);
 
-				if(fcr.node->name == "r06620"){
-
-					int32_t X = buffer->get<int32_t>(0);
-					int32_t Y = buffer->get<int32_t>(4);
-					int32_t Z = buffer->get<int32_t>(8);
-
-					int a = 10;
-				}
-
 				fcr.node->points = buffer;
 			}
 

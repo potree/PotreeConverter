@@ -326,15 +326,6 @@ struct HierarchyBuilder{
 				root_batch_node->type == TYPE::LEAF;
 			}
 
-			// auto dbgNode = batch_root->nodeMap[batch->name];
-			// if(batch->name == "r0022"){
-			// 	int a = 10;
-			// }
-
-			// cout << "writing batch " << batch->name 
-			// 	<< ". offset: " << bytesWritten 
-			// 	<< ", size: " << buffer->size << endl;
-
 			fout.write(buffer->data_char, buffer->size);
 			bytesWritten += buffer->size;
 		}

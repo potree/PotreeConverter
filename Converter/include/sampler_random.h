@@ -43,10 +43,6 @@ struct SamplerRandom : public Sampler {
 		traversePost(node, [bytesPerPoint, baseSpacing, scale, offset, &onNodeCompleted, &onNodeDiscarded, attributes](Node* node) {
 			node->sampled = true;
 
-			if(node->name == "r06620"){
-				int a = 10;
-			}
-
 			int64_t numPoints = node->numPoints;
 
 			int64_t gridSize = 128;

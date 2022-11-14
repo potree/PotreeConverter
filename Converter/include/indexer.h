@@ -153,10 +153,6 @@ namespace indexer{
 				.numPoints  = node->numPoints,
 			};
 
-			//if(hnode.name == "r0660"){
-			//	int a = 10;
-			//}
-
 			buffer.push_back(hnode);
 
 			if(buffer.size() > 10'000){
