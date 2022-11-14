@@ -1044,7 +1044,7 @@ void buildHierarchy(Indexer* indexer, Node* node, shared_ptr<Buffer> points, int
 				vector<int64_t> distinct;
 				unordered_map<string, int> handled;
 
-				auto contains = [](auto map, auto key) {
+				auto contains = [](auto const & map, auto const & key) {
 					return map.find(key) != map.end();
 				};
 
