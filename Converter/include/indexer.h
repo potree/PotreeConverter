@@ -233,14 +233,6 @@ namespace indexer{
 				fout.write(buffer.data_char, buffer.size);
 				fout.close();
 
-				{ // dbg
-					fstream fout(path + "/" + key + ".dbg.txt", ios::app | ios::out | ios::binary);
-					fout << ss.str();
-					fout.close();
-
-					// writeFile(path + "/" + key + ".dbg.txt", ss.str());
-				}
-
 				if(chunks.find(key) == chunks.end()){
 					chunks[key] = 0;
 				}

@@ -343,6 +343,11 @@ struct HierarchyBuilder{
 			f.close();
 		}
 
+		// redundant security check
+		if(iEndsWith(this->path, ".hierarchyChunks")){
+			fs::remove_all(this->path);
+		}
+
 		return;
 	}
 
