@@ -323,7 +323,7 @@ struct HierarchyBuilder{
 				// if there is only one node in that batch,
 				// then we flag that node as leaf in the root-batch
 				auto root_batch_node = batch_root->nodeMap[batch->name];
-				root_batch_node->type == TYPE::LEAF;
+				root_batch_node->type = TYPE::LEAF;
 			}
 
 			fout.write(buffer->data_char, buffer->size);
