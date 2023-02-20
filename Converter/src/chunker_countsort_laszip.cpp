@@ -225,9 +225,9 @@ namespace chunker_countsort_laszip {
 					double y = coordinates[1];
 					double z = coordinates[2];
 
-					int32_t X = int32_t((x - posOffset.x) / posScale.x);
-					int32_t Y = int32_t((y - posOffset.y) / posScale.y);
-					int32_t Z = int32_t((z - posOffset.z) / posScale.z);
+					int32_t X = int32_t(std::round((x - posOffset.x) / posScale.x));
+					int32_t Y = int32_t(std::round((y - posOffset.y) / posScale.y));
+					int32_t Z = int32_t(std::round((z - posOffset.z) / posScale.z));
 
 					double ux = (double(X) * posScale.x + posOffset.x - min.x) / size.x;
 					double uy = (double(Y) * posScale.y + posOffset.y - min.y) / size.y;
@@ -778,9 +778,9 @@ namespace chunker_countsort_laszip {
 						double y = coordinates[1];
 						double z = coordinates[2];
 
-						int32_t X = int32_t((x - outputAttributes.posOffset.x) / scale.x);
-						int32_t Y = int32_t((y - outputAttributes.posOffset.y) / scale.y);
-						int32_t Z = int32_t((z - outputAttributes.posOffset.z) / scale.z);
+						int32_t X = int32_t(std::round((x - outputAttributes.posOffset.x) / scale.x));
+						int32_t Y = int32_t(std::round((y - outputAttributes.posOffset.y) / scale.y));
+						int32_t Z = int32_t(std::round((z - outputAttributes.posOffset.z) / scale.z));
 
 						memcpy(data + offset + 0, &X, 4);
 						memcpy(data + offset + 4, &Y, 4);
