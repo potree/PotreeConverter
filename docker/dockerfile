@@ -1,0 +1,38 @@
+# build environment
+FROM ubuntu:20.04 as ubuntu
+
+# install gcc, openSSL, git
+RUN apt-get -y update
+RUN apt-get -y install wget
+RUN apt-get -y install git
+RUN apt-get -y install build-essential
+RUN apt-get -y install libssl-dev
+
+
+# install cmake
+RUN wget https://github.com/Kitware/CMake/releases/download/v3.19.0/cmake-3.19.0-Linux-x86_64.tar.gz
+RUN tar -xzf cmake*.tar.gz 
+RUN mv cmake*/ cmake/
+
+# install tbb
+RUN git clone https://github.com/wjakob/tbb.git
+WORKDIR /tbb/build
+RUN git checkout 141b0e310e1fb552bdca887542c9c1a8544d6503
+RUN ../../cmake/bin/cmake ..
+RUN make
+RUN make install
+WORKDIR /
+
+
+# compile PotreeConverter
+RUN git clone https://github.com/thomas-tran/PotreeConverter
+RUN mkdir /PotreeConverter/build
+WORKDIR /PotreeConverter/build
+RUN git checkout d8e8ccd86af931b3badacbcaf6640918cd3021c2
+RUN ../../cmake/bin/cmake ..
+RUN make
+
+# copy libtbb.so in PotreeConverter build
+RUN cp /tbb/build/libtbb.so /PotreeConverter/build/libtbb.so
+
+CMD ["sleep", "infinity"]
