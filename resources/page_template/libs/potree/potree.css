@@ -793,3 +793,18 @@ body{
 	padding-top: 0.6em;
 	padding-bottom: 0.1em;
 }
+
+/** Hide sidebar elements **/
+#sidebar_header, 
+#menu_appearance, #menu_appearance + div ul,
+#menu_scene, #menu_scene + div,
+#menu_filters, #menu_filters + div,
+#menu_about, #menu_about + div {
+    display: none;
+}
+
+** Hide tools elements **/
+#clipping_div,
+#navigation_div {
+    display: none;
+}
