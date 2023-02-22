@@ -6,3 +6,5 @@ Converter.vcxproj.user
 nocommit
 build
 out
+input
+output

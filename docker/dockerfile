@@ -1,38 +1,30 @@
-# build environment
-FROM ubuntu:20.04 as ubuntu
+# build environment 
+# Use alpine instead of ubuntu for smaller size of image
+FROM alpine:latest
 
-# install gcc, openSSL, git
-RUN apt-get -y update
-RUN apt-get -y install wget
-RUN apt-get -y install git
-RUN apt-get -y install build-essential
-RUN apt-get -y install libssl-dev
+ARG VERSION=latest
+LABEL Name="potree-converter ${VERSION}"
 
+# set the working directory for potree converter build
+WORKDIR /potreeconverterbuild
 
-# install cmake
-RUN wget https://github.com/Kitware/CMake/releases/download/v3.19.0/cmake-3.19.0-Linux-x86_64.tar.gz
-RUN tar -xzf cmake*.tar.gz 
-RUN mv cmake*/ cmake/
+# install required libs
+RUN apk add --no-cache git cmake make gcc g++ libtbb-dev
 
-# install tbb
-RUN git clone https://github.com/wjakob/tbb.git
-WORKDIR /tbb/build
-RUN git checkout 141b0e310e1fb552bdca887542c9c1a8544d6503
-RUN ../../cmake/bin/cmake ..
-RUN make
-RUN make install
-WORKDIR /
+# clone and compile potree converter
+RUN git clone --depth 1 https://github.com/thomas-tran/PotreeConverter /PotreeConverter 
+RUN mkdir -p /data/input /data/output
+RUN cmake /PotreeConverter && make
 
+# delete unused stuffs
+RUN apk del git cmake make gcc g++ && \
+    rm -rf /PotreeConverter
 
-# compile PotreeConverter
-RUN git clone https://github.com/thomas-tran/PotreeConverter
-RUN mkdir /PotreeConverter/build
-WORKDIR /PotreeConverter/build
-RUN git checkout d8e8ccd86af931b3badacbcaf6640918cd3021c2
-RUN ../../cmake/bin/cmake ..
-RUN make
-
-# copy libtbb.so in PotreeConverter build
-RUN cp /tbb/build/libtbb.so /PotreeConverter/build/libtbb.so
-
-CMD ["sleep", "infinity"]
+# copy entry point s
+COPY ./entrypoint.sh ./
+ENV POTREE_ENCODING=UNCOMPRESSED \
+    POTREE_METHOD=poisson \
+    POTREE_EXTRA_OPTIONS="" \
+    OVERWRITE=TRUE \
+    REMOVE_INDEX=FALSE
+ENTRYPOINT exec ./entrypoint.sh
