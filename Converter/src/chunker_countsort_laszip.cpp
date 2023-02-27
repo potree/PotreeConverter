@@ -644,10 +644,10 @@ namespace chunker_countsort_laszip {
 					};
 
 					handlers.push_back(handleAttribute);
+					attributeOffset += attribute->size;
 				}
 
-				sourceOffset += attribute->size;
-				attributeOffset += attribute->size;
+				sourceOffset += inputAttribute.size;
 			}
 
 		}
