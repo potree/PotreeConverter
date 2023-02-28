@@ -237,17 +237,26 @@ namespace chunker_countsort_laszip {
 					inBox = inBox && ux <= 1.0 && uy <= 1.0 && uz <= 1.0;
 
 					if (!inBox) {
-						stringstream ss;
-						ss << "encountered point outside bounding box." << endl;
-						ss << "box.min: " << min.toString() << endl;
-						ss << "box.max: " << max.toString() << endl;
-						ss << "point: " << Vector3(x, y, z).toString() << endl;
-						ss << "file: " << path << endl;
-						ss << "PotreeConverter requires a valid bounding box to operate." << endl;
-						ss << "Please try to repair the bounding box, e.g. using lasinfo with the -repair_bb argument." << endl;
-						logger::ERROR(ss.str());
+						// Also check with unrounded bounding box
+						bool xInBox = x >= min.x && x <= min.x + size.x;
+						bool yInBox = y >= min.y && y <= min.y + size.y;
+						bool zInBox = z >= min.z && z <= min.z + size.z;
 
-						exit(123);
+						if (!(xInBox && yInBox && zInBox))
+						{
+							// Point truely outside bounding box
+							stringstream ss;
+							ss << "encountered point outside bounding box." << endl;
+							ss << "box.min: " << min.toString() << endl;
+							ss << "box.max: " << max.toString() << endl;
+							ss << "point: " << Vector3(x, y, z).toString() << endl;
+							ss << "file: " << path << endl;
+							ss << "PotreeConverter requires a valid bounding box to operate." << endl;
+							ss << "Please try to repair the bounding box, e.g. using lasinfo with the -repair_bb argument." << endl;
+							logger::ERROR(ss.str());
+
+							exit(123);
+						}
 					}
 
 					int64_t ix = int64_t(std::min(dGridSize * ux, dGridSize - 1.0));
