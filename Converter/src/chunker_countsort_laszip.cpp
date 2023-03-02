@@ -238,9 +238,10 @@ namespace chunker_countsort_laszip {
 
 					if (!inBox) {
 						// Also check with unrounded bounding box
-						bool xInBox = x >= min.x && x <= min.x + size.x;
-						bool yInBox = y >= min.y && y <= min.y + size.y;
-						bool zInBox = z >= min.z && z <= min.z + size.z;
+
+						bool xInBox = std::round(x / posScale.x) >= std::round(min.x / posScale.x) && std::round(x / posScale.x) <= std::round((min.x + size.x) / posScale.x);
+						bool yInBox = std::round(y / posScale.y) >= std::round(min.y / posScale.y) && std::round(y / posScale.y) <= std::round((min.y + size.y) / posScale.y);
+						bool zInBox = std::round(z / posScale.z) >= std::round(min.z / posScale.z) && std::round(z / posScale.z) <= std::round((min.z + size.z) / posScale.z);
 
 						if (!(xInBox && yInBox && zInBox))
 						{
