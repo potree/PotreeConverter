@@ -17,7 +17,7 @@ Altough the converter made a major step to version 2.0, the format it produces i
 * [Potree: Rendering Large Point Clouds in Web Browsers](https://www.cg.tuwien.ac.at/research/publications/2016/SCHUETZ-2016-POT/SCHUETZ-2016-POT-thesis.pdf)
 * [Fast Out-of-Core Octree Generation for Massive Point Clouds](https://www.cg.tuwien.ac.at/research/publications/2020/SCHUETZ-2020-MPC/), _Schütz M., Ohrhallinger S., Wimmer M._
 
-# Getting Started
+# Getting Started windows/linux
 
 1. Download windows binaries or
     * Download source code
@@ -37,6 +37,19 @@ Altough the converter made a major step to version 2.0, the format it produces i
     * Optionally specify the sampling strategy:
 	* Poisson-disk sampling (default): ```PotreeConverter.exe <input> -o <outputDir> -m poisson```
 	* Random sampling: ```PotreeConverter.exe <input> -o <outputDir> -m random```
+
+### Getting Started macOS
+
+The current make target is not cross platform for darwin. See [#444](https://github.com/potree/PotreeConverter/issues/444#issuecomment-1106806520)
+
+Normally, or with mentioned fork: 
+
+```
+brew install cmake tbb
+git clone git@github.com:potree/PotreeConverter.git && cd PotreeConverter
+mkdir -p build && cd build
+cmake ../ && make
+```
 
 In Potree, modify one of the examples with following load command:
 
