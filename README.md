@@ -22,6 +22,7 @@ Altough the converter made a major step to version 2.0, the format it produces i
 1. Download windows binaries or
     * Download source code
 	* Install [CMake](https://cmake.org/) 3.16 or later
+	* Instal [TBB](https://github.com/wjakob/tbb) library
 	* Create and jump into folder "build"
 	    ```
 	    mkdir build
