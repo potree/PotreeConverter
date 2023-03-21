@@ -9,6 +9,7 @@
 #include "sampler_poisson.h"
 #include "sampler_poisson_average.h"
 #include "sampler_random.h"
+#include "sampler_weighted.h"
 #include "Attributes.h"
 #include "PotreeConverter.h"
 #include "logger.h"
@@ -375,20 +376,17 @@ void indexing(Options& options, string targetDir, State& state) {
 	}
 
 	if (options.method == "random") {
-
 		SamplerRandom sampler;
 		indexer::doIndexing(targetDir, state, options, sampler);
-
 	} else if (options.method == "poisson") {
-
 		SamplerPoisson sampler;
 		indexer::doIndexing(targetDir, state, options, sampler);
-
 	} else if (options.method == "poisson_average") {
-
 		SamplerPoissonAverage sampler;
 		indexer::doIndexing(targetDir, state, options, sampler);
-
+	} else if (options.method == "weighted") {
+		SamplerWeighted sampler;
+		indexer::doIndexing(targetDir, state, options, sampler);
 	}
 }
 
