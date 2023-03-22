@@ -11,6 +11,7 @@
 #include "DbgWriter.h"
 #include "brotli/encode.h"
 #include "HierarchyBuilder.h"
+#include "sampler_weighted.h"
 
 using std::unique_lock;
 
@@ -323,17 +324,17 @@ namespace indexer{
 	}
 
 	void Indexer::waitUntilWriterBacklogBelow(int maxMegabytes) {
-		using namespace std::chrono_literals;
+		// using namespace std::chrono_literals;
 
-		while (true) {
-			auto backlog = writer->backlogSizeMB();
+		// while (true) {
+		// 	auto backlog = writer->backlogSizeMB();
 
-			if (backlog > maxMegabytes) {
-				std::this_thread::sleep_for(10ms);
-			} else {
-				break;
-			}
-		}
+		// 	if (backlog > maxMegabytes) {
+		// 		std::this_thread::sleep_for(10ms);
+		// 	} else {
+		// 		break;
+		// 	}
+		// }
 	}
 
 	void Indexer::waitUntilMemoryBelow(int maxMegabytes) {
@@ -1516,6 +1517,9 @@ void Writer::writeAndUnload(Node* node) {
 }
 
 void Writer::launchWriterThread() {
+
+	cout << "launch writer thread \n";
+
 	thread([&]() {
 
 		while (true) {
@@ -1523,6 +1527,7 @@ void Writer::launchWriterThread() {
 			shared_ptr<Buffer> buffer = nullptr;
 
 			{
+				cout << "lock 000 \n";
 				lock_guard<mutex> lock(mtx);
 
 				if (backlog.size() > 0) {
@@ -1560,6 +1565,7 @@ void Writer::closeAndWait() {
 		return;
 	}
 
+	cout << "lock 100 \n";
 	unique_lock<mutex> lock(mtx);
 	if (activeBuffer != nullptr) {
 		backlog.push_back(activeBuffer);
@@ -1578,7 +1584,7 @@ void Writer::closeAndWait() {
 
 
 
-void doIndexing(string targetDir, State& state, Options& options, Sampler& sampler) {
+void doIndexing(string targetDir, State& state, Options& options) {
 
 	cout << endl;
 	cout << "=======================================" << endl;
@@ -1603,8 +1609,8 @@ void doIndexing(string targetDir, State& state, Options& options, Sampler& sampl
 	indexer.spacing = (chunks->max - chunks->min).x / 128.0;
 
 	auto onNodeCompleted = [&indexer](Node* node) {
-		indexer.writer->writeAndUnload(node);
-		indexer.hierarchyFlusher->write(node, hierarchyStepSize);
+		// indexer.writer->writeAndUnload(node);
+		// indexer.hierarchyFlusher->write(node, hierarchyStepSize);
 	};
 
 	auto onNodeDiscarded = [&indexer](Node* node) {};
@@ -1629,21 +1635,23 @@ void doIndexing(string targetDir, State& state, Options& options, Sampler& sampl
 	double lastReport = now();
 
 	auto writeAndUnload = [&indexer](Node* node) {
-		indexer.writer->writeAndUnload(node);
+		// indexer.writer->writeAndUnload(node);
 	};
 
 	atomic_int64_t activeThreads = 0;
 	mutex mtx_nodes;
 	vector<shared_ptr<Node>> nodes;
 	int numThreads = numSampleThreads() + 4;
-	TaskPool<Task> pool(numThreads, [&onNodeCompleted, &onNodeDiscarded, &writeAndUnload, &state, &options, &activeThreads, tStart, &lastReport, &totalPoints, totalBytes, &pointsProcessed, chunks, &indexer, &nodes, &mtx_nodes, &sampler](auto task) {
+	// numThreads = 1; // PROTO:
+	TaskPool<Task> pool(numThreads, [&onNodeCompleted, &onNodeDiscarded, &writeAndUnload, &state, &options, &activeThreads, tStart, &lastReport, &totalPoints, totalBytes, &pointsProcessed, chunks, &indexer, &nodes, &mtx_nodes](auto task) {
 		
+		auto sampler = make_shared<SamplerWeighted>();
 		auto chunk = task->chunk;
 		auto chunkRoot = make_shared<Node>(chunk->id, chunk->min, chunk->max);
 		auto attributes = chunks->attributes;
 		int64_t bpp = attributes.bytes;
 
-		indexer.waitUntilWriterBacklogBelow(1'000);
+		// indexer.waitUntilWriterBacklogBelow(1'000);
 		activeThreads++;
 
 		auto filesize = fs::file_size(chunk->file);
@@ -1668,128 +1676,127 @@ void doIndexing(string targetDir, State& state, Options& options, Sampler& sampl
 
 		buildHierarchy(&indexer, chunkRoot.get(), pointBuffer, numPoints);
 
-		sampler.sample(chunkRoot.get(), attributes, indexer.spacing, onNodeCompleted, onNodeDiscarded);
+		sampler->sample(chunkRoot.get(), attributes, indexer.spacing, onNodeCompleted, onNodeDiscarded);
 
-		// detach anything below the chunk root. Will be reloaded from
-		// temporarily flushed hierarchy during creation of the hierarchy file
-		chunkRoot->children.clear();
+		//// detach anything below the chunk root. Will be reloaded from
+		//// temporarily flushed hierarchy during creation of the hierarchy file
+		//chunkRoot->children.clear();
 
-		indexer.flushChunkRoot(chunkRoot);
+		//indexer.flushChunkRoot(chunkRoot);
 
-		// add chunk root, provided it isn't the root.
-		if (chunkRoot->name.size() > 1) {
-			indexer.root->addDescendant(chunkRoot);
-		}
+		//// add chunk root, provided it isn't the root.
+		//if (chunkRoot->name.size() > 1) {
+		//	indexer.root->addDescendant(chunkRoot);
+		//}
 
-		lock_guard<mutex> lock(mtx_nodes);
+		//lock_guard<mutex> lock(mtx_nodes);
 
-		pointsProcessed = pointsProcessed + numPoints;
-		double progress = double(pointsProcessed) / double(totalPoints);
+		//pointsProcessed = pointsProcessed + numPoints;
+		//double progress = double(pointsProcessed) / double(totalPoints);
 
 
-		if (now() - lastReport > 1.0) {
-			state.pointsProcessed = pointsProcessed;
-			state.duration = now() - tStart;
+		//if (now() - lastReport > 1.0) {
+		//	state.pointsProcessed = pointsProcessed;
+		//	state.duration = now() - tStart;
 
-			lastReport = now();
-		}
+		//	lastReport = now();
+		//}
 
-		nodes.push_back(chunkRoot);
+		//nodes.push_back(chunkRoot);
 
-		logger::INFO("finished indexing chunk " + chunk->id);
+		//logger::INFO("finished indexing chunk " + chunk->id);
 
 		activeThreads--;
 	});
 
-	for (auto chunk : chunks->list) {
-		auto task = make_shared<Task>(chunk);
-		pool.addTask(task);
-	}
 
-	pool.waitTillEmpty();
-	pool.close();
+	 for (auto chunk : chunks->list) {
+	 	auto task = make_shared<Task>(chunk);
+	 	pool.addTask(task);
+	 }
 
-	indexer.fChunkRoots.close();
+	 pool.waitTillEmpty();
+	 pool.close();
 
-	{ // process chunk roots in batches
+	// PROT: quit here, make sure previous stuff works first.
+	// return;
+
+	// indexer.fChunkRoots.close();
+
+	// { // process chunk roots in batches
 		
-		string tmpChunkRootsPath = targetDir + "/tmpChunkRoots.bin";
-		auto tasks = indexer.processChunkRoots();
+	// 	string tmpChunkRootsPath = targetDir + "/tmpChunkRoots.bin";
+	// 	auto tasks = indexer.processChunkRoots();
 
-		for(auto& task : tasks){
+	// 	for(auto& task : tasks){
 
-			for(auto& fcr : task.fcrs){
-				auto buffer = make_shared<Buffer>(fcr.size);
-				readBinaryFile(tmpChunkRootsPath, fcr.offset, fcr.size, buffer->data);
+	// 		for(auto& fcr : task.fcrs){
+	// 			auto buffer = make_shared<Buffer>(fcr.size);
+	// 			readBinaryFile(tmpChunkRootsPath, fcr.offset, fcr.size, buffer->data);
 
-				fcr.node->points = buffer;
-			}
+	// 			fcr.node->points = buffer;
+	// 		}
 
-			sampler.sample(task.node, attributes, indexer.spacing, onNodeCompleted, onNodeDiscarded);
+	// 		sampler.sample(task.node, attributes, indexer.spacing, onNodeCompleted, onNodeDiscarded);
 
-			task.node->children.clear();
-		}
-	}
-
-
-	// sample up to root node
-	if (chunks->list.size() == 1) {
-		auto node = nodes[0];
-
-		indexer.root = node;
-	} else if (!indexer.root->sampled){
-		sampler.sample(indexer.root.get(), attributes, indexer.spacing, onNodeCompleted, onNodeDiscarded);
-	}
-
-	// root is automatically finished after subsampling all descendants
-	onNodeCompleted(indexer.root.get());
-
-	printElapsedTime("sampling", tStart);
-
-	indexer.writer->closeAndWait();
-
-	printElapsedTime("flushing", tStart);
+	// 		task.node->children.clear();
+	// 	}
+	// }
 
 
-	//string hierarchyPath = targetDir + "/hierarchy.bin";
-	//Hierarchy hierarchy = indexer.createHierarchy(hierarchyPath);
-	//writeBinaryFile(hierarchyPath, hierarchy.buffer);
+	// // sample up to root node
+	// if (chunks->list.size() == 1) {
+	// 	auto node = nodes[0];
 
-	indexer.hierarchyFlusher->flush(hierarchyStepSize);
+	// 	indexer.root = node;
+	// } else if (!indexer.root->sampled){
+	// 	sampler.sample(indexer.root.get(), attributes, indexer.spacing, onNodeCompleted, onNodeDiscarded);
+	// }
 
-	string hierarchyDir = indexer.targetDir + "/.hierarchyChunks";
-	HierarchyBuilder builder(hierarchyDir, hierarchyStepSize);
-	builder.build();
+	// // root is automatically finished after subsampling all descendants
+	// onNodeCompleted(indexer.root.get());
 
-	Hierarchy hierarchy = {
-		.stepSize = hierarchyStepSize,
-		.firstChunkSize = builder.batch_root->byteSize,
-	};
+	// printElapsedTime("sampling", tStart);
 
-	string metadataPath = targetDir + "/metadata.json";
-	string metadata = indexer.createMetadata(options, state, hierarchy);
-	writeFile(metadataPath, metadata);
+	// indexer.writer->closeAndWait();
 
-	printElapsedTime("metadata & hierarchy", tStart);
+	// printElapsedTime("flushing", tStart);
 
-	{
-		cout << "deleting temporary files" << endl;
+	// indexer.hierarchyFlusher->flush(hierarchyStepSize);
 
-		// delete chunk directory
-		if (!options.keepChunks) {
-			string chunksMetadataPath = targetDir + "/chunks/metadata.json";
+	// string hierarchyDir = indexer.targetDir + "/.hierarchyChunks";
+	// HierarchyBuilder builder(hierarchyDir, hierarchyStepSize);
+	// builder.build();
 
-			fs::remove(chunksMetadataPath);
-			fs::remove(targetDir + "/chunks");
-		}
+	// Hierarchy hierarchy = {
+	// 	.stepSize = hierarchyStepSize,
+	// 	.firstChunkSize = builder.batch_root->byteSize,
+	// };
 
-		// delete chunk roots data
-		string octreePath = targetDir + "/tmpChunkRoots.bin";
-		fs::remove(octreePath);
-	}
+	// string metadataPath = targetDir + "/metadata.json";
+	// string metadata = indexer.createMetadata(options, state, hierarchy);
+	// writeFile(metadataPath, metadata);
 
-	double duration = now() - tStart;
-	state.values["duration(indexing)"] = formatNumber(duration, 3);
+	// printElapsedTime("metadata & hierarchy", tStart);
+
+	// {
+	// 	cout << "deleting temporary files" << endl;
+
+	// 	// delete chunk directory
+	// 	if (!options.keepChunks) {
+	// 		string chunksMetadataPath = targetDir + "/chunks/metadata.json";
+
+	// 		fs::remove(chunksMetadataPath);
+	// 		fs::remove(targetDir + "/chunks");
+	// 	}
+
+	// 	// delete chunk roots data
+	// 	string octreePath = targetDir + "/tmpChunkRoots.bin";
+	// 	fs::remove(octreePath);
+	// }
+
+	// double duration = now() - tStart;
+	// state.values["duration(indexing)"] = formatNumber(duration, 3);
 
 
 }

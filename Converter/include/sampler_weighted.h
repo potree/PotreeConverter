@@ -2,59 +2,59 @@
 #pragma once
 
 #include <execution>
+#include <format>
 
 #include "structures.h"
 #include "Attributes.h"
 
+using std::format;
 
+struct SamplerWeighted {
 
-struct SamplerWeighted : public Sampler {
+	struct CellIndex {
+		int64_t index = -1;
+		double distance = 0.0;
+	};
+
+	struct Point {
+		double x;
+		double y;
+		double z;
+		int32_t pointIndex;
+		int32_t childIndex;
+	};
 
 	// subsample a local octree from bottom up
-	void sample(Node* node, Attributes attributes, double baseSpacing, 
+	void sample(Node* localRoot, Attributes attributes, double baseSpacing, 
 		function<void(Node*)> onNodeCompleted,
 		function<void(Node*)> onNodeDiscarded
 	) {
 
+		cout << format("processing {} \n", localRoot->name);
+
 		int64_t gridSize = 128;
 		double fGridSize = 128;
-		/*threadlocal auto gridbuffer = make_shared<Buffer>(4 * gridSize * gridSize * gridSize * sizeof(uint32_t));
-		uint32_t* grid = gridbuffer->data_u32;*/
-		thread_local vector<uint32_t> grid(4 * gridSize* gridSize* gridSize, 0);
-
-		struct Point {
-			double x;
-			double y;
-			double z;
-			int32_t pointIndex;
-			int32_t childIndex;
-		};
-
-		function<void(Node*, function<void(Node*)>)> traversePost = [&traversePost](Node* node, function<void(Node*)> callback) {
-			for (auto child : node->children) {
-
-				if (child != nullptr && !child->sampled) {
-					traversePost(child.get(), callback);
-				}
-			}
-
-			callback(node);
-		};
+		vector<uint32_t> grid(4 * gridSize * gridSize * gridSize, 0);
 
 		int bytesPerPoint = attributes.bytes;
 		Vector3 scale = attributes.posScale;
 		Vector3 offset = attributes.posOffset;
 
-		traversePost(node, [&](Node* node) {
-			node->sampled = true;
+		localRoot->traversePost([&](Node* node) {
 
-			if(node->isLeaf()) return true;
+			if(node->sampled) return;
+			if(node->isLeaf()) return;
+
+			node->sampled = true;
 
 			int64_t numPoints = node->numPoints;
 
 			// clear grid
 			for(int i = 0; i < gridSize * gridSize * gridSize; i++){
-				grid[i] = 0;
+				grid[4 * i + 0] = 0;
+				grid[4 * i + 1] = 0;
+				grid[4 * i + 2] = 0;
+				grid[4 * i + 3] = 0;
 			}
 
 			auto max = node->max;
@@ -63,12 +63,7 @@ struct SamplerWeighted : public Sampler {
 			auto scale = attributes.posScale;
 			auto offset = attributes.posOffset;
 
-			struct CellIndex {
-				int64_t index = -1;
-				double distance = 0.0;
-			};
-
-			auto toCellIndex = [min, size, gridSize](Vector3 point) -> CellIndex {
+			auto toVoxelIndex = [min, size, gridSize](Vector3 point) -> uint32_t {
 
 				double nx = (point.x - min.x) / size.x;
 				double ny = (point.y - min.y) / size.y;
@@ -90,7 +85,7 @@ struct SamplerWeighted : public Sampler {
 
 				int64_t index = x + y * gridSize + z * gridSize * gridSize;
 
-				return { index, distance };
+				return index;
 			};
 
 			int numAccepted = 0;
@@ -108,24 +103,23 @@ struct SamplerWeighted : public Sampler {
 					double y = (xyz[1] * scale.y) + offset.y;
 					double z = (xyz[2] * scale.z) + offset.z;
 
-					CellIndex cellIndex = toCellIndex({ x, y, z });
+					uint32_t voxelIndex = toVoxelIndex({ x, y, z });
 
-					// auto& gridValue = grid[cellIndex.index];
-
-					if(grid[4 * cellIndex.index + 3] == 0){
+					if(grid[4 * voxelIndex + 3] == 0){
 						numAccepted++;
 					};
 
-					grid[4 * cellIndex.index + 0] += 255;
-					grid[4 * cellIndex.index + 1] += 255;
-					grid[4 * cellIndex.index + 2] += 255;
-					grid[4 * cellIndex.index + 3] += 1;
+					grid[4 * voxelIndex + 0] += 255;
+					grid[4 * voxelIndex + 1] += 255;
+					grid[4 * voxelIndex + 2] += 255;
+					grid[4 * voxelIndex + 3] += 1;
 				}
 			}
 
-
 			auto nodesize = node->max - node->min;
+			// cout << format("try alloc {} bytes for {} accepted points \n", numAccepted * attributes.bytes, numAccepted);
 			auto accepted = make_shared<Buffer>(numAccepted * attributes.bytes);
+			// cout << format("alloc'd {} bytes for {} accepted points \n", numAccepted * attributes.bytes, numAccepted);
 
 			int numProcessed = 0;
 			for (int voxelIndex = 0; voxelIndex < gridSize * gridSize * gridSize; voxelIndex++) {
@@ -158,20 +152,17 @@ struct SamplerWeighted : public Sampler {
 				accepted->set<uint16_t>(B, attributes.bytes * numProcessed + 16);
 
 				numProcessed++;
-			}
 
-			for (int childIndex = 0; childIndex < 8; childIndex++) {
-				auto child = node->children[childIndex];
-
-				if (child == nullptr) continue;
-
-				onNodeCompleted(child.get());
+				if(numProcessed > numAccepted){
+					cout << "error...\n";
+					int a = 10;
+				}
 			}
 
 			node->points = accepted;
 			node->numPoints = numAccepted;
 
-			return true;
+			return;
 		});
 	}
 

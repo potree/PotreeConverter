@@ -15,7 +15,9 @@
 #include <thread>
 #include <cstdint>
 #include <cstring>
+#include <format>
 
+using std::format;
 using std::cout;
 using std::endl;
 using std::to_string;
@@ -112,6 +114,7 @@ struct Buffer {
 	}
 
 	Buffer(int64_t size) {
+		// cout << format("malloc({}) \n", size);
 		data = malloc(size);
 
 		if (data == nullptr) {

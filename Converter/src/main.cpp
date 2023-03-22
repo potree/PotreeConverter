@@ -375,19 +375,21 @@ void indexing(Options& options, string targetDir, State& state) {
 		return;
 	}
 
-	if (options.method == "random") {
-		SamplerRandom sampler;
-		indexer::doIndexing(targetDir, state, options, sampler);
-	} else if (options.method == "poisson") {
-		SamplerPoisson sampler;
-		indexer::doIndexing(targetDir, state, options, sampler);
-	} else if (options.method == "poisson_average") {
-		SamplerPoissonAverage sampler;
-		indexer::doIndexing(targetDir, state, options, sampler);
-	} else if (options.method == "weighted") {
-		SamplerWeighted sampler;
-		indexer::doIndexing(targetDir, state, options, sampler);
-	}
+	indexer::doIndexing(targetDir, state, options);
+
+	// if (options.method == "random") {
+	// 	SamplerRandom sampler;
+	// 	indexer::doIndexing(targetDir, state, options, sampler);
+	// } else if (options.method == "poisson") {
+	// 	SamplerPoisson sampler;
+	// 	indexer::doIndexing(targetDir, state, options, sampler);
+	// } else if (options.method == "poisson_average") {
+	// 	SamplerPoissonAverage sampler;
+	// 	indexer::doIndexing(targetDir, state, options, sampler);
+	// } else if (options.method == "weighted") {
+	// 	SamplerWeighted sampler;
+	// 	indexer::doIndexing(targetDir, state, options, sampler);
+	// }
 }
 
 void createReport(Options& options, vector<Source> sources, string targetDir, Stats& stats, State& state, double tStart) {
@@ -424,10 +426,10 @@ void createReport(Options& options, vector<Source> sources, string targetDir, St
 	cout << "sampling method:       " << options.method << endl;
 	cout << "chunk method:          " << options.chunkMethod << endl;
 	cout << "input file size:       " << formatNumber(inputSize, 1) << inputSizeUnit << endl;
-	cout << "duration:              " << formatNumber(duration, 3) << "s" << endl;
 	cout << "throughput (MB/s)      " << formatNumber(throughputMB) << "MB" << endl;
 	cout << "throughput (points/s)  " << formatNumber(throughputP, 1) << "M" << endl;
 	cout << "output location:       " << targetDir << endl;
+	cout << "duration:              " << formatNumber(duration, 3) << "s" << endl;
 
 	
 

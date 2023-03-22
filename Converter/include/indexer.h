@@ -337,7 +337,7 @@ namespace indexer{
 
 			this->targetDir = targetDir;
 
-			writer = make_shared<Writer>(this);
+			// writer = make_shared<Writer>(this);
 			hierarchyFlusher = make_shared<HierarchyFlusher>(targetDir + "/.hierarchyChunks");
 
 			string chunkRootFile = targetDir + "/tmpChunkRoots.bin";
@@ -376,7 +376,7 @@ namespace indexer{
 		string do_grouping() const { return "\3"; }
 	};
 
-	void doIndexing(string targetDir, State& state, Options& options, Sampler& sampler);
+	void doIndexing(string targetDir, State& state, Options& options);
 
 
 }
