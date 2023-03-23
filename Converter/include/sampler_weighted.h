@@ -24,17 +24,82 @@ struct SamplerWeighted {
 		int32_t childIndex;
 	};
 
+	template<typename T>
+	T clamp(T value, T min, T max){
+		if(value < min) return min;
+		if(value > max) return max;
+
+		return value;
+	}
+
+	void voxelizePrimitives_central(
+		Node* node, Attributes& attributes, 
+		Vector3& scale, Vector3& offset,
+		Vector3& min, Vector3& size,
+		int64_t gridSize, double fGridSize,
+		uint32_t& numAccepted, Buffer* accepted,
+		vector<uint32_t>& grid_r,
+		vector<uint32_t>& grid_g,
+		vector<uint32_t>& grid_b,
+		vector<uint32_t>& grid_w
+	){
+
+		for (int childIndex = 0; childIndex < 8; childIndex++) {
+			auto child = node->children[childIndex];
+
+			if(child == nullptr) continue;
+
+			for (int i = 0; i < child->numPoints; i++) {
+
+				int64_t pointOffset = i * attributes.bytes;
+				int32_t* xyz = reinterpret_cast<int32_t*>(child->points->data_u8 + pointOffset);
+
+				double x = (xyz[0] * scale.x) + offset.x;
+				double y = (xyz[1] * scale.y) + offset.y;
+				double z = (xyz[2] * scale.z) + offset.z;
+
+				double nx = (x - min.x) / size.x;
+				double ny = (y - min.y) / size.y;
+				double nz = (z - min.z) / size.z;
+
+				int64_t ix = clamp(fGridSize * nx, 0.0, fGridSize - 1.0);
+				int64_t iy = clamp(fGridSize * ny, 0.0, fGridSize - 1.0);
+				int64_t iz = clamp(fGridSize * nz, 0.0, fGridSize - 1.0);
+
+				int64_t voxelIndex = ix + iy * gridSize + iz * gridSize * gridSize;
+
+				if(grid_w[voxelIndex] == 0){
+					accepted->data_u32[numAccepted] = voxelIndex;
+					numAccepted++;
+				};
+
+				grid_r[voxelIndex] += 255;
+				grid_g[voxelIndex] += 255;
+				grid_b[voxelIndex] += 255;
+				grid_w[voxelIndex] += 1;
+			}
+		}
+
+	}
+
 	// subsample a local octree from bottom up
 	void sample(Node* localRoot, Attributes attributes, double baseSpacing, 
 		function<void(Node*)> onNodeCompleted,
 		function<void(Node*)> onNodeDiscarded
 	) {
 
-		cout << format("processing {} \n", localRoot->name);
+		cout << format("processing {} - start\n", localRoot->name);
 
 		int64_t gridSize = 128;
 		double fGridSize = 128;
-		vector<uint32_t> grid(4 * gridSize * gridSize * gridSize, 0);
+		vector<uint32_t> grid_r(gridSize * gridSize * gridSize, 0);
+		vector<uint32_t> grid_g(gridSize * gridSize * gridSize, 0);
+		vector<uint32_t> grid_b(gridSize * gridSize * gridSize, 0);
+		vector<uint32_t> grid_w(gridSize * gridSize * gridSize, 0);
+		
+		// stores uint32_t voxelIndex values
+		auto accepted = make_shared<Buffer>(500'000 * sizeof(uint32_t));
+		uint32_t numAccepted = 0;
 
 		int bytesPerPoint = attributes.bytes;
 		Vector3 scale = attributes.posScale;
@@ -49,46 +114,50 @@ struct SamplerWeighted {
 
 			int64_t numPoints = node->numPoints;
 
-			// clear grid
-			for(int i = 0; i < gridSize * gridSize * gridSize; i++){
-				grid[4 * i + 0] = 0;
-				grid[4 * i + 1] = 0;
-				grid[4 * i + 2] = 0;
-				grid[4 * i + 3] = 0;
-			}
-
 			auto max = node->max;
 			auto min = node->min;
 			auto size = max - min;
 			auto scale = attributes.posScale;
 			auto offset = attributes.posOffset;
 
-			auto toVoxelIndex = [min, size, gridSize](Vector3 point) -> uint32_t {
+			// first, project points to voxel and count; add to <accepted> if first in voxel
+			numAccepted = 0;
+			voxelizePrimitives_central(
+				node, attributes, scale, offset, min, size, gridSize, fGridSize,
+				numAccepted, accepted.get(),
+				grid_r, grid_g, grid_b, grid_w
+			);
+			// for (int childIndex = 0; childIndex < 8; childIndex++) {
+			// 	auto child = node->children[childIndex];
 
-				double nx = (point.x - min.x) / size.x;
-				double ny = (point.y - min.y) / size.y;
-				double nz = (point.z - min.z) / size.z;
+			// 	if(child == nullptr) continue;
 
-				double lx = 2.0 * fmod(double(gridSize) * nx, 1.0) - 1.0;
-				double ly = 2.0 * fmod(double(gridSize) * ny, 1.0) - 1.0;
-				double lz = 2.0 * fmod(double(gridSize) * nz, 1.0) - 1.0;
+			// 	for (int i = 0; i < child->numPoints; i++) {
 
-				double distance = sqrt(lx * lx + ly * ly + lz * lz);
+			// 		int64_t pointOffset = i * attributes.bytes;
+			// 		int32_t* xyz = reinterpret_cast<int32_t*>(child->points->data_u8 + pointOffset);
 
-				int64_t x = double(gridSize) * nx;
-				int64_t y = double(gridSize) * ny;
-				int64_t z = double(gridSize) * nz;
+			// 		double x = (xyz[0] * scale.x) + offset.x;
+			// 		double y = (xyz[1] * scale.y) + offset.y;
+			// 		double z = (xyz[2] * scale.z) + offset.z;
 
-				x = std::max(int64_t(0), std::min(x, gridSize - 1));
-				y = std::max(int64_t(0), std::min(y, gridSize - 1));
-				z = std::max(int64_t(0), std::min(z, gridSize - 1));
+			// 		uint32_t voxelIndex = toVoxelIndex({ x, y, z });
 
-				int64_t index = x + y * gridSize + z * gridSize * gridSize;
+			// 		if(grid_w[voxelIndex] == 0){
+			// 			accepted->data_u32[numAccepted] = voxelIndex;
+			// 			numAccepted++;
+			// 		};
 
-				return index;
-			};
+			// 		grid_r[voxelIndex] += 255;
+			// 		grid_g[voxelIndex] += 255;
+			// 		grid_b[voxelIndex] += 255;
+			// 		grid_w[voxelIndex] += 1;
+			// 	}
+			//}
 
-			int numAccepted = 0;
+
+			// second, project points to neighbourhood of voxel, 
+			// and only count if the adjacent voxel also holds geometry
 			for (int childIndex = 0; childIndex < 8; childIndex++) {
 				auto child = node->children[childIndex];
 
@@ -103,60 +172,122 @@ struct SamplerWeighted {
 					double y = (xyz[1] * scale.y) + offset.y;
 					double z = (xyz[2] * scale.z) + offset.z;
 
-					uint32_t voxelIndex = toVoxelIndex({ x, y, z });
+					double fx = fGridSize * (x - min.x) / size.x;
+					double fy = fGridSize * (y - min.y) / size.y;
+					double fz = fGridSize * (z - min.z) / size.z;
 
-					if(grid[4 * voxelIndex + 3] == 0){
-						numAccepted++;
-					};
+					for(double oz : {-1.0, 0.0, 1.0})
+					for(double oy : {-1.0, 0.0, 1.0})
+					for(double ox : {-1.0, 0.0, 1.0})
+					{
 
-					grid[4 * voxelIndex + 0] += 255;
-					grid[4 * voxelIndex + 1] += 255;
-					grid[4 * voxelIndex + 2] += 255;
-					grid[4 * voxelIndex + 3] += 1;
+						Vector3 samplePos = {
+							floor(fx + ox) + 0.5,
+							floor(fy + oy) + 0.5,
+							floor(fz + oz) + 0.5
+						};
+
+						double dx = (fx - samplePos.x);
+						double dy = (fy - samplePos.y);
+						double dz = (fz - samplePos.z);
+						double ll = (dx * dx + dy * dy + dz * dz);
+						double w = 0.0;
+
+						double l = sqrt(ll);
+
+						if(ll < 1.0){
+							// exponential filter
+							// w = __expf(-ll * 0.5f);
+							// w = clamp(w, 0.0f, 1.0f);
+							
+							// linear filter
+							w = 1.0 - l;
+						}else{
+							w = 0.0;
+						}
+
+						if(w > 0.0){
+
+							uint64_t W = clamp(100.0 * w, 1.0, 100.0);
+
+							uint32_t ix = clamp(samplePos.x, 0.0, fGridSize - 1.0);
+							uint32_t iy = clamp(samplePos.y, 0.0, fGridSize - 1.0);
+							uint32_t iz = clamp(samplePos.z, 0.0, fGridSize - 1.0);
+
+							uint32_t voxelIndex = ix + gridSize * iy + gridSize * gridSize * iz;
+
+							bool isCenter = ox == 0.0f && oy == 0.0f && oz == 0.0f;
+							bool isNeighbor = !isCenter;
+							if(isNeighbor){
+
+								uint32_t currentW = grid_w[voxelIndex];
+
+								if(currentW > 0){
+									// TODO: actual colors
+									uint64_t R = W * 255;
+									uint64_t G = W * 255;
+									uint64_t B = W * 255;
+									grid_r[voxelIndex] += R;
+									grid_g[voxelIndex] += G;
+									grid_b[voxelIndex] += B;
+									grid_w[voxelIndex] += W;
+								}
+							}
+						}
+					}
 				}
-			}
+			} // end second
 
+			// third, use <accepted> to extract voxels
+			auto acceptedPoints = make_shared<Buffer>(numAccepted * attributes.bytes);
 			auto nodesize = node->max - node->min;
-			// cout << format("try alloc {} bytes for {} accepted points \n", numAccepted * attributes.bytes, numAccepted);
-			auto accepted = make_shared<Buffer>(numAccepted * attributes.bytes);
-			// cout << format("alloc'd {} bytes for {} accepted points \n", numAccepted * attributes.bytes, numAccepted);
-
 			int numProcessed = 0;
-			for (int voxelIndex = 0; voxelIndex < gridSize * gridSize * gridSize; voxelIndex++) {
+			int g3 = gridSize * gridSize * gridSize;
 
-				auto count = grid[4 * voxelIndex + 3];
+			for(int i = 0; i < numAccepted; i++) {
 
-				if(count == 0) continue;
+				uint32_t voxelIndex = accepted->data_u32[i];
 
-				int ix = voxelIndex % gridSize;
-				int iy = (voxelIndex % (gridSize * gridSize)) / gridSize;
-				int iz = voxelIndex / (gridSize * gridSize);
-				
-				double x = node->min.x + ((double(ix) + 0.5f) / fGridSize) * nodesize.x;
-				double y = node->min.y + ((double(iy) + 0.5f) / fGridSize) * nodesize.y;
-				double z = node->min.z + ((double(iz) + 0.5f) / fGridSize) * nodesize.z;
+				auto count = grid_w[voxelIndex];
 
-				int X = (x - offset.x) / scale.x;
-				int Y = (y - offset.y) / scale.y;
-				int Z = (z - offset.z) / scale.z;
+				if(count > 0){
 
-				accepted->set<int>(X, attributes.bytes * numProcessed + 0);
-				accepted->set<int>(Y, attributes.bytes * numProcessed + 4);
-				accepted->set<int>(Z, attributes.bytes * numProcessed + 8);
+					int ix = voxelIndex % gridSize;
+					int iy = (voxelIndex % (gridSize * gridSize)) / gridSize;
+					int iz = voxelIndex / (gridSize * gridSize);
+					
+					double x = node->min.x + ((double(ix) + 0.5f) / fGridSize) * nodesize.x;
+					double y = node->min.y + ((double(iy) + 0.5f) / fGridSize) * nodesize.y;
+					double z = node->min.z + ((double(iz) + 0.5f) / fGridSize) * nodesize.z;
 
-				uint16_t R = 255;
-				uint16_t G = 0;
-				uint16_t B = 255;
-				accepted->set<uint16_t>(R, attributes.bytes * numProcessed + 12);
-				accepted->set<uint16_t>(G, attributes.bytes * numProcessed + 14);
-				accepted->set<uint16_t>(B, attributes.bytes * numProcessed + 16);
+					int X = (x - offset.x) / scale.x;
+					int Y = (y - offset.y) / scale.y;
+					int Z = (z - offset.z) / scale.z;
 
-				numProcessed++;
+					acceptedPoints->set<int>(X, attributes.bytes * numProcessed + 0);
+					acceptedPoints->set<int>(Y, attributes.bytes * numProcessed + 4);
+					acceptedPoints->set<int>(Z, attributes.bytes * numProcessed + 8);
 
-				if(numProcessed > numAccepted){
-					cout << "error...\n";
-					int a = 10;
+					uint16_t R = 255;
+					uint16_t G = 0;
+					uint16_t B = 255;
+					acceptedPoints->set<uint16_t>(R, attributes.bytes * numProcessed + 12);
+					acceptedPoints->set<uint16_t>(G, attributes.bytes * numProcessed + 14);
+					acceptedPoints->set<uint16_t>(B, attributes.bytes * numProcessed + 16);
+
+					numProcessed++;
+
+					if(numProcessed > numAccepted){
+						cout << "error...\n";
+						int a = 10;
+					}
+
 				}
+
+				grid_r[voxelIndex] = 0;
+				grid_g[voxelIndex] = 0;
+				grid_b[voxelIndex] = 0;
+				grid_w[voxelIndex] = 0;
 			}
 
 			node->points = accepted;
@@ -164,6 +295,8 @@ struct SamplerWeighted {
 
 			return;
 		});
+
+		cout << format("processing {} - done \n", localRoot->name);
 	}
 
 };
