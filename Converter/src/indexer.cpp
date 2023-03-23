@@ -1642,7 +1642,6 @@ void doIndexing(string targetDir, State& state, Options& options) {
 	mutex mtx_nodes;
 	vector<shared_ptr<Node>> nodes;
 	int numThreads = numSampleThreads() + 4;
-	// numThreads = 1; // PROTO:
 	TaskPool<Task> pool(numThreads, [&onNodeCompleted, &onNodeDiscarded, &writeAndUnload, &state, &options, &activeThreads, tStart, &lastReport, &totalPoints, totalBytes, &pointsProcessed, chunks, &indexer, &nodes, &mtx_nodes](auto task) {
 		
 		auto sampler = make_shared<SamplerWeighted>();
@@ -1678,33 +1677,33 @@ void doIndexing(string targetDir, State& state, Options& options) {
 
 		sampler->sample(chunkRoot.get(), attributes, indexer.spacing, onNodeCompleted, onNodeDiscarded);
 
-		//// detach anything below the chunk root. Will be reloaded from
-		//// temporarily flushed hierarchy during creation of the hierarchy file
-		//chunkRoot->children.clear();
+		// detach anything below the chunk root. Will be reloaded from
+		// temporarily flushed hierarchy during creation of the hierarchy file
+		chunkRoot->children.clear();
 
-		//indexer.flushChunkRoot(chunkRoot);
+		indexer.flushChunkRoot(chunkRoot);
 
-		//// add chunk root, provided it isn't the root.
-		//if (chunkRoot->name.size() > 1) {
-		//	indexer.root->addDescendant(chunkRoot);
-		//}
+		// add chunk root, provided it isn't the root.
+		if (chunkRoot->name.size() > 1) {
+			indexer.root->addDescendant(chunkRoot);
+		}
 
-		//lock_guard<mutex> lock(mtx_nodes);
+		lock_guard<mutex> lock(mtx_nodes);
 
-		//pointsProcessed = pointsProcessed + numPoints;
-		//double progress = double(pointsProcessed) / double(totalPoints);
+		pointsProcessed = pointsProcessed + numPoints;
+		double progress = double(pointsProcessed) / double(totalPoints);
 
 
-		//if (now() - lastReport > 1.0) {
-		//	state.pointsProcessed = pointsProcessed;
-		//	state.duration = now() - tStart;
+		if (now() - lastReport > 1.0) {
+			state.pointsProcessed = pointsProcessed;
+			state.duration = now() - tStart;
 
-		//	lastReport = now();
-		//}
+			lastReport = now();
+		}
 
-		//nodes.push_back(chunkRoot);
+		nodes.push_back(chunkRoot);
 
-		//logger::INFO("finished indexing chunk " + chunk->id);
+		logger::INFO("finished indexing chunk " + chunk->id);
 
 		activeThreads--;
 	});
@@ -1718,45 +1717,42 @@ void doIndexing(string targetDir, State& state, Options& options) {
 	 pool.waitTillEmpty();
 	 pool.close();
 
-	// PROT: quit here, make sure previous stuff works first.
-	// return;
+	indexer.fChunkRoots.close();
 
-	// indexer.fChunkRoots.close();
+	{ // process chunk roots in batches
 
-	// { // process chunk roots in batches
+		auto sampler = make_shared<SamplerWeighted>();
 		
-	// 	string tmpChunkRootsPath = targetDir + "/tmpChunkRoots.bin";
-	// 	auto tasks = indexer.processChunkRoots();
+		string tmpChunkRootsPath = targetDir + "/tmpChunkRoots.bin";
+		auto tasks = indexer.processChunkRoots();
 
-	// 	for(auto& task : tasks){
+		for(auto& task : tasks){
 
-	// 		for(auto& fcr : task.fcrs){
-	// 			auto buffer = make_shared<Buffer>(fcr.size);
-	// 			readBinaryFile(tmpChunkRootsPath, fcr.offset, fcr.size, buffer->data);
+			for(auto& fcr : task.fcrs){
+				auto buffer = make_shared<Buffer>(fcr.size);
+				readBinaryFile(tmpChunkRootsPath, fcr.offset, fcr.size, buffer->data);
 
-	// 			fcr.node->points = buffer;
-	// 		}
+				fcr.node->points = buffer;
+			}
 
-	// 		sampler.sample(task.node, attributes, indexer.spacing, onNodeCompleted, onNodeDiscarded);
+			sampler->sample(task.node, attributes, indexer.spacing, onNodeCompleted, onNodeDiscarded);
 
-	// 		task.node->children.clear();
-	// 	}
-	// }
+			task.node->children.clear();
+		}
+	}
 
 
-	// // sample up to root node
-	// if (chunks->list.size() == 1) {
-	// 	auto node = nodes[0];
+	// sample up to root node
+	if (chunks->list.size() == 1) {
+		auto node = nodes[0];
 
-	// 	indexer.root = node;
-	// } else if (!indexer.root->sampled){
-	// 	sampler.sample(indexer.root.get(), attributes, indexer.spacing, onNodeCompleted, onNodeDiscarded);
-	// }
+		indexer.root = node;
+	} else if (!indexer.root->sampled){
+		auto sampler = make_shared<SamplerWeighted>();
+		sampler->sample(indexer.root.get(), attributes, indexer.spacing, onNodeCompleted, onNodeDiscarded);
+	}
 
-	// // root is automatically finished after subsampling all descendants
-	// onNodeCompleted(indexer.root.get());
-
-	// printElapsedTime("sampling", tStart);
+	printElapsedTime("sampling", tStart);
 
 	// indexer.writer->closeAndWait();
 

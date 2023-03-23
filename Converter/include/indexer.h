@@ -44,7 +44,7 @@ namespace indexer{
 
 	//constexpr int numSampleThreads = 10;
 	//constexpr int numFlushThreads = 36;
-	constexpr int maxPointsPerChunk = 10'000;
+	constexpr int maxPointsPerChunk = 50'000;
 
 	inline int numSampleThreads() {
 		return getCpuData().numProcessors;

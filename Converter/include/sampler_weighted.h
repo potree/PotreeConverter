@@ -11,6 +11,9 @@ using std::format;
 
 struct SamplerWeighted {
 
+	int64_t gridSize = 256;
+	double fGridSize = 256;
+
 	struct CellIndex {
 		int64_t index = -1;
 		double distance = 0.0;
@@ -303,10 +306,8 @@ struct SamplerWeighted {
 		function<void(Node*)> onNodeDiscarded
 	) {
 
-		cout << format("processing {} - start\n", localRoot->name);
+		//cout << format("processing {} - start\n", localRoot->name);
 
-		int64_t gridSize = 128;
-		double fGridSize = 128;
 		vector<uint32_t> grid_r(gridSize * gridSize * gridSize, 0);
 		vector<uint32_t> grid_g(gridSize * gridSize * gridSize, 0);
 		vector<uint32_t> grid_b(gridSize * gridSize * gridSize, 0);
@@ -358,10 +359,6 @@ struct SamplerWeighted {
 				grid_r, grid_g, grid_b, grid_w
 			);
 
-			if(node->name == localRoot->name){
-				cout << format("extractedPoints.size: {} \n", extractedPoints->size);
-			}
-
 			node->points = extractedPoints;
 			node->numPoints = numAccepted;
 
@@ -369,7 +366,12 @@ struct SamplerWeighted {
 		});
 
 		// PROT: write to file
+		if(false)
 		localRoot->traverse([&](Node* node){
+
+			if(node->level() > 3){
+				return;
+			}
 
 			string dir = "G:/temp/proto";
 
@@ -447,7 +449,7 @@ struct SamplerWeighted {
 
 		});
 
-		cout << format("processing {} - done \n", localRoot->name);
+		//cout << format("processing {} - done \n", localRoot->name);
 	}
 
 };
