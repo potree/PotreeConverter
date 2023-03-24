@@ -369,9 +369,9 @@ struct SamplerWeighted {
 		if(false)
 		localRoot->traverse([&](Node* node){
 
-			if(node->level() > 3){
-				return;
-			}
+			// if(node->level() > 3){
+			// 	return;
+			// }
 
 			string dir = "G:/temp/proto";
 
@@ -412,6 +412,11 @@ struct SamplerWeighted {
 				string path = format("{}/{}.csv", dir, node->name);
 				writeFile(path, ss.str());
 
+				//int bytesize = (node->numPoints * 4) / 8 + node->numPoints * 3;
+				int bytesize = node->numPoints * 16;
+				int kbsize = bytesize / 1024;
+				cout << format("#points: {:7}; {:4} kb \n", node->numPoints, kbsize);
+
 			}else{
 				// write voxels
 
@@ -445,6 +450,10 @@ struct SamplerWeighted {
 
 				string path = format("{}/{}.csv", dir, node->name);
 				writeFile(path, ss.str());
+
+				int bytesize = (node->numPoints * 4) / 8 + node->numPoints * 3;
+				int kbsize = bytesize / 1024;
+				cout << format("#voxels: {:7}; {:4} kb \n", node->numPoints, kbsize);
 			}
 
 		});

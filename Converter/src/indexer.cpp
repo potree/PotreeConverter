@@ -12,6 +12,7 @@
 #include "brotli/encode.h"
 #include "HierarchyBuilder.h"
 #include "sampler_weighted.h"
+#include "OctreeSerializer.h"
 
 using std::unique_lock;
 
@@ -1676,6 +1677,7 @@ void doIndexing(string targetDir, State& state, Options& options) {
 		buildHierarchy(&indexer, chunkRoot.get(), pointBuffer, numPoints);
 
 		sampler->sample(chunkRoot.get(), attributes, indexer.spacing, onNodeCompleted, onNodeDiscarded);
+		OctreeSerializer::serialize(chunkRoot.get(), &attributes);
 
 		// detach anything below the chunk root. Will be reloaded from
 		// temporarily flushed hierarchy during creation of the hierarchy file
