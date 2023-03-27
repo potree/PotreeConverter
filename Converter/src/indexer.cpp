@@ -2,6 +2,7 @@
 #include <cerrno>
 #include <execution>
 #include <algorithm>
+#include <format>
 
 #include "indexer.h"
 
@@ -1730,14 +1731,18 @@ void doIndexing(string targetDir, State& state, Options& options) {
 
 		for(auto& task : tasks){
 
+			cout << format("task {} \n", task.node->name);
+
 			for(auto& fcr : task.fcrs){
 				auto buffer = make_shared<Buffer>(fcr.size);
 				readBinaryFile(tmpChunkRootsPath, fcr.offset, fcr.size, buffer->data);
+				cout << format("reloading {} \n", fcr.node->name);
 
 				fcr.node->points = buffer;
 			}
 
 			sampler->sample(task.node, attributes, indexer.spacing, onNodeCompleted, onNodeDiscarded);
+			OctreeSerializer::serialize(task.node, &attributes);
 
 			task.node->children.clear();
 		}
@@ -1752,6 +1757,7 @@ void doIndexing(string targetDir, State& state, Options& options) {
 	} else if (!indexer.root->sampled){
 		auto sampler = make_shared<SamplerWeighted>();
 		sampler->sample(indexer.root.get(), attributes, indexer.spacing, onNodeCompleted, onNodeDiscarded);
+		OctreeSerializer::serialize(indexer.root.get(), &attributes);
 	}
 
 	printElapsedTime("sampling", tStart);
