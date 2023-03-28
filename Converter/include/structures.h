@@ -24,13 +24,31 @@ struct CumulativeColor {
 	int64_t w = 0;
 };
 
+struct Voxel{
+	uint8_t x = 0;
+	uint8_t y = 0;
+	uint8_t z = 0;
+	uint8_t padding = 0;
+	uint8_t r = 0;
+	uint8_t g = 0;
+	uint8_t b = 0;
+	uint8_t a = 0;
+	uint32_t mortonCode = 0;
+	uint32_t pointIndex = 0;
+};
+
 struct Node {
 
 	vector<shared_ptr<Node>> children;
 
 	string name;
 	shared_ptr<Buffer> points;
-	vector<CumulativeColor> colors;
+	int64_t numPoints = 0;
+
+	vector<Voxel> voxels;
+	int64_t numVoxels = 0;
+
+
 	Vector3 min;
 	Vector3 max;
 
@@ -38,7 +56,6 @@ struct Node {
 
 	int64_t byteOffset = 0;
 	int64_t byteSize = 0;
-	int64_t numPoints = 0;
 
 	bool sampled = false;
 
@@ -135,6 +152,14 @@ struct Node {
 		}
 
 		return current;
+	}
+
+	int nodeIndex(){
+		if(name.size() <= 1){
+			return 0;
+		}else{
+			return name[name.size() - 1] - '0';
+		}
 	}
 
 };

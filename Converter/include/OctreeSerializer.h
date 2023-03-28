@@ -9,74 +9,26 @@ using std::format;
 #include "unsuck/unsuck.hpp"
 #include "Vector3.h"
 #include "converter_utils.h"
+#include "structures.h"
 
+int gridSize = 256;
+int dGridSize = gridSize;
 
 struct OctreeSerializer{
 
-	struct Voxel{
-		uint8_t x;
-		uint8_t y;
-		uint8_t z;
-		uint8_t padding;
-		uint32_t mortonCode;
-		uint32_t pointIndex;
-	};
+	
 
-	static shared_ptr<unordered_map<Node*, vector<Voxel>>> create_morton_ordered_voxel_map(
+	static unordered_map<string, vector<Voxel>*> create_morton_ordered_voxel_map(
 		Node* node, Attributes* attributes, int gridSize
 	){
 
 		double dGridSize = gridSize;
-		auto voxelsMap = make_shared<unordered_map<Node*, vector<Voxel>>>();
+		auto voxelsMap = unordered_map<string, vector<Voxel>*>();
 
 		node->traverse([&](Node* node){
 			
-			if(node->isLeaf()){
-				// no voxels in leaves
-			}else{
-
-				int stride = attributes->bytes;
-				Vector3 scale = attributes->posScale;
-				Vector3 offset = attributes->posOffset;
-				Vector3 nodesize = node->max - node->min;
-
-				vector<Voxel> voxels;
-				voxels.reserve(node->numPoints);
-
-				for(int i = 0; i < node->numPoints; i++){
-
-					int X = node->points->get<int32_t>(i * stride + 0);
-					int Y = node->points->get<int32_t>(i * stride + 4);
-					int Z = node->points->get<int32_t>(i * stride + 8);
-
-					double x = (double(X) * scale.x) + offset.x;
-					double y = (double(Y) * scale.y) + offset.y;
-					double z = (double(Z) * scale.z) + offset.z;
-
-					uint32_t ix = dGridSize * ((x - node->min.x) / nodesize.x);
-					uint32_t iy = dGridSize * ((y - node->min.y) / nodesize.y);
-					uint32_t iz = dGridSize * ((z - node->min.z) / nodesize.z);
-
-					// PROTO
-					if(ix > 255) exit(534);
-					if(iy > 255) exit(534);
-					if(iz > 255) exit(534);
-
-					Voxel voxel;
-					voxel.x = ix;
-					voxel.y = iy;
-					voxel.z = iz;
-					voxel.pointIndex = i;
-					voxel.mortonCode = mortonEncode_magicbits(ix, iy, iz);
-
-					voxels.push_back(voxel);
-				}
-
-				sort(voxels.begin(), voxels.end(), [](Voxel& a, Voxel& b){
-					return a.mortonCode < b.mortonCode;
-				});
-
-				voxelsMap->operator[](node) = voxels;
+			if(node->voxels.size() > 0){
+				voxelsMap[node->name] = &node->voxels;
 			}
 
 		});
@@ -84,12 +36,102 @@ struct OctreeSerializer{
 		return voxelsMap;
 	}
 
+	static shared_ptr<Buffer> toVoxelBuffer(Node* node, vector<Voxel>* voxels, vector<Voxel>* parentVoxelCandidates){
+
+		if(node->name == "r"){
+			// encode parent coordinates directly
+			auto buffer = make_shared<Buffer>(voxels->size() * 3);
+
+			for(int i = 0; i < voxels->size(); i++){
+				Voxel voxel = voxels->at(i);
+
+				buffer->set<uint8_t>(voxel.x, 3 * i + 0);
+				buffer->set<uint8_t>(voxel.y, 3 * i + 1);
+				buffer->set<uint8_t>(voxel.z, 3 * i + 2);
+			}
+
+			return buffer;
+		}else if(parentVoxelCandidates != nullptr){
+
+			int childIndex = node->nodeIndex();
+			int cx = (childIndex >> 2) & 1;
+			int cy = (childIndex >> 1) & 1;
+			int cz = (childIndex >> 0) & 1;
+
+			// auto buffer = make_shared<Buffer>(voxels->size() * 3);
+
+			// int numParentVoxels = 0; 
+			int numChildVoxels = voxels->size();
+
+			// compute parent-child voxels
+			int parent_i = 0;
+			uint8_t childmask = 0;
+			vector<Voxel> parentVoxels;
+			vector<uint8_t> childmasks;
+			for(int child_i = 0; child_i < voxels->size(); child_i++ ){
+			
+				Voxel parentVoxelCandidate = parentVoxelCandidates->at(parent_i);
+				Voxel childVoxel = voxels->at(child_i);
+
+				int px = (childVoxel.x + cx * gridSize) / 2;
+				int py = (childVoxel.y + cy * gridSize) / 2;
+				int pz = (childVoxel.z + cz * gridSize) / 2;
+
+				bool isBiologicalFamily = 
+					(px == parentVoxelCandidate.x) && 
+					(py == parentVoxelCandidate.y) && 
+					(pz == parentVoxelCandidate.z);
+
+				if(isBiologicalFamily){
+
+					// first child voxel in parent
+					if(childmask == 0){
+						parentVoxels.push_back(parentVoxelCandidate);
+						childmasks.push_back(childmask);
+					}
+
+					// project parent and child voxels to grid in parent node with 2x resolution,
+					// then compute parent-to-child index with [0,1) coordinates
+					int vcx = (childVoxel.x + cx * gridSize) - parentVoxelCandidate.x * 2;
+					int vcy = (childVoxel.y + cy * gridSize) - parentVoxelCandidate.y * 2;
+					int vcz = (childVoxel.z + cz * gridSize) - parentVoxelCandidate.z * 2;
+
+					assert(vcx == 0 || vcx == 1);
+					assert(vcy == 0 || vcy == 1);
+					assert(vcz == 0 || vcz == 1);
+
+					int childVoxelIndex = (vcx << 2) | (vcy << 1) | vcz;
+
+					childmask = childmask | (1 << childVoxelIndex);
+					childmasks[childmasks.size() - 1] = childmask;
+
+				}else{
+					// wasn't the right parent, try next one
+					parent_i++;
+					// try next parent without advancing to next child
+					child_i--;
+					childmask = 0;
+				}
+			}
+
+			auto buffer = make_shared<Buffer>(childmasks.size());
+			memcpy(buffer->data, childmasks.data(), childmasks.size());
+
+			return buffer;
+		}else{
+			return nullptr;
+		}
+
+	}
+
 	static void serialize(Node* node, Attributes* attributes){
 
 		cout << format("serialize {} \n", node->name);
 
-		int gridSize = 256;
-		int dGridSize = gridSize;
+
+		if(node->name == "r"){
+			int a = 10;
+		}
 
 		// - traverse top-bottom
 		// - morton-order points/voxels
@@ -100,37 +142,103 @@ struct OctreeSerializer{
 
 		auto voxelsMap = create_morton_ordered_voxel_map(node, attributes, gridSize);
 
-		int offset_rgb = attributes->getOffset("rgb");
+		node->traverse([&](Node* node){
 
-		for(auto [node, voxels] : *voxelsMap){
+			if(node->voxels.size() > 0){
+				string parentName = node->name.substr(0, node->name.size() - 1);
 
-			stringstream ss;
+				vector<Voxel>* voxels = voxelsMap[node->name];
+				vector<Voxel>* parentVoxels = nullptr;
 
-			Vector3 min = node->min;
-			Vector3 size = node->max - node->min;
-			auto scale = attributes->posScale;
-			auto offset = attributes->posOffset;
+				if(voxelsMap.find(parentName) != voxelsMap.end()){
+					parentVoxels = voxelsMap[parentName];
+				}
 
-			for(auto voxel : voxels){
+				{ // WRITE VOXEL BIN
+					auto voxelBuffer = toVoxelBuffer(node, voxels, parentVoxels);
 
-				float x = size.x * double(voxel.x) / dGridSize + min.x;
-				float y = size.y * double(voxel.y) / dGridSize + min.y;
-				float z = size.z * double(voxel.z) / dGridSize + min.z;
+					if(voxelBuffer != nullptr){
 
-				uint16_t R = node->points->get<uint16_t>(attributes->bytes * voxel.pointIndex + offset_rgb + 0);
-				uint16_t G = node->points->get<uint16_t>(attributes->bytes * voxel.pointIndex + offset_rgb + 2);
-				uint16_t B = node->points->get<uint16_t>(attributes->bytes * voxel.pointIndex + offset_rgb + 4);
+						Buffer fullBuffer(voxelBuffer->size + 3 * voxels->size());
+						memset(fullBuffer.data, 0, fullBuffer.size);
+						memcpy(fullBuffer.data, voxelBuffer->data, voxelBuffer->size);
 
-				int r = R < 256 ? R : R / 256;
-				int g = G < 256 ? G : G / 256;
-				int b = B < 256 ? B : B / 256;
+						string path = format("G:/temp/proto/{}.voxels", node->name);
+						writeBinaryFile(path, fullBuffer);
+						// writeBinaryFile(path, *voxelBuffer);
 
-				ss << format("{}, {}, {}, {}, {}, {} \n", x, y, z, r, g, b);
+						cout << format("[{}] voxels: {}, bytes: {} kb \n", node->name, voxels->size(), fullBuffer.size / 1000);
+					}
+					
+				}
+
+				if(false)
+				{ // WRITE CSV
+					stringstream ss;
+
+					Vector3 min = node->min;
+					Vector3 size = node->max - node->min;
+					auto scale = attributes->posScale;
+					auto offset = attributes->posOffset;
+					int offset_rgb = attributes->getOffset("rgb");
+
+					for(auto voxel : *voxels){
+
+						float x = size.x * double(voxel.x) / dGridSize + min.x;
+						float y = size.y * double(voxel.y) / dGridSize + min.y;
+						float z = size.z * double(voxel.z) / dGridSize + min.z;
+
+						uint16_t R = voxel.r;
+						uint16_t G = voxel.g;
+						uint16_t B = voxel.b;
+
+						int r = R < 256 ? R : R / 256;
+						int g = G < 256 ? G : G / 256;
+						int b = B < 256 ? B : B / 256;
+
+						ss << format("{}, {}, {}, {}, {}, {} \n", x, y, z, r, g, b);
+					}
+
+					string path = format("G:/temp/proto/{}.csv", node->name);
+					writeFile(path, ss.str());
+				}
+
 			}
 
-			string path = format("G:/temp/proto/{}.csv", node->name);
-			writeFile(path, ss.str());
-		}
+			
+		});
+
+		// int offset_rgb = attributes->getOffset("rgb");
+
+		// for(auto [nodeName, voxels] : *voxelsMap){
+
+		// 	stringstream ss;
+
+		// 	Vector3 min = node->min;
+		// 	Vector3 size = node->max - node->min;
+		// 	auto scale = attributes->posScale;
+		// 	auto offset = attributes->posOffset;
+
+		// 	for(auto voxel : voxels){
+
+		// 		float x = size.x * double(voxel.x) / dGridSize + min.x;
+		// 		float y = size.y * double(voxel.y) / dGridSize + min.y;
+		// 		float z = size.z * double(voxel.z) / dGridSize + min.z;
+
+		// 		uint16_t R = node->points->get<uint16_t>(attributes->bytes * voxel.pointIndex + offset_rgb + 0);
+		// 		uint16_t G = node->points->get<uint16_t>(attributes->bytes * voxel.pointIndex + offset_rgb + 2);
+		// 		uint16_t B = node->points->get<uint16_t>(attributes->bytes * voxel.pointIndex + offset_rgb + 4);
+
+		// 		int r = R < 256 ? R : R / 256;
+		// 		int g = G < 256 ? G : G / 256;
+		// 		int b = B < 256 ? B : B / 256;
+
+		// 		ss << format("{}, {}, {}, {}, {}, {} \n", x, y, z, r, g, b);
+		// 	}
+
+		// 	string path = format("G:/temp/proto/{}.csv", node->name);
+		// 	writeFile(path, ss.str());
+		// }
 		
 
 

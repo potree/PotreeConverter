@@ -186,9 +186,15 @@ namespace indexer{
 		lock_guard<mutex> lock(mtx_chunkRoot);
 
 		static int64_t offset = 0;
-		int64_t size = chunkRoot->points->size;
-
-		fChunkRoots.write(chunkRoot->points->data_char, size);
+		int64_t size = 0;
+		
+		if(chunkRoot->numPoints > 0){
+			size = chunkRoot->points->size;
+			fChunkRoots.write(chunkRoot->points->data_char, size);
+		}else if(chunkRoot->voxels.size() > 0){
+			size = chunkRoot->voxels.size() * sizeof(Voxel);
+			fChunkRoots.write((const char*)chunkRoot->voxels.data(), size);
+		}
 
 		FlushedChunkRoot fcr;
 		fcr.node = chunkRoot;
@@ -196,6 +202,7 @@ namespace indexer{
 		fcr.size = size;
 
 		chunkRoot->points = nullptr;
+		chunkRoot->voxels = vector<Voxel>();
 
 		flushedChunkRoots.push_back(fcr);
 
@@ -236,7 +243,9 @@ namespace indexer{
 			auto node = nodesMap[fcr.node->name];
 			
 			node->fcrs.push_back(fcr);
+			// why += ?
 			node->numPoints += fcr.node->numPoints;
+			node->numVoxels += fcr.node->numVoxels;
 		}
 
 		// recursively merge leaves if sum(points) < threshold
@@ -248,16 +257,24 @@ namespace indexer{
 			if(node->isLeaf()){
 
 			}else{
-
+				
+				int numSamples = 0;
 				int numPoints = 0;
+				int numVoxels = 0;
+
 				for(auto child : node->children){
 					if(!child) continue;
 
 					numPoints += child->numPoints;
+					numVoxels += child->numVoxels;
+					numSamples += child->numPoints + child->numVoxels;
 				}
-				node->numPoints = numPoints;
 
-				if(node->numPoints < threshold){
+				node->numPoints = numPoints;
+				node->numVoxels = numVoxels;
+				node->numSamples = numSamples;
+
+				if(node->numSamples < threshold){
 					// merge children into this node
 					for(auto child : node->children){
 						if(!child) continue;
@@ -272,8 +289,6 @@ namespace indexer{
 
 		vector<CRNode> tasks;
 		cr_root->traverse([&tasks](CRNode* node){
-			// cout << node->name << ", #points: " << node->numPoints << ", #fcrs: " << node->fcrs.size() << endl;
-
 			if(node->fcrs.size() > 0){
 				CRNode crnode = *node;
 				tasks.push_back(crnode);
@@ -312,7 +327,15 @@ namespace indexer{
 			auto buffer = make_shared<Buffer>(size);
 			readBinaryFile(octreePath, start, size, buffer->data);
 
-			node->points = buffer;
+			if(node->numPoints > 0){
+				node->points = buffer;
+			}else if(node->numVoxels > 0){
+				node->voxels = vector<Voxel>();
+				node->voxels.reserve(node->numVoxels);
+
+				assert(buffer->size == sizeof(Voxel) * node->numVoxels);
+				memcpy(node->voxels.data(), buffer->data, buffer->size);
+			}
 		});
 
 		for (auto fcr : flushedChunkRoots) {
@@ -1644,6 +1667,7 @@ void doIndexing(string targetDir, State& state, Options& options) {
 	mutex mtx_nodes;
 	vector<shared_ptr<Node>> nodes;
 	int numThreads = numSampleThreads() + 4;
+	// numThreads = 1;
 	TaskPool<Task> pool(numThreads, [&onNodeCompleted, &onNodeDiscarded, &writeAndUnload, &state, &options, &activeThreads, tStart, &lastReport, &totalPoints, totalBytes, &pointsProcessed, chunks, &indexer, &nodes, &mtx_nodes](auto task) {
 		
 		auto sampler = make_shared<SamplerWeighted>();
@@ -1736,9 +1760,20 @@ void doIndexing(string targetDir, State& state, Options& options) {
 			for(auto& fcr : task.fcrs){
 				auto buffer = make_shared<Buffer>(fcr.size);
 				readBinaryFile(tmpChunkRootsPath, fcr.offset, fcr.size, buffer->data);
-				cout << format("reloading {} \n", fcr.node->name);
+				printfmt("reloading {} \n", fcr.node->name);
 
-				fcr.node->points = buffer;
+				// fcr.node->points = buffer;
+
+				if(fcr.node->numPoints > 0){
+					fcr.node->points = buffer;
+				}else if(fcr.node->numVoxels > 0){
+					fcr.node->voxels = vector<Voxel>(fcr.node->numVoxels);
+
+					assert(buffer->size == sizeof(Voxel) * fcr.node->numVoxels);
+
+					memcpy(fcr.node->voxels.data(), buffer->data, buffer->size);
+				}
+
 			}
 
 			sampler->sample(task.node, attributes, indexer.spacing, onNodeCompleted, onNodeDiscarded);

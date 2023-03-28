@@ -16,6 +16,7 @@
 #include <cstdint>
 #include <cstring>
 #include <format>
+#include <string_view>
 
 using std::format;
 using std::cout;
@@ -590,3 +591,14 @@ inline string rightPad(string in, int64_t length, const char character = ' ') {
 #define GENERATE_ERROR_MESSAGE cout << "ERROR(" << __FILE__ << ":" << __LINE__ << "): "
 #define GENERATE_WARN_MESSAGE cout << "WARNING: "
 
+// template <typename... Args>
+// inline void printfmt(string str, Args&&... args) {
+// 	// return std::vformat(rt_fmt_str, std::make_format_args(args...));
+
+// 	std::cout << format(str, std::make_format_args(args...));
+// }
+
+template <typename... Args>
+inline void printfmt(std::string_view fmt, const Args&... args) {
+	std::cout << std::vformat(fmt, std::make_format_args(args...));
+}

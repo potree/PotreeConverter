@@ -9,10 +9,11 @@
 
 using std::format;
 
+
 struct SamplerWeighted {
 
 	int64_t gridSize = 256;
-	double fGridSize = 256;
+	double dGridSize = 256;
 
 	struct CellIndex {
 		int64_t index = -1;
@@ -39,7 +40,7 @@ struct SamplerWeighted {
 		Node* node, Attributes& attributes, 
 		Vector3& scale, Vector3& offset,
 		Vector3& min, Vector3& size,
-		int64_t gridSize, double fGridSize,
+		int64_t gridSize, double dGridSize,
 		uint32_t& numAccepted, Buffer* accepted,
 		vector<uint32_t>& grid_r,
 		vector<uint32_t>& grid_g,
@@ -55,22 +56,83 @@ struct SamplerWeighted {
 
 			if(child == nullptr) continue;
 
-			for (int i = 0; i < child->numPoints; i++) {
+			auto childsize = child->max - child->min;
 
-				int64_t pointOffset = i * attributes.bytes;
-				int32_t* xyz = reinterpret_cast<int32_t*>(child->points->data_u8 + pointOffset);
+			struct Sample {
+				double x;
+				double y;
+				double z;
+				uint8_t r;
+				uint8_t g;
+				uint8_t b;
+			};
+		
 
-				double x = (xyz[0] * scale.x) + offset.x;
-				double y = (xyz[1] * scale.y) + offset.y;
-				double z = (xyz[2] * scale.z) + offset.z;
+			auto getSample = [&](int index) -> Sample {
 
-				double fx = fGridSize * (x - min.x) / size.x;
-				double fy = fGridSize * (y - min.y) / size.y;
-				double fz = fGridSize * (z - min.z) / size.z;
+				if(child->numPoints > 0){
+					// Point Sample
 
-				int ix = clamp(fx, 0.0, fGridSize - 1);
-				int iy = clamp(fy, 0.0, fGridSize - 1);
-				int iz = clamp(fz, 0.0, fGridSize - 1);
+					int64_t pointOffset = index * attributes.bytes;
+					int32_t* xyz = reinterpret_cast<int32_t*>(child->points->data_u8 + pointOffset);
+
+					Sample sample;
+					sample.x = (xyz[0] * scale.x) + offset.x;
+					sample.y = (xyz[1] * scale.y) + offset.y;
+					sample.z = (xyz[2] * scale.z) + offset.z;
+
+					uint32_t R = 0;
+					uint32_t G = 0;
+					uint32_t B = 0;
+
+					if(att_rgb){
+						R = child->points->get<uint16_t>(pointOffset + att_rgb_offset + 0);
+						G = child->points->get<uint16_t>(pointOffset + att_rgb_offset + 2);
+						B = child->points->get<uint16_t>(pointOffset + att_rgb_offset + 4);
+					}
+					sample.r = R < 256 ? R : R / 256;
+					sample.g = G < 256 ? G : G / 256;
+					sample.b = B < 256 ? B : B / 256;
+
+					return sample;
+				}else{
+					// Voxel Sample
+
+					Voxel voxel = child->voxels[index];
+
+					Sample sample;
+					sample.x = (double(voxel.x + 0.5) / dGridSize) * childsize.x + child->min.x;
+					sample.y = (double(voxel.y + 0.5) / dGridSize) * childsize.y + child->min.y;
+					sample.z = (double(voxel.z + 0.5) / dGridSize) * childsize.z + child->min.z;
+					sample.r = voxel.r;
+					sample.g = voxel.g;
+					sample.b = voxel.b;
+				
+					return sample;
+				}
+			
+			};
+
+			//TODO: not just points, also voxels!!!
+			int numSamples = std::max(child->numPoints, child->numVoxels);
+			for (int i = 0; i < numSamples; i++) {
+
+				// int64_t pointOffset = i * attributes.bytes;
+				// int32_t* xyz = reinterpret_cast<int32_t*>(child->points->data_u8 + pointOffset);
+
+				// double x = (xyz[0] * scale.x) + offset.x;
+				// double y = (xyz[1] * scale.y) + offset.y;
+				// double z = (xyz[2] * scale.z) + offset.z;
+
+				Sample sample = getSample(i);
+
+				double fx = dGridSize * (sample.x - min.x) / size.x;
+				double fy = dGridSize * (sample.y - min.y) / size.y;
+				double fz = dGridSize * (sample.z - min.z) / size.z;
+
+				int ix = clamp(fx, 0.0, dGridSize - 1);
+				int iy = clamp(fy, 0.0, dGridSize - 1);
+				int iz = clamp(fz, 0.0, dGridSize - 1);
 
 				int64_t voxelIndex = ix + iy * gridSize + iz * gridSize * gridSize;
 
@@ -106,23 +168,23 @@ struct SamplerWeighted {
 					numAccepted++;
 				};
 
-				uint32_t R = 0;
-				uint32_t G = 0;
-				uint32_t B = 0;
+				// uint32_t R = 0;
+				// uint32_t G = 0;
+				// uint32_t B = 0;
 
-				if(att_rgb){
-					R = child->points->get<uint16_t>(pointOffset + att_rgb_offset + 0);
-					G = child->points->get<uint16_t>(pointOffset + att_rgb_offset + 2);
-					B = child->points->get<uint16_t>(pointOffset + att_rgb_offset + 4);
-				}
+				// if(att_rgb){
+				// 	R = child->points->get<uint16_t>(pointOffset + att_rgb_offset + 0);
+				// 	G = child->points->get<uint16_t>(pointOffset + att_rgb_offset + 2);
+				// 	B = child->points->get<uint16_t>(pointOffset + att_rgb_offset + 4);
+				// }
 
-				R = R < 256 ? R : R / 256;
-				G = G < 256 ? G : G / 256;
-				B = B < 256 ? B : B / 256;
+				// R = R < 256 ? R : R / 256;
+				// G = G < 256 ? G : G / 256;
+				// B = B < 256 ? B : B / 256;
 
-				grid_r[voxelIndex] += W * R;
-				grid_g[voxelIndex] += W * G;
-				grid_b[voxelIndex] += W * B;
+				grid_r[voxelIndex] += W * sample.r;
+				grid_g[voxelIndex] += W * sample.g;
+				grid_b[voxelIndex] += W * sample.b;
 				grid_w[voxelIndex] += W;
 			}
 		}
@@ -133,7 +195,7 @@ struct SamplerWeighted {
 		Node* node, Attributes& attributes, 
 		Vector3& scale, Vector3& offset,
 		Vector3& min, Vector3& size,
-		int64_t gridSize, double fGridSize,
+		int64_t gridSize, double dGridSize,
 		uint32_t& numAccepted, Buffer* accepted,
 		vector<uint32_t>& grid_r,
 		vector<uint32_t>& grid_g,
@@ -158,13 +220,13 @@ struct SamplerWeighted {
 				double y = (xyz[1] * scale.y) + offset.y;
 				double z = (xyz[2] * scale.z) + offset.z;
 
-				double fx = fGridSize * (x - min.x) / size.x;
-				double fy = fGridSize * (y - min.y) / size.y;
-				double fz = fGridSize * (z - min.z) / size.z;
+				double fx = dGridSize * (x - min.x) / size.x;
+				double fy = dGridSize * (y - min.y) / size.y;
+				double fz = dGridSize * (z - min.z) / size.z;
 
-				int ix = clamp(fx, 0.0, fGridSize - 1);
-				int iy = clamp(fy, 0.0, fGridSize - 1);
-				int iz = clamp(fz, 0.0, fGridSize - 1);
+				int ix = clamp(fx, 0.0, dGridSize - 1);
+				int iy = clamp(fy, 0.0, dGridSize - 1);
+				int iz = clamp(fz, 0.0, dGridSize - 1);
 
 				for(int ox = -1; ox <= 1; ox++)
 				for(int oy = -1; oy <= 1; oy++)
@@ -241,18 +303,20 @@ struct SamplerWeighted {
 
 	}
 
-	shared_ptr<Buffer> extract(
+	vector<Voxel> extract(
 		Node* node, Attributes& attributes, 
 		Vector3& scale, Vector3& offset,
 		Vector3& min, Vector3& size,
-		int64_t gridSize, double fGridSize,
+		int64_t gridSize, double dGridSize,
 		uint32_t& numAccepted, Buffer* accepted,
 		vector<uint32_t>& grid_r,
 		vector<uint32_t>& grid_g,
 		vector<uint32_t>& grid_b,
 		vector<uint32_t>& grid_w
 	){
-		auto acceptedPoints = make_shared<Buffer>(numAccepted * attributes.bytes);
+		vector<Voxel> acceptedVoxels;
+		acceptedVoxels.reserve(numAccepted);
+		// auto acceptedPoints = make_shared<Buffer>(numAccepted * attributes.bytes);
 		auto nodesize = node->max - node->min;
 		int numProcessed = 0;
 		int g3 = gridSize * gridSize * gridSize;
@@ -269,25 +333,36 @@ struct SamplerWeighted {
 				int iy = (voxelIndex % (gridSize * gridSize)) / gridSize;
 				int iz = voxelIndex / (gridSize * gridSize);
 				
-				double x = node->min.x + ((double(ix) + 0.5f) / fGridSize) * nodesize.x;
-				double y = node->min.y + ((double(iy) + 0.5f) / fGridSize) * nodesize.y;
-				double z = node->min.z + ((double(iz) + 0.5f) / fGridSize) * nodesize.z;
+				double x = node->min.x + ((double(ix) + 0.5f) / dGridSize) * nodesize.x;
+				double y = node->min.y + ((double(iy) + 0.5f) / dGridSize) * nodesize.y;
+				double z = node->min.z + ((double(iz) + 0.5f) / dGridSize) * nodesize.z;
 
 				int X = (x - offset.x) / scale.x;
 				int Y = (y - offset.y) / scale.y;
 				int Z = (z - offset.z) / scale.z;
 
-				acceptedPoints->set<int>(X, attributes.bytes * numProcessed + 0);
-				acceptedPoints->set<int>(Y, attributes.bytes * numProcessed + 4);
-				acceptedPoints->set<int>(Z, attributes.bytes * numProcessed + 8);
+				Voxel voxel;
+				voxel.x = ix;
+				voxel.y = iy;
+				voxel.z = iz;
+				// acceptedPoints->set<int>(X, attributes.bytes * numProcessed + 0);
+				// acceptedPoints->set<int>(Y, attributes.bytes * numProcessed + 4);
+				// acceptedPoints->set<int>(Z, attributes.bytes * numProcessed + 8);
 
 				uint16_t R = grid_r[voxelIndex] / W;
 				uint16_t G = grid_g[voxelIndex] / W;
 				uint16_t B = grid_b[voxelIndex] / W;
-				acceptedPoints->set<uint16_t>(R, attributes.bytes * numProcessed + 12);
-				acceptedPoints->set<uint16_t>(G, attributes.bytes * numProcessed + 14);
-				acceptedPoints->set<uint16_t>(B, attributes.bytes * numProcessed + 16);
+				// acceptedPoints->set<uint16_t>(R, attributes.bytes * numProcessed + 12);
+				// acceptedPoints->set<uint16_t>(G, attributes.bytes * numProcessed + 14);
+				// acceptedPoints->set<uint16_t>(B, attributes.bytes * numProcessed + 16);
 
+				voxel.r = R < 256 ? R : R / 256;
+				voxel.g = G < 256 ? G : G / 256;
+				voxel.b = B < 256 ? B : B / 256;
+
+				voxel.mortonCode = mortonEncode_magicbits(ix, iy, iz);
+
+				acceptedVoxels.push_back(voxel);
 				numProcessed++;
 			}
 
@@ -297,7 +372,7 @@ struct SamplerWeighted {
 			grid_w[voxelIndex] = 0;
 		}
 
-		return acceptedPoints;
+		return acceptedVoxels;
 	}
 
 	// subsample a local octree from bottom up
@@ -326,6 +401,11 @@ struct SamplerWeighted {
 			if(node->sampled) return;
 			if(node->isLeaf()) return;
 
+			// cout << format("sampling {} \n", node->name);
+			// printfmt("sampling {} \n", node->name);
+			// print(cout, "sampling {} \n", node->name);
+			printfmt("sampling {} \n", node->name);
+
 			node->sampled = true;
 
 			int64_t numPoints = node->numPoints;
@@ -339,7 +419,7 @@ struct SamplerWeighted {
 			// first, project points to voxel and count; add to <accepted> if first in voxel
 			numAccepted = 0;
 			voxelizePrimitives_central(
-				node, attributes, scale, offset, min, size, gridSize, fGridSize,
+				node, attributes, scale, offset, min, size, gridSize, dGridSize,
 				numAccepted, accepted.get(),
 				grid_r, grid_g, grid_b, grid_w
 			);
@@ -347,116 +427,121 @@ struct SamplerWeighted {
 			// second, project points to neighbourhood of voxel, 
 			// and only count if the adjacent voxel also holds geometry
 			voxelizePrimitives_neighbors(
-				node, attributes, scale, offset, min, size, gridSize, fGridSize,
+				node, attributes, scale, offset, min, size, gridSize, dGridSize,
 				numAccepted, accepted.get(),
 				grid_r, grid_g, grid_b, grid_w
 			);
 			
 			// third, use <accepted> to extract voxels
-			auto extractedPoints = extract(
-				node, attributes, scale, offset, min, size, gridSize, fGridSize,
+			auto extracted = extract(
+				node, attributes, scale, offset, min, size, gridSize, dGridSize,
 				numAccepted, accepted.get(),
 				grid_r, grid_g, grid_b, grid_w
 			);
 
-			node->points = extractedPoints;
-			node->numPoints = numAccepted;
+			sort(extracted.begin(), extracted.end(), [](Voxel& a, Voxel& b){
+				return a.mortonCode < b.mortonCode;
+			});
+
+			node->voxels = extracted;
+			node->numVoxels = extracted.size();
+			node->numPoints = 0;
 
 			return;
 		});
 
 		// PROT: write to file
-		if(false)
-		localRoot->traverse([&](Node* node){
+		// if(false)
+		// localRoot->traverse([&](Node* node){
 
-			// if(node->level() > 3){
-			// 	return;
-			// }
+		// 	// if(node->level() > 3){
+		// 	// 	return;
+		// 	// }
 
-			string dir = "G:/temp/proto";
+		// 	string dir = "G:/temp/proto";
 
-			Attribute* att_rgb = attributes.get("rgb");
-			int att_rgb_offset = attributes.getOffset("rgb");
+		// 	Attribute* att_rgb = attributes.get("rgb");
+		// 	int att_rgb_offset = attributes.getOffset("rgb");
 			
-			if(node->isLeaf()){
-				// write points
+		// 	if(node->isLeaf()){
+		// 		// write points
 
-				stringstream ss;
+		// 		stringstream ss;
 
-				for(int i = 0; i < node->numPoints; i++){
-					int X = node->points->get<int32_t>(i * attributes.bytes + 0);
-					int Y = node->points->get<int32_t>(i * attributes.bytes + 4);
-					int Z = node->points->get<int32_t>(i * attributes.bytes + 8);
+		// 		for(int i = 0; i < node->numPoints; i++){
+		// 			int X = node->points->get<int32_t>(i * attributes.bytes + 0);
+		// 			int Y = node->points->get<int32_t>(i * attributes.bytes + 4);
+		// 			int Z = node->points->get<int32_t>(i * attributes.bytes + 8);
 
-					double x = (X * scale.x) + offset.x;
-					double y = (Y * scale.y) + offset.y;
-					double z = (Z * scale.z) + offset.z;
+		// 			double x = (X * scale.x) + offset.x;
+		// 			double y = (Y * scale.y) + offset.y;
+		// 			double z = (Z * scale.z) + offset.z;
 
-					uint32_t R = 0;
-					uint32_t G = 0;
-					uint32_t B = 0;
+		// 			uint32_t R = 0;
+		// 			uint32_t G = 0;
+		// 			uint32_t B = 0;
 
-					if(att_rgb){
-						R = node->points->get<uint16_t>(i * attributes.bytes + att_rgb_offset + 0);
-						G = node->points->get<uint16_t>(i * attributes.bytes + att_rgb_offset + 2);
-						B = node->points->get<uint16_t>(i * attributes.bytes + att_rgb_offset + 4);
-					}
+		// 			if(att_rgb){
+		// 				R = node->points->get<uint16_t>(i * attributes.bytes + att_rgb_offset + 0);
+		// 				G = node->points->get<uint16_t>(i * attributes.bytes + att_rgb_offset + 2);
+		// 				B = node->points->get<uint16_t>(i * attributes.bytes + att_rgb_offset + 4);
+		// 			}
 
-					ss << format("{}, {}, {}, {}, {}, {}", x, y, z, R, G, B);
+		// 			ss << format("{}, {}, {}, {}, {}, {}", x, y, z, R, G, B);
 
-					if(i < node->numPoints - 1){
-						ss << "\n";
-					}
-				}
+		// 			if(i < node->numPoints - 1){
+		// 				ss << "\n";
+		// 			}
+		// 		}
 
-				string path = format("{}/{}.csv", dir, node->name);
-				writeFile(path, ss.str());
+		// 		string path = format("{}/{}.csv", dir, node->name);
+		// 		writeFile(path, ss.str());
 
-				//int bytesize = (node->numPoints * 4) / 8 + node->numPoints * 3;
-				int bytesize = node->numPoints * 16;
-				int kbsize = bytesize / 1024;
-				cout << format("#points: {:7}; {:4} kb \n", node->numPoints, kbsize);
+		// 		//int bytesize = (node->numPoints * 4) / 8 + node->numPoints * 3;
+		// 		int bytesize = node->numPoints * 16;
+		// 		int kbsize = bytesize / 1024;
+		// 		cout << format("#points: {:7}; {:4} kb \n", node->numPoints, kbsize);
 
-			}else{
-				// write voxels
+		// 	}else{
+		// 		// write voxels
 
-				stringstream ss;
+		// 		stringstream ss;
 
-				for(int i = 0; i < node->numPoints; i++){
-					int X = node->points->get<int32_t>(i * attributes.bytes + 0);
-					int Y = node->points->get<int32_t>(i * attributes.bytes + 4);
-					int Z = node->points->get<int32_t>(i * attributes.bytes + 8);
+		// 		for(int i = 0; i < node->numPoints; i++){
+		// 			int X = node->points->get<int32_t>(i * attributes.bytes + 0);
+		// 			int Y = node->points->get<int32_t>(i * attributes.bytes + 4);
+		// 			int Z = node->points->get<int32_t>(i * attributes.bytes + 8);
 
-					double x = (X * scale.x) + offset.x;
-					double y = (Y * scale.y) + offset.y;
-					double z = (Z * scale.z) + offset.z;
+		// 			double x = (X * scale.x) + offset.x;
+		// 			double y = (Y * scale.y) + offset.y;
+		// 			double z = (Z * scale.z) + offset.z;
 
-					uint32_t R = 0;
-					uint32_t G = 0;
-					uint32_t B = 0;
+		// 			uint32_t R = 0;
+		// 			uint32_t G = 0;
+		// 			uint32_t B = 0;
 
-					if(att_rgb){
-						R = node->points->get<uint16_t>(i * attributes.bytes + att_rgb_offset + 0);
-						G = node->points->get<uint16_t>(i * attributes.bytes + att_rgb_offset + 2);
-						B = node->points->get<uint16_t>(i * attributes.bytes + att_rgb_offset + 4);
-					}
+		// 			if(att_rgb){
+		// 				R = node->points->get<uint16_t>(i * attributes.bytes + att_rgb_offset + 0);
+		// 				G = node->points->get<uint16_t>(i * attributes.bytes + att_rgb_offset + 2);
+		// 				B = node->points->get<uint16_t>(i * attributes.bytes + att_rgb_offset + 4);
+		// 			}
 
-					ss << format("{}, {}, {}, {}, {}, {}", x, y, z, R, G, B);
+		// 			ss << format("{}, {}, {}, {}, {}, {}", x, y, z, R, G, B);
 
-					if(i < node->numPoints - 1){
-						ss << "\n";
-					}
-				}
+		// 			if(i < node->numPoints - 1){
+		// 				ss << "\n";
+		// 			}
+		// 		}
 
-				string path = format("{}/{}.csv", dir, node->name);
-				writeFile(path, ss.str());
+		// 		string path = format("{}/{}.csv", dir, node->name);
+		// 		writeFile(path, ss.str());
 
-				int bytesize = (node->numPoints * 4) / 8 + node->numPoints * 3;
-				int kbsize = bytesize / 1024;
-				cout << format("#voxels: {:7}; {:4} kb \n", node->numPoints, kbsize);
-			}
+		// 		int bytesize = (node->numPoints * 4) / 8 + node->numPoints * 3;
+		// 		int kbsize = bytesize / 1024;
+		// 		cout << format("#voxels: {:7}; {:4} kb \n", node->numPoints, kbsize);
+		// 	}
 
-		});
+		// });
 
 		//cout << format("processing {} - done \n", localRoot->name);
 	}

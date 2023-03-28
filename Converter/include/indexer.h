@@ -261,6 +261,8 @@ namespace indexer{
 		vector<shared_ptr<CRNode>> children;
 		vector<FlushedChunkRoot> fcrs;
 		int numPoints = 0;
+		int numVoxels = 0;
+		int numSamples = 0;
 
 		CRNode(){
 			children.resize(8, nullptr);

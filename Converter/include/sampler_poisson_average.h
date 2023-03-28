@@ -151,8 +151,6 @@ struct SamplerPoissonAverage : public Sampler {
 					points.push_back(point);
 				}
 
-				child->colors = {};
-
 			}
 
 			unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
@@ -478,7 +476,6 @@ struct SamplerPoissonAverage : public Sampler {
 
 
 			node->points = accepted;
-			node->colors = averagedColors;
 			node->numPoints = numAccepted;
 
 			//{ // debug
