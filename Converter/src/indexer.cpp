@@ -1483,17 +1483,16 @@ void Writer::writeAndUnload(Node* node) {
 	auto attributes = indexer->attributes;
 	string encoding = indexer->options.encoding;
 
-	shared_ptr<Buffer> sourceBuffer;
+	// shared_ptr<Buffer> sourceBuffer;
 
-	if (encoding == "BROTLI") {
-		sourceBuffer = compress(node, attributes);
-	} else {
-		sourceBuffer = node->points;
-	}
+	// if (encoding == "BROTLI") {
+	// 	sourceBuffer = compress(node, attributes);
+	// } else {
+	// 	sourceBuffer = node->points;
+	// }
 	
 
-	int64_t byteSize = sourceBuffer->size;
-
+	int64_t byteSize = node->serializedBuffer->size;
 	node->byteSize = byteSize;
 
 	auto errorCheck = [node](int64_t size) {
@@ -1536,9 +1535,11 @@ void Writer::writeAndUnload(Node* node) {
 		activeBuffer->pos += byteSize;
 	}	
 
-	memcpy(buffer->data_char + targetOffset, sourceBuffer->data, byteSize);
+	memcpy(buffer->data_char + targetOffset, node->serializedBuffer->data, byteSize);
 
-	node->points = nullptr;
+	// node->points = nullptr;
+	// node->serializedBuffer = nullptr;
+	// node->voxels = vector<Voxel>();
 }
 
 void Writer::launchWriterThread() {
@@ -1552,7 +1553,7 @@ void Writer::launchWriterThread() {
 			shared_ptr<Buffer> buffer = nullptr;
 
 			{
-				cout << "lock 000 \n";
+				// cout << "lock 000 \n";
 				lock_guard<mutex> lock(mtx);
 
 				if (backlog.size() > 0) {
@@ -1634,8 +1635,26 @@ void doIndexing(string targetDir, State& state, Options& options) {
 	indexer.spacing = (chunks->max - chunks->min).x / 128.0;
 
 	auto onNodeCompleted = [&indexer](Node* node) {
-		// indexer.writer->writeAndUnload(node);
-		indexer.hierarchyFlusher->write(node, hierarchyStepSize);
+
+		OctreeSerializer::serialize(node, &indexer.attributes);
+
+		for(auto child : node->children){
+			if(child == nullptr) continue;
+			if(child->serializedBuffer == nullptr) continue;
+
+			indexer.writer->writeAndUnload(child.get());
+			indexer.hierarchyFlusher->write(child.get(), hierarchyStepSize);
+		}
+
+		if(node->name == "r"){
+			indexer.writer->writeAndUnload(node);
+			indexer.hierarchyFlusher->write(node, hierarchyStepSize);
+		}
+
+		// if(node->serializedBuffer != nullptr){
+		// 	indexer.writer->writeAndUnload(node);
+		// 	indexer.hierarchyFlusher->write(node, hierarchyStepSize);
+		// }
 	};
 
 	auto onNodeDiscarded = [&indexer](Node* node) {};
@@ -1667,7 +1686,7 @@ void doIndexing(string targetDir, State& state, Options& options) {
 	mutex mtx_nodes;
 	vector<shared_ptr<Node>> nodes;
 	int numThreads = numSampleThreads() + 4;
-	// numThreads = 1;
+	//numThreads = 1;
 	TaskPool<Task> pool(numThreads, [&onNodeCompleted, &onNodeDiscarded, &writeAndUnload, &state, &options, &activeThreads, tStart, &lastReport, &totalPoints, totalBytes, &pointsProcessed, chunks, &indexer, &nodes, &mtx_nodes](auto task) {
 		
 		auto sampler = make_shared<SamplerWeighted>();
@@ -1676,7 +1695,7 @@ void doIndexing(string targetDir, State& state, Options& options) {
 		auto attributes = chunks->attributes;
 		int64_t bpp = attributes.bytes;
 
-		// indexer.waitUntilWriterBacklogBelow(1'000);
+		indexer.waitUntilWriterBacklogBelow(1'000);
 		activeThreads++;
 
 		auto filesize = fs::file_size(chunk->file);
@@ -1702,7 +1721,7 @@ void doIndexing(string targetDir, State& state, Options& options) {
 		buildHierarchy(&indexer, chunkRoot.get(), pointBuffer, numPoints);
 
 		sampler->sample(chunkRoot.get(), attributes, indexer.spacing, onNodeCompleted, onNodeDiscarded);
-		OctreeSerializer::serialize(chunkRoot.get(), &attributes);
+		//OctreeSerializer::serialize(chunkRoot.get(), &attributes);
 
 		// detach anything below the chunk root. Will be reloaded from
 		// temporarily flushed hierarchy during creation of the hierarchy file
@@ -1777,7 +1796,7 @@ void doIndexing(string targetDir, State& state, Options& options) {
 			}
 
 			sampler->sample(task.node, attributes, indexer.spacing, onNodeCompleted, onNodeDiscarded);
-			OctreeSerializer::serialize(task.node, &attributes);
+			//OctreeSerializer::serialize(task.node, &attributes);
 
 			task.node->children.clear();
 		}
@@ -1792,7 +1811,7 @@ void doIndexing(string targetDir, State& state, Options& options) {
 	} else if (!indexer.root->sampled){
 		auto sampler = make_shared<SamplerWeighted>();
 		sampler->sample(indexer.root.get(), attributes, indexer.spacing, onNodeCompleted, onNodeDiscarded);
-		OctreeSerializer::serialize(indexer.root.get(), &attributes);
+		//OctreeSerializer::serialize(indexer.root.get(), &attributes);
 	}
 
 	// root is automatically finished after subsampling all descendants
@@ -1800,7 +1819,7 @@ void doIndexing(string targetDir, State& state, Options& options) {
 
 	printElapsedTime("sampling", tStart);
 
-	// indexer.writer->closeAndWait();
+	indexer.writer->closeAndWait();
 
 	printElapsedTime("flushing", tStart);
 

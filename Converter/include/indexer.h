@@ -339,7 +339,7 @@ namespace indexer{
 
 			this->targetDir = targetDir;
 
-			// writer = make_shared<Writer>(this);
+			writer = make_shared<Writer>(this);
 			hierarchyFlusher = make_shared<HierarchyFlusher>(targetDir + "/.hierarchyChunks");
 
 			string chunkRootFile = targetDir + "/tmpChunkRoots.bin";

@@ -48,14 +48,15 @@ struct Node {
 	vector<Voxel> voxels;
 	int64_t numVoxels = 0;
 
-
 	Vector3 min;
 	Vector3 max;
 
 	int64_t indexStart = 0;
 
+	// output data. offset, size and buffer data in file.
 	int64_t byteOffset = 0;
 	int64_t byteSize = 0;
+	shared_ptr<Buffer> serializedBuffer;
 
 	bool sampled = false;
 

@@ -441,6 +441,8 @@ struct SamplerWeighted {
 		function<void(Node*)> onNodeDiscarded
 	) {
 
+		
+
 		//cout << format("processing {} - start\n", localRoot->name);
 
 		vector<uint32_t> grid_r(gridSize * gridSize * gridSize, 0);
@@ -537,6 +539,12 @@ struct SamplerWeighted {
 
 				onNodeCompleted(node);
 			}
+
+			// for(auto child : node->children){
+			// 	if(child == nullptr) continue;
+			// 	onNodeCompleted(child.get());
+			// }
+
 		});
 
 		// PROT: write to file
