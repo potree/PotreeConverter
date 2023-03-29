@@ -128,6 +128,7 @@ struct OctreeSerializer{
 
 		cout << format("serialize {} \n", node->name);
 
+		static uint64_t byteOffset = 0;
 
 		if(node->name == "r"){
 			int a = 10;
@@ -145,6 +146,7 @@ struct OctreeSerializer{
 		node->traverse([&](Node* node){
 
 			if(node->voxels.size() > 0){
+				// WRITE VOXEL NODE
 				string parentName = node->name.substr(0, node->name.size() - 1);
 
 				vector<Voxel>* voxels = voxelsMap[node->name];
@@ -167,7 +169,11 @@ struct OctreeSerializer{
 						writeBinaryFile(path, fullBuffer);
 						// writeBinaryFile(path, *voxelBuffer);
 
-						cout << format("[{}] voxels: {}, bytes: {} kb \n", node->name, voxels->size(), fullBuffer.size / 1000);
+						node->byteSize = fullBuffer.size;
+						node->byteOffset = byteOffset;
+						byteOffset += node->byteSize;
+
+						printfmt("[{:6}] voxels: {:8L}, bytes: {:4} kb \n", node->name, voxels->size(), fullBuffer.size / 1000);
 					}
 					
 				}
@@ -202,6 +208,15 @@ struct OctreeSerializer{
 					string path = format("G:/temp/proto/{}.csv", node->name);
 					writeFile(path, ss.str());
 				}
+
+			}else if(node->numPoints > 0){
+				// WRITE LEAF NODE
+
+				uint64_t bufferSize = node->numPoints * 16;
+
+				node->byteSize = bufferSize;
+				node->byteOffset = byteOffset;
+				byteOffset += node->byteSize;
 
 			}
 

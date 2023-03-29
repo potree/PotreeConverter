@@ -123,7 +123,7 @@ namespace indexer{
 			string name;
 			int64_t byteOffset = 0;
 			int64_t byteSize = 0;
-			int64_t numPoints = 0;
+			int64_t numSamples = 0;
 		};
 
 		mutex mtx;
@@ -147,10 +147,10 @@ namespace indexer{
 			lock_guard<mutex> lock(mtx);
 
 			HNode hnode = {
-				.name       = node->name,
-				.byteOffset = node->byteOffset,
-				.byteSize   = node->byteSize,
-				.numPoints  = node->numPoints,
+				.name        = node->name,
+				.byteOffset  = node->byteOffset,
+				.byteSize    = node->byteSize,
+				.numSamples  = std::max(node->numPoints, node->numVoxels),
 			};
 
 			buffer.push_back(hnode);
@@ -216,13 +216,13 @@ namespace indexer{
 					auto name = node.name.c_str();
 					memset(buffer.data_u8 + 48 * i, ' ', 31);
 					memcpy(buffer.data_u8 + 48 * i, name, node.name.size());
-					buffer.set<uint32_t>(node.numPoints,  48 * i + 31);
+					buffer.set<uint32_t>(node.numSamples,  48 * i + 31);
 					buffer.set<uint64_t>(node.byteOffset, 48 * i + 35);
 					buffer.set<uint32_t>(node.byteSize,   48 * i + 43);
 					buffer.set<char    >('\n',             48 * i + 47);
 
 					ss << rightPad(name, 10, ' ') 
-						<< leftPad(to_string(node.numPoints), 8, ' ')
+						<< leftPad(to_string(node.numSamples), 8, ' ')
 						<< leftPad(to_string(node.byteOffset), 12, ' ')
 						<< leftPad(to_string(node.byteSize), 12, ' ')
 						<< endl;

@@ -46,7 +46,7 @@ struct HierarchyBuilder{
 
 	struct HNode{
 		string   name            = "";
-		int      numPoints       = 0;
+		int      numSamples      = 0;
 		uint8_t  childMask       = 0;
 		uint64_t byteOffset      = 0;
 		uint64_t byteSize        = 0;
@@ -99,7 +99,7 @@ struct HierarchyBuilder{
 
 			auto node = make_shared<HNode>();
 			node->name       = nodeName;
-			node->numPoints  = buffer->get<uint32_t>(recordOffset + 31);
+			node->numSamples = buffer->get<uint32_t>(recordOffset + 31);
 			node->byteOffset = buffer->get< int64_t>(recordOffset + 35);
 			node->byteSize   = buffer->get< int32_t>(recordOffset + 43);
 
@@ -265,12 +265,13 @@ struct HierarchyBuilder{
 
 				uint64_t byteSize = isProxyNode ? node->proxyByteSize : node->byteSize;
 				uint64_t byteOffset = (isProxyNode ? bytesWritten + node->proxyByteOffset : node->byteOffset);
+				// uint32_t numSamples = std::max(node->numPoints, node->numVoxels);
 
-				buffer->set<uint8_t >(type            , 22 * recordsProcessed +  0);
-				buffer->set<uint8_t >(node->childMask , 22 * recordsProcessed +  1);
-				buffer->set<uint32_t>(node->numPoints , 22 * recordsProcessed +  2);
-				buffer->set<uint64_t>(byteOffset      , 22 * recordsProcessed +  6);
-				buffer->set<uint64_t>(byteSize        , 22 * recordsProcessed + 14);
+				buffer->set<uint8_t >(type             , 22 * recordsProcessed +  0);
+				buffer->set<uint8_t >(node->childMask  , 22 * recordsProcessed +  1);
+				buffer->set<uint32_t>(node->numSamples , 22 * recordsProcessed +  2);
+				buffer->set<uint64_t>(byteOffset       , 22 * recordsProcessed +  6);
+				buffer->set<uint64_t>(byteSize         , 22 * recordsProcessed + 14);
 
 				recordsProcessed++;
 			}

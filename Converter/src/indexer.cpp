@@ -349,17 +349,17 @@ namespace indexer{
 	}
 
 	void Indexer::waitUntilWriterBacklogBelow(int maxMegabytes) {
-		// using namespace std::chrono_literals;
+		using namespace std::chrono_literals;
 
-		// while (true) {
-		// 	auto backlog = writer->backlogSizeMB();
+		while (true) {
+			auto backlog = writer->backlogSizeMB();
 
-		// 	if (backlog > maxMegabytes) {
-		// 		std::this_thread::sleep_for(10ms);
-		// 	} else {
-		// 		break;
-		// 	}
-		// }
+			if (backlog > maxMegabytes) {
+				std::this_thread::sleep_for(10ms);
+			} else {
+				break;
+			}
+		}
 	}
 
 	void Indexer::waitUntilMemoryBelow(int maxMegabytes) {
@@ -1635,7 +1635,7 @@ void doIndexing(string targetDir, State& state, Options& options) {
 
 	auto onNodeCompleted = [&indexer](Node* node) {
 		// indexer.writer->writeAndUnload(node);
-		// indexer.hierarchyFlusher->write(node, hierarchyStepSize);
+		indexer.hierarchyFlusher->write(node, hierarchyStepSize);
 	};
 
 	auto onNodeDiscarded = [&indexer](Node* node) {};
@@ -1795,31 +1795,34 @@ void doIndexing(string targetDir, State& state, Options& options) {
 		OctreeSerializer::serialize(indexer.root.get(), &attributes);
 	}
 
+	// root is automatically finished after subsampling all descendants
+	onNodeCompleted(indexer.root.get());
+
 	printElapsedTime("sampling", tStart);
 
 	// indexer.writer->closeAndWait();
 
-	// printElapsedTime("flushing", tStart);
+	printElapsedTime("flushing", tStart);
 
-	// indexer.hierarchyFlusher->flush(hierarchyStepSize);
+	indexer.hierarchyFlusher->flush(hierarchyStepSize);
 
-	// string hierarchyDir = indexer.targetDir + "/.hierarchyChunks";
-	// HierarchyBuilder builder(hierarchyDir, hierarchyStepSize);
-	// builder.build();
+	string hierarchyDir = indexer.targetDir + "/.hierarchyChunks";
+	HierarchyBuilder builder(hierarchyDir, hierarchyStepSize);
+	builder.build();
 
-	// Hierarchy hierarchy = {
-	// 	.stepSize = hierarchyStepSize,
-	// 	.firstChunkSize = builder.batch_root->byteSize,
-	// };
+	Hierarchy hierarchy = {
+		.stepSize = hierarchyStepSize,
+		.firstChunkSize = builder.batch_root->byteSize,
+	};
 
-	// string metadataPath = targetDir + "/metadata.json";
-	// string metadata = indexer.createMetadata(options, state, hierarchy);
-	// writeFile(metadataPath, metadata);
+	string metadataPath = targetDir + "/metadata.json";
+	string metadata = indexer.createMetadata(options, state, hierarchy);
+	writeFile(metadataPath, metadata);
 
-	// printElapsedTime("metadata & hierarchy", tStart);
+	printElapsedTime("metadata & hierarchy", tStart);
 
 	// {
-	// 	cout << "deleting temporary files" << endl;
+	// 	printfmt("deleting temporary files \n");
 
 	// 	// delete chunk directory
 	// 	if (!options.keepChunks) {
@@ -1834,8 +1837,8 @@ void doIndexing(string targetDir, State& state, Options& options) {
 	// 	fs::remove(octreePath);
 	// }
 
-	// double duration = now() - tStart;
-	// state.values["duration(indexing)"] = formatNumber(duration, 3);
+	double duration = now() - tStart;
+	state.values["duration(indexing)"] = formatNumber(duration, 3);
 
 
 }

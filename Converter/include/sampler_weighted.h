@@ -117,13 +117,6 @@ struct SamplerWeighted {
 			int numSamples = std::max(child->numPoints, child->numVoxels);
 			for (int i = 0; i < numSamples; i++) {
 
-				// int64_t pointOffset = i * attributes.bytes;
-				// int32_t* xyz = reinterpret_cast<int32_t*>(child->points->data_u8 + pointOffset);
-
-				// double x = (xyz[0] * scale.x) + offset.x;
-				// double y = (xyz[1] * scale.y) + offset.y;
-				// double z = (xyz[2] * scale.z) + offset.z;
-
 				Sample sample = getSample(i);
 
 				double fx = dGridSize * (sample.x - min.x) / size.x;
@@ -211,18 +204,85 @@ struct SamplerWeighted {
 
 			if(child == nullptr) continue;
 
-			for (int i = 0; i < child->numPoints; i++) {
+			struct Sample {
+				double x;
+				double y;
+				double z;
+				uint8_t r;
+				uint8_t g;
+				uint8_t b;
+			};
+		
+			auto childsize = child->max - child->min;
 
-				int64_t pointOffset = i * attributes.bytes;
-				int32_t* xyz = reinterpret_cast<int32_t*>(child->points->data_u8 + pointOffset);
+			auto getSample = [&](int index) -> Sample {
 
-				double x = (xyz[0] * scale.x) + offset.x;
-				double y = (xyz[1] * scale.y) + offset.y;
-				double z = (xyz[2] * scale.z) + offset.z;
+				if(child->numPoints > 0){
+					// Point Sample
 
-				double fx = dGridSize * (x - min.x) / size.x;
-				double fy = dGridSize * (y - min.y) / size.y;
-				double fz = dGridSize * (z - min.z) / size.z;
+					int64_t pointOffset = index * attributes.bytes;
+					int32_t* xyz = reinterpret_cast<int32_t*>(child->points->data_u8 + pointOffset);
+
+					Sample sample;
+					sample.x = (xyz[0] * scale.x) + offset.x;
+					sample.y = (xyz[1] * scale.y) + offset.y;
+					sample.z = (xyz[2] * scale.z) + offset.z;
+
+					uint32_t R = 0;
+					uint32_t G = 0;
+					uint32_t B = 0;
+
+					if(att_rgb){
+						R = child->points->get<uint16_t>(pointOffset + att_rgb_offset + 0);
+						G = child->points->get<uint16_t>(pointOffset + att_rgb_offset + 2);
+						B = child->points->get<uint16_t>(pointOffset + att_rgb_offset + 4);
+					}
+					sample.r = R < 256 ? R : R / 256;
+					sample.g = G < 256 ? G : G / 256;
+					sample.b = B < 256 ? B : B / 256;
+
+					return sample;
+				}else{
+					// Voxel Sample
+
+					Voxel voxel = child->voxels[index];
+
+					Sample sample;
+					sample.x = (double(voxel.x + 0.5) / dGridSize) * childsize.x + child->min.x;
+					sample.y = (double(voxel.y + 0.5) / dGridSize) * childsize.y + child->min.y;
+					sample.z = (double(voxel.z + 0.5) / dGridSize) * childsize.z + child->min.z;
+					sample.r = voxel.r;
+					sample.g = voxel.g;
+					sample.b = voxel.b;
+				
+					return sample;
+				}
+			
+			};
+
+			int numSamples = std::max(child->numPoints, child->numVoxels);
+			for (int i = 0; i < numSamples; i++) {
+
+				Sample sample = getSample(i);
+
+				// int64_t pointOffset = i * attributes.bytes;
+				// int32_t* xyz = reinterpret_cast<int32_t*>(child->points->data_u8 + pointOffset);
+
+				// double x = (xyz[0] * scale.x) + offset.x;
+				// double y = (xyz[1] * scale.y) + offset.y;
+				// double z = (xyz[2] * scale.z) + offset.z;
+
+				// double fx = dGridSize * (x - min.x) / size.x;
+				// double fy = dGridSize * (y - min.y) / size.y;
+				// double fz = dGridSize * (z - min.z) / size.z;
+
+				// int ix = clamp(fx, 0.0, dGridSize - 1);
+				// int iy = clamp(fy, 0.0, dGridSize - 1);
+				// int iz = clamp(fz, 0.0, dGridSize - 1);
+
+				double fx = dGridSize * (sample.x - min.x) / size.x;
+				double fy = dGridSize * (sample.y - min.y) / size.y;
+				double fz = dGridSize * (sample.z - min.z) / size.z;
 
 				int ix = clamp(fx, 0.0, dGridSize - 1);
 				int iy = clamp(fy, 0.0, dGridSize - 1);
@@ -276,23 +336,23 @@ struct SamplerWeighted {
 						uint32_t currentW = grid_w[voxelIndex];
 
 						if(currentW > 0){
-							uint32_t R = 0;
-							uint32_t G = 0;
-							uint32_t B = 0;
+							// uint32_t R = 0;
+							// uint32_t G = 0;
+							// uint32_t B = 0;
 
-							if(att_rgb){
-								R = child->points->get<uint16_t>(pointOffset + att_rgb_offset + 0);
-								G = child->points->get<uint16_t>(pointOffset + att_rgb_offset + 2);
-								B = child->points->get<uint16_t>(pointOffset + att_rgb_offset + 4);
-							}
+							// if(att_rgb){
+							// 	R = child->points->get<uint16_t>(pointOffset + att_rgb_offset + 0);
+							// 	G = child->points->get<uint16_t>(pointOffset + att_rgb_offset + 2);
+							// 	B = child->points->get<uint16_t>(pointOffset + att_rgb_offset + 4);
+							// }
 
-							R = R < 256 ? R : R / 256;
-							G = G < 256 ? G : G / 256;
-							B = B < 256 ? B : B / 256;
+							// R = R < 256 ? R : R / 256;
+							// G = G < 256 ? G : G / 256;
+							// B = B < 256 ? B : B / 256;
 
-							grid_r[voxelIndex] += W * R;
-							grid_g[voxelIndex] += W * G;
-							grid_b[voxelIndex] += W * B;
+							grid_r[voxelIndex] += W * sample.r;
+							grid_g[voxelIndex] += W * sample.g;
+							grid_b[voxelIndex] += W * sample.b;
 							grid_w[voxelIndex] += W;
 						}
 						
@@ -399,55 +459,84 @@ struct SamplerWeighted {
 		localRoot->traversePost([&](Node* node) {
 
 			if(node->sampled) return;
-			if(node->isLeaf()) return;
-
-			// cout << format("sampling {} \n", node->name);
-			// printfmt("sampling {} \n", node->name);
-			// print(cout, "sampling {} \n", node->name);
-			printfmt("sampling {} \n", node->name);
-
+			
 			node->sampled = true;
 
-			int64_t numPoints = node->numPoints;
+			if(node->isLeaf()){
+				//node->voxels = ;
+				node->numVoxels = 0;
+				
+				// PROTO: Create crap data for testing
+				node->byteSize = 16 * node->numPoints;
+				static uint64_t offset = 0;
+				node->byteOffset = offset;
+				offset += node->byteSize;
 
-			auto max = node->max;
-			auto min = node->min;
-			auto size = max - min;
-			auto scale = attributes.posScale;
-			auto offset = attributes.posOffset;
+				onNodeCompleted(node);
+			}else{
 
-			// first, project points to voxel and count; add to <accepted> if first in voxel
-			numAccepted = 0;
-			voxelizePrimitives_central(
-				node, attributes, scale, offset, min, size, gridSize, dGridSize,
-				numAccepted, accepted.get(),
-				grid_r, grid_g, grid_b, grid_w
-			);
 
-			// second, project points to neighbourhood of voxel, 
-			// and only count if the adjacent voxel also holds geometry
-			voxelizePrimitives_neighbors(
-				node, attributes, scale, offset, min, size, gridSize, dGridSize,
-				numAccepted, accepted.get(),
-				grid_r, grid_g, grid_b, grid_w
-			);
-			
-			// third, use <accepted> to extract voxels
-			auto extracted = extract(
-				node, attributes, scale, offset, min, size, gridSize, dGridSize,
-				numAccepted, accepted.get(),
-				grid_r, grid_g, grid_b, grid_w
-			);
+				int64_t numPoints = node->numPoints;
 
-			sort(extracted.begin(), extracted.end(), [](Voxel& a, Voxel& b){
-				return a.mortonCode < b.mortonCode;
-			});
+				auto max = node->max;
+				auto min = node->min;
+				auto size = max - min;
+				auto scale = attributes.posScale;
+				auto offset = attributes.posOffset;
 
-			node->voxels = extracted;
-			node->numVoxels = extracted.size();
-			node->numPoints = 0;
+				// first, project points to voxel and count; add to <accepted> if first in voxel
+				auto tStartCentral = now();
+				numAccepted = 0;
+				voxelizePrimitives_central(
+					node, attributes, scale, offset, min, size, gridSize, dGridSize,
+					numAccepted, accepted.get(),
+					grid_r, grid_g, grid_b, grid_w
+				);
 
-			return;
+				// second, project points to neighbourhood of voxel, 
+				// and only count if the adjacent voxel also holds geometry
+				auto tStartAdjacent = now();
+				voxelizePrimitives_neighbors(
+					node, attributes, scale, offset, min, size, gridSize, dGridSize,
+					numAccepted, accepted.get(),
+					grid_r, grid_g, grid_b, grid_w
+				);
+				
+				// third, use <accepted> to extract voxels
+				auto tStartExtract = now();
+				auto extracted = extract(
+					node, attributes, scale, offset, min, size, gridSize, dGridSize,
+					numAccepted, accepted.get(),
+					grid_r, grid_g, grid_b, grid_w
+				);
+
+				auto tSort = now();
+				sort(extracted.begin(), extracted.end(), [](Voxel& a, Voxel& b){
+					return a.mortonCode < b.mortonCode;
+				});
+
+				auto tDone = now();
+
+				printfmt("sampled {:6} central: {:2.1f} ms, adjacent: {:2.1f} ms, extract: {:2.1f} ms, sort: {:2.1f} ms \n", 
+					node->name,
+					(tStartAdjacent - tStartCentral) * 1000.0,
+					(tStartExtract - tStartAdjacent) * 1000.0,
+					(tSort - tStartExtract) * 1000.0,
+					(tDone - tSort) * 1000.0
+				);
+
+				node->voxels = extracted;
+				node->numVoxels = extracted.size();
+				node->numPoints = 0;
+
+				// PROTO: Create crap data for testing
+				node->byteSize = 16 * node->numVoxels;
+				static uint64_t byteOffset = 0;
+				node->byteOffset = byteOffset ;
+				byteOffset += node->byteSize;
+
+				onNodeCompleted(node);
+			}
 		});
 
 		// PROT: write to file
