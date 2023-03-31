@@ -20,7 +20,9 @@ struct OctreeSerializer{
 
 		if(node->name == "r"){
 			// encode parent coordinates directly
-			auto buffer = make_shared<Buffer>(node->voxels.size() * 3);
+			int bytesPerVoxel = 3 + 3; // xyz + rgb
+			auto buffer = make_shared<Buffer>(node->voxels.size() * bytesPerVoxel);
+			int offset_rgb = node->voxels.size() * 3;
 
 			for(int i = 0; i < node->voxels.size(); i++){
 				Voxel voxel = node->voxels[i];
@@ -28,6 +30,10 @@ struct OctreeSerializer{
 				buffer->set<uint8_t>(voxel.x, 3 * i + 0);
 				buffer->set<uint8_t>(voxel.y, 3 * i + 1);
 				buffer->set<uint8_t>(voxel.z, 3 * i + 2);
+
+				buffer->set<uint8_t>(voxel.r, offset_rgb + 3 * i + 0);
+				buffer->set<uint8_t>(voxel.g, offset_rgb + 3 * i + 1);
+				buffer->set<uint8_t>(voxel.b, offset_rgb + 3 * i + 2);
 			}
 
 			return buffer;
@@ -38,9 +44,6 @@ struct OctreeSerializer{
 			int cy = (childIndex >> 1) & 1;
 			int cz = (childIndex >> 0) & 1;
 
-			// auto buffer = make_shared<Buffer>(voxels->size() * 3);
-
-			// int numParentVoxels = 0; 
 			int numChildVoxels = node->voxels.size();
 
 			// compute parent-child voxels
@@ -94,8 +97,17 @@ struct OctreeSerializer{
 				}
 			}
 
-			auto buffer = make_shared<Buffer>(childmasks.size());
+			auto buffer = make_shared<Buffer>(childmasks.size() + 3 * node->voxels.size());
 			memcpy(buffer->data, childmasks.data(), childmasks.size());
+
+			// RGB
+			int offset_rgb = childmasks.size();
+			for(int i = 0; i < node->voxels.size(); i++){
+				Voxel voxel = node->voxels[i];
+				buffer->set<uint8_t>(voxel.r, offset_rgb + 3 * i + 0);
+				buffer->set<uint8_t>(voxel.g, offset_rgb + 3 * i + 1);
+				buffer->set<uint8_t>(voxel.b, offset_rgb + 3 * i + 2);
+			}
 
 			return buffer;
 		}else{
@@ -106,6 +118,44 @@ struct OctreeSerializer{
 
 	}
 
+	static shared_ptr<Buffer> toPointsBuffer(Node* node, Attributes* attributes){
+
+		auto buffer = make_shared<Buffer>(node->numPoints * 16);
+		int offsetRGB = attributes->getOffset("rgb");
+		int stride = attributes->bytes;
+		auto scale = attributes->posScale;
+		auto offset = attributes->posOffset;
+
+		for(int i = 0; i < node->numPoints; i++){
+			
+			int32_t X = node->points->get<int32_t>(stride * i + 0);
+			int32_t Y = node->points->get<int32_t>(stride * i + 4);
+			int32_t Z = node->points->get<int32_t>(stride * i + 8);
+
+			float x = double(X) * scale.x; //+ offset.x;
+			float y = double(Y) * scale.y; //+ offset.y;
+			float z = double(Z) * scale.z; //+ offset.z;
+
+			buffer->set<float>(x, 16 * i + 0);
+			buffer->set<float>(y, 16 * i + 4);
+			buffer->set<float>(z, 16 * i + 8);
+
+			int R = node->points->get<uint16_t>(stride * i + offsetRGB + 0);
+			int G = node->points->get<uint16_t>(stride * i + offsetRGB + 2);
+			int B = node->points->get<uint16_t>(stride * i + offsetRGB + 4);
+
+			uint8_t r = R < 256 ? R : R / 256;
+			uint8_t g = G < 256 ? G : G / 256;
+			uint8_t b = B < 256 ? B : B / 256;
+
+			buffer->set<uint8_t>(r, 16 * i + 12);
+			buffer->set<uint8_t>(g, 16 * i + 13);
+			buffer->set<uint8_t>(b, 16 * i + 14);
+		}
+
+		return buffer;
+	}
+
 	// Serializes <node->children> relative to voxel coordinates in <node>
 	// <node> is serialized only if it is the root node.
 	static void serialize(Node* node, Attributes* attributes){
@@ -114,34 +164,21 @@ struct OctreeSerializer{
 
 		auto tStart = now();
 
-		auto process = [](Node* child, Node* parent){
+		auto process = [attributes](Node* child, Node* parent){
 			if(child->numPoints > 0){
 				// serialize points
-				uint64_t bufferSize = child->numPoints * 16;
+				auto pointsBuffer = toPointsBuffer(child, attributes);
 
-				child->serializedBuffer = child->points;
-				// node->byteSize = bufferSize;
-				// node->byteOffset = byteOffset;
-				// byteOffset += node->byteSize;
+				child->serializedBuffer = pointsBuffer;
 
+				printfmt("[{:6}] points: {:8L}, bytes: {:4} kb \n", child->name, child->numPoints, pointsBuffer->size / 1000);
 			}else if(child->numVoxels > 0){
 				// serialize voxels
 				auto voxelBuffer = toVoxelBuffer(child, parent);
 
-				auto fullBuffer = make_shared<Buffer>(voxelBuffer->size + 3 * child->voxels.size());
-				memset(fullBuffer->data, 0, fullBuffer->size);
-				memcpy(fullBuffer->data, voxelBuffer->data, voxelBuffer->size);
+				child->serializedBuffer = voxelBuffer;
 
-				// string path = format("G:/temp/proto/{}.voxels", node->name);
-				// writeBinaryFile(path, fullBuffer);
-				// writeBinaryFile(path, *voxelBuffer);
-
-				child->serializedBuffer = fullBuffer;
-				// node->byteSize = fullBuffer->size;
-				// node->byteOffset = byteOffset;
-				// byteOffset += node->byteSize;
-
-				printfmt("[{:6}] voxels: {:8L}, bytes: {:4} kb \n", child->name, child->voxels.size(), fullBuffer->size / 1000);
+				printfmt("[{:6}] voxels: {:8L}, bytes: {:4} kb \n", child->name, child->numVoxels, voxelBuffer->size / 1000);
 			}else{
 				// wat
 				printfmt("error: no points or voxels. {}:{}\n", __FILE__, __LINE__);

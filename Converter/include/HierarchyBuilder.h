@@ -3,6 +3,7 @@
 
 #include <string>
 #include <filesystem>
+#include <bitset>
 
 #include "structures.h"
 
@@ -148,7 +149,7 @@ struct HierarchyBuilder{
 		// also notify parent that it has a child!
 		for(auto node : batch->nodes){
 
-			node->type = TYPE::LEAF;
+			//node->type = TYPE::LEAF;
 
 			string parentName = node->name.substr(0, node->name.size() - 1);
 
@@ -252,6 +253,7 @@ struct HierarchyBuilder{
 			//auto chunkRoot = batch->nodes[chunk->name];
 			// TODO...;
 
+			int i = 0; 
 			for(auto node : chunk->nodes){
 
 				// proxy nodes exist twice - in the chunk and the parent-chunk that points to this chunk
@@ -273,7 +275,18 @@ struct HierarchyBuilder{
 				buffer->set<uint64_t>(byteOffset       , 22 * recordsProcessed +  6);
 				buffer->set<uint64_t>(byteSize         , 22 * recordsProcessed + 14);
 
+				if(batch->name == "r"){
+					std::bitset<8> bs(node->childMask);
+					
+					string strType;
+					if(type == TYPE::NORMAL) strType = "NORMAL";
+					if(type == TYPE::LEAF) strType = "LEAF";
+					if(type == TYPE::PROXY) strType = "PROXY";
+					printfmt("[{}] name: {}, childmask: {}, type: {} \n", i, node->name, bs.to_string(), strType);
+				}
+
 				recordsProcessed++;
+				i++;
 			}
 		}
 

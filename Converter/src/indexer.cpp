@@ -1478,7 +1478,7 @@ int64_t Writer::backlogSizeMB() {
 
 void Writer::writeAndUnload(Node* node) {
 
-	if(node->numPoints == 0) return;
+	if(node->serializedBuffer == nullptr) return;
 
 	auto attributes = indexer->attributes;
 	string encoding = indexer->options.encoding;
@@ -1635,6 +1635,10 @@ void doIndexing(string targetDir, State& state, Options& options) {
 	indexer.spacing = (chunks->max - chunks->min).x / 128.0;
 
 	auto onNodeCompleted = [&indexer](Node* node) {
+
+		if(node->name == "r"){
+			int a = 10;
+		}
 
 		OctreeSerializer::serialize(node, &indexer.attributes);
 
@@ -1815,7 +1819,7 @@ void doIndexing(string targetDir, State& state, Options& options) {
 	}
 
 	// root is automatically finished after subsampling all descendants
-	onNodeCompleted(indexer.root.get());
+	//onNodeCompleted(indexer.root.get());
 
 	printElapsedTime("sampling", tStart);
 
