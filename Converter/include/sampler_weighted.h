@@ -420,7 +420,8 @@ struct SamplerWeighted {
 				voxel.g = G < 256 ? G : G / 256;
 				voxel.b = B < 256 ? B : B / 256;
 
-				voxel.mortonCode = mortonEncode_magicbits(ix, iy, iz);
+				voxel.mortonCode = mortonEncode_magicbits(iz, iy, ix);
+				// voxel.mortonCode = mortonEncode_magicbits(ix, iy, iz);
 
 				acceptedVoxels.push_back(voxel);
 				numProcessed++;
