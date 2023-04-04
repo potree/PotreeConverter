@@ -1704,12 +1704,16 @@ void doIndexing(string targetDir, State& state, Options& options) {
 
 		auto filesize = fs::file_size(chunk->file);
 
-		stringstream msg;
-		msg << "start indexing chunk " + chunk->id << "\n";
-		msg << "filesize: " << formatNumber(filesize) << "\n";
-		msg << "min: " << chunk->min.toString() << "\n";
-		msg << "max: " << chunk->max.toString();
-		logger::INFO(msg.str());
+		// stringstream msg;
+		// msg << "start indexing chunk " + chunk->id << "\n";
+		// msg << "filesize: " << formatNumber(filesize) << "\n";
+		// msg << "min: " << chunk->min.toString() << "\n";
+		// msg << "max: " << chunk->max.toString();
+		// logger::INFO(msg.str());
+
+		printfmt("start indexing chunk {:>8}. filesize: {:11L}, min: {}, max: {} \n", 
+			chunk->id, filesize, chunk->min.toString(), chunk->max.toString()
+		);
 
 		indexer.bytesInMemory += filesize;
 		auto pointBuffer = readBinaryFile(chunk->file);

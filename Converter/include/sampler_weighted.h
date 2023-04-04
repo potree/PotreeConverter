@@ -520,13 +520,13 @@ struct SamplerWeighted {
 
 				auto tDone = now();
 
-				printfmt("sampled {:6} central: {:2.1f} ms, adjacent: {:2.1f} ms, extract: {:2.1f} ms, sort: {:2.1f} ms \n", 
-					node->name,
-					(tStartAdjacent - tStartCentral) * 1000.0,
-					(tStartExtract - tStartAdjacent) * 1000.0,
-					(tSort - tStartExtract) * 1000.0,
-					(tDone - tSort) * 1000.0
-				);
+				// printfmt("sampled {:6} central: {:2.1f} ms, adjacent: {:2.1f} ms, extract: {:2.1f} ms, sort: {:2.1f} ms \n", 
+				// 	node->name,
+				// 	(tStartAdjacent - tStartCentral) * 1000.0,
+				// 	(tStartExtract - tStartAdjacent) * 1000.0,
+				// 	(tSort - tStartExtract) * 1000.0,
+				// 	(tDone - tSort) * 1000.0
+				// );
 
 				node->voxels = extracted;
 				node->numVoxels = extracted.size();

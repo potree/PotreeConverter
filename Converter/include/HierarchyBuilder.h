@@ -89,6 +89,10 @@ struct HierarchyBuilder{
 		batch->name = fs::path(path).stem().string();
 		batch->numNodes = buffer->size / 48;
 
+		if(batch->name == "r24047054"){
+			int a = 10;
+		}
+
 		// group this batch in chunks of <hierarchyStepSize>
 		for(int i = 0; i < batch->numNodes; i++){
 
@@ -149,13 +153,26 @@ struct HierarchyBuilder{
 		// also notify parent that it has a child!
 		for(auto node : batch->nodes){
 
-			//node->type = TYPE::LEAF;
+			if(node->name == "r24047054"){
+				int a = 10;
+			}
+
+			if(node->childMask == 0){
+				node->type = TYPE::LEAF;
+			}else{
+				node->type = TYPE::NORMAL;
+			}
 
 			string parentName = node->name.substr(0, node->name.size() - 1);
 
 			auto ptrParent = batch->nodeMap.find(parentName);
 
 			if(ptrParent != batch->nodeMap.end()){
+
+				if(ptrParent->second->name == "r24047054"){
+					int a = 10;
+				}
+
 				int childIndex = node->name.back() - '0';
 				ptrParent->second->type = TYPE::NORMAL;
 				ptrParent->second->childMask = ptrParent->second->childMask | (1 << childIndex);
@@ -171,7 +188,12 @@ struct HierarchyBuilder{
 			auto ptr = batch->nodeMap.find(chunk->name);
 
 			if(ptr != batch->nodeMap.end()){
+				if(ptr->second->name == "r24047054"){
+					int a = 10;
+				}
+				//if(ptr->second->childMask != 0){
 				ptr->second->type = TYPE::PROXY;
+				//}
 			}else{
 				// could not find a node with the chunk's name
 				// should only happen if this chunk's root  
@@ -204,7 +226,9 @@ struct HierarchyBuilder{
 		for(auto chunk : batch->chunks){
 			chunk->byteOffset = byteOffset;
 
-			// cout << "set offset: " << chunk->name << ", " << chunk->byteOffset << endl;
+			if(batch->name == "r24047054"){
+				int a = 10;
+			}
 
 			if(chunk->name != batch->name){
 				// this chunk is not the root of the batch.
@@ -220,6 +244,10 @@ struct HierarchyBuilder{
 					if(proxyNode == nullptr){
 						cout << "ERROR: didn't find proxy node " << chunk->name << endl;
 						exit(123);
+					}
+
+					if(proxyNode->name == "r24047054"){
+						int a = 10;
 					}
 
 					proxyNode->type = TYPE::PROXY;
@@ -256,6 +284,10 @@ struct HierarchyBuilder{
 			int i = 0; 
 			for(auto node : chunk->nodes){
 
+				if(node->name == "r24047054"){
+					int a = 10;
+				}
+
 				// proxy nodes exist twice - in the chunk and the parent-chunk that points to this chunk
 				// only the node in the parent-chunk is a proxy (to its non-proxy counterpart)
 				bool isProxyNode = (node->type == TYPE::PROXY) && node->name != chunk->name;
@@ -263,6 +295,11 @@ struct HierarchyBuilder{
 				TYPE type = node->type;
 				if(node->type == TYPE::PROXY && !isProxyNode){
 					type = TYPE::NORMAL;
+				}
+
+				// dumb hack, like everything in this file.
+				if(chunk->nodes.size() == 1){
+					type = TYPE::LEAF;
 				}
 
 				uint64_t byteSize = isProxyNode ? node->proxyByteSize : node->byteSize;
@@ -275,15 +312,15 @@ struct HierarchyBuilder{
 				buffer->set<uint64_t>(byteOffset       , 22 * recordsProcessed +  6);
 				buffer->set<uint64_t>(byteSize         , 22 * recordsProcessed + 14);
 
-				if(batch->name == "r"){
-					std::bitset<8> bs(node->childMask);
+				// if(batch->name == "r"){
+				// 	std::bitset<8> bs(node->childMask);
 					
-					string strType;
-					if(type == TYPE::NORMAL) strType = "NORMAL";
-					if(type == TYPE::LEAF) strType = "LEAF";
-					if(type == TYPE::PROXY) strType = "PROXY";
-					printfmt("[{}] name: {}, childmask: {}, type: {} \n", i, node->name, bs.to_string(), strType);
-				}
+				// 	string strType;
+				// 	if(type == TYPE::NORMAL) strType = "NORMAL";
+				// 	if(type == TYPE::LEAF) strType = "LEAF";
+				// 	if(type == TYPE::PROXY) strType = "PROXY";
+				// 	printfmt("[{}] name: {}, childmask: {}, type: {} \n", i, node->name, bs.to_string(), strType);
+				// }
 
 				recordsProcessed++;
 				i++;
@@ -327,8 +364,15 @@ struct HierarchyBuilder{
 			processBatch(batch);
 			auto buffer = serializeBatch(batch, bytesWritten);
 
+			
 			if(batch->nodes.size() > 1){
+
 				auto proxyNode = batch_root->nodeMap[batch->name];
+
+				if(proxyNode->name == "r24047054"){
+					int a = 10;
+				}
+
 				proxyNode->type = TYPE::PROXY;
 				proxyNode->proxyByteOffset = bytesWritten;
 				proxyNode->proxyByteSize = 22 * batch->chunkMap[batch->name]->nodes.size();

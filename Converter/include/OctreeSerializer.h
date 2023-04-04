@@ -160,25 +160,30 @@ struct OctreeSerializer{
 	// <node> is serialized only if it is the root node.
 	static void serialize(Node* node, Attributes* attributes){
 
-		printfmt("serialize {} \n", node->name);
+		// printfmt("serialize {} \n", node->name);
 
 		auto tStart = now();
 
 		auto process = [attributes](Node* child, Node* parent){
+
+			if(child->name == "r24047054"){
+				int a = 10;
+			}
+
 			if(child->numPoints > 0){
 				// serialize points
 				auto pointsBuffer = toPointsBuffer(child, attributes);
 
 				child->serializedBuffer = pointsBuffer;
 
-				printfmt("[{:6}] points: {:8L}, bytes: {:4} kb \n", child->name, child->numPoints, pointsBuffer->size / 1000);
+				// printfmt("[{:6}] points: {:8L}, bytes: {:4} kb \n", child->name, child->numPoints, pointsBuffer->size / 1000);
 			}else if(child->numVoxels > 0){
 				// serialize voxels
 				auto voxelBuffer = toVoxelBuffer(child, parent);
 
 				child->serializedBuffer = voxelBuffer;
 
-				printfmt("[{:6}] voxels: {:8L}, bytes: {:4} kb \n", child->name, child->numVoxels, voxelBuffer->size / 1000);
+				// printfmt("[{:6}] voxels: {:8L}, bytes: {:4} kb \n", child->name, child->numVoxels, voxelBuffer->size / 1000);
 			}else{
 				// wat
 				printfmt("error: no points or voxels. {}:{}\n", __FILE__, __LINE__);
@@ -315,7 +320,7 @@ struct OctreeSerializer{
 		
 
 
-		printElapsedTime(format("duration [{}]: ", node->name), tStart);
+		// printElapsedTime(format("duration [{}]: ", node->name), tStart);
 
 	}
 
