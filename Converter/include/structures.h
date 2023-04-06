@@ -42,10 +42,11 @@ struct Node {
 	vector<shared_ptr<Node>> children;
 
 	string name;
-	shared_ptr<Buffer> points;
+	shared_ptr<Buffer> points = nullptr;
 	int64_t numPoints = 0;
 
 	vector<Voxel> voxels;
+	shared_ptr<Buffer> voxeldata = nullptr;
 	int64_t numVoxels = 0;
 
 	Vector3 min;

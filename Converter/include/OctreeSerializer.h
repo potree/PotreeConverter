@@ -11,29 +11,56 @@ using std::format;
 #include "converter_utils.h"
 #include "structures.h"
 
-int gridSize = 256;
+int gridSize = 128;
 int dGridSize = gridSize;
 
 struct OctreeSerializer{
 
-	static shared_ptr<Buffer> toVoxelBuffer(Node* node, Node* parent){
+	static shared_ptr<Buffer> toVoxelBuffer(Node* node, Node* parent, Attributes* attributes){
+
+		int numVoxels = node->numVoxels;
+
+		auto aRGB = attributes->get("rgb");
+		int aRGB_bytesize = (aRGB == nullptr) ? 0 : 6;
+		int aXYZ_bytesize = 12;
+
+		shared_ptr<Buffer> sourcedata;
+		if(node->points){
+			sourcedata = node->points;
+		}else if(node->voxeldata){
+			sourcedata = node->voxeldata;
+		}
 
 		if(node->name == "r"){
 			// encode parent coordinates directly
-			int bytesPerVoxel = 3 + 3; // xyz + rgb
-			auto buffer = make_shared<Buffer>(node->voxels.size() * bytesPerVoxel);
-			int offset_rgb = node->voxels.size() * 3;
+			int stride_rest = attributes->bytes - aXYZ_bytesize;
 
-			for(int i = 0; i < node->voxels.size(); i++){
+			int bytesPerVoxel = 3 + 3; // xyz + rgb
+			int bytesize_xyzrgb = numVoxels * bytesPerVoxel;
+			int bytesize_rest = numVoxels * stride_rest;
+
+			auto buffer = make_shared<Buffer>(bytesize_xyzrgb + bytesize_rest);
+			int t_bytesize_xyz = numVoxels * 3;
+			int t_bytesize_rgb = numVoxels * 3;
+			int t_offset_rgb = t_bytesize_xyz;
+			int t_offset_rest = t_offset_rgb + t_bytesize_rgb;
+
+			for(int i = 0; i < numVoxels; i++){
 				Voxel voxel = node->voxels[i];
 
 				buffer->set<uint8_t>(voxel.x, 3 * i + 0);
 				buffer->set<uint8_t>(voxel.y, 3 * i + 1);
 				buffer->set<uint8_t>(voxel.z, 3 * i + 2);
 
-				buffer->set<uint8_t>(voxel.r, offset_rgb + 3 * i + 0);
-				buffer->set<uint8_t>(voxel.g, offset_rgb + 3 * i + 1);
-				buffer->set<uint8_t>(voxel.b, offset_rgb + 3 * i + 2);
+				buffer->set<uint8_t>(voxel.r, t_offset_rgb + 3 * i + 0);
+				buffer->set<uint8_t>(voxel.g, t_offset_rgb + 3 * i + 1);
+				buffer->set<uint8_t>(voxel.b, t_offset_rgb + 3 * i + 2);
+
+				//memcpy(
+				//	buffer->data_u8 + t_offset_rest + i * stride_rest, 
+				//	sourcedata->data_u8 + i * attributes->bytes + aXYZ_bytesize,
+				//	stride_rest
+				//);
 			}
 
 			return buffer;
@@ -44,14 +71,12 @@ struct OctreeSerializer{
 			int cy = (childIndex >> 1) & 1;
 			int cz = (childIndex >> 0) & 1;
 
-			int numChildVoxels = node->voxels.size();
-
 			// compute parent-child voxels
 			int parent_i = 0;
 			uint8_t childmask = 0;
 			vector<Voxel> parentVoxels;
 			vector<uint8_t> childmasks;
-			for(int child_i = 0; child_i < node->voxels.size(); child_i++ ){
+			for(int child_i = 0; child_i < numVoxels; child_i++ ){
 			
 				Voxel parentVoxelCandidate = parent->voxels[parent_i];
 				Voxel childVoxel = node->voxels[child_i];
@@ -97,17 +122,37 @@ struct OctreeSerializer{
 				}
 			}
 
-			auto buffer = make_shared<Buffer>(childmasks.size() + 3 * node->voxels.size());
+			int t_stride_rest = (attributes->bytes - 12);
+
+			int t_bytesize_xyz = childmasks.size();
+			int t_bytesize_rgb = 3 * numVoxels;
+			int t_bytesize_rest = t_stride_rest * numVoxels;
+			int t_bytesize = t_bytesize_xyz + t_bytesize_rgb + t_bytesize_rest;
+
+			int t_offset_rgb = t_bytesize_xyz;
+			int t_offset_rest = t_offset_rgb + t_bytesize_rgb;
+
+			auto buffer = make_shared<Buffer>(t_bytesize);
+
+			// XYZ
 			memcpy(buffer->data, childmasks.data(), childmasks.size());
 
 			// RGB
-			int offset_rgb = childmasks.size();
-			for(int i = 0; i < node->voxels.size(); i++){
+			for(int i = 0; i < numVoxels; i++){
 				Voxel voxel = node->voxels[i];
-				buffer->set<uint8_t>(voxel.r, offset_rgb + 3 * i + 0);
-				buffer->set<uint8_t>(voxel.g, offset_rgb + 3 * i + 1);
-				buffer->set<uint8_t>(voxel.b, offset_rgb + 3 * i + 2);
+				buffer->set<uint8_t>(voxel.r, t_offset_rgb + 3 * i + 0);
+				buffer->set<uint8_t>(voxel.g, t_offset_rgb + 3 * i + 1);
+				buffer->set<uint8_t>(voxel.b, t_offset_rgb + 3 * i + 2);
 			}
+
+			// REST
+			//for(int i = 0; i < numVoxels; i++){
+			//	memcpy(
+			//		buffer->data_u8 + t_offset_rest + i * t_stride_rest,
+			//		sourcedata->data_u8 + i * attributes->bytes + 12,
+			//		attributes->bytes - 12
+			//	);
+			//}
 
 			return buffer;
 		}else{
@@ -120,40 +165,43 @@ struct OctreeSerializer{
 
 	static shared_ptr<Buffer> toPointsBuffer(Node* node, Attributes* attributes){
 
-		auto buffer = make_shared<Buffer>(node->numPoints * 16);
-		int offsetRGB = attributes->getOffset("rgb");
-		int stride = attributes->bytes;
-		auto scale = attributes->posScale;
-		auto offset = attributes->posOffset;
+		
+		 return node->points;
 
-		for(int i = 0; i < node->numPoints; i++){
-			
-			int32_t X = node->points->get<int32_t>(stride * i + 0);
-			int32_t Y = node->points->get<int32_t>(stride * i + 4);
-			int32_t Z = node->points->get<int32_t>(stride * i + 8);
+		//auto buffer = make_shared<Buffer>(node->numPoints * 16);
+		//int offsetRGB = attributes->getOffset("rgb");
+		//int stride = attributes->bytes;
+		//auto scale = attributes->posScale;
+		//auto offset = attributes->posOffset;
 
-			float x = double(X) * scale.x; //+ offset.x;
-			float y = double(Y) * scale.y; //+ offset.y;
-			float z = double(Z) * scale.z; //+ offset.z;
+		//for(int i = 0; i < node->numPoints; i++){
+		//	
+		//	int32_t X = node->points->get<int32_t>(stride * i + 0);
+		//	int32_t Y = node->points->get<int32_t>(stride * i + 4);
+		//	int32_t Z = node->points->get<int32_t>(stride * i + 8);
 
-			buffer->set<float>(x, 16 * i + 0);
-			buffer->set<float>(y, 16 * i + 4);
-			buffer->set<float>(z, 16 * i + 8);
+		//	float x = double(X) * scale.x; //+ offset.x;
+		//	float y = double(Y) * scale.y; //+ offset.y;
+		//	float z = double(Z) * scale.z; //+ offset.z;
 
-			int R = node->points->get<uint16_t>(stride * i + offsetRGB + 0);
-			int G = node->points->get<uint16_t>(stride * i + offsetRGB + 2);
-			int B = node->points->get<uint16_t>(stride * i + offsetRGB + 4);
+		//	buffer->set<float>(x, 16 * i + 0);
+		//	buffer->set<float>(y, 16 * i + 4);
+		//	buffer->set<float>(z, 16 * i + 8);
 
-			uint8_t r = R < 256 ? R : R / 256;
-			uint8_t g = G < 256 ? G : G / 256;
-			uint8_t b = B < 256 ? B : B / 256;
+		//	int R = node->points->get<uint16_t>(stride * i + offsetRGB + 0);
+		//	int G = node->points->get<uint16_t>(stride * i + offsetRGB + 2);
+		//	int B = node->points->get<uint16_t>(stride * i + offsetRGB + 4);
 
-			buffer->set<uint8_t>(r, 16 * i + 12);
-			buffer->set<uint8_t>(g, 16 * i + 13);
-			buffer->set<uint8_t>(b, 16 * i + 14);
-		}
+		//	uint8_t r = R < 256 ? R : R / 256;
+		//	uint8_t g = G < 256 ? G : G / 256;
+		//	uint8_t b = B < 256 ? B : B / 256;
 
-		return buffer;
+		//	buffer->set<uint8_t>(r, 16 * i + 12);
+		//	buffer->set<uint8_t>(g, 16 * i + 13);
+		//	buffer->set<uint8_t>(b, 16 * i + 14);
+		//}
+
+		//return buffer;
 	}
 
 	// Serializes <node->children> relative to voxel coordinates in <node>
@@ -166,10 +214,6 @@ struct OctreeSerializer{
 
 		auto process = [attributes](Node* child, Node* parent){
 
-			if(child->name == "r24047054"){
-				int a = 10;
-			}
-
 			if(child->numPoints > 0){
 				// serialize points
 				auto pointsBuffer = toPointsBuffer(child, attributes);
@@ -179,7 +223,7 @@ struct OctreeSerializer{
 				// printfmt("[{:6}] points: {:8L}, bytes: {:4} kb \n", child->name, child->numPoints, pointsBuffer->size / 1000);
 			}else if(child->numVoxels > 0){
 				// serialize voxels
-				auto voxelBuffer = toVoxelBuffer(child, parent);
+				auto voxelBuffer = toVoxelBuffer(child, parent, attributes);
 
 				child->serializedBuffer = voxelBuffer;
 
@@ -204,124 +248,6 @@ struct OctreeSerializer{
 		 if(node->numPoints > 0){
 		 	process(node, nullptr);
 		 }
-
-
-		// node->traverse([&](Node* node){
-
-		// 	if(node->voxels.size() > 0){
-		// 		// WRITE VOXEL NODE
-		// 		string parentName = node->name.substr(0, node->name.size() - 1);
-
-		// 		vector<Voxel>* voxels = voxelsMap[node->name];
-		// 		vector<Voxel>* parentVoxels = nullptr;
-
-		// 		if(voxelsMap.find(parentName) != voxelsMap.end()){
-		// 			parentVoxels = voxelsMap[parentName];
-		// 		}
-
-		// 		{ // WRITE VOXEL BIN
-		// 			auto voxelBuffer = toVoxelBuffer(node, voxels, parentVoxels);
-
-		// 			if(voxelBuffer != nullptr){
-
-		// 				Buffer fullBuffer(voxelBuffer->size + 3 * voxels->size());
-		// 				memset(fullBuffer.data, 0, fullBuffer.size);
-		// 				memcpy(fullBuffer.data, voxelBuffer->data, voxelBuffer->size);
-
-		// 				string path = format("G:/temp/proto/{}.voxels", node->name);
-		// 				writeBinaryFile(path, fullBuffer);
-		// 				// writeBinaryFile(path, *voxelBuffer);
-
-		// 				node->byteSize = fullBuffer.size;
-		// 				node->byteOffset = byteOffset;
-		// 				byteOffset += node->byteSize;
-
-		// 				printfmt("[{:6}] voxels: {:8L}, bytes: {:4} kb \n", node->name, voxels->size(), fullBuffer.size / 1000);
-		// 			}
-					
-		// 		}
-
-		// 		if(false)
-		// 		{ // WRITE CSV
-		// 			stringstream ss;
-
-		// 			Vector3 min = node->min;
-		// 			Vector3 size = node->max - node->min;
-		// 			auto scale = attributes->posScale;
-		// 			auto offset = attributes->posOffset;
-		// 			int offset_rgb = attributes->getOffset("rgb");
-
-		// 			for(auto voxel : *voxels){
-
-		// 				float x = size.x * double(voxel.x) / dGridSize + min.x;
-		// 				float y = size.y * double(voxel.y) / dGridSize + min.y;
-		// 				float z = size.z * double(voxel.z) / dGridSize + min.z;
-
-		// 				uint16_t R = voxel.r;
-		// 				uint16_t G = voxel.g;
-		// 				uint16_t B = voxel.b;
-
-		// 				int r = R < 256 ? R : R / 256;
-		// 				int g = G < 256 ? G : G / 256;
-		// 				int b = B < 256 ? B : B / 256;
-
-		// 				ss << format("{}, {}, {}, {}, {}, {} \n", x, y, z, r, g, b);
-		// 			}
-
-		// 			string path = format("G:/temp/proto/{}.csv", node->name);
-		// 			writeFile(path, ss.str());
-		// 		}
-
-		// 	}else if(node->numPoints > 0){
-		// 		// WRITE LEAF NODE
-
-		// 		uint64_t bufferSize = node->numPoints * 16;
-
-		// 		node->byteSize = bufferSize;
-		// 		node->byteOffset = byteOffset;
-		// 		byteOffset += node->byteSize;
-
-		// 	}
-
-			
-		// });
-
-		// int offset_rgb = attributes->getOffset("rgb");
-
-		// for(auto [nodeName, voxels] : *voxelsMap){
-
-		// 	stringstream ss;
-
-		// 	Vector3 min = node->min;
-		// 	Vector3 size = node->max - node->min;
-		// 	auto scale = attributes->posScale;
-		// 	auto offset = attributes->posOffset;
-
-		// 	for(auto voxel : voxels){
-
-		// 		float x = size.x * double(voxel.x) / dGridSize + min.x;
-		// 		float y = size.y * double(voxel.y) / dGridSize + min.y;
-		// 		float z = size.z * double(voxel.z) / dGridSize + min.z;
-
-		// 		uint16_t R = node->points->get<uint16_t>(attributes->bytes * voxel.pointIndex + offset_rgb + 0);
-		// 		uint16_t G = node->points->get<uint16_t>(attributes->bytes * voxel.pointIndex + offset_rgb + 2);
-		// 		uint16_t B = node->points->get<uint16_t>(attributes->bytes * voxel.pointIndex + offset_rgb + 4);
-
-		// 		int r = R < 256 ? R : R / 256;
-		// 		int g = G < 256 ? G : G / 256;
-		// 		int b = B < 256 ? B : B / 256;
-
-		// 		ss << format("{}, {}, {}, {}, {}, {} \n", x, y, z, r, g, b);
-		// 	}
-
-		// 	string path = format("G:/temp/proto/{}.csv", node->name);
-		// 	writeFile(path, ss.str());
-		// }
-		
-
-
-		// printElapsedTime(format("duration [{}]: ", node->name), tStart);
-
 	}
 
 };

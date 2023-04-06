@@ -284,10 +284,6 @@ struct HierarchyBuilder{
 			int i = 0; 
 			for(auto node : chunk->nodes){
 
-				if(node->name == "r24047054"){
-					int a = 10;
-				}
-
 				// proxy nodes exist twice - in the chunk and the parent-chunk that points to this chunk
 				// only the node in the parent-chunk is a proxy (to its non-proxy counterpart)
 				bool isProxyNode = (node->type == TYPE::PROXY) && node->name != chunk->name;
@@ -368,10 +364,6 @@ struct HierarchyBuilder{
 			if(batch->nodes.size() > 1){
 
 				auto proxyNode = batch_root->nodeMap[batch->name];
-
-				if(proxyNode->name == "r24047054"){
-					int a = 10;
-				}
 
 				proxyNode->type = TYPE::PROXY;
 				proxyNode->proxyByteOffset = bytesWritten;
