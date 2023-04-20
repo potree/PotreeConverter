@@ -1321,15 +1321,6 @@ SoA toStructOfArrays(Node* node, Attributes attributes) {
 	return soa;
 }
 
-
-
-
-//static int64_t totalUncompressed = 0;
-//static int64_t totalCompressed = 0;
-//static unordered_map<string, int64_t> uncompressedCounters;
-//static unordered_map<string, int64_t> compressedCounters;
-//static mutex mtx_dbg_compress;
-
 shared_ptr<Buffer> compress(Node* node, Attributes attributes) {
 
 	auto numPoints = node->numPoints;
@@ -1419,38 +1410,7 @@ shared_ptr<Buffer> compress(Node* node, Attributes attributes) {
 
 		out = make_shared<Buffer>(encoded_size);
 		memcpy(out->data, encoded_buffer, encoded_size);
-		
-		//{ // DEBUG
-		//	lock_guard<mutex> lock(mtx_dbg_compress);
-
-		//	totalUncompressed += input_size;
-		//	totalCompressed += encoded_size;
-		//}
 	}
-
-	//{
-	//	lock_guard<mutex> lock(mtx_dbg_compress);
-
-	//	static int i = 0;
-	//	if ((i % 100) == 0) {
-
-	//		stringstream ss;
-	//		ss << "===================================================" << endl;
-
-	//		{
-	//			double ratio = double(totalCompressed) / double(totalUncompressed);
-
-	//			ss << "[total] " << formatNumber(totalUncompressed) << " > " << formatNumber(totalCompressed) << " - " << formatNumber(100.0 * ratio, 1) << endl;
-	//			cout << ss.str();
-	//		}
-
-	//		cout << ss.str();
-
-	//	}
-	//	i++;
-
-
-	//}
 
 	return out;
 }
@@ -1517,6 +1477,10 @@ void Writer::writeAndUnload(Node* node) {
 
 		int64_t byteOffset = indexer->byteOffset.fetch_add(byteSize);
 		node->byteOffset = byteOffset;
+
+		if(node->byteOffset <= 405313636 && 405313636 <= (node->byteOffset + node->byteSize)){
+			int a = 10;
+		}
 
 		if (activeBuffer == nullptr) {
 			errorCheck(capacity);

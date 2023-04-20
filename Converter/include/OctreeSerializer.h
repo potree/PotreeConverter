@@ -16,6 +16,50 @@ int dGridSize = gridSize;
 
 struct OctreeSerializer{
 
+	static shared_ptr<Buffer> compress(shared_ptr<Buffer> buffer){
+
+		shared_ptr<Buffer> out;
+
+		int quality = 6;
+		int lgwin = BROTLI_DEFAULT_WINDOW;
+		auto mode = BROTLI_DEFAULT_MODE;
+		uint8_t* input_buffer = buffer->data_u8;
+		size_t input_size = buffer->size;
+
+		size_t encoded_size = input_size * 1.5 + 1'000;
+		shared_ptr<Buffer> outputBuffer = make_shared<Buffer>(encoded_size);
+		uint8_t* encoded_buffer = outputBuffer->data_u8;
+
+		BROTLI_BOOL success = BROTLI_FALSE;
+
+		for (int i = 0; i < 5; i++) {
+			success = BrotliEncoderCompress(quality, lgwin, mode, input_size, input_buffer, &encoded_size, encoded_buffer);
+
+			if (success == BROTLI_TRUE) {
+				break;
+			} else {
+				encoded_size = (encoded_size + 1024) * 1.5;
+				outputBuffer = make_shared<Buffer>(encoded_size);
+				encoded_buffer = outputBuffer->data_u8;
+
+				logger::WARN("reserved encoded_buffer size was too small. Trying again with size " + formatNumber(encoded_size) + ".");
+			}
+		}
+
+		if (success == BROTLI_FALSE) {
+			stringstream ss;
+			ss << "failed to compress node. aborting conversion." ;
+			logger::ERROR(ss.str());
+
+			exit(123);
+		}
+
+		out = make_shared<Buffer>(encoded_size);
+		memcpy(out->data, encoded_buffer, encoded_size);
+	
+		return out;
+	}
+
 	static shared_ptr<Buffer> toVoxelBuffer(Node* node, Node* parent, Attributes* attributes){
 
 		int numVoxels = node->numVoxels;
@@ -63,7 +107,8 @@ struct OctreeSerializer{
 				//);
 			}
 
-			return buffer;
+			 return buffer;
+			//return OctreeSerializer::compress(buffer);
 		}else if(parent != nullptr){
 
 			int childIndex = node->nodeIndex();
@@ -122,6 +167,19 @@ struct OctreeSerializer{
 				}
 			}
 
+			// DEBUG: redundant sanity check
+			int sumbits = 0;
+			for(uint8_t childmask : childmasks){
+				int numbits = popcount(childmask);
+				sumbits += numbits;
+			}
+
+			if(node->name == "r240045"){
+				int a = 10;
+			}
+
+			assert(sumbits == numVoxels);
+
 			int t_stride_rest = (attributes->bytes - 12);
 
 			int t_bytesize_xyz = childmasks.size();
@@ -154,6 +212,7 @@ struct OctreeSerializer{
 			//	);
 			//}
 
+			//return OctreeSerializer::compress(buffer);
 			return buffer;
 		}else{
 			// parent should only be null if <node> is the root node
