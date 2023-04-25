@@ -59,6 +59,10 @@ struct Vector3{
 		return sqrt(x * x + y * y + z * z);
 	}
 
+	double dot(Vector3 v){
+		return this->x * v.x + this->y * v.y + this->z * v.z;
+	}
+
 	double max() {
 		double value = std::max(std::max(x, y), z);
 		return value;
