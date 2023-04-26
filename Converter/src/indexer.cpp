@@ -19,7 +19,7 @@ using std::unique_lock;
 
 namespace indexer{
 
-	constexpr int hierarchyStepSize = 4;
+	constexpr int hierarchyStepSize = 6;
 
 	struct Point {
 		double x;
@@ -1444,12 +1444,14 @@ void Writer::writeAndUnload(Node* node) {
 	string encoding = indexer->options.encoding;
 
 	// shared_ptr<Buffer> sourceBuffer;
-
 	// if (encoding == "BROTLI") {
 	// 	sourceBuffer = compress(node, attributes);
 	// } else {
 	// 	sourceBuffer = node->points;
 	// }
+
+	// note:if writeAndUnload is called for node, 
+	// then it was already called for its children
 	
 
 	int64_t byteSize = node->serializedBuffer->size;
@@ -1478,10 +1480,6 @@ void Writer::writeAndUnload(Node* node) {
 		int64_t byteOffset = indexer->byteOffset.fetch_add(byteSize);
 		node->byteOffset = byteOffset;
 
-		if(node->byteOffset <= 405313636 && 405313636 <= (node->byteOffset + node->byteSize)){
-			int a = 10;
-		}
-
 		if (activeBuffer == nullptr) {
 			errorCheck(capacity);
 			activeBuffer = make_shared<Buffer>(capacity);
@@ -1500,10 +1498,6 @@ void Writer::writeAndUnload(Node* node) {
 	}	
 
 	memcpy(buffer->data_char + targetOffset, node->serializedBuffer->data, byteSize);
-
-	// node->points = nullptr;
-	// node->serializedBuffer = nullptr;
-	// node->voxels = vector<Voxel>();
 }
 
 void Writer::launchWriterThread() {
@@ -1600,10 +1594,6 @@ void doIndexing(string targetDir, State& state, Options& options) {
 
 	auto onNodeCompleted = [&indexer](Node* node) {
 
-		if(node->name == "r"){
-			int a = 10;
-		}
-
 		OctreeSerializer::serialize(node, &indexer.attributes);
 
 		for(auto child : node->children){
@@ -1619,10 +1609,6 @@ void doIndexing(string targetDir, State& state, Options& options) {
 			indexer.hierarchyFlusher->write(node, hierarchyStepSize);
 		}
 
-		// if(node->serializedBuffer != nullptr){
-		// 	indexer.writer->writeAndUnload(node);
-		// 	indexer.hierarchyFlusher->write(node, hierarchyStepSize);
-		// }
 	};
 
 	auto onNodeDiscarded = [&indexer](Node* node) {};

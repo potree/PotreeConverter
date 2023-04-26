@@ -89,10 +89,6 @@ struct HierarchyBuilder{
 		batch->name = fs::path(path).stem().string();
 		batch->numNodes = buffer->size / 48;
 
-		if(batch->name == "r24047054"){
-			int a = 10;
-		}
-
 		// group this batch in chunks of <hierarchyStepSize>
 		for(int i = 0; i < batch->numNodes; i++){
 
@@ -109,7 +105,7 @@ struct HierarchyBuilder{
 			node->byteSize   = buffer->get< int32_t>(recordOffset + 43);
 
 			// r: 0, r0123: 1, r01230123: 2
-			int chunkLevel = (node->name.size() - 2) / 4;
+			int chunkLevel = (node->name.size() - 2) / hierarchyStepSize;
 			string key = node->name.substr(0, hierarchyStepSize * chunkLevel + 1);
 			if(node->name == batch->name){
 				key = node->name;
@@ -153,10 +149,6 @@ struct HierarchyBuilder{
 		// also notify parent that it has a child!
 		for(auto node : batch->nodes){
 
-			if(node->name == "r24047054"){
-				int a = 10;
-			}
-
 			if(node->childMask == 0){
 				node->type = TYPE::LEAF;
 			}else{
@@ -168,10 +160,6 @@ struct HierarchyBuilder{
 			auto ptrParent = batch->nodeMap.find(parentName);
 
 			if(ptrParent != batch->nodeMap.end()){
-
-				if(ptrParent->second->name == "r24047054"){
-					int a = 10;
-				}
 
 				int childIndex = node->name.back() - '0';
 				ptrParent->second->type = TYPE::NORMAL;
@@ -188,12 +176,7 @@ struct HierarchyBuilder{
 			auto ptr = batch->nodeMap.find(chunk->name);
 
 			if(ptr != batch->nodeMap.end()){
-				if(ptr->second->name == "r24047054"){
-					int a = 10;
-				}
-				//if(ptr->second->childMask != 0){
 				ptr->second->type = TYPE::PROXY;
-				//}
 			}else{
 				// could not find a node with the chunk's name
 				// should only happen if this chunk's root  
@@ -226,10 +209,6 @@ struct HierarchyBuilder{
 		for(auto chunk : batch->chunks){
 			chunk->byteOffset = byteOffset;
 
-			if(batch->name == "r24047054"){
-				int a = 10;
-			}
-
 			if(chunk->name != batch->name){
 				// this chunk is not the root of the batch.
 				// find parent chunk within batch.
@@ -244,10 +223,6 @@ struct HierarchyBuilder{
 					if(proxyNode == nullptr){
 						cout << "ERROR: didn't find proxy node " << chunk->name << endl;
 						exit(123);
-					}
-
-					if(proxyNode->name == "r24047054"){
-						int a = 10;
 					}
 
 					proxyNode->type = TYPE::PROXY;
