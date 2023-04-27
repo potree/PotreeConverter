@@ -26,18 +26,20 @@ using namespace std;
 
 struct HierarchyBuilder{
 
-	// records have this structure, but guaranteed to be packed
+	// this structure, but guaranteed to be packed
 	// struct Record{                 size   offset
 	// 	uint8_t name[31];               31        0
 	// 	uint32_t numPoints;              4       31
 	// 	int64_t byteOffset;              8       35
 	// 	int32_t byteSize;                4       43
-	// 	uint8_t end = '\n';              1       47
+	// 	uint64_t nodeIndex               8       51
+	// 	uint8_t end = '\n';              1       55
 	// };                              ===
-	//                                  48
+	//                                  56
 
 	int hierarchyStepSize = 0;
 	string path = "";
+	vector<uint64_t>* byteOffsets = nullptr;
 
 	enum TYPE {
 		NORMAL = 0,
@@ -51,6 +53,7 @@ struct HierarchyBuilder{
 		uint8_t  childMask       = 0;
 		uint64_t byteOffset      = 0;
 		uint64_t byteSize        = 0;
+		uint64_t nodeIndex       = 0;
 		TYPE     type            = TYPE::LEAF;
 		uint64_t proxyByteOffset = 0;
 		uint64_t proxyByteSize   = 0;
@@ -75,9 +78,10 @@ struct HierarchyBuilder{
 
 	shared_ptr<HBatch> batch_root;
 
-	HierarchyBuilder(string path, int hierarchyStepSize){
+	HierarchyBuilder(string path, int hierarchyStepSize, vector<uint64_t>* byteOffsets){
 		this->path = path;
 		this->hierarchyStepSize = hierarchyStepSize;
+		this->byteOffsets = byteOffsets;
 	}
 
 	shared_ptr<HBatch> loadBatch(string path){
@@ -87,12 +91,12 @@ struct HierarchyBuilder{
 		auto batch = make_shared<HBatch>();
 		batch->path = path;
 		batch->name = fs::path(path).stem().string();
-		batch->numNodes = buffer->size / 48;
+		batch->numNodes = buffer->size / 56;
 
 		// group this batch in chunks of <hierarchyStepSize>
 		for(int i = 0; i < batch->numNodes; i++){
 
-			int recordOffset = 48 * i;
+			int recordOffset = 56 * i;
 
 			string nodeName = string(buffer->data_char + recordOffset, 31);
 			nodeName = stringReplace(nodeName, " ", "");
@@ -101,8 +105,14 @@ struct HierarchyBuilder{
 			auto node = make_shared<HNode>();
 			node->name       = nodeName;
 			node->numSamples = buffer->get<uint32_t>(recordOffset + 31);
-			node->byteOffset = buffer->get< int64_t>(recordOffset + 35);
+			// node->byteOffset = buffer->get< int64_t>(recordOffset + 35);
 			node->byteSize   = buffer->get< int32_t>(recordOffset + 43);
+			node->nodeIndex  = buffer->get<uint64_t>(recordOffset + 47);
+			node->byteOffset = byteOffsets->at(node->nodeIndex);
+
+			// DEBUG: switching from node->byteOffset to byteOffsets array
+			// check if these match for now
+			// assert(byteOffsets->at(node->nodeIndex) == node->byteOffset);
 
 			// r: 0, r0123: 1, r01230123: 2
 			int chunkLevel = (node->name.size() - 2) / hierarchyStepSize;

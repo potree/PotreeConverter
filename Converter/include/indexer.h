@@ -95,6 +95,13 @@ namespace indexer{
 		// backlog of buffers that reached capacity and are ready to be written to disk
 		deque<shared_ptr<Buffer>> backlog;
 
+		struct CacheItem{
+			uint64_t serializationIndex = 0;
+			shared_ptr<Buffer> buffer = nullptr;
+		};
+		// Caches serialized child nodes for even-leveled nodes
+		unordered_map<string, vector<CacheItem>> cache;
+
 		bool closeRequested = false;
 		bool closed = false;
 		std::condition_variable cvClose;
@@ -124,6 +131,7 @@ namespace indexer{
 			int64_t byteOffset = 0;
 			int64_t byteSize = 0;
 			int64_t numSamples = 0;
+			uint64_t serializationIndex = 0;
 		};
 
 		mutex mtx;
@@ -147,10 +155,11 @@ namespace indexer{
 			lock_guard<mutex> lock(mtx);
 
 			HNode hnode = {
-				.name        = node->name,
-				.byteOffset  = node->byteOffset,
-				.byteSize    = node->byteSize,
-				.numSamples  = std::max(node->numPoints, node->numVoxels),
+				.name               = node->name,
+				.byteOffset         = node->byteOffset,
+				.byteSize           = node->byteSize,
+				.numSamples         = std::max(node->numPoints, node->numVoxels),
+				.serializationIndex = node->serializationIndex,
 			};
 
 			buffer.push_back(hnode);
@@ -200,26 +209,28 @@ namespace indexer{
 			// 	uint32_t numPoints;              4       31
 			// 	int64_t byteOffset;              8       35
 			// 	int32_t byteSize;                4       43
-			// 	uint8_t end = '\n';              1       47
+			// 	uint64_t nodeIndex               8       51
+			// 	uint8_t end = '\n';              1       55
 			// };                              ===
-			//                                  48
+			//                                  56
 
 			
 			for(auto [key, groupedNodes] : groups){
 
-				Buffer buffer(48 * groupedNodes.size());
+				Buffer buffer(56 * groupedNodes.size());
 				stringstream ss;
 
 				for(int i = 0; i < groupedNodes.size(); i++){
 					auto node = groupedNodes[i];
 
 					auto name = node.name.c_str();
-					memset(buffer.data_u8 + 48 * i, ' ', 31);
-					memcpy(buffer.data_u8 + 48 * i, name, node.name.size());
-					buffer.set<uint32_t>(node.numSamples,  48 * i + 31);
-					buffer.set<uint64_t>(node.byteOffset, 48 * i + 35);
-					buffer.set<uint32_t>(node.byteSize,   48 * i + 43);
-					buffer.set<char    >('\n',             48 * i + 47);
+					memset(buffer.data_u8 + 56 * i, ' ', 31);
+					memcpy(buffer.data_u8 + 56 * i, name, node.name.size());
+					buffer.set<uint32_t>(node.numSamples,         56 * i + 31);
+					buffer.set<uint64_t>(node.byteOffset,         56 * i + 35);
+					buffer.set<uint32_t>(node.byteSize,           56 * i + 43);
+					buffer.set<uint64_t>(node.serializationIndex, 56 * i + 47);
+					buffer.set<char    >('\n',                    56 * i + 55);
 
 					ss << rightPad(name, 10, ' ') 
 						<< leftPad(to_string(node.numSamples), 8, ' ')

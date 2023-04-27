@@ -58,6 +58,7 @@ struct Node {
 	int64_t byteOffset = 0;
 	int64_t byteSize = 0;
 	shared_ptr<Buffer> serializedBuffer;
+	uint64_t serializationIndex = 0;
 
 	bool sampled = false;
 

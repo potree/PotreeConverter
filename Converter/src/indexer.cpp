@@ -3,6 +3,7 @@
 #include <execution>
 #include <algorithm>
 #include <format>
+#include <atomic>
 
 #include "indexer.h"
 
@@ -20,6 +21,8 @@ using std::unique_lock;
 namespace indexer{
 
 	constexpr int hierarchyStepSize = 6;
+	static vector<uint64_t> byteOffsets;
+	// mutex mtx_byteOffsets;
 
 	struct Point {
 		double x;
@@ -1449,55 +1452,123 @@ void Writer::writeAndUnload(Node* node) {
 	// } else {
 	// 	sourceBuffer = node->points;
 	// }
-
-	// note:if writeAndUnload is called for node, 
-	// then it was already called for its children
 	
+	// if node->level is odd, store in cache
+	// if node->level is even, write node and its cached children
+	bool isEvenLeveled = (node->level() % 2) == 0;
+	bool isOddLeveled = !isEvenLeveled;
 
-	int64_t byteSize = node->serializedBuffer->size;
-	node->byteSize = byteSize;
-
-	auto errorCheck = [node](int64_t size) {
-		if (size < 0) {
-			stringstream ss;
-
-			ss << "invalid call to malloc(" << to_string(size) << ")\n";
-			ss << "in function writeAndUnload()\n";
-			ss << "node: " << node->name << "\n";
-			ss << "#points: " << node->numPoints << "\n";
-			ss << "min: " << node->min.toString() << "\n";
-			ss << "max: " << node->max.toString() << "\n";
-
-			logger::ERROR(ss.str());
-		}
-	};
-
-	shared_ptr<Buffer> buffer = nullptr;
-	int64_t targetOffset = 0;
-	{
+	if(isOddLeveled){
+		// STORE ODD-LEVELED NODE IN CACHE
 		lock_guard<mutex> lock(mtx);
 
-		int64_t byteOffset = indexer->byteOffset.fetch_add(byteSize);
-		node->byteOffset = byteOffset;
+		CacheItem item = {
+			.serializationIndex = node->serializationIndex,
+			.buffer = node->serializedBuffer,
+		};
 
-		if (activeBuffer == nullptr) {
-			errorCheck(capacity);
-			activeBuffer = make_shared<Buffer>(capacity);
-		} else if (activeBuffer->pos + byteSize > capacity) {
-			backlog.push_back(activeBuffer);
+		string parentName = node->name.substr(0, node->name.size() - 1);
 
-			capacity = std::max(capacity, byteSize);
-			errorCheck(capacity);
-			activeBuffer = make_shared<Buffer>(capacity);
+		if(cache.find(parentName) == cache.end()){
+			cache[parentName] = vector<CacheItem>();
 		}
 
-		buffer = activeBuffer;
-		targetOffset = activeBuffer->pos;
+		cache[parentName].push_back(item);
+	}else if(isEvenLeveled){
+		// WRITE EVEN-LEVELED NODE AND ITS CACHED CHILDREN IN CONTIGUOUS MEMORY
 
-		activeBuffer->pos += byteSize;
-	}	
+		lock_guard<mutex> lock(mtx);
 
-	memcpy(buffer->data_char + targetOffset, node->serializedBuffer->data, byteSize);
+		vector<CacheItem> cachedItems = cache[node->name];
+
+		CacheItem item = {
+			.serializationIndex = node->serializationIndex,
+			.buffer = node->serializedBuffer,
+		};
+
+		cachedItems.push_back(item);
+
+		uint64_t chunkByteSize = 0;
+		for(auto cachedItem : cachedItems){
+			chunkByteSize += cachedItem.buffer->size;
+		}
+
+		uint64_t chunkByteOffset = indexer->byteOffset.fetch_add(chunkByteSize);
+		shared_ptr<Buffer> chunkBuffer = make_shared<Buffer>(chunkByteSize);
+
+		if(byteOffsets.size() <= node->serializationIndex){
+			byteOffsets.resize(1.5f * float(node->serializationIndex));
+		}
+
+		// CREATE CHUNK BUFFER
+		uint64_t chunkBytesProcessed = 0;
+		for(auto cachedItem : cachedItems){
+
+			uint64_t nodeByteOffset = chunkByteOffset + chunkBytesProcessed;
+
+			byteOffsets[cachedItem.serializationIndex] = nodeByteOffset;
+			memcpy(
+				chunkBuffer->data_u8 + chunkBytesProcessed, 
+				cachedItem.buffer->data, 
+				cachedItem.buffer->size
+			);
+			
+			chunkBytesProcessed += cachedItem.buffer->size;
+		}
+
+
+		// int64_t byteSize = node->byteSize;
+
+		auto errorCheck = [node](int64_t size) {
+			if (size < 0) {
+				stringstream ss;
+
+				ss << "invalid call to malloc(" << to_string(size) << ")\n";
+				ss << "in function writeAndUnload()\n";
+				ss << "node: " << node->name << "\n";
+				ss << "#points: " << node->numPoints << "\n";
+				ss << "min: " << node->min.toString() << "\n";
+				ss << "max: " << node->max.toString() << "\n";
+
+				logger::ERROR(ss.str());
+			}
+		};
+
+		shared_ptr<Buffer> buffer = nullptr;
+		int64_t targetOffset = 0;
+		{
+			// lock_guard<mutex> lock(mtx);
+
+			// int64_t byteOffset = indexer->byteOffset.fetch_add(byteSize);
+			// node->byteOffset = byteOffset;
+
+			// not necessary, already synced above via lock(mtx)
+			// lock_guard<mutex> lock(mtx_byteOffsets);
+
+			// if(byteOffsets.size() <= node->serializationIndex){
+			// 	byteOffsets.resize(1.5f * float(node->serializationIndex));
+			// }
+			// byteOffsets[node->serializationIndex] = byteOffset;
+
+			if (activeBuffer == nullptr) {
+				errorCheck(capacity);
+				activeBuffer = make_shared<Buffer>(capacity);
+			} else if (activeBuffer->pos + chunkByteSize > capacity) {
+				backlog.push_back(activeBuffer);
+
+				capacity = std::max(capacity, int64_t(chunkByteSize));
+				errorCheck(capacity);
+				activeBuffer = make_shared<Buffer>(capacity);
+			}
+
+			buffer = activeBuffer;
+			targetOffset = activeBuffer->pos;
+
+			activeBuffer->pos += chunkByteSize;
+		}	
+
+		memcpy(buffer->data_char + targetOffset, chunkBuffer->data, chunkByteSize);
+	}
 }
 
 void Writer::launchWriterThread() {
@@ -1600,11 +1671,15 @@ void doIndexing(string targetDir, State& state, Options& options) {
 			if(child == nullptr) continue;
 			if(child->serializedBuffer == nullptr) continue;
 
+			child->byteSize = child->serializedBuffer->size;
+
 			indexer.writer->writeAndUnload(child.get());
 			indexer.hierarchyFlusher->write(child.get(), hierarchyStepSize);
 		}
 
 		if(node->name == "r"){
+			node->byteSize = node->serializedBuffer->size;
+
 			indexer.writer->writeAndUnload(node);
 			indexer.hierarchyFlusher->write(node, hierarchyStepSize);
 		}
@@ -1654,13 +1729,6 @@ void doIndexing(string targetDir, State& state, Options& options) {
 
 		auto filesize = fs::file_size(chunk->file);
 
-		// stringstream msg;
-		// msg << "start indexing chunk " + chunk->id << "\n";
-		// msg << "filesize: " << formatNumber(filesize) << "\n";
-		// msg << "min: " << chunk->min.toString() << "\n";
-		// msg << "max: " << chunk->max.toString();
-		// logger::INFO(msg.str());
-
 		printfmt("start indexing chunk {:>8}. filesize: {:11L}, min: {}, max: {} \n", 
 			chunk->id, filesize, chunk->min.toString(), chunk->max.toString()
 		);
@@ -1679,7 +1747,6 @@ void doIndexing(string targetDir, State& state, Options& options) {
 		buildHierarchy(&indexer, chunkRoot.get(), pointBuffer, numPoints);
 
 		sampler->sample(chunkRoot.get(), attributes, indexer.spacing, onNodeCompleted, onNodeDiscarded);
-		//OctreeSerializer::serialize(chunkRoot.get(), &attributes);
 
 		// detach anything below the chunk root. Will be reloaded from
 		// temporarily flushed hierarchy during creation of the hierarchy file
@@ -1754,7 +1821,6 @@ void doIndexing(string targetDir, State& state, Options& options) {
 			}
 
 			sampler->sample(task.node, attributes, indexer.spacing, onNodeCompleted, onNodeDiscarded);
-			//OctreeSerializer::serialize(task.node, &attributes);
 
 			task.node->children.clear();
 		}
@@ -1769,7 +1835,6 @@ void doIndexing(string targetDir, State& state, Options& options) {
 	} else if (!indexer.root->sampled){
 		auto sampler = make_shared<SamplerWeighted>();
 		sampler->sample(indexer.root.get(), attributes, indexer.spacing, onNodeCompleted, onNodeDiscarded);
-		//OctreeSerializer::serialize(indexer.root.get(), &attributes);
 	}
 
 	// root is automatically finished after subsampling all descendants
@@ -1784,7 +1849,7 @@ void doIndexing(string targetDir, State& state, Options& options) {
 	indexer.hierarchyFlusher->flush(hierarchyStepSize);
 
 	string hierarchyDir = indexer.targetDir + "/.hierarchyChunks";
-	HierarchyBuilder builder(hierarchyDir, hierarchyStepSize);
+	HierarchyBuilder builder(hierarchyDir, hierarchyStepSize, &byteOffsets);
 	builder.build();
 
 	Hierarchy hierarchy = {

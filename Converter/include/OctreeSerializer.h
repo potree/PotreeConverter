@@ -16,6 +16,8 @@ int dGridSize = gridSize;
 
 struct OctreeSerializer{
 
+	// static atomic<uint64_t> numNodesSerialized = atomic<uint64_t>(0);
+
 	// Adapted from three.js
 	// license: MIT (https://github.com/mrdoob/three.js/blob/dev/LICENSE)
 	// url: https://github.com/mrdoob/three.js/blob/dev/src/math/Line3.js
@@ -403,11 +405,14 @@ struct OctreeSerializer{
 
 		auto process = [attributes](Node* child, Node* parent){
 
+			static atomic<uint64_t> numNodesSerialized = atomic<uint64_t>(0);
+
 			if(child->numPoints > 0){
 				// serialize points
 				auto pointsBuffer = toPointsBuffer(child, attributes);
 
 				child->serializedBuffer = pointsBuffer;
+				child->serializationIndex = numNodesSerialized++;
 
 				// printfmt("[{:6}] points: {:8L}, bytes: {:4} kb \n", child->name, child->numPoints, pointsBuffer->size / 1000);
 			}else if(child->numVoxels > 0){
@@ -415,6 +420,7 @@ struct OctreeSerializer{
 				auto voxelBuffer = toVoxelBuffer(child, parent, attributes);
 
 				child->serializedBuffer = voxelBuffer;
+				child->serializationIndex = numNodesSerialized++;
 
 				// printfmt("[{:6}] voxels: {:8L}, bytes: {:4} kb \n", child->name, child->numVoxels, voxelBuffer->size / 1000);
 			}else{

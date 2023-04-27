@@ -87,7 +87,8 @@
 		"compare": "cpp",
 		"format": "cpp",
 		"optional": "cpp",
-		"stop_token": "cpp"
+		"stop_token": "cpp",
+		"bitset": "cpp"
 	},
 	"files.trimTrailingWhitespace": false,
 	"editor.fontSize": 28,
