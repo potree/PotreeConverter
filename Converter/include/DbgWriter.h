@@ -231,9 +231,6 @@ namespace dbgwriter{
 		writeBinaryFile(dir + "/quantized_X.bin", X);
 		writeBinaryFile(dir + "/quantized_Y.bin", Y);
 		writeBinaryFile(dir + "/quantized_Z.bin", Z);
-
-		int a = 10;
-
 	}
 
 	void writePosition(string dir, Node* node, Attributes attributes) {
@@ -395,8 +392,6 @@ namespace dbgwriter{
 		writeBinaryFile(dir + "/mortoncode.bin", data);
 		writeBinaryFile(dir + "/mortoncode_diff.bin", dataDiff);
 
-
-		int a = 10;
 	}
 
 	void writeIntensity(string dir, Node* node, Attributes attributes) {

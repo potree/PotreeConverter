@@ -1,6 +1,8 @@
 {
 	"workbench.editor.enablePreview": false,
 	"files.associations": {
+		"*.cs": "cpp",
+		"*.wgsl": "cpp",
 		"*.vs": "cpp",
 		"*.fs": "cpp",
 		"filesystem": "cpp",
@@ -79,7 +81,13 @@
 		"condition_variable": "cpp",
 		"regex": "cpp",
 		"stack": "cpp",
-		"variant": "cpp"
+		"variant": "cpp",
+		"bit": "cpp",
+		"charconv": "cpp",
+		"compare": "cpp",
+		"format": "cpp",
+		"optional": "cpp",
+		"stop_token": "cpp"
 	},
 	"files.trimTrailingWhitespace": false,
 	"editor.fontSize": 28,

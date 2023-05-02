@@ -10,10 +10,13 @@
 #include "PotreeConverter.h"
 #include "DbgWriter.h"
 #include "brotli/encode.h"
+#include "HierarchyBuilder.h"
 
 using std::unique_lock;
 
 namespace indexer{
+
+	constexpr int hierarchyStepSize = 4;
 
 	struct Point {
 		double x;
@@ -194,6 +197,87 @@ namespace indexer{
 		flushedChunkRoots.push_back(fcr);
 
 		offset += size;
+	}
+
+	vector<CRNode> Indexer::processChunkRoots(){
+
+		unordered_map<string, shared_ptr<CRNode>> nodesMap;
+		vector<shared_ptr<CRNode>> nodesList;
+
+		// create/copy nodes
+		this->root->traverse([&nodesMap, &nodesList](Node* node){
+			auto crnode = make_shared<CRNode>();
+			crnode->name = node->name;
+			crnode->node = node;
+			crnode->children.resize(node->children.size());
+
+			nodesList.push_back(crnode);
+			nodesMap[crnode->name] = crnode;
+		});
+
+		// establish hierarchy
+		for(auto crnode : nodesList){
+
+			string parentName = crnode->name.substr(0, crnode->name.size() - 1);
+
+			if(parentName != ""){
+				auto parent = nodesMap[parentName];
+				int index = crnode->name.at(crnode->name.size() - 1) - '0';
+
+				parent->children[index] = crnode;
+			}
+		}
+
+		// mark/flag/insert flushed chunk roots
+		for(auto fcr : flushedChunkRoots){
+			auto node = nodesMap[fcr.node->name];
+			
+			node->fcrs.push_back(fcr);
+			node->numPoints += fcr.node->numPoints;
+		}
+
+		// recursively merge leaves if sum(points) < threshold
+		auto cr_root = nodesMap["r"];
+		static int64_t threshold = 5'000'000;
+
+		cr_root->traversePost([](CRNode* node){
+			
+			if(node->isLeaf()){
+
+			}else{
+
+				int numPoints = 0;
+				for(auto child : node->children){
+					if(!child) continue;
+
+					numPoints += child->numPoints;
+				}
+				node->numPoints = numPoints;
+
+				if(node->numPoints < threshold){
+					// merge children into this node
+					for(auto child : node->children){
+						if(!child) continue;
+
+						node->fcrs.insert(node->fcrs.end(), child->fcrs.begin(), child->fcrs.end());
+					}
+
+					node->children.clear();
+				}
+			}
+		});
+
+		vector<CRNode> tasks;
+		cr_root->traverse([&tasks](CRNode* node){
+			// cout << node->name << ", #points: " << node->numPoints << ", #fcrs: " << node->fcrs.size() << endl;
+
+			if(node->fcrs.size() > 0){
+				CRNode crnode = *node;
+				tasks.push_back(crnode);
+			}
+		});
+
+		return tasks;
 	}
 
 	void Indexer::reloadChunkRoots() {
@@ -499,7 +583,6 @@ vector<HierarchyChunk> Indexer::createHierarchyChunks(Node* root, int hierarchyS
 
 Hierarchy Indexer::createHierarchy(string path) {
 
-	constexpr int hierarchyStepSize = 4;
 	// type + childMask + numPoints + offset + size
 	constexpr int bytesPerNode = 1 + 1 + 4 + 8 + 8;
 
@@ -508,6 +591,20 @@ Hierarchy Indexer::createHierarchy(string path) {
 	};
 
 	auto chunks = createHierarchyChunks(root.get(), hierarchyStepSize);
+
+	// string dbgChunksPath = path + "/../dbg_chunks";
+	// fs::create_directories(dbgChunksPath);
+	// for(auto& chunk : chunks){
+
+	// 	stringstream ss;
+
+	// 	for(auto node : chunk.nodes){
+	// 		ss << node->name << endl;
+	// 	}
+
+
+	// 	writeFile(dbgChunksPath + "/" + chunk.name + ".txt", ss.str());
+	// }
 
 	unordered_map<string, int> chunkPointers;
 	vector<int64_t> chunkByteOffsets(chunks.size(), 0);
@@ -1354,6 +1451,9 @@ int64_t Writer::backlogSizeMB() {
 }
 
 void Writer::writeAndUnload(Node* node) {
+
+	if(node->numPoints == 0) return;
+
 	auto attributes = indexer->attributes;
 	string encoding = indexer->options.encoding;
 
@@ -1502,6 +1602,13 @@ void doIndexing(string targetDir, State& state, Options& options, Sampler& sampl
 	indexer.root = make_shared<Node>("r", chunks->min, chunks->max);
 	indexer.spacing = (chunks->max - chunks->min).x / 128.0;
 
+	auto onNodeCompleted = [&indexer](Node* node) {
+		indexer.writer->writeAndUnload(node);
+		indexer.hierarchyFlusher->write(node, hierarchyStepSize);
+	};
+
+	auto onNodeDiscarded = [&indexer](Node* node) {};
+
 	struct Task {
 		shared_ptr<Chunk> chunk;
 
@@ -1528,7 +1635,8 @@ void doIndexing(string targetDir, State& state, Options& options, Sampler& sampl
 	atomic_int64_t activeThreads = 0;
 	mutex mtx_nodes;
 	vector<shared_ptr<Node>> nodes;
-	TaskPool<Task> pool(numSampleThreads(), [&writeAndUnload, &state, &options, &activeThreads, tStart, &lastReport, &totalPoints, totalBytes, &pointsProcessed, chunks, &indexer, &nodes, &mtx_nodes, &sampler](auto task) {
+	int numThreads = numSampleThreads() + 4;
+	TaskPool<Task> pool(numThreads, [&onNodeCompleted, &onNodeDiscarded, &writeAndUnload, &state, &options, &activeThreads, tStart, &lastReport, &totalPoints, totalBytes, &pointsProcessed, chunks, &indexer, &nodes, &mtx_nodes, &sampler](auto task) {
 		
 		auto chunk = task->chunk;
 		auto chunkRoot = make_shared<Node>(chunk->id, chunk->min, chunk->max);
@@ -1560,11 +1668,11 @@ void doIndexing(string targetDir, State& state, Options& options, Sampler& sampl
 
 		buildHierarchy(&indexer, chunkRoot.get(), pointBuffer, numPoints);
 
-		auto onNodeCompleted = [&indexer](Node* node) {
-			indexer.writer->writeAndUnload(node);
-		};
+		sampler.sample(chunkRoot.get(), attributes, indexer.spacing, onNodeCompleted, onNodeDiscarded);
 
-		sampler.sample(chunkRoot, attributes, indexer.spacing, onNodeCompleted);
+		// detach anything below the chunk root. Will be reloaded from
+		// temporarily flushed hierarchy during creation of the hierarchy file
+		chunkRoot->children.clear();
 
 		indexer.flushChunkRoot(chunkRoot);
 
@@ -1601,22 +1709,40 @@ void doIndexing(string targetDir, State& state, Options& options, Sampler& sampl
 	pool.waitTillEmpty();
 	pool.close();
 
-	indexer.reloadChunkRoots();
+	indexer.fChunkRoots.close();
 
+	{ // process chunk roots in batches
+		
+		string tmpChunkRootsPath = targetDir + "/tmpChunkRoots.bin";
+		auto tasks = indexer.processChunkRoots();
+
+		for(auto& task : tasks){
+
+			for(auto& fcr : task.fcrs){
+				auto buffer = make_shared<Buffer>(fcr.size);
+				readBinaryFile(tmpChunkRootsPath, fcr.offset, fcr.size, buffer->data);
+
+				fcr.node->points = buffer;
+			}
+
+			sampler.sample(task.node, attributes, indexer.spacing, onNodeCompleted, onNodeDiscarded);
+
+			task.node->children.clear();
+		}
+	}
+
+
+	// sample up to root node
 	if (chunks->list.size() == 1) {
 		auto node = nodes[0];
 
 		indexer.root = node;
-	} else {
-
-		auto onNodeCompleted = [&indexer](Node* node) {
-			indexer.writer->writeAndUnload(node);
-		};
-
-		sampler.sample(indexer.root, attributes, indexer.spacing, onNodeCompleted);
+	} else if (!indexer.root->sampled){
+		sampler.sample(indexer.root.get(), attributes, indexer.spacing, onNodeCompleted, onNodeDiscarded);
 	}
-	
-	indexer.writer->writeAndUnload(indexer.root.get());
+
+	// root is automatically finished after subsampling all descendants
+	onNodeCompleted(indexer.root.get());
 
 	printElapsedTime("sampling", tStart);
 
@@ -1624,9 +1750,21 @@ void doIndexing(string targetDir, State& state, Options& options, Sampler& sampl
 
 	printElapsedTime("flushing", tStart);
 
-	string hierarchyPath = targetDir + "/hierarchy.bin";
-	Hierarchy hierarchy = indexer.createHierarchy(hierarchyPath);
-	writeBinaryFile(hierarchyPath, hierarchy.buffer);
+
+	//string hierarchyPath = targetDir + "/hierarchy.bin";
+	//Hierarchy hierarchy = indexer.createHierarchy(hierarchyPath);
+	//writeBinaryFile(hierarchyPath, hierarchy.buffer);
+
+	indexer.hierarchyFlusher->flush(hierarchyStepSize);
+
+	string hierarchyDir = indexer.targetDir + "/.hierarchyChunks";
+	HierarchyBuilder builder(hierarchyDir, hierarchyStepSize);
+	builder.build();
+
+	Hierarchy hierarchy = {
+		.stepSize = hierarchyStepSize,
+		.firstChunkSize = builder.batch_root->byteSize,
+	};
 
 	string metadataPath = targetDir + "/metadata.json";
 	string metadata = indexer.createMetadata(options, state, hierarchy);
