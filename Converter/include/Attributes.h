@@ -113,6 +113,7 @@ struct Attribute {
 	int numElements = 0;
 	int elementSize = 0;
 	AttributeType type = AttributeType::UNDEFINED;
+	bool filtered = false;
 
 	// TODO: should be type-dependent, not always double. won't work properly with 64 bit integers
 	Vector3 min = {Infinity, Infinity, Infinity};

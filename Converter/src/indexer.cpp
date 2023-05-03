@@ -22,7 +22,7 @@ namespace indexer{
 
 	constexpr int hierarchyStepSize = 6;
 	static vector<uint64_t> byteOffsets;
-	// mutex mtx_byteOffsets;
+	static vector<uint64_t> unfilteredByteOffsets;
 
 	struct Point {
 		double x;
@@ -195,8 +195,11 @@ namespace indexer{
 			size = chunkRoot->points->size;
 			fChunkRoots.write(chunkRoot->points->data_char, size);
 		}else if(chunkRoot->voxels.size() > 0){
-			size = chunkRoot->voxels.size() * sizeof(Voxel);
-			fChunkRoots.write((const char*)chunkRoot->voxels.data(), size);
+			fChunkRoots.write((const char*)chunkRoot->voxels.data(), chunkRoot->voxels.size() * sizeof(Voxel));
+			size += chunkRoot->voxels.size() * sizeof(Voxel);
+			
+			fChunkRoots.write(chunkRoot->unfilteredVoxelData->data_char, chunkRoot->unfilteredVoxelData->size);
+			size += chunkRoot->unfilteredVoxelData->size;
 		}
 
 		FlushedChunkRoot fcr;
@@ -299,56 +302,6 @@ namespace indexer{
 		});
 
 		return tasks;
-	}
-
-	void Indexer::reloadChunkRoots() {
-
-		fChunkRoots.close();
-
-		logger::INFO("start reloadChunkRoots");
-
-		struct LoadTask {
-			shared_ptr<Node> node;
-			int64_t offset;
-			int64_t size;
-
-			LoadTask(shared_ptr<Node> node, int64_t offset, int64_t size) {
-				this->node = node;
-				this->offset = offset;
-				this->size = size;
-			}
-		};
-
-		string targetDir = this->targetDir;
-		TaskPool<LoadTask> pool(16, [targetDir](shared_ptr<LoadTask> task) {
-			string octreePath = targetDir + "/tmpChunkRoots.bin";
-
-			shared_ptr<Node> node = task->node;
-			int64_t start = task->offset;
-			int64_t size = task->size;
-
-			auto buffer = make_shared<Buffer>(size);
-			readBinaryFile(octreePath, start, size, buffer->data);
-
-			if(node->numPoints > 0){
-				node->points = buffer;
-			}else if(node->numVoxels > 0){
-				node->voxels = vector<Voxel>();
-				node->voxels.reserve(node->numVoxels);
-
-				assert(buffer->size == sizeof(Voxel) * node->numVoxels);
-				memcpy(node->voxels.data(), buffer->data, buffer->size);
-			}
-		});
-
-		for (auto fcr : flushedChunkRoots) {
-			auto task = make_shared<LoadTask>(fcr.node, fcr.offset, fcr.size);
-			pool.addTask(task);
-		}
-
-		pool.close();
-
-		logger::INFO("end reloadChunkRoots");
 	}
 
 	void Indexer::waitUntilWriterBacklogBelow(int maxMegabytes) {
@@ -612,7 +565,6 @@ vector<HierarchyChunk> Indexer::createHierarchyChunks(Node* root, int hierarchyS
 
 Hierarchy Indexer::createHierarchy(string path) {
 
-	// type + childMask + numPoints + offset + size
 	constexpr int bytesPerNode = 1 + 1 + 4 + 8 + 8;
 
 	auto chunkSize = [](HierarchyChunk& chunk) {
@@ -620,20 +572,6 @@ Hierarchy Indexer::createHierarchy(string path) {
 	};
 
 	auto chunks = createHierarchyChunks(root.get(), hierarchyStepSize);
-
-	// string dbgChunksPath = path + "/../dbg_chunks";
-	// fs::create_directories(dbgChunksPath);
-	// for(auto& chunk : chunks){
-
-	// 	stringstream ss;
-
-	// 	for(auto node : chunk.nodes){
-	// 		ss << node->name << endl;
-	// 	}
-
-
-	// 	writeFile(dbgChunksPath + "/" + chunk.name + ".txt", ss.str());
-	// }
 
 	unordered_map<string, int> chunkPointers;
 	vector<int64_t> chunkByteOffsets(chunks.size(), 0);
@@ -668,11 +606,14 @@ Hierarchy Indexer::createHierarchy(string path) {
 		for (auto node : chunk.nodes) {
 			bool isProxy = node->level() == chunkLevel + hierarchyStepSize;
 
-			uint8_t childMask = childMaskOf(node);
-			uint64_t targetOffset = 0;
-			uint64_t targetSize = 0;
-			uint32_t numPoints = uint32_t(node->numPoints);
-			uint8_t type = node->isLeaf() ? TYPE::LEAF : TYPE::NORMAL;
+			uint8_t childMask           = childMaskOf(node);
+			uint64_t targetOffset       = 0;
+			uint32_t byteSize           = 0;
+			uint32_t byteSizePosition   = 0;
+			uint32_t byteSizeFiltered   = 0;
+			uint32_t byteSizeUnfiltered = 0;
+			uint32_t numPoints          = uint32_t(node->numPoints);
+			uint8_t type                = node->isLeaf() ? TYPE::LEAF : TYPE::NORMAL;
 
 			if (isProxy) {
 				int targetChunkIndex = chunkPointers[node->name];
@@ -680,17 +621,29 @@ Hierarchy Indexer::createHierarchy(string path) {
 
 				type = TYPE::PROXY;
 				targetOffset = chunkByteOffsets[targetChunkIndex];
-				targetSize = chunkSize(targetChunk);
+				byteSize = chunkSize(targetChunk);
 			} else {
 				targetOffset = node->byteOffset;
-				targetSize = node->byteSize;
+				
+				if(node->numPoints > 0){
+					byteSize = node->sPointsSize;
+				}else{
+					byteSizePosition = node->sPositionSize;
+					byteSizeFiltered = node->sFilteredSize;
+					byteSizeUnfiltered = node->sUnfilteredSize;
+					byteSize = byteSizePosition + byteSizeFiltered + byteSizeUnfiltered;
+				}
 			}
 
-			memcpy(hierarchyBuffer.data() + offset + 0, &type, 1);
-			memcpy(hierarchyBuffer.data() + offset + 1, &childMask, 1);
-			memcpy(hierarchyBuffer.data() + offset + 2, &numPoints, 4);
-			memcpy(hierarchyBuffer.data() + offset + 6, &targetOffset, 8);
-			memcpy(hierarchyBuffer.data() + offset + 14, &targetSize, 8);
+			// 30 bytes
+			memcpy(hierarchyBuffer.data() + offset +  0, &type,                   1);
+			memcpy(hierarchyBuffer.data() + offset +  1, &childMask,              1);
+			memcpy(hierarchyBuffer.data() + offset +  2, &numPoints,              4);
+			memcpy(hierarchyBuffer.data() + offset +  6, &targetOffset,           8);
+			memcpy(hierarchyBuffer.data() + offset + 14, &byteSize,               4);
+			memcpy(hierarchyBuffer.data() + offset + 18, &byteSizePosition,       4);
+			memcpy(hierarchyBuffer.data() + offset + 22, &byteSizeFiltered,       4);
+			memcpy(hierarchyBuffer.data() + offset + 26, &byteSizeUnfiltered,     4);
 
 			offset += bytesPerNode;
 		}
@@ -1441,7 +1394,7 @@ int64_t Writer::backlogSizeMB() {
 
 void Writer::writeAndUnload(Node* node) {
 
-	if(node->serializedBuffer == nullptr) return;
+	//if(node->serializedBuffer == nullptr) return;
 
 	auto attributes = indexer->attributes;
 	string encoding = indexer->options.encoding;
@@ -1452,6 +1405,14 @@ void Writer::writeAndUnload(Node* node) {
 	// } else {
 	// 	sourceBuffer = node->points;
 	// }
+
+	if(node->unfilteredVoxelData)
+	{ // DEBUG
+		vector<uint16_t> dbg(10, 0);
+		memcpy(dbg.data(), node->unfilteredVoxelData->data, 20);
+
+		printfmt("writeAndUnload - start {}: {}, {}, {}, {}, {} \n", node->name, dbg[0], dbg[1], dbg[2], dbg[3], dbg[4]);
+	}
 	
 	// if node->level is odd, store in cache
 	// if node->level is even, write node and its cached children
@@ -1464,7 +1425,10 @@ void Writer::writeAndUnload(Node* node) {
 
 		CacheItem item = {
 			.serializationIndex = node->serializationIndex,
-			.buffer = node->serializedBuffer,
+			.points             = node->serializedPoints,
+			.position           = node->serializedPosition,
+			.filtered           = node->serializedFiltered,
+			.unfiltered         = node->serializedUnfiltered,
 		};
 
 		string parentName = node->name.substr(0, node->name.size() - 1);
@@ -1482,16 +1446,31 @@ void Writer::writeAndUnload(Node* node) {
 		vector<CacheItem> cachedItems = cache[node->name];
 
 		CacheItem item = {
+			.name               = node->name,
 			.serializationIndex = node->serializationIndex,
-			.buffer = node->serializedBuffer,
+			.points             = node->serializedPoints,
+			.position           = node->serializedPosition,
+			.filtered           = node->serializedFiltered,
+			.unfiltered         = node->serializedUnfiltered,
 		};
 
 		cachedItems.push_back(item);
 
 		uint64_t chunkByteSize = 0;
 		for(auto cachedItem : cachedItems){
-			chunkByteSize += cachedItem.buffer->size;
+			chunkByteSize += cachedItem.points     ? cachedItem.points->size     : 0;
+			chunkByteSize += cachedItem.position   ? cachedItem.position->size   : 0;
+			chunkByteSize += cachedItem.filtered   ? cachedItem.filtered->size   : 0;
+			chunkByteSize += cachedItem.unfiltered ? cachedItem.unfiltered->size : 0;
 		}
+
+		// if(item.unfiltered)
+		// { // DEBUG
+		// 	vector<uint16_t> dbg(10, 0);
+		// 	memcpy(dbg.data(), item.unfiltered->data, 20);
+
+		// 	printfmt("writeAndUnload {}: {}, {}, {}, {}, {} \n", item.name, dbg[0], dbg[1], dbg[2], dbg[3], dbg[4]);
+		// }
 
 		uint64_t chunkByteOffset = indexer->byteOffset.fetch_add(chunkByteSize);
 		shared_ptr<Buffer> chunkBuffer = make_shared<Buffer>(chunkByteSize);
@@ -1499,25 +1478,80 @@ void Writer::writeAndUnload(Node* node) {
 		if(byteOffsets.size() <= node->serializationIndex){
 			byteOffsets.resize(1.5f * float(node->serializationIndex));
 		}
+		if(unfilteredByteOffsets.size() <= node->serializationIndex){
+			unfilteredByteOffsets.resize(1.5f * float(node->serializationIndex));
+		}
 
 		// CREATE CHUNK BUFFER
+		// leaves: store all point data, one node after the other
+		// inner: 
+		//     1. store all position and filtered data from all nodes in chunk, 
+		//     2. store all unfiltered data from all nodes in chunk
 		uint64_t chunkBytesProcessed = 0;
+
+		// POINTS
+		for(auto cachedItem : cachedItems){		
+			if(cachedItem.points){
+				uint64_t nodeByteOffset = chunkByteOffset + chunkBytesProcessed;
+				byteOffsets[cachedItem.serializationIndex] = nodeByteOffset;
+
+				memcpy(
+					chunkBuffer->data_u8 + chunkBytesProcessed, 
+					cachedItem.points->data, 
+					cachedItem.points->size
+				);
+				chunkBytesProcessed += cachedItem.points->size;
+			}
+		}
+
+		// VOXEL POSITION AND FILTERED DATA
 		for(auto cachedItem : cachedItems){
+			if(cachedItem.position){
+				uint64_t nodeByteOffset = chunkByteOffset + chunkBytesProcessed;
+				byteOffsets[cachedItem.serializationIndex] = nodeByteOffset;
 
-			uint64_t nodeByteOffset = chunkByteOffset + chunkBytesProcessed;
+				memcpy(
+					chunkBuffer->data_u8 + chunkBytesProcessed, 
+					cachedItem.position->data, 
+					cachedItem.position->size
+				);
+				chunkBytesProcessed += cachedItem.position->size;
 
-			byteOffsets[cachedItem.serializationIndex] = nodeByteOffset;
-			memcpy(
-				chunkBuffer->data_u8 + chunkBytesProcessed, 
-				cachedItem.buffer->data, 
-				cachedItem.buffer->size
-			);
-			
-			chunkBytesProcessed += cachedItem.buffer->size;
+				memcpy(
+					chunkBuffer->data_u8 + chunkBytesProcessed, 
+					cachedItem.filtered->data, 
+					cachedItem.filtered->size
+				);
+				chunkBytesProcessed += cachedItem.filtered->size;
+			}
+		}
+
+		// VOXEL UNFILTERED DATA
+		for(auto cachedItem : cachedItems){
+			if(cachedItem.unfiltered){
+				uint64_t nodeByteOffset = chunkByteOffset + chunkBytesProcessed;
+				unfilteredByteOffsets[cachedItem.serializationIndex] = nodeByteOffset;
+
+				memcpy(
+					chunkBuffer->data_u8 + chunkBytesProcessed, 
+					cachedItem.unfiltered->data, 
+					cachedItem.unfiltered->size
+				);
+				chunkBytesProcessed += cachedItem.unfiltered->size;
+
+				if(cachedItem.name == "r"){
+					//uint16_t* dbg = ((uint16_t*)(cachedItem.unfiltered->data));
+
+					vector<uint16_t> dbg(100, 0);
+					memcpy(dbg.data(), cachedItem.unfiltered->data, 200);
+
+					int a = 10;
+				}
+			}
 		}
 
 
-		// int64_t byteSize = node->byteSize;
+
 
 		auto errorCheck = [node](int64_t size) {
 			if (size < 0) {
@@ -1537,19 +1571,6 @@ void Writer::writeAndUnload(Node* node) {
 		shared_ptr<Buffer> buffer = nullptr;
 		int64_t targetOffset = 0;
 		{
-			// lock_guard<mutex> lock(mtx);
-
-			// int64_t byteOffset = indexer->byteOffset.fetch_add(byteSize);
-			// node->byteOffset = byteOffset;
-
-			// not necessary, already synced above via lock(mtx)
-			// lock_guard<mutex> lock(mtx_byteOffsets);
-
-			// if(byteOffsets.size() <= node->serializationIndex){
-			// 	byteOffsets.resize(1.5f * float(node->serializationIndex));
-			// }
-			// byteOffsets[node->serializationIndex] = byteOffset;
-
 			if (activeBuffer == nullptr) {
 				errorCheck(capacity);
 				activeBuffer = make_shared<Buffer>(capacity);
@@ -1669,16 +1690,16 @@ void doIndexing(string targetDir, State& state, Options& options) {
 
 		for(auto child : node->children){
 			if(child == nullptr) continue;
-			if(child->serializedBuffer == nullptr) continue;
+			// if(child->serializedBuffer == nullptr) continue;
 
-			child->byteSize = child->serializedBuffer->size;
+			// child->byteSize = child->serializedBuffer->size;
 
 			indexer.writer->writeAndUnload(child.get());
 			indexer.hierarchyFlusher->write(child.get(), hierarchyStepSize);
 		}
 
 		if(node->name == "r"){
-			node->byteSize = node->serializedBuffer->size;
+			// node->byteSize = node->serializedBuffer->size;
 
 			indexer.writer->writeAndUnload(node);
 			indexer.hierarchyFlusher->write(node, hierarchyStepSize);
@@ -1748,6 +1769,14 @@ void doIndexing(string targetDir, State& state, Options& options) {
 
 		sampler->sample(chunkRoot.get(), attributes, indexer.spacing, onNodeCompleted, onNodeDiscarded);
 
+		if(chunkRoot->unfilteredVoxelData)
+		{ // DEBUG
+			vector<uint16_t> dbg(10, 0);
+			memcpy(dbg.data(), chunkRoot->unfilteredVoxelData->data, 20);
+
+			printfmt("doIndexing - sample {}: {}, {}, {}, {}, {} \n", chunkRoot->name, dbg[0], dbg[1], dbg[2], dbg[3], dbg[4]);
+		}
+
 		// detach anything below the chunk root. Will be reloaded from
 		// temporarily flushed hierarchy during creation of the hierarchy file
 		chunkRoot->children.clear();
@@ -1780,13 +1809,13 @@ void doIndexing(string targetDir, State& state, Options& options) {
 	});
 
 
-	 for (auto chunk : chunks->list) {
-	 	auto task = make_shared<Task>(chunk);
-	 	pool.addTask(task);
-	 }
+	for (auto chunk : chunks->list) {
+		auto task = make_shared<Task>(chunk);
+		pool.addTask(task);
+	}
 
-	 pool.waitTillEmpty();
-	 pool.close();
+	pool.waitTillEmpty();
+	pool.close();
 
 	indexer.fChunkRoots.close();
 
@@ -1806,16 +1835,17 @@ void doIndexing(string targetDir, State& state, Options& options) {
 				readBinaryFile(tmpChunkRootsPath, fcr.offset, fcr.size, buffer->data);
 				printfmt("reloading {} \n", fcr.node->name);
 
-				// fcr.node->points = buffer;
-
 				if(fcr.node->numPoints > 0){
 					fcr.node->points = buffer;
 				}else if(fcr.node->numVoxels > 0){
+					
+					int mainVoxelDataSize = fcr.node->numVoxels * sizeof(Voxel);
 					fcr.node->voxels = vector<Voxel>(fcr.node->numVoxels);
+					memcpy(fcr.node->voxels.data(), buffer->data, mainVoxelDataSize);
 
-					assert(buffer->size == sizeof(Voxel) * fcr.node->numVoxels);
-
-					memcpy(fcr.node->voxels.data(), buffer->data, buffer->size);
+					int unfilteredDataSize = fcr.size - mainVoxelDataSize;
+					fcr.node->unfilteredVoxelData = make_shared<Buffer>(unfilteredDataSize);
+					memcpy(fcr.node->unfilteredVoxelData->data, buffer->data_u8 + mainVoxelDataSize, unfilteredDataSize);
 				}
 
 			}
@@ -1849,7 +1879,7 @@ void doIndexing(string targetDir, State& state, Options& options) {
 	indexer.hierarchyFlusher->flush(hierarchyStepSize);
 
 	string hierarchyDir = indexer.targetDir + "/.hierarchyChunks";
-	HierarchyBuilder builder(hierarchyDir, hierarchyStepSize, &byteOffsets);
+	HierarchyBuilder builder(hierarchyDir, hierarchyStepSize, &byteOffsets, &unfilteredByteOffsets);
 	builder.build();
 
 	Hierarchy hierarchy = {

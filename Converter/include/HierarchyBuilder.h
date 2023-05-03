@@ -30,16 +30,20 @@ struct HierarchyBuilder{
 	// struct Record{                 size   offset
 	// 	uint8_t name[31];               31        0
 	// 	uint32_t numPoints;              4       31
-	// 	int64_t byteOffset;              8       35
-	// 	int32_t byteSize;                4       43
-	// 	uint64_t nodeIndex               8       51
-	// 	uint8_t end = '\n';              1       55
+	// 	int64_t byteOffset;              8      35
+	// 	int32_t byteSizePoints;          4       43
+	// 	int32_t byteSizePosition;        4       47
+	// 	int32_t byteSizeFiltered;        4       51
+	// 	int32_t byteSizeUnfiltered;      4       55
+	// 	uint64_t nodeIndex               8       59
+	// 	uint8_t end = '\n';              1       67
 	// };                              ===
-	//                                  56
+	//                                  68 
 
 	int hierarchyStepSize = 0;
 	string path = "";
 	vector<uint64_t>* byteOffsets = nullptr;
+	vector<uint64_t>* unfilteredByteOffsets = nullptr;
 
 	enum TYPE {
 		NORMAL = 0,
@@ -48,15 +52,19 @@ struct HierarchyBuilder{
 	};
 
 	struct HNode{
-		string   name            = "";
-		int      numSamples      = 0;
-		uint8_t  childMask       = 0;
-		uint64_t byteOffset      = 0;
-		uint64_t byteSize        = 0;
-		uint64_t nodeIndex       = 0;
-		TYPE     type            = TYPE::LEAF;
-		uint64_t proxyByteOffset = 0;
-		uint64_t proxyByteSize   = 0;
+		string   name                 = "";
+		int      numSamples           = 0;
+		uint8_t  childMask            = 0;
+		uint64_t byteOffset           = 0;
+		uint64_t unfilteredByteOffset = 0;
+		uint32_t byteSizePoints       = 0;
+		uint32_t byteSizePosition     = 0;
+		uint32_t byteSizeFiltered     = 0;
+		uint32_t byteSizeUnfiltered   = 0;
+		uint64_t nodeIndex            = 0;
+		TYPE     type                 = TYPE::LEAF;
+		uint64_t proxyByteOffset      = 0;
+		uint64_t proxyByteSize        = 0;
 	};
 
 	struct HChunk{
@@ -78,10 +86,16 @@ struct HierarchyBuilder{
 
 	shared_ptr<HBatch> batch_root;
 
-	HierarchyBuilder(string path, int hierarchyStepSize, vector<uint64_t>* byteOffsets){
+	HierarchyBuilder(
+		string path, 
+		int hierarchyStepSize, 
+		vector<uint64_t>* byteOffsets, 
+		vector<uint64_t>* unfilteredByteOffsets
+	){
 		this->path = path;
 		this->hierarchyStepSize = hierarchyStepSize;
 		this->byteOffsets = byteOffsets;
+		this->unfilteredByteOffsets = unfilteredByteOffsets;
 	}
 
 	shared_ptr<HBatch> loadBatch(string path){
@@ -91,24 +105,27 @@ struct HierarchyBuilder{
 		auto batch = make_shared<HBatch>();
 		batch->path = path;
 		batch->name = fs::path(path).stem().string();
-		batch->numNodes = buffer->size / 56;
+		batch->numNodes = buffer->size / 68;
 
 		// group this batch in chunks of <hierarchyStepSize>
 		for(int i = 0; i < batch->numNodes; i++){
 
-			int recordOffset = 56 * i;
+			int recordOffset = 68 * i;
 
 			string nodeName = string(buffer->data_char + recordOffset, 31);
 			nodeName = stringReplace(nodeName, " ", "");
 			nodeName.erase(std::remove(nodeName.begin(), nodeName.end(), ' '), nodeName.end());
 
 			auto node = make_shared<HNode>();
-			node->name       = nodeName;
-			node->numSamples = buffer->get<uint32_t>(recordOffset + 31);
-			// node->byteOffset = buffer->get< int64_t>(recordOffset + 35);
-			node->byteSize   = buffer->get< int32_t>(recordOffset + 43);
-			node->nodeIndex  = buffer->get<uint64_t>(recordOffset + 47);
-			node->byteOffset = byteOffsets->at(node->nodeIndex);
+			node->name                  = nodeName;
+			node->numSamples            = buffer->get<uint32_t>(recordOffset + 31);
+			node->byteSizePoints        = buffer->get< int32_t>(recordOffset + 43);
+			node->byteSizePosition      = buffer->get< int32_t>(recordOffset + 47);
+			node->byteSizeFiltered      = buffer->get< int32_t>(recordOffset + 51);
+			node->byteSizeUnfiltered    = buffer->get< int32_t>(recordOffset + 55);
+			node->nodeIndex             = buffer->get<uint64_t>(recordOffset + 59);
+			node->byteOffset            = byteOffsets->at(node->nodeIndex);
+			node->unfilteredByteOffset  = unfilteredByteOffsets->at(node->nodeIndex);
 
 			// DEBUG: switching from node->byteOffset to byteOffsets array
 			// check if these match for now
@@ -237,14 +254,14 @@ struct HierarchyBuilder{
 
 					proxyNode->type = TYPE::PROXY;
 					proxyNode->proxyByteOffset = chunk->byteOffset;
-					proxyNode->proxyByteSize = 22 * chunk->nodes.size();
+					proxyNode->proxyByteSize = 38 * chunk->nodes.size();
 				}else{
 					cout << "ERROR: didn't find chunk " << chunk->name << endl;
 					exit(123);
 				}
 			}
 
-			byteOffset += 22 * chunk->nodes.size();
+			byteOffset += 38 * chunk->nodes.size();
 		}
 
 		batch->byteSize = byteOffset;
@@ -258,7 +275,7 @@ struct HierarchyBuilder{
 			numRecords += chunk->nodes.size();  // all nodes in chunk except chunk root
 		}
 
-		auto buffer = make_shared<Buffer>(22 * numRecords);
+		auto buffer = make_shared<Buffer>(38 * numRecords);
 
 		int recordsProcessed = 0;
 		for(auto chunk : batch->chunks){
@@ -283,25 +300,27 @@ struct HierarchyBuilder{
 					type = TYPE::LEAF;
 				}
 
-				uint64_t byteSize = isProxyNode ? node->proxyByteSize : node->byteSize;
 				uint64_t byteOffset = (isProxyNode ? bytesWritten + node->proxyByteOffset : node->byteOffset);
-				// uint32_t numSamples = std::max(node->numPoints, node->numVoxels);
+				uint64_t unfilteredByteOffset = node->unfilteredByteOffset;
+				uint64_t byteSize = 0;
 
-				buffer->set<uint8_t >(type             , 22 * recordsProcessed +  0);
-				buffer->set<uint8_t >(node->childMask  , 22 * recordsProcessed +  1);
-				buffer->set<uint32_t>(node->numSamples , 22 * recordsProcessed +  2);
-				buffer->set<uint64_t>(byteOffset       , 22 * recordsProcessed +  6);
-				buffer->set<uint64_t>(byteSize         , 22 * recordsProcessed + 14);
+				if(isProxyNode){
+					byteSize = node->proxyByteSize;
+				}else{
+					byteSize = std::max(
+						node->byteSizePoints, 
+						node->byteSizePosition + node->byteSizeFiltered + node->byteSizeUnfiltered);
+				}
 
-				// if(batch->name == "r"){
-				// 	std::bitset<8> bs(node->childMask);
-					
-				// 	string strType;
-				// 	if(type == TYPE::NORMAL) strType = "NORMAL";
-				// 	if(type == TYPE::LEAF) strType = "LEAF";
-				// 	if(type == TYPE::PROXY) strType = "PROXY";
-				// 	printfmt("[{}] name: {}, childmask: {}, type: {} \n", i, node->name, bs.to_string(), strType);
-				// }
+				buffer->set<uint8_t >(type                     , 38 * recordsProcessed +  0);
+				buffer->set<uint8_t >(node->childMask          , 38 * recordsProcessed +  1);
+				buffer->set<uint32_t>(node->numSamples         , 38 * recordsProcessed +  2);
+				buffer->set<uint64_t>(byteOffset               , 38 * recordsProcessed +  6);
+				buffer->set<uint64_t>(unfilteredByteOffset     , 38 * recordsProcessed + 14);
+				buffer->set<uint32_t>(byteSize                 , 38 * recordsProcessed + 22);
+				buffer->set<uint32_t>(node->byteSizePosition   , 38 * recordsProcessed + 26);
+				buffer->set<uint32_t>(node->byteSizeFiltered   , 38 * recordsProcessed + 30);
+				buffer->set<uint32_t>(node->byteSizeUnfiltered , 38 * recordsProcessed + 34);
 
 				recordsProcessed++;
 				i++;
@@ -352,7 +371,7 @@ struct HierarchyBuilder{
 
 				proxyNode->type = TYPE::PROXY;
 				proxyNode->proxyByteOffset = bytesWritten;
-				proxyNode->proxyByteSize = 22 * batch->chunkMap[batch->name]->nodes.size();
+				proxyNode->proxyByteSize = 30 * batch->chunkMap[batch->name]->nodes.size();
 				
 			}else{
 				// if there is only one node in that batch,

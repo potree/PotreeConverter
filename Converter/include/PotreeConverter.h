@@ -238,7 +238,7 @@ inline Attributes computeOutputAttributes(vector<Source>& sources, vector<string
 			max.z = std::max(max.z, header.max.z);
 
 			mtx.unlock();
-			});
+		});
 
 		auto scaleOffset = computeScaleOffset(min, max, scaleMin);
 		scale = scaleOffset.scale;

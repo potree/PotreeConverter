@@ -46,7 +46,7 @@ struct Node {
 	int64_t numPoints = 0;
 
 	vector<Voxel> voxels;
-	shared_ptr<Buffer> voxeldata = nullptr;
+	shared_ptr<Buffer> unfilteredVoxelData = nullptr;
 	int64_t numVoxels = 0;
 
 	Vector3 min;
@@ -56,9 +56,18 @@ struct Node {
 
 	// output data. offset, size and buffer data in file.
 	int64_t byteOffset = 0;
-	int64_t byteSize = 0;
-	shared_ptr<Buffer> serializedBuffer;
+	// int64_t byteSize = 0;
+	// shared_ptr<Buffer> serializedBuffer;
+
 	uint64_t serializationIndex = 0;
+	shared_ptr<Buffer> serializedPoints = nullptr;
+	shared_ptr<Buffer> serializedPosition = nullptr;
+	shared_ptr<Buffer> serializedFiltered = nullptr;
+	shared_ptr<Buffer> serializedUnfiltered = nullptr;
+	uint32_t sPointsSize = 0;
+	uint32_t sPositionSize = 0;
+	uint32_t sFilteredSize = 0;
+	uint32_t sUnfilteredSize = 0;
 
 	bool sampled = false;
 

@@ -96,8 +96,12 @@ namespace indexer{
 		deque<shared_ptr<Buffer>> backlog;
 
 		struct CacheItem{
+			string name = "";
 			uint64_t serializationIndex = 0;
-			shared_ptr<Buffer> buffer = nullptr;
+			shared_ptr<Buffer> points = nullptr;
+			shared_ptr<Buffer> position = nullptr;
+			shared_ptr<Buffer> filtered = nullptr;
+			shared_ptr<Buffer> unfiltered = nullptr;
 		};
 		// Caches serialized child nodes for even-leveled nodes
 		unordered_map<string, vector<CacheItem>> cache;
@@ -129,7 +133,10 @@ namespace indexer{
 		struct HNode{
 			string name;
 			int64_t byteOffset = 0;
-			int64_t byteSize = 0;
+			uint32_t byteSizePoints = 0;
+			uint32_t byteSizePosition = 0;
+			uint32_t byteSizeFiltered = 0;
+			uint32_t byteSizeUnfiltered = 0;
 			int64_t numSamples = 0;
 			uint64_t serializationIndex = 0;
 		};
@@ -157,7 +164,10 @@ namespace indexer{
 			HNode hnode = {
 				.name               = node->name,
 				.byteOffset         = node->byteOffset,
-				.byteSize           = node->byteSize,
+				.byteSizePoints     = node->sPointsSize,
+				.byteSizePosition   = node->sPositionSize,
+				.byteSizeFiltered   = node->sFilteredSize,
+				.byteSizeUnfiltered = node->sUnfilteredSize,
 				.numSamples         = std::max(node->numPoints, node->numVoxels),
 				.serializationIndex = node->serializationIndex,
 			};
@@ -208,35 +218,34 @@ namespace indexer{
 			// 	uint8_t name[31];               31        0
 			// 	uint32_t numPoints;              4       31
 			// 	int64_t byteOffset;              8       35
-			// 	int32_t byteSize;                4       43
-			// 	uint64_t nodeIndex               8       51
-			// 	uint8_t end = '\n';              1       55
+			// 	int32_t byteSizePoints;          4       43
+			// 	int32_t byteSizePosition;        4       47
+			// 	int32_t byteSizeFiltered;        4       51
+			// 	int32_t byteSizeUnfiltered;      4       55
+			// 	uint64_t nodeIndex               8       59
+			// 	uint8_t end = '\n';              1       67
 			// };                              ===
-			//                                  56
+			//                                  68
 
 			
 			for(auto [key, groupedNodes] : groups){
 
-				Buffer buffer(56 * groupedNodes.size());
-				stringstream ss;
+				Buffer buffer(68 * groupedNodes.size());
 
 				for(int i = 0; i < groupedNodes.size(); i++){
 					auto node = groupedNodes[i];
 
 					auto name = node.name.c_str();
-					memset(buffer.data_u8 + 56 * i, ' ', 31);
-					memcpy(buffer.data_u8 + 56 * i, name, node.name.size());
-					buffer.set<uint32_t>(node.numSamples,         56 * i + 31);
-					buffer.set<uint64_t>(node.byteOffset,         56 * i + 35);
-					buffer.set<uint32_t>(node.byteSize,           56 * i + 43);
-					buffer.set<uint64_t>(node.serializationIndex, 56 * i + 47);
-					buffer.set<char    >('\n',                    56 * i + 55);
-
-					ss << rightPad(name, 10, ' ') 
-						<< leftPad(to_string(node.numSamples), 8, ' ')
-						<< leftPad(to_string(node.byteOffset), 12, ' ')
-						<< leftPad(to_string(node.byteSize), 12, ' ')
-						<< endl;
+					memset(buffer.data_u8 + 68 * i, ' ', 31);
+					memcpy(buffer.data_u8 + 68 * i, name, node.name.size());
+					buffer.set<uint32_t>(node.numSamples,         68 * i + 31);
+					buffer.set<uint64_t>(node.byteOffset,         68 * i + 35);
+					buffer.set<uint32_t>(node.byteSizePoints,     68 * i + 43);
+					buffer.set<uint32_t>(node.byteSizePosition,   68 * i + 47);
+					buffer.set<uint32_t>(node.byteSizeFiltered,   68 * i + 51);
+					buffer.set<uint32_t>(node.byteSizeUnfiltered, 68 * i + 55);
+					buffer.set<uint64_t>(node.serializationIndex, 68 * i + 59);
+					buffer.set<char    >('\n',                    68 * i + 67);
 				}
 
 				string filepath = path + "/" + key + ".bin";

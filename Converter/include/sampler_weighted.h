@@ -298,9 +298,28 @@ struct SamplerWeighted {
 		vector<uint32_t>& grid_w,
 		vector<uint32_t>& grid_i
 	){
+
+		int unfilteredAttributesSize = 0;
+		vector<bool> unfilteredAttributeMask;
+		for(auto& attribute : attributes.list){
+			bool isUnfiltered = false;
+
+			if(attribute.name == "position"){
+				isUnfiltered = false;
+			}else if(attribute.name == "rgb"){
+				isUnfiltered = false;
+			}else{
+				isUnfiltered = true;
+				unfilteredAttributesSize += attribute.size;
+			}
+
+			unfilteredAttributeMask.push_back(isUnfiltered);
+		}
+
 		vector<Voxel> acceptedVoxels;
 		acceptedVoxels.reserve(numAccepted);
-		auto data = make_shared<Buffer>(attributes.bytes * numAccepted);
+		auto unfilteredData = make_shared<Buffer>(numAccepted * unfilteredAttributesSize);
+		memset(unfilteredData->data, 123, unfilteredData->size);
 
 		auto nodesize = node->max - node->min;
 		int numProcessed = 0;
@@ -317,7 +336,7 @@ struct SamplerWeighted {
 				exit(123);
 			}
 
-			{ // extract voxel
+			{ // extract voxel coordinates and filtered rgb data
 				int ix = voxelIndex % gridSize;
 				int iy = (voxelIndex % (gridSize * gridSize)) / gridSize;
 				int iz = voxelIndex / (gridSize * gridSize);
@@ -349,7 +368,7 @@ struct SamplerWeighted {
 				numProcessed++;
 			}
 
-			{ // extract full voxel data
+			{ // extract unfiltered attributes
 				uint32_t sampleID = grid_i[voxelIndex];
 				uint32_t childNodeIndex = (sampleID >> 24) & 0xff;
 				uint32_t sampleIndex = sampleID & 0x00ffffff;
@@ -360,13 +379,41 @@ struct SamplerWeighted {
 				}
 
 				auto child = node->children[childNodeIndex];
-				uint8_t* target = data->data_u8 + i * attributes.bytes;
-				uint32_t sourceOffset = sampleIndex * attributes.bytes;
 
 				if(child->points){
-					memcpy(target, child->points->data_u8 + sourceOffset, attributes.bytes);
-				}else if(child->voxeldata){
-					memcpy(target, child->voxeldata->data_u8 + sourceOffset, attributes.bytes);
+					// if child is a leaf node, we'll have to copy all attributes except XYZ and RGB from points
+					// memcpy(target, child->points->data_u8 + sourceOffset, attributes.bytes);
+
+					uint32_t sourceOffset = sampleIndex * attributes.bytes;
+					int byteOffset = 0;
+					int bytesCopied = 0;
+					for(int j = 0; j < attributes.list.size(); j++){
+						auto& attribute = attributes.list[j];
+						bool isUnfilteredAttribute = unfilteredAttributeMask[j];
+
+						if(isUnfilteredAttribute){
+							memcpy(
+								unfilteredData->data_u8 + i * unfilteredAttributesSize + bytesCopied, 
+								child->points->data_u8 + sampleIndex * attributes.bytes + byteOffset,
+								attribute.size
+							);
+
+							//uint16_t dbg = ((uint16_t*)(unfilteredData->data_u8 + i * unfilteredAttributesSize + bytesCopied))[0];
+							
+							bytesCopied += attribute.size;
+						}
+
+						byteOffset += attribute.size;
+					}
+
+				}else if(child->unfilteredVoxelData){
+					// if child is an inner node, copy all attributes from voxels (XYZ,RGB already removed)
+
+					memcpy(
+						unfilteredData->data_u8 + i * unfilteredAttributesSize, 
+						child->unfilteredVoxelData->data_u8 + sampleIndex * unfilteredAttributesSize, 
+						unfilteredAttributesSize
+					);
 				}else{
 					printfmt("error {}:{}", __FILE__, __LINE__);
 					exit(123);
@@ -383,9 +430,7 @@ struct SamplerWeighted {
 			}
 		}
 
-		
-
-		return {acceptedVoxels, data};
+		return {acceptedVoxels, unfilteredData};
 	}
 
 	// subsample a local octree from bottom up
@@ -422,10 +467,10 @@ struct SamplerWeighted {
 				node->numVoxels = 0;
 				
 				// PROTO: Create crap data for testing
-				node->byteSize = 16 * node->numPoints;
-				static uint64_t offset = 0;
-				node->byteOffset = offset;
-				offset += node->byteSize;
+				//node->byteSize = 16 * node->numPoints;
+				//static uint64_t offset = 0;
+				//node->byteOffset = offset;
+				//offset += node->byteSize;
 
 				onNodeCompleted(node);
 			}else{
@@ -466,10 +511,32 @@ struct SamplerWeighted {
 				);
 
 				auto tSort = now();
+
+				for(int i = 0; i < numAccepted; i++){
+					extracted.voxels[i].pointIndex = i;
+				}
+
 				sort(extracted.voxels.begin(), extracted.voxels.end(), [](Voxel& a, Voxel& b){
 					return a.mortonCode < b.mortonCode;
 				});
 				auto tDone = now();
+
+				// TODO: Probably need to sort "unfilteredVoxelData" 
+				shared_ptr<Buffer> extractedUnfilteredSorted = nullptr;
+				if(extracted.data){
+
+					extractedUnfilteredSorted = make_shared<Buffer>(extracted.data->size);
+					int unfilteredBytesPerPoint = extracted.data->size / numAccepted;
+
+					for(int i = 0; i < numAccepted; i++){
+						auto voxel = extracted.voxels[i];
+
+						memcpy(
+							extractedUnfilteredSorted->data_u8 + i * unfilteredBytesPerPoint,
+							extracted.data->data_u8 + voxel.pointIndex * unfilteredBytesPerPoint,
+							unfilteredBytesPerPoint);
+					}
+				}
 
 				// printfmt("sampled {:6} central: {:2.1f} ms, adjacent: {:2.1f} ms, extract: {:2.1f} ms, sort: {:2.1f} ms \n", 
 				// 	node->name,
@@ -480,15 +547,17 @@ struct SamplerWeighted {
 				// );
 
 				node->voxels = extracted.voxels;
-				node->voxeldata = extracted.data;
+				node->unfilteredVoxelData = extractedUnfilteredSorted;
 				node->numVoxels = extracted.voxels.size();
 				node->numPoints = 0;
 
-				// PROTO: Create crap data for testing
-				node->byteSize = 16 * node->numVoxels;
-				static uint64_t byteOffset = 0;
-				node->byteOffset = byteOffset ;
-				byteOffset += node->byteSize;
+				if(node->unfilteredVoxelData)
+				{ // DEBUG
+					vector<uint16_t> dbg(10, 0);
+					memcpy(dbg.data(), node->unfilteredVoxelData->data, 20);
+
+					printfmt("sample {}: {}, {}, {}, {}, {} \n", node->name, dbg[0], dbg[1], dbg[2], dbg[3], dbg[4]);
+				}
 
 				onNodeCompleted(node);
 			}
