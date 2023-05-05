@@ -285,10 +285,6 @@ struct OctreeSerializer{
 
 	static shared_ptr<Buffer> toUnfilteredBuffer(Node* node, Attributes* attributes){
 
-		// return node->unfilteredVoxelData;
-
-		// convert from array-of-structs to struct-of-array
-
 		int unfilteredAttributesSize = 0;
 		vector<bool> unfilteredAttributeMask;
 		vector<int> unfilteredOffsets;

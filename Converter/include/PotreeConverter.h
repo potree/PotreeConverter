@@ -95,7 +95,8 @@ inline vector<Attribute> parseExtraAttributes(LasHeader& header) {
 				uint8_t type = read<uint8_t>(extraData, offset + 2);
 				uint8_t options = read<uint8_t>(extraData, offset + 3);
 				
-				char chrName[32];
+				char chrName[33];
+				chrName[32] = 0;
 				memcpy(chrName, extraData.data() + offset + 4, 32);
 				string name(chrName);
 
@@ -108,7 +109,8 @@ inline vector<Attribute> parseExtraAttributes(LasHeader& header) {
 					memcpy(&aOffset, extraData.data() + offset + 136, 24);
 				}
 
-				char chrDescription[32];
+				char chrDescription[33];
+				chrDescription[32] = 0;
 				memcpy(chrDescription, extraData.data() + offset + 160, 32);
 				string description(chrDescription);
 
