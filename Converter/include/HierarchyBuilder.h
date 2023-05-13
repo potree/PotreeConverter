@@ -309,7 +309,7 @@ struct HierarchyBuilder{
 				}else{
 					byteSize = std::max(
 						node->byteSizePoints, 
-						node->byteSizePosition + node->byteSizeFiltered + node->byteSizeUnfiltered);
+						node->byteSizePosition + node->byteSizeFiltered);
 				}
 
 				buffer->set<uint8_t >(type                     , 38 * recordsProcessed +  0);

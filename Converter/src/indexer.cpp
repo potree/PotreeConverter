@@ -631,7 +631,7 @@ Hierarchy Indexer::createHierarchy(string path) {
 					byteSizePosition = node->sPositionSize;
 					byteSizeFiltered = node->sFilteredSize;
 					byteSizeUnfiltered = node->sUnfilteredSize;
-					byteSize = byteSizePosition + byteSizeFiltered + byteSizeUnfiltered;
+					byteSize = byteSizePosition + byteSizeFiltered;
 				}
 			}
 
@@ -1406,13 +1406,13 @@ void Writer::writeAndUnload(Node* node) {
 	// 	sourceBuffer = node->points;
 	// }
 
-	if(node->unfilteredVoxelData)
-	{ // DEBUG
-		vector<uint16_t> dbg(10, 0);
-		memcpy(dbg.data(), node->unfilteredVoxelData->data, 20);
+	// if(node->unfilteredVoxelData)
+	// { // DEBUG
+	// 	vector<uint16_t> dbg(10, 0);
+	// 	memcpy(dbg.data(), node->unfilteredVoxelData->data, 20);
 
-		printfmt("writeAndUnload - start {}: {}, {}, {}, {}, {} \n", node->name, dbg[0], dbg[1], dbg[2], dbg[3], dbg[4]);
-	}
+	// 	printfmt("writeAndUnload - start {}: {}, {}, {}, {}, {} \n", node->name, dbg[0], dbg[1], dbg[2], dbg[3], dbg[4]);
+	// }
 	
 	// if node->level is odd, store in cache
 	// if node->level is even, write node and its cached children
@@ -1769,13 +1769,13 @@ void doIndexing(string targetDir, State& state, Options& options) {
 
 		sampler->sample(chunkRoot.get(), attributes, indexer.spacing, onNodeCompleted, onNodeDiscarded);
 
-		if(chunkRoot->unfilteredVoxelData)
-		{ // DEBUG
-			vector<uint16_t> dbg(10, 0);
-			memcpy(dbg.data(), chunkRoot->unfilteredVoxelData->data, 20);
+		// if(chunkRoot->unfilteredVoxelData)
+		// { // DEBUG
+		// 	vector<uint16_t> dbg(10, 0);
+		// 	memcpy(dbg.data(), chunkRoot->unfilteredVoxelData->data, 20);
 
-			printfmt("doIndexing - sample {}: {}, {}, {}, {}, {} \n", chunkRoot->name, dbg[0], dbg[1], dbg[2], dbg[3], dbg[4]);
-		}
+		// 	printfmt("doIndexing - sample {}: {}, {}, {}, {}, {} \n", chunkRoot->name, dbg[0], dbg[1], dbg[2], dbg[3], dbg[4]);
+		// }
 
 		// detach anything below the chunk root. Will be reloaded from
 		// temporarily flushed hierarchy during creation of the hierarchy file

@@ -551,13 +551,13 @@ struct SamplerWeighted {
 				node->numVoxels = extracted.voxels.size();
 				node->numPoints = 0;
 
-				if(node->unfilteredVoxelData)
-				{ // DEBUG
-					vector<uint16_t> dbg(10, 0);
-					memcpy(dbg.data(), node->unfilteredVoxelData->data, 20);
+				// if(node->unfilteredVoxelData)
+				// { // DEBUG
+				// 	vector<uint16_t> dbg(10, 0);
+				// 	memcpy(dbg.data(), node->unfilteredVoxelData->data, 20);
 
-					printfmt("sample {}: {}, {}, {}, {}, {} \n", node->name, dbg[0], dbg[1], dbg[2], dbg[3], dbg[4]);
-				}
+				// 	printfmt("sample {}: {}, {}, {}, {}, {} \n", node->name, dbg[0], dbg[1], dbg[2], dbg[3], dbg[4]);
+				// }
 
 				onNodeCompleted(node);
 			}

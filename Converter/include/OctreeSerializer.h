@@ -338,7 +338,15 @@ struct OctreeSerializer{
 
 	static shared_ptr<Buffer> toPointsBuffer(Node* node, Attributes* attributes){
 
-		 return node->points;
+		// auto compressed = OctreeSerializer::compress(node->points);
+
+		// int compressionRate = (100ull * compressed->size) / node->points->size;
+
+		// printfmt("original: {}, compressed: {}, compression-rate: {}% \n",
+		// 	node->points->size, compressed->size, compressionRate
+		// );
+
+		return node->points;
 	}
 
 	// Serializes <node->children> relative to voxel coordinates in <node>
