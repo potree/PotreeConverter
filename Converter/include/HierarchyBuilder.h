@@ -304,6 +304,10 @@ struct HierarchyBuilder{
 				uint64_t unfilteredByteOffset = node->unfilteredByteOffset;
 				uint64_t byteSize = 0;
 
+				if(node->name == "r442401"){
+					int a = 10;
+				}
+
 				if(isProxyNode){
 					byteSize = node->proxyByteSize;
 				}else{
@@ -371,7 +375,7 @@ struct HierarchyBuilder{
 
 				proxyNode->type = TYPE::PROXY;
 				proxyNode->proxyByteOffset = bytesWritten;
-				proxyNode->proxyByteSize = 30 * batch->chunkMap[batch->name]->nodes.size();
+				proxyNode->proxyByteSize = 38 * batch->chunkMap[batch->name]->nodes.size();
 				
 			}else{
 				// if there is only one node in that batch,
