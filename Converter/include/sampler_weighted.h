@@ -546,6 +546,10 @@ struct SamplerWeighted {
 				// 	(tDone - tSort) * 1000.0
 				// );
 
+				if(extracted.voxels.size() == 0){
+					int a = 10;
+				}
+
 				node->voxels = extracted.voxels;
 				node->unfilteredVoxelData = extractedUnfilteredSorted;
 				node->numVoxels = extracted.voxels.size();

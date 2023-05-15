@@ -24,6 +24,8 @@ namespace HB{
 
 using namespace std;
 
+constexpr int HIERARCHY_NODE_BYTESIZE = 38;
+
 struct HierarchyBuilder{
 
 	// this structure, but guaranteed to be packed
@@ -254,14 +256,14 @@ struct HierarchyBuilder{
 
 					proxyNode->type = TYPE::PROXY;
 					proxyNode->proxyByteOffset = chunk->byteOffset;
-					proxyNode->proxyByteSize = 38 * chunk->nodes.size();
+					proxyNode->proxyByteSize = HIERARCHY_NODE_BYTESIZE * chunk->nodes.size();
 				}else{
 					cout << "ERROR: didn't find chunk " << chunk->name << endl;
 					exit(123);
 				}
 			}
 
-			byteOffset += 38 * chunk->nodes.size();
+			byteOffset += HIERARCHY_NODE_BYTESIZE * chunk->nodes.size();
 		}
 
 		batch->byteSize = byteOffset;
@@ -275,7 +277,7 @@ struct HierarchyBuilder{
 			numRecords += chunk->nodes.size();  // all nodes in chunk except chunk root
 		}
 
-		auto buffer = make_shared<Buffer>(38 * numRecords);
+		auto buffer = make_shared<Buffer>(HIERARCHY_NODE_BYTESIZE * numRecords);
 
 		int recordsProcessed = 0;
 		for(auto chunk : batch->chunks){
@@ -316,15 +318,15 @@ struct HierarchyBuilder{
 						node->byteSizePosition + node->byteSizeFiltered);
 				}
 
-				buffer->set<uint8_t >(type                     , 38 * recordsProcessed +  0);
-				buffer->set<uint8_t >(node->childMask          , 38 * recordsProcessed +  1);
-				buffer->set<uint32_t>(node->numSamples         , 38 * recordsProcessed +  2);
-				buffer->set<uint64_t>(byteOffset               , 38 * recordsProcessed +  6);
-				buffer->set<uint64_t>(unfilteredByteOffset     , 38 * recordsProcessed + 14);
-				buffer->set<uint32_t>(byteSize                 , 38 * recordsProcessed + 22);
-				buffer->set<uint32_t>(node->byteSizePosition   , 38 * recordsProcessed + 26);
-				buffer->set<uint32_t>(node->byteSizeFiltered   , 38 * recordsProcessed + 30);
-				buffer->set<uint32_t>(node->byteSizeUnfiltered , 38 * recordsProcessed + 34);
+				buffer->set<uint8_t >(type                     , HIERARCHY_NODE_BYTESIZE * recordsProcessed +  0);
+				buffer->set<uint8_t >(node->childMask          , HIERARCHY_NODE_BYTESIZE * recordsProcessed +  1);
+				buffer->set<uint32_t>(node->numSamples         , HIERARCHY_NODE_BYTESIZE * recordsProcessed +  2);
+				buffer->set<uint64_t>(byteOffset               , HIERARCHY_NODE_BYTESIZE * recordsProcessed +  6);
+				buffer->set<uint64_t>(unfilteredByteOffset     , HIERARCHY_NODE_BYTESIZE * recordsProcessed + 14);
+				buffer->set<uint32_t>(byteSize                 , HIERARCHY_NODE_BYTESIZE * recordsProcessed + 22);
+				buffer->set<uint32_t>(node->byteSizePosition   , HIERARCHY_NODE_BYTESIZE * recordsProcessed + 26);
+				buffer->set<uint32_t>(node->byteSizeFiltered   , HIERARCHY_NODE_BYTESIZE * recordsProcessed + 30);
+				buffer->set<uint32_t>(node->byteSizeUnfiltered , HIERARCHY_NODE_BYTESIZE * recordsProcessed + 34);
 
 				recordsProcessed++;
 				i++;
@@ -346,7 +348,7 @@ struct HierarchyBuilder{
 		this->batch_root = batch_root;
 
 		{ // reserve the first <x> bytes in the file for the root chunk
-			Buffer tmp(22 * batch_root->nodes.size());
+			Buffer tmp(HIERARCHY_NODE_BYTESIZE * batch_root->nodes.size());
 			memset(tmp.data, 0, tmp.size);
 			fout.write(tmp.data_char, tmp.size);
 			bytesWritten = tmp.size;
@@ -375,7 +377,7 @@ struct HierarchyBuilder{
 
 				proxyNode->type = TYPE::PROXY;
 				proxyNode->proxyByteOffset = bytesWritten;
-				proxyNode->proxyByteSize = 38 * batch->chunkMap[batch->name]->nodes.size();
+				proxyNode->proxyByteSize = HIERARCHY_NODE_BYTESIZE * batch->chunkMap[batch->name]->nodes.size();
 				
 			}else{
 				// if there is only one node in that batch,
