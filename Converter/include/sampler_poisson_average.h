@@ -11,7 +11,10 @@
 struct SamplerPoissonAverage : public Sampler {
 
 	// subsample a local octree from bottom up
-	void sample(shared_ptr<Node> node, Attributes attributes, double baseSpacing, function<void(Node*)> onNodeCompleted) {
+	void sample(Node* node, Attributes attributes, double baseSpacing, 
+		function<void(Node*)> onNodeCompleted,
+		function<void(Node*)> onNodeDiscarded
+	) {
 
 		struct Point {
 			double x;
@@ -44,7 +47,7 @@ struct SamplerPoissonAverage : public Sampler {
 		Vector3 scale = attributes.posScale;
 		Vector3 offset = attributes.posOffset;
 
-		traversePost(node.get(), [bytesPerPoint, baseSpacing, scale, offset, &onNodeCompleted, &attributes](Node* node) {
+		traversePost(node, [bytesPerPoint, baseSpacing, scale, offset, &onNodeCompleted, &attributes](Node* node) {
 			node->sampled = true;
 
 			int64_t numPoints = node->numPoints;

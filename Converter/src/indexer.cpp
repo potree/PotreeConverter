@@ -10,10 +10,13 @@
 #include "PotreeConverter.h"
 #include "DbgWriter.h"
 #include "brotli/encode.h"
+#include "HierarchyBuilder.h"
 
 using std::unique_lock;
 
 namespace indexer{
+
+	constexpr int hierarchyStepSize = 4;
 
 	struct Point {
 		double x;
@@ -78,20 +81,45 @@ namespace indexer{
 
 			auto jsMin = jsAttribute["min"];
 			auto jsMax = jsAttribute["max"];
+			auto jsScale = jsAttribute["scale"];
+			auto jsOffset = jsAttribute["offset"];
+
+			// int64_t mask = 0;
+			// if(jsAttribute.contains("mask")){
+			// 	mask = jsAttribute["mask"];
+			// }
+
+			vector<int64_t> histogram(256, 0);
+			if(jsAttribute.contains("histogram")){
+				auto jsHistogram = jsAttribute["histogram"];
+
+				for(int i = 0; i < jsHistogram.size(); i++){
+					histogram[i] = jsHistogram[i];
+				}
+			}
 
 			Attribute attribute(name, size, numElements, elementSize, type);
+			attribute.description = description;
+			// attribute.mask = mask;
+			attribute.histogram = histogram;
 
 			if (numElements >= 1) {
 				attribute.min.x = jsMin[0] == nullptr ? Infinity : double(jsMin[0]);
 				attribute.max.x = jsMax[0] == nullptr ? Infinity : double(jsMax[0]);
+				attribute.scale.x = jsScale[0] == nullptr ? 1.0 : double(jsScale[0]);
+				attribute.offset.x = jsOffset[0] == nullptr ? 0.0 : double(jsOffset[0]);
 			}
 			if (numElements >= 2) {
 				attribute.min.y = jsMin[1] == nullptr ? Infinity : double(jsMin[1]);
 				attribute.max.y = jsMax[1] == nullptr ? Infinity : double(jsMax[1]);
+				attribute.scale.y = jsScale[1] == nullptr ? 1.0 : double(jsScale[1]);
+				attribute.offset.y = jsOffset[1] == nullptr ? 0.0 : double(jsOffset[1]);
 			}
 			if (numElements >= 3) {
 				attribute.min.z = jsMin[2] == nullptr ? Infinity : double(jsMin[2]);
 				attribute.max.z = jsMax[2] == nullptr ? Infinity : double(jsMax[2]);
+				attribute.scale.z = jsScale[2] == nullptr ? 1.0 : double(jsScale[2]);
+				attribute.offset.z = jsOffset[2] == nullptr ? 0.0 : double(jsOffset[2]);
 			}
 
 			attributeList.push_back(attribute);
@@ -169,6 +197,87 @@ namespace indexer{
 		flushedChunkRoots.push_back(fcr);
 
 		offset += size;
+	}
+
+	vector<CRNode> Indexer::processChunkRoots(){
+
+		unordered_map<string, shared_ptr<CRNode>> nodesMap;
+		vector<shared_ptr<CRNode>> nodesList;
+
+		// create/copy nodes
+		this->root->traverse([&nodesMap, &nodesList](Node* node){
+			auto crnode = make_shared<CRNode>();
+			crnode->name = node->name;
+			crnode->node = node;
+			crnode->children.resize(node->children.size());
+
+			nodesList.push_back(crnode);
+			nodesMap[crnode->name] = crnode;
+		});
+
+		// establish hierarchy
+		for(auto crnode : nodesList){
+
+			string parentName = crnode->name.substr(0, crnode->name.size() - 1);
+
+			if(parentName != ""){
+				auto parent = nodesMap[parentName];
+				int index = crnode->name.at(crnode->name.size() - 1) - '0';
+
+				parent->children[index] = crnode;
+			}
+		}
+
+		// mark/flag/insert flushed chunk roots
+		for(auto fcr : flushedChunkRoots){
+			auto node = nodesMap[fcr.node->name];
+			
+			node->fcrs.push_back(fcr);
+			node->numPoints += fcr.node->numPoints;
+		}
+
+		// recursively merge leaves if sum(points) < threshold
+		auto cr_root = nodesMap["r"];
+		static int64_t threshold = 5'000'000;
+
+		cr_root->traversePost([](CRNode* node){
+			
+			if(node->isLeaf()){
+
+			}else{
+
+				int numPoints = 0;
+				for(auto child : node->children){
+					if(!child) continue;
+
+					numPoints += child->numPoints;
+				}
+				node->numPoints = numPoints;
+
+				if(node->numPoints < threshold){
+					// merge children into this node
+					for(auto child : node->children){
+						if(!child) continue;
+
+						node->fcrs.insert(node->fcrs.end(), child->fcrs.begin(), child->fcrs.end());
+					}
+
+					node->children.clear();
+				}
+			}
+		});
+
+		vector<CRNode> tasks;
+		cr_root->traverse([&tasks](CRNode* node){
+			// cout << node->name << ", #points: " << node->numPoints << ", #fcrs: " << node->fcrs.size() << endl;
+
+			if(node->fcrs.size() > 0){
+				CRNode crnode = *node;
+				tasks.push_back(crnode);
+			}
+		});
+
+		return tasks;
 	}
 
 	void Indexer::reloadChunkRoots() {
@@ -285,9 +394,24 @@ string Indexer::createMetadata(Options options, State& state, Hierarchy hierarch
 		ss << "]";
 
 		return ss.str();
+	};
 
+	auto vecI64ToJson = [](vector<int64_t> &values) {
 
-		//return "[" + d(value.x) + ", " + d(value.y) + ", " + d(value.z) + "]";
+		stringstream ss;
+		ss << "[";
+
+		for (int i = 0; i < values.size(); i++) {
+
+			ss << values[i];
+
+			if (i < values.size() - 1) {
+				ss << ", ";
+			}
+		}
+		ss << "]";
+
+		return ss.str();
 	};
 
 	auto octreeDepth = this->octreeDepth;
@@ -315,7 +439,7 @@ string Indexer::createMetadata(Options options, State& state, Hierarchy hierarch
 	};
 
 	Attributes& attributes = this->attributes;
-	auto getAttributesJsonString = [&attributes, t, s, toJson, vecToJson]() {
+	auto getAttributesJsonString = [&attributes, t, s, toJson, vecToJson, vecI64ToJson]() {
 
 		stringstream ss;
 		ss << "[" << endl;
@@ -334,15 +458,32 @@ string Indexer::createMetadata(Options options, State& state, Hierarchy hierarch
 			ss << t(3) << s("elementSize") << ": " << attribute.elementSize << "," << endl;
 			ss << t(3) << s("type") << ": " << s(getAttributeTypename(attribute.type)) << "," << endl;
 
+			bool emptyHistogram = true;
+			for(int i = 0; i < attribute.histogram.size(); i++){
+				if(attribute.histogram[i] != 0){
+					emptyHistogram = false;
+				}
+			}
+
+			 if(attribute.size == 1 && !emptyHistogram){
+			 	ss << t(3) << s("histogram") << ": " << vecI64ToJson(attribute.histogram) << ", " << endl;
+			 }
+
 			if (attribute.numElements == 1) {
 				ss << t(3) << s("min") << ": " << vecToJson(vector<double>{ attribute.min.x }) << "," << endl;
-				ss << t(3) << s("max") << ": " << vecToJson(vector<double>{ attribute.max.x }) << endl;
+				ss << t(3) << s("max") << ": " << vecToJson(vector<double>{ attribute.max.x }) << ","<< endl;
+				ss << t(3) << s("scale") << ": " << vecToJson(vector<double>{ attribute.scale.x }) << ","<< endl;
+				ss << t(3) << s("offset") << ": " << vecToJson(vector<double>{ attribute.offset.x }) << endl;
 			} else if (attribute.numElements == 2) {
 				ss << t(3) << s("min") << ": " << vecToJson(vector<double>{ attribute.min.x, attribute.min.y }) << "," << endl;
-				ss << t(3) << s("max") << ": " << vecToJson(vector<double>{ attribute.max.x, attribute.max.y }) << endl;
+				ss << t(3) << s("max") << ": " << vecToJson(vector<double>{ attribute.max.x, attribute.max.y }) << ","<< endl;
+				ss << t(3) << s("scale") << ": " << vecToJson(vector<double>{ attribute.scale.x, attribute.scale.y }) << ","<< endl;
+				ss << t(3) << s("offset") << ": " << vecToJson(vector<double>{ attribute.offset.x, attribute.offset.y }) << endl;
 			} else if (attribute.numElements == 3) {
 				ss << t(3) << s("min") << ": " << vecToJson(vector<double>{ attribute.min.x, attribute.min.y, attribute.min.z }) << "," << endl;
-				ss << t(3) << s("max") << ": " << vecToJson(vector<double>{ attribute.max.x, attribute.max.y, attribute.max.z }) << endl;
+				ss << t(3) << s("max") << ": " << vecToJson(vector<double>{ attribute.max.x, attribute.max.y, attribute.max.z }) << ","<< endl;
+				ss << t(3) << s("scale") << ": " << vecToJson(vector<double>{ attribute.scale.x, attribute.scale.y, attribute.scale.z }) << ","<< endl;
+				ss << t(3) << s("offset") << ": " << vecToJson(vector<double>{ attribute.offset.x, attribute.offset.y, attribute.offset.z }) << endl;
 			}
 
 			if (i < attributes.list.size() - 1) {
@@ -366,7 +507,7 @@ string Indexer::createMetadata(Options options, State& state, Hierarchy hierarch
 	ss << t(1) << s("name") << ": " << s(options.name) << "," << endl;
 	ss << t(1) << s("description") << ": " << s("") << "," << endl;
 	ss << t(1) << s("points") << ": " << state.pointsTotal << "," << endl;
-	ss << t(1) << s("projection") << ": " << s("") << "," << endl;
+	ss << t(1) << s("projection") << ": " << s(options.projection) << "," << endl;
 	ss << t(1) << s("hierarchy") << ": " << getHierarchyJsonString() << "," << endl;
 	ss << t(1) << s("offset") << ": " << toJson(attributes.posOffset) << "," << endl;
 	ss << t(1) << s("scale") << ": " << toJson(attributes.posScale) << "," << endl;
@@ -442,7 +583,6 @@ vector<HierarchyChunk> Indexer::createHierarchyChunks(Node* root, int hierarchyS
 
 Hierarchy Indexer::createHierarchy(string path) {
 
-	constexpr int hierarchyStepSize = 4;
 	// type + childMask + numPoints + offset + size
 	constexpr int bytesPerNode = 1 + 1 + 4 + 8 + 8;
 
@@ -451,6 +591,20 @@ Hierarchy Indexer::createHierarchy(string path) {
 	};
 
 	auto chunks = createHierarchyChunks(root.get(), hierarchyStepSize);
+
+	// string dbgChunksPath = path + "/../dbg_chunks";
+	// fs::create_directories(dbgChunksPath);
+	// for(auto& chunk : chunks){
+
+	// 	stringstream ss;
+
+	// 	for(auto node : chunk.nodes){
+	// 		ss << node->name << endl;
+	// 	}
+
+
+	// 	writeFile(dbgChunksPath + "/" + chunk.name + ".txt", ss.str());
+	// }
 
 	unordered_map<string, int> chunkPointers;
 	vector<int64_t> chunkByteOffsets(chunks.size(), 0);
@@ -890,7 +1044,7 @@ void buildHierarchy(Indexer* indexer, Node* node, shared_ptr<Buffer> points, int
 				vector<int64_t> distinct;
 				unordered_map<string, int> handled;
 
-				auto contains = [](auto map, auto key) {
+				auto contains = [](auto const & map, auto const & key) {
 					return map.find(key) != map.end();
 				};
 
@@ -1297,6 +1451,9 @@ int64_t Writer::backlogSizeMB() {
 }
 
 void Writer::writeAndUnload(Node* node) {
+
+	if(node->numPoints == 0) return;
+
 	auto attributes = indexer->attributes;
 	string encoding = indexer->options.encoding;
 
@@ -1445,6 +1602,13 @@ void doIndexing(string targetDir, State& state, Options& options, Sampler& sampl
 	indexer.root = make_shared<Node>("r", chunks->min, chunks->max);
 	indexer.spacing = (chunks->max - chunks->min).x / 128.0;
 
+	auto onNodeCompleted = [&indexer](Node* node) {
+		indexer.writer->writeAndUnload(node);
+		indexer.hierarchyFlusher->write(node, hierarchyStepSize);
+	};
+
+	auto onNodeDiscarded = [&indexer](Node* node) {};
+
 	struct Task {
 		shared_ptr<Chunk> chunk;
 
@@ -1471,7 +1635,8 @@ void doIndexing(string targetDir, State& state, Options& options, Sampler& sampl
 	atomic_int64_t activeThreads = 0;
 	mutex mtx_nodes;
 	vector<shared_ptr<Node>> nodes;
-	TaskPool<Task> pool(numSampleThreads(), [&writeAndUnload, &state, &options, &activeThreads, tStart, &lastReport, &totalPoints, totalBytes, &pointsProcessed, chunks, &indexer, &nodes, &mtx_nodes, &sampler](auto task) {
+	int numThreads = numSampleThreads() + 4;
+	TaskPool<Task> pool(numThreads, [&onNodeCompleted, &onNodeDiscarded, &writeAndUnload, &state, &options, &activeThreads, tStart, &lastReport, &totalPoints, totalBytes, &pointsProcessed, chunks, &indexer, &nodes, &mtx_nodes, &sampler](auto task) {
 		
 		auto chunk = task->chunk;
 		auto chunkRoot = make_shared<Node>(chunk->id, chunk->min, chunk->max);
@@ -1503,11 +1668,11 @@ void doIndexing(string targetDir, State& state, Options& options, Sampler& sampl
 
 		buildHierarchy(&indexer, chunkRoot.get(), pointBuffer, numPoints);
 
-		auto onNodeCompleted = [&indexer](Node* node) {
-			indexer.writer->writeAndUnload(node);
-		};
+		sampler.sample(chunkRoot.get(), attributes, indexer.spacing, onNodeCompleted, onNodeDiscarded);
 
-		sampler.sample(chunkRoot, attributes, indexer.spacing, onNodeCompleted);
+		// detach anything below the chunk root. Will be reloaded from
+		// temporarily flushed hierarchy during creation of the hierarchy file
+		chunkRoot->children.clear();
 
 		indexer.flushChunkRoot(chunkRoot);
 
@@ -1544,22 +1709,40 @@ void doIndexing(string targetDir, State& state, Options& options, Sampler& sampl
 	pool.waitTillEmpty();
 	pool.close();
 
-	indexer.reloadChunkRoots();
+	indexer.fChunkRoots.close();
 
+	{ // process chunk roots in batches
+		
+		string tmpChunkRootsPath = targetDir + "/tmpChunkRoots.bin";
+		auto tasks = indexer.processChunkRoots();
+
+		for(auto& task : tasks){
+
+			for(auto& fcr : task.fcrs){
+				auto buffer = make_shared<Buffer>(fcr.size);
+				readBinaryFile(tmpChunkRootsPath, fcr.offset, fcr.size, buffer->data);
+
+				fcr.node->points = buffer;
+			}
+
+			sampler.sample(task.node, attributes, indexer.spacing, onNodeCompleted, onNodeDiscarded);
+
+			task.node->children.clear();
+		}
+	}
+
+
+	// sample up to root node
 	if (chunks->list.size() == 1) {
 		auto node = nodes[0];
 
 		indexer.root = node;
-	} else {
-
-		auto onNodeCompleted = [&indexer](Node* node) {
-			indexer.writer->writeAndUnload(node);
-		};
-
-		sampler.sample(indexer.root, attributes, indexer.spacing, onNodeCompleted);
+	} else if (!indexer.root->sampled){
+		sampler.sample(indexer.root.get(), attributes, indexer.spacing, onNodeCompleted, onNodeDiscarded);
 	}
-	
-	indexer.writer->writeAndUnload(indexer.root.get());
+
+	// root is automatically finished after subsampling all descendants
+	onNodeCompleted(indexer.root.get());
 
 	printElapsedTime("sampling", tStart);
 
@@ -1567,9 +1750,21 @@ void doIndexing(string targetDir, State& state, Options& options, Sampler& sampl
 
 	printElapsedTime("flushing", tStart);
 
-	string hierarchyPath = targetDir + "/hierarchy.bin";
-	Hierarchy hierarchy = indexer.createHierarchy(hierarchyPath);
-	writeBinaryFile(hierarchyPath, hierarchy.buffer);
+
+	//string hierarchyPath = targetDir + "/hierarchy.bin";
+	//Hierarchy hierarchy = indexer.createHierarchy(hierarchyPath);
+	//writeBinaryFile(hierarchyPath, hierarchy.buffer);
+
+	indexer.hierarchyFlusher->flush(hierarchyStepSize);
+
+	string hierarchyDir = indexer.targetDir + "/.hierarchyChunks";
+	HierarchyBuilder builder(hierarchyDir, hierarchyStepSize);
+	builder.build();
+
+	Hierarchy hierarchy = {
+		.stepSize = hierarchyStepSize,
+		.firstChunkSize = builder.batch_root->byteSize,
+	};
 
 	string metadataPath = targetDir + "/metadata.json";
 	string metadata = indexer.createMetadata(options, state, hierarchy);

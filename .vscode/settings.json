@@ -1,6 +1,8 @@
 {
 	"workbench.editor.enablePreview": false,
 	"files.associations": {
+		"*.cs": "cpp",
+		"*.wgsl": "cpp",
 		"*.vs": "cpp",
 		"*.fs": "cpp",
 		"filesystem": "cpp",
@@ -79,18 +81,26 @@
 		"condition_variable": "cpp",
 		"regex": "cpp",
 		"stack": "cpp",
-		"variant": "cpp"
+		"variant": "cpp",
+		"bit": "cpp",
+		"charconv": "cpp",
+		"compare": "cpp",
+		"format": "cpp",
+		"optional": "cpp",
+		"stop_token": "cpp"
 	},
 	"files.trimTrailingWhitespace": false,
 	"editor.fontSize": 28,
-	"editor.autoIndent": false,
+	"editor.autoIndent": "advanced",
 	"editor.detectIndentation": false,
 	"editor.insertSpaces": false,
 	"editor.minimap.enabled": false,
-	"editor.autoClosingBrackets": false,
+	"editor.autoClosingBrackets": "never",
 	"editor.formatOnType": false,
 	"editor.acceptSuggestionOnEnter": "off",
 	"editor.acceptSuggestionOnCommitCharacter": false,
 	"editor.mouseWheelZoom": true,
 	"editor.renderWhitespace": "all",
+	"editor.autoClosingQuotes": "never",
+	"editor.autoSurround": "never",
 }

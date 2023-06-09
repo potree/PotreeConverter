@@ -128,7 +128,7 @@ namespace chunker_countsort_laszip {
 		vector<int> grid;
 	};
 
-	vector<std::atomic_int32_t> countPointsInCells(vector<Source> sources, Vector3 min, Vector3 max, int64_t gridSize, State& state, Attributes& outputAttributes) {
+	vector<std::atomic_int32_t> countPointsInCells(vector<Source> sources, Vector3 min, Vector3 max, int64_t gridSize, State& state, Attributes& outputAttributes, Monitor* monitor) {
 
 		cout << endl;
 		cout << "=======================================" << endl;
@@ -155,7 +155,7 @@ namespace chunker_countsort_laszip {
 			Vector3 max;
 		};
 
-		auto processor = [gridSize, &grid, tStart, &state, &outputAttributes](shared_ptr<Task> task){
+		auto processor = [gridSize, &grid, tStart, &state, &outputAttributes, monitor](shared_ptr<Task> task){
 			string path = task->path;
 			int64_t start = task->firstByte;
 			int64_t numBytes = task->numBytes;
@@ -165,6 +165,17 @@ namespace chunker_countsort_laszip {
 			//Vector3 offset = task->offset;
 			Vector3 min = task->min;
 			Vector3 max = task->max;
+
+			stringstream ss;
+			ss << "counting " << fs::path(task->path).filename().string() 
+				<< ", first point: " << formatNumber(task->firstPoint)
+				<< ", num points: " << formatNumber(task->numPoints);
+			// cout << ss.str();
+			// monitor->print("counter message", ss.str());
+
+			logger::INFO(ss.str());
+			
+			
 
 			thread_local unique_ptr<void, void(*)(void*)> buffer(nullptr, free);
 			thread_local int64_t bufferSize = -1;
@@ -461,10 +472,19 @@ namespace chunker_countsort_laszip {
 			int offsetClassification = outputAttributes.getOffset("classification");
 			Attribute* attributeClassification = outputAttributes.get("classification");
 			auto classification = [data, point, header, offsetClassification, attributeClassification](int64_t offset) {
-				data[offset + offsetClassification] = point->classification;
+				
+				uint8_t value = 0;
+				if (point->extended_classification > 31){
+					value = point->extended_classification;
+				}else{
+					value = point->classification;
+				}
 
-				attributeClassification->min.x = std::min(attributeClassification->min.x, double(point->classification));
-				attributeClassification->max.x = std::max(attributeClassification->max.x, double(point->classification));
+				data[offset + offsetClassification] = value;
+				attributeClassification->histogram[value]++;
+
+				attributeClassification->min.x = std::min(attributeClassification->min.x, double(value));
+				attributeClassification->max.x = std::max(attributeClassification->max.x, double(value));
 			};
 
 			int offsetSourceId = outputAttributes.getOffset("point source id");
@@ -626,10 +646,10 @@ namespace chunker_countsort_laszip {
 					};
 
 					handlers.push_back(handleAttribute);
+					attributeOffset += attribute->size;
 				}
 
-				sourceOffset += attribute->size;
-				attributeOffset += attribute->size;
+				sourceOffset += inputAttribute.size;
 			}
 
 		}
@@ -639,7 +659,7 @@ namespace chunker_countsort_laszip {
 
 	}
 
-	void distributePoints(vector<Source> sources, Vector3 min, Vector3 max, string targetDir, NodeLUT& lut, State& state, Attributes& outputAttributes) {
+	void distributePoints(vector<Source> sources, Vector3 min, Vector3 max, string targetDir, NodeLUT& lut, State& state, Attributes& outputAttributes, Monitor* monitor) {
 
 		cout << endl;
 		cout << "=======================================" << endl;
@@ -719,6 +739,15 @@ namespace chunker_countsort_laszip {
 			// per-thread copy of outputAttributes to compute min/max in a thread-safe way
 			// will be merged to global outputAttributes instance at the end of this function
 			Attributes outputAttributesCopy = outputAttributes;
+			
+			for(auto& attribute: outputAttributesCopy.list){
+				if(attribute.name == "classification"){
+					for(int i = 0; i < attribute.histogram.size(); i++){
+						attribute.histogram[i] = 0;
+					}
+				}
+			}
+
 			{
 				laszip_POINTER laszip_reader;
 				laszip_header* header;
@@ -738,7 +767,7 @@ namespace chunker_countsort_laszip {
 				auto attributeHandlers = createAttributeHandlers(header, data, point, inputAttributes, outputAttributesCopy);
 
 				double coordinates[3];
-				auto aPosition = outputAttributes.get("position");
+				auto aPosition = outputAttributesCopy.get("position");
 
 				for (int64_t i = 0; i < batchSize; i++) {
 					laszip_read_point(laszip_reader);
@@ -883,7 +912,7 @@ namespace chunker_countsort_laszip {
 			auto tAddBuckets = now();
 			addBuckets(targetDir, buckets);
 
-			// merge min/max of this batch into global min/max
+			// merge attribute metadata of this batch into global attribute metadata
 			for (int i = 0; i < outputAttributesCopy.list.size(); i++) {
 				Attribute& source = outputAttributesCopy.list[i];
 				Attribute& target = outputAttributes.list[i];
@@ -896,6 +925,12 @@ namespace chunker_countsort_laszip {
 				target.max.x = std::max(target.max.x, source.max.x);
 				target.max.y = std::max(target.max.y, source.max.y);
 				target.max.z = std::max(target.max.z, source.max.z);
+
+				// target.mask = target.mask | source.mask;
+				
+				for(int j = 0; j < target.histogram.size(); j++){
+					target.histogram[j] = target.histogram[j] + source.histogram[j];
+				}
 			}
 
 
@@ -989,15 +1024,32 @@ namespace chunker_countsort_laszip {
 			if (attribute.numElements == 1) {
 				jsAttribute["min"] = vector<double>{ attribute.min.x };
 				jsAttribute["max"] = vector<double>{ attribute.max.x };
+				jsAttribute["scale"] = vector<double>{ attribute.scale.x };
+				jsAttribute["offset"] = vector<double>{ attribute.offset.x };
 			} else if (attribute.numElements == 2) {
 				jsAttribute["min"] = vector<double>{ attribute.min.x, attribute.min.y};
 				jsAttribute["max"] = vector<double>{ attribute.max.x, attribute.max.y};
+				jsAttribute["scale"] = vector<double>{ attribute.scale.x, attribute.scale.y};
+				jsAttribute["offset"] = vector<double>{ attribute.offset.x, attribute.offset.y};
 			} else if (attribute.numElements == 3) {
 				jsAttribute["min"] = vector<double>{ attribute.min.x, attribute.min.y, attribute.min.z };
 				jsAttribute["max"] = vector<double>{ attribute.max.x, attribute.max.y, attribute.max.z };
+				jsAttribute["scale"] = vector<double>{ attribute.scale.x, attribute.scale.y, attribute.scale.z };
+				jsAttribute["offset"] = vector<double>{ attribute.offset.x, attribute.offset.y, attribute.offset.z };
 			}
-			
 
+			bool emptyHistogram = true;
+			for(int i = 0; i < attribute.histogram.size(); i++){
+				if(attribute.histogram[i] != 0){
+					emptyHistogram = false;
+				}
+			}
+
+			if(attribute.size == 1 && !emptyHistogram){
+				json jsHistogram = attribute.histogram;
+
+				jsAttribute["histogram"] = jsHistogram;
+			}
 
 			js["attributes"].push_back(jsAttribute);
 		}
@@ -1153,13 +1205,13 @@ namespace chunker_countsort_laszip {
 		return {gridSize, lut};
 	}
 
-	void doChunking(vector<Source> sources, string targetDir, Vector3 min, Vector3 max, State& state, Attributes outputAttributes) {
+	void doChunking(vector<Source> sources, string targetDir, Vector3 min, Vector3 max, State& state, Attributes outputAttributes, Monitor* monitor) {
 
 		auto tStart = now();
 
 		int64_t tmp = state.pointsTotal / 20;
 		maxPointsPerChunk = std::min(tmp, int64_t(10'000'000));
-		cout << "maxPointsPerChunk: " << maxPointsPerChunk << endl;
+		// cout << "maxPointsPerChunk: " << maxPointsPerChunk << endl;
 
 		if (state.pointsTotal < 100'000'000) {
 			gridSize = 128;
@@ -1181,7 +1233,7 @@ namespace chunker_countsort_laszip {
 		}
 
 		// COUNT
-		auto grid = countPointsInCells(sources, min, max, gridSize, state, outputAttributes);
+		auto grid = countPointsInCells(sources, min, max, gridSize, state, outputAttributes, monitor);
 
 		{ // DISTIRBUTE
 			auto tStartDistribute = now();
@@ -1189,7 +1241,7 @@ namespace chunker_countsort_laszip {
 			auto lut = createLUT(grid, gridSize);
 
 			state.currentPass = 2;
-			distributePoints(sources, min, max, targetDir, lut, state, outputAttributes);
+			distributePoints(sources, min, max, targetDir, lut, state, outputAttributes, monitor);
 
 			{
 				double duration = now() - tStartDistribute;
