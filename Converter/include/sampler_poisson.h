@@ -107,7 +107,7 @@ struct SamplerPoisson : public Sampler {
 					
 						Point point = { x, y, z, apple_i, apple_childIndex };
 					#else
-						Point point = { x, y, z, tt, ttt };
+						Point point = { x, y, z, i, childIndex };
 					#endif
 
 					points.push_back(point);
