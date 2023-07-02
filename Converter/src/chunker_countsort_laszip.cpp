@@ -6,8 +6,6 @@
 #include <mutex>
 #include <memory>
 #include <atomic>
-#include <cfloat>
-
 
 #include "chunker_countsort_laszip.h"
 
@@ -235,9 +233,9 @@ namespace chunker_countsort_laszip {
 					double uy = (double(Y) * posScale.y + posOffset.y - min.y) / size.y;
 					double uz = (double(Z) * posScale.z + posOffset.z - min.z) / size.z;
 					
-					// double iota = 0.0001;
+					double iota = 0.0001;
 					bool inBox = ux >= 0.0 && uy >= 0.0 && uz >= 0.0;
-					inBox = inBox && ux <= 1.0 + DBL_EPSILON && uy <= 1.0 + DBL_EPSILON && uz <= 1.0 + DBL_EPSILON;
+					inBox = inBox && ux <= 1.0 + iota && uy <= 1.0 + iota && uz <= 1.0 + iota;
 
 					if (!inBox) {
 						stringstream ss;
