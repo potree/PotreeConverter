@@ -44,9 +44,6 @@ namespace chunker_countsort_laszip {
 	auto numChunkerThreads = getCpuData().numProcessors;
 	auto numFlushThreads = getCpuData().numProcessors;
 
-	// auto numChunkerThreads = 1;
-	// auto numFlushThreads = 1;
-
 	int maxPointsPerChunk = 5'000'000;
 	int gridSize = 128;
 	mutex mtx_attributes;
@@ -274,7 +271,7 @@ namespace chunker_countsort_laszip {
 			//cout << ("end: " + formatNumber(dbgCurr)) << endl;
 		};
 
-		TaskPool<Task> pool(numChunkerThreads, processor);
+		TaskPool<Task> pool((deterministicOperation ? 1 : numChunkerThreads), processor);
 
 		auto tStartTaskAssembly = now();
 
@@ -670,7 +667,7 @@ namespace chunker_countsort_laszip {
 		state.bytesProcessed = 0;
 		state.duration = 0;
 
-		writer = new ConcurrentWriter(numFlushThreads, state);
+		writer = new ConcurrentWriter((deterministicOperation ? 1 : numFlushThreads), state);
 
 		printElapsedTime("distributePoints0", tStart);
 
@@ -934,7 +931,7 @@ namespace chunker_countsort_laszip {
 
 		};
 
-		TaskPool<Task> pool(numChunkerThreads, processor);
+		TaskPool<Task> pool((deterministicOperation ? 1 : numChunkerThreads), processor);
 
 		for (auto source: sources) {
 
