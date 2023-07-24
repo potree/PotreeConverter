@@ -1261,4 +1261,60 @@ namespace chunker_countsort_laszip {
 	}
 
 
+	void fixBoundingBox(vector<Source> sources, Vector3& min, Vector3& max, Attributes& outputAttributes) {
+        min = Vector3(Infinity , Infinity , Infinity);
+        max = Vector3(-Infinity , -Infinity , -Infinity);
+
+		for (auto source : sources) {
+			laszip_POINTER laszip_reader;
+			laszip_header* header;
+			{
+				laszip_create(&laszip_reader);
+				laszip_BOOL request_reader = 1;
+				laszip_BOOL is_compressed = iEndsWith(source.path, ".laz") ? 1 : 0;
+				laszip_request_compatibility_mode(laszip_reader, request_reader);
+				laszip_open_reader(laszip_reader, source.path.c_str(), &is_compressed);
+				laszip_get_header_pointer(laszip_reader, &header);
+			}
+			
+			int64_t bpp = header->point_data_record_length;
+			int64_t numPoints = std::max(uint64_t(header->number_of_point_records), header->extended_number_of_point_records);
+			int64_t numRead = 0;
+
+			int64_t firstByte = header->offset_to_point_data;
+			int64_t numBytes = numPoints * bpp;
+			cout << "Numbytes " << numBytes << "\n"; 
+
+			double coordinates[3];
+
+			auto posScale = outputAttributes.posScale;
+			auto posOffset = outputAttributes.posOffset;
+
+			for (int i = 0; i < numPoints; i++) {
+				laszip_read_point(laszip_reader);
+				laszip_get_coordinates(laszip_reader, coordinates);
+				double x = coordinates[0];
+				double y = coordinates[1];
+				double z = coordinates[2];
+				min.x = std::min(min.x, x);
+				min.y = std::min(min.y, y);
+				min.z = std::min(min.z, z);
+				max.x = std::max(max.x, x);
+				max.y = std::max(max.y, y);
+				max.z = std::max(max.z, z);
+			}
+			laszip_close_reader(laszip_reader);
+			laszip_destroy(laszip_reader);
+		}
+		
+		string strMin = "[" + to_string(min.x) + ", " + to_string(min.y) + ", " + to_string(min.z) + "]";
+		string strMax = "[" + to_string(max.x) + ", " + to_string(max.y) + ", " + to_string(max.z) + "]";
+		cout << "fixed Bounding Box: {\n";
+		cout << "	\"min\": " << strMin << ",\n";
+		cout << "	\"max\": " << strMax << ",\n";
+		cout << "}\n";
+	}
+
+
+
 }
