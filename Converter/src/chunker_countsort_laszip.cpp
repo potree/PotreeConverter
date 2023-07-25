@@ -220,21 +220,14 @@ namespace chunker_countsort_laszip {
 				laszip_get_coordinates(laszip_reader, coordinates);
 
 				{
-					// transfer las integer coordinates to new scale/offset/box values
 					double x = coordinates[0];
 					double y = coordinates[1];
 					double z = coordinates[2];
 
-					int32_t X = int32_t((x - posOffset.x) / posScale.x);
-					int32_t Y = int32_t((y - posOffset.y) / posScale.y);
-					int32_t Z = int32_t((z - posOffset.z) / posScale.z);
-
-					double ux = (double(X) * posScale.x + posOffset.x - min.x) / size.x;
-					double uy = (double(Y) * posScale.y + posOffset.y - min.y) / size.y;
-					double uz = (double(Z) * posScale.z + posOffset.z - min.z) / size.z;
-
-					bool inBox = ux >= 0.0 && uy >= 0.0 && uz >= 0.0;
-					inBox = inBox && ux <= 1.0 && uy <= 1.0 && uz <= 1.0;
+					const bool inBox =
+						x >= min.x && x <= max.x &&
+						y >= min.y && y <= max.y &&
+						z >= min.z && z <= max.z;
 
 					if (!inBox) {
 						stringstream ss;
@@ -249,6 +242,15 @@ namespace chunker_countsort_laszip {
 
 						exit(123);
 					}
+
+					// transfer las integer coordinates to new scale/offset/box values
+					int32_t X = int32_t((x - posOffset.x) / posScale.x);
+					int32_t Y = int32_t((y - posOffset.y) / posScale.y);
+					int32_t Z = int32_t((z - posOffset.z) / posScale.z);
+
+					double ux = (double(X) * posScale.x + posOffset.x - min.x) / size.x;
+					double uy = (double(Y) * posScale.y + posOffset.y - min.y) / size.y;
+					double uz = (double(Z) * posScale.z + posOffset.z - min.z) / size.z;
 
 					int64_t ix = int64_t(std::min(dGridSize * ux, dGridSize - 1.0));
 					int64_t iy = int64_t(std::min(dGridSize * uy, dGridSize - 1.0));
