@@ -213,6 +213,10 @@ namespace chunker_countsort_laszip {
 			auto posScale = outputAttributes.posScale;
 			auto posOffset = outputAttributes.posOffset;
 
+			// Scale is the resolution of the point coordinates, and LAZ round coordinates toward closest integer during quantization.
+			// Half of scale is used as the tolerance value to check if point in the bounding box.
+			auto tol = posScale / 2.0;
+
 			for (int i = 0; i < numToRead; i++) {
 				int64_t pointOffset = i * bpp;
 
@@ -225,9 +229,9 @@ namespace chunker_countsort_laszip {
 					double z = coordinates[2];
 
 					const bool inBox =
-						x >= min.x && x <= max.x &&
-						y >= min.y && y <= max.y &&
-						z >= min.z && z <= max.z;
+						x > (min.x - tol.x) && x < (max.x + tol.x) &&
+						y > (min.y - tol.y) && y < (max.y + tol.y) &&
+						z > (min.z - tol.z) && z < (max.z + tol.z);
 
 					if (!inBox) {
 						stringstream ss;
