@@ -90,7 +90,6 @@
 		"stop_token": "cpp"
 	},
 	"files.trimTrailingWhitespace": false,
-	"editor.fontSize": 28,
 	"editor.autoIndent": "advanced",
 	"editor.detectIndentation": false,
 	"editor.insertSpaces": false,
