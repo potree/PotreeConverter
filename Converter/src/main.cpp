@@ -12,7 +12,6 @@
 #include "sampler_weighted.h"
 #include "Attributes.h"
 #include "PotreeConverter.h"
-#include "logger.h"
 #include "Monitor.h"
 
 #include "arguments/Arguments.hpp"
@@ -24,7 +23,7 @@ Options parseArguments(int argc, char** argv) {
 
 	args.addArgument("source,i,", "Input file(s)");
 	args.addArgument("help,h", "Display help information");
-	args.addArgument("outdir,o", "Output directory");
+	args.addArgument("outpath,o", "Output Path");
 	args.addArgument("encoding", "Encoding type \"BROTLI\", \"UNCOMPRESSED\" (default)");
 	args.addArgument("method,m", "Point sampling method \"poisson\", \"poisson_average\", \"random\"");
 	args.addArgument("chunkMethod", "Chunking method");
@@ -37,13 +36,13 @@ Options parseArguments(int argc, char** argv) {
 	args.addArgument("title", "Page title used when generating a web page");
 
 	if (args.has("help")) {
-		cout << "PotreeConverter <source> -o <outdir>" << endl;
+		cout << "PotreeConverter <source> -o <outpath>" << endl;
 		cout << endl << args.usage() << endl;
 		exit(0);
 	}
 
 	if (!args.has("source")) {
-		cout << "PotreeConverter <source> -o <outdir>" << endl;
+		cout << "PotreeConverter <source> -o <outpath>" << endl;
 		cout << endl << "For a list of options, use --help or -h" << endl;
 
 		exit(1);
@@ -52,7 +51,7 @@ Options parseArguments(int argc, char** argv) {
 	vector<string> source = args.get("source").as<vector<string>>();
 
 	if (source.size() == 0) {
-		cout << "PotreeConverter <source> -o <outdir>" << endl;
+		cout << "PotreeConverter <source> -o <outpath>" << endl;
 		cout << endl << "For a list of options, use --help or -h" << endl;
 
 		exit(1);
@@ -62,9 +61,9 @@ Options parseArguments(int argc, char** argv) {
 	string method = args.get("method").as<string>("poisson");
 	string chunkMethod = args.get("chunkMethod").as<string>("LASZIP");
 
-	string outdir = "";
-	if (args.has("outdir")) {
-		outdir = args.get("outdir").as<string>();
+	string outpath = "";
+	if (args.has("outpath")) {
+		outpath = args.get("outpath").as<string>();
 	} else {
 
 		string sourcepath = source[0];
@@ -75,23 +74,27 @@ Options parseArguments(int argc, char** argv) {
 
 		if (!fs::exists(path)) {
 
-			logger::ERROR("file does not exist: " + source[0]);
+			printfmt("ERROR: file does not exist: {} \n", source[0]);
 
 			exit(123);
 		} 
 
 		path = fs::canonical(path);
 
-		string suggestedBaseName = path.filename().string() + "_converted";
-		outdir = sourcepath + "/../" + suggestedBaseName;
+		
+		string suggestedBaseName = path.filename().replace_extension().string();
+		outpath = sourcepath + "/../" + suggestedBaseName + ".potree";
+
+		// std::format("{}/../_converted.potree", path.filename().string());
 
 		int i = 1;
-		while(fs::exists(outdir)) {
-			outdir = sourcepath + "/../" + suggestedBaseName + "_" + std::to_string(i);
+		while(fs::exists(outpath)) {
+			// outpath = sourcepath + "/../" + suggestedBaseName + "_" + std::to_string(i);
+			outpath = sourcepath + "/../" + suggestedBaseName + "_" + std::to_string(i) + ".potree";
 
 			if (i > 100) {
 
-				logger::ERROR("unsuccessfully tried to find empty output directory. stopped at 100 iterations: " + outdir);
+				printfmt("ERROR: unsuccessfully tried to find empty output directory. stopped at 100 iterations: {} \n", outpath);
 
 				exit(123);
 			}
@@ -101,9 +104,7 @@ Options parseArguments(int argc, char** argv) {
 
 	}
 
-	outdir = fs::weakly_canonical(fs::path(outdir)).string();
-
-	//vector<string> flags = args.get("flags").as<vector<string>>();
+	outpath = fs::weakly_canonical(fs::path(outpath)).string();
 
 	vector<string> attributes = args.get("attributes").as<vector<string>>();
 
@@ -121,7 +122,7 @@ Options parseArguments(int argc, char** argv) {
 
 	Options options;
 	options.source = source;
-	options.outdir = outdir;
+	options.outpath = outpath;
 	options.method = method;
 	options.encoding = encoding;
 	options.chunkMethod = chunkMethod;
@@ -274,7 +275,7 @@ Stats computeStats(vector<Source> sources){
 	{ // sanity check
 		bool sizeError = (size.x == 0.0) || (size.y == 0.0) || (size.z == 0);
 		if (sizeError) {
-			logger::ERROR("invalid bounding box. at least one axis has a size of zero.");
+			printfmt("ERROR: invalid bounding box. at least one axis has a size of zero \n");
 
 			exit(123);
 		}
@@ -343,7 +344,7 @@ Stats computeStats(vector<Source> sources){
 // }
 
 
-void chunking(Options& options, vector<Source>& sources, string targetDir, Stats& stats, State& state, Attributes outputAttributes, Monitor* monitor) {
+void chunking(Options& options, vector<Source>& sources, string targetPath, Stats& stats, State& state, Attributes outputAttributes, Monitor* monitor) {
 
 	if (options.noChunking) {
 		return;
@@ -351,11 +352,9 @@ void chunking(Options& options, vector<Source>& sources, string targetDir, Stats
 
 	if (options.chunkMethod == "LASZIP") {
 
-		chunker_countsort_laszip::doChunking(sources, targetDir, stats.min, stats.max, state, outputAttributes, monitor);
+		chunker_countsort_laszip::doChunking(sources, targetPath, stats.min, stats.max, state, outputAttributes, monitor);
 
 	} else if (options.chunkMethod == "LAS_CUSTOM") {
-
-		//chunker_countsort::doChunking(sources[0].path, targetDir, state);
 
 	} else if (options.chunkMethod == "SKIP") {
 
@@ -369,30 +368,16 @@ void chunking(Options& options, vector<Source>& sources, string targetDir, Stats
 	}
 }
 
-void indexing(Options& options, string targetDir, State& state) {
+void indexing(Options& options, string targetPath, State& state) {
 
 	if (options.noIndexing) {
 		return;
 	}
 
-	indexer::doIndexing(targetDir, state, options);
-
-	// if (options.method == "random") {
-	// 	SamplerRandom sampler;
-	// 	indexer::doIndexing(targetDir, state, options, sampler);
-	// } else if (options.method == "poisson") {
-	// 	SamplerPoisson sampler;
-	// 	indexer::doIndexing(targetDir, state, options, sampler);
-	// } else if (options.method == "poisson_average") {
-	// 	SamplerPoissonAverage sampler;
-	// 	indexer::doIndexing(targetDir, state, options, sampler);
-	// } else if (options.method == "weighted") {
-	// 	SamplerWeighted sampler;
-	// 	indexer::doIndexing(targetDir, state, options, sampler);
-	// }
+	indexer::doIndexing(targetPath, state, options);
 }
 
-void createReport(Options& options, vector<Source> sources, string targetDir, Stats& stats, State& state, double tStart) {
+void createReport(Options& options, vector<Source> sources, string targetPath, Stats& stats, State& state, double tStart) {
 	double duration = now() - tStart;
 	double throughputMB = (stats.totalBytes / duration) / (1024 * 1024);
 	double throughputP = (double(stats.totalPoints) / double(duration)) / 1'000'000.0;
@@ -428,7 +413,7 @@ void createReport(Options& options, vector<Source> sources, string targetDir, St
 	cout << "input file size:       " << formatNumber(inputSize, 1) << inputSizeUnit << endl;
 	cout << "throughput (MB/s)      " << formatNumber(throughputMB) << "MB" << endl;
 	cout << "throughput (points/s)  " << formatNumber(throughputP, 1) << "M" << endl;
-	cout << "output location:       " << targetDir << endl;
+	cout << "output location:       " << targetPath << endl;
 	cout << "duration:              " << formatNumber(duration, 3) << "s" << endl;
 
 	
@@ -450,7 +435,7 @@ void generatePage(string exePath, string pagedir, string pagename) {
 		fs::copy(templateDir, pagedir, fs::copy_options::overwrite_existing | fs::copy_options::recursive);
 	} catch (std::exception & e) {
 		string msg = e.what();
-		logger::ERROR(msg);
+		printfmt("ERROR: {}\n", msg);
 	}
 
 	fs::remove(pagedir + "/viewer_template.html");
@@ -531,17 +516,25 @@ int main(int argc, char** argv) {
 
 	auto stats = computeStats(sources);
 	
-	string targetDir = options.outdir;
-	if (options.generatePage) {
+	string targetPath = options.outpath;
+	// if (options.generatePage) {
 
-		string pagedir = targetDir;
-		generatePage(exePath, pagedir, options.pageName);
+	// 	string pagedir = targetDir;
+	// 	generatePage(exePath, pagedir, options.pageName);
 
-		targetDir = targetDir + "/pointclouds/" + options.pageName;
-	}
-	cout << "target directory: '" << targetDir << "'" << endl;
-	fs::create_directories(targetDir);
-	logger::addOutputFile(targetDir + "/log.txt");
+	// 	targetDir = targetDir + "/pointclouds/" + options.pageName;
+	// }
+	cout << "target path: '" << targetPath << "'" << endl;
+
+	// auto pTarget = fs::path(targetPath);
+	// pTarget.parent_path()
+	
+	// string targetWorkdir = pTarget.parent_path().string() + "/." + pTarget.filename().string();
+	string targetWorkdir = targetPathToWorkdir(targetPath);
+	cout << "target workdir: '" << targetWorkdir << "'" << endl;
+
+
+	fs::create_directories(targetWorkdir);
 
 	State state;
 	state.pointsTotal = stats.totalPoints;
@@ -554,15 +547,15 @@ int main(int argc, char** argv) {
 
 	{ // this is the real important stuff
 
-		chunking(options, sources, targetDir, stats, state, outputAttributes, monitor.get());
+		chunking(options, sources, targetPath, stats, state, outputAttributes, monitor.get());
 
-		indexing(options, targetDir, state);
+		indexing(options, targetPath, state);
 
 	}
 
 	monitor->stop();
 
-	createReport(options, sources, targetDir, stats, state, tStart);
+	createReport(options, sources, targetPath, stats, state, tStart);
 
 
 	return 0;

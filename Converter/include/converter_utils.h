@@ -51,11 +51,16 @@ struct Source {
 
 struct State {
 	string name = "";
-	atomic_int64_t pointsTotal = 0;
+	atomic_int64_t pointsTotal     = 0;
 	atomic_int64_t pointsProcessed = 0;
-	atomic_int64_t bytesProcessed = 0;
-	double duration = 0.0;
+	atomic_int64_t bytesProcessed  = 0;
+	double duration                = 0.0;
 	std::map<string, string> values;
+
+	uint64_t pointBufferOffset     = 0;
+	uint64_t pointBufferSize       = 0;
+	uint64_t hierarchyBufferOffset = 0;
+	uint64_t hierarchyBufferSize   = 0;
 
 	int numPasses = 3;
 	int currentPass = 0; // starts with index 1! interval: [1,  numPasses]
@@ -151,15 +156,21 @@ inline void dbgPrint_ts_later(string message, bool now = false) {
 
 		data.clear();
 	} 
+}
 
+inline string targetPathToWorkdir(string targetPath){
+	auto pTarget = fs::path(targetPath);
 	
+	string targetWorkdir = pTarget.parent_path().string() + "/." + pTarget.filename().string();
+
+	return targetWorkdir;
 }
 
 
 struct Options {
 	vector<string> source;
 	string encoding = "DEFAULT"; // "BROTLI", "UNCOMPRESSED"
-	string outdir = "";
+	string outpath = "";
 	string name = "";
 	string method = "";
 	string chunkMethod = "";

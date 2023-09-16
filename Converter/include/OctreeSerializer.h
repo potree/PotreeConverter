@@ -61,14 +61,12 @@ struct OctreeSerializer{
 				outputBuffer = make_shared<Buffer>(encoded_size);
 				encoded_buffer = outputBuffer->data_u8;
 
-				logger::WARN("reserved encoded_buffer size was too small. Trying again with size " + formatNumber(encoded_size) + ".");
+				printfmt("WARNING: reserved encoded_buffer size was too small. Trying again with size {}. \n", formatNumber(encoded_size));
 			}
 		}
 
 		if (success == BROTLI_FALSE) {
-			stringstream ss;
-			ss << "failed to compress node. aborting conversion." ;
-			logger::ERROR(ss.str());
+			printfmt("ERROR: failed to compress node. aborting conversion \n");
 
 			exit(123);
 		}

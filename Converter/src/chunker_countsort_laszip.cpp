@@ -1203,9 +1203,11 @@ namespace chunker_countsort_laszip {
 		return {gridSize, lut};
 	}
 
-	void doChunking(vector<Source> sources, string targetDir, Vector3 min, Vector3 max, State& state, Attributes outputAttributes, Monitor* monitor) {
+	void doChunking(vector<Source> sources, string targetPath, Vector3 min, Vector3 max, State& state, Attributes outputAttributes, Monitor* monitor) {
 
 		auto tStart = now();
+
+		string targetWorkDir = targetPathToWorkdir(targetPath);
 
 		int64_t tmp = state.pointsTotal / 20;
 		maxPointsPerChunk = std::min(tmp, int64_t(10'000'000));
@@ -1222,7 +1224,7 @@ namespace chunker_countsort_laszip {
 		state.currentPass = 1;
 
 		{ // prepare/clean target directories
-			string dir = targetDir + "/chunks";
+			string dir = targetWorkDir + "/chunks";
 			fs::create_directories(dir);
 
 			for (const auto& entry : std::filesystem::directory_iterator(dir)) {
@@ -1239,7 +1241,7 @@ namespace chunker_countsort_laszip {
 			auto lut = createLUT(grid, gridSize);
 
 			state.currentPass = 2;
-			distributePoints(sources, min, max, targetDir, lut, state, outputAttributes, monitor);
+			distributePoints(sources, min, max, targetWorkDir, lut, state, outputAttributes, monitor);
 
 			{
 				double duration = now() - tStartDistribute;
@@ -1248,7 +1250,7 @@ namespace chunker_countsort_laszip {
 		}
 		
 
-		string metadataPath = targetDir + "/chunks/metadata.json";
+		string metadataPath = targetWorkDir + "/chunks/metadata.json";
 		double cubeSize = (max - min).max();
 		Vector3 size = { cubeSize, cubeSize, cubeSize };
 		max = min + cubeSize;

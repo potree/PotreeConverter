@@ -306,10 +306,6 @@ struct HierarchyBuilder{
 				uint64_t unfilteredByteOffset = node->unfilteredByteOffset;
 				uint64_t byteSize = 0;
 
-				if(node->name == "r442401"){
-					int a = 10;
-				}
-
 				if(isProxyNode){
 					byteSize = node->proxyByteSize;
 				}else{
@@ -338,10 +334,12 @@ struct HierarchyBuilder{
 		return buffer;
 	}
 
-	void build(){
+	void build(fstream& fout_potree){
 
-		string hierarchyFilePath = path + "/../hierarchy.bin";
-		fstream fout(hierarchyFilePath, ios::binary | ios::out);
+		uint64_t initialFilePos = fout_potree.tellp();
+
+		// string hierarchyFilePath = path + "/../hierarchy.bin";
+		// fstream fout(hierarchyFilePath, ios::binary | ios::out);
 		int64_t bytesWritten = 0;
 
 		auto batch_root = loadBatch(path + "/r.bin");
@@ -350,7 +348,8 @@ struct HierarchyBuilder{
 		{ // reserve the first <x> bytes in the file for the root chunk
 			Buffer tmp(HIERARCHY_NODE_BYTESIZE * batch_root->nodes.size());
 			memset(tmp.data, 0, tmp.size);
-			fout.write(tmp.data_char, tmp.size);
+			// fout.write(tmp.data_char, tmp.size);
+			fout_potree.write(tmp.data_char, tmp.size);
 			bytesWritten = tmp.size;
 		}
 
@@ -386,21 +385,25 @@ struct HierarchyBuilder{
 				root_batch_node->type = TYPE::LEAF;
 			}
 
-			fout.write(buffer->data_char, buffer->size);
+			// fout.write(buffer->data_char, buffer->size);
+			fout_potree.write(buffer->data_char, buffer->size);
 			bytesWritten += buffer->size;
 		}
 
 		// close/flush file so that we can reopen it to modify beginning
-		fout.close();
+		// fout.close();
 
 		{ // update beginning of file with root chunk
-			fstream f(hierarchyFilePath, ios::ate | ios::binary | ios::out | ios::in);
-			f.seekg(0);
+			// fstream f(hierarchyFilePath, ios::ate | ios::binary | ios::out | ios::in);
+			// f.seekg(0);
 
 			auto buffer = serializeBatch(batch_root, 0);
 
-			f.write(buffer->data_char, buffer->size);
-			f.close();
+			// f.write(buffer->data_char, buffer->size);
+			// f.close();
+
+			fout_potree.seekp(initialFilePos);
+			fout_potree.write(buffer->data_char, buffer->size);
 		}
 
 		// redundant security check

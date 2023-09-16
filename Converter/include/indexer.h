@@ -110,7 +110,10 @@ namespace indexer{
 		bool closed = false;
 		std::condition_variable cvClose;
 
-		fstream fsOctree;
+		string outPath;
+
+		// fstream fsOctree;
+		fstream fsPotree;
 
 		//thread tWrite;
 
@@ -324,7 +327,8 @@ namespace indexer{
 
 	struct Indexer{
 
-		string targetDir = "";
+		string targetPath = "";
+		string targetWorkDir = "";
 
 		Options options;
 
@@ -355,14 +359,15 @@ namespace indexer{
 		fstream fChunkRoots;
 		vector<FlushedChunkRoot> flushedChunkRoots;
 
-		Indexer(string targetDir) {
+		Indexer(string targetPath) {
 
-			this->targetDir = targetDir;
+			this->targetPath = targetPath;
+			this->targetWorkDir = targetPathToWorkdir(targetPath);
 
 			writer = make_shared<Writer>(this);
-			hierarchyFlusher = make_shared<HierarchyFlusher>(targetDir + "/.hierarchyChunks");
+			hierarchyFlusher = make_shared<HierarchyFlusher>(targetWorkDir + "/.hierarchyChunks");
 
-			string chunkRootFile = targetDir + "/tmpChunkRoots.bin";
+			string chunkRootFile = targetWorkDir + "/tmpChunkRoots.bin";
 			fChunkRoots.open(chunkRootFile, ios::out | ios::binary);
 		}
 
@@ -398,7 +403,7 @@ namespace indexer{
 		string do_grouping() const { return "\3"; }
 	};
 
-	void doIndexing(string targetDir, State& state, Options& options);
+	void doIndexing(string targetPath, State& state, Options& options);
 
 
 }

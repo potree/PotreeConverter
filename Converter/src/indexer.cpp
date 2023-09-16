@@ -8,7 +8,6 @@
 #include "indexer.h"
 
 #include "Attributes.h"
-#include "logger.h"
 #include "PotreeConverter.h"
 #include "DbgWriter.h"
 #include "brotli/encode.h"
@@ -17,6 +16,10 @@
 #include "OctreeSerializer.h"
 
 using std::unique_lock;
+
+// Metadata is written to the start of the file after the conversion,
+// so we reserve a sizeable amount (100kb) at the beginning, and modify at the end
+constexpr uint32_t METADATA_CAPACITY_BYTES = 100 * 1024;
 
 namespace indexer{
 
@@ -496,6 +499,8 @@ string Indexer::createMetadata(Options options, State& state, Hierarchy hierarch
 	ss << t(1) << s("spacing") << ": " << d(spacing) << "," << endl;
 	ss << t(1) << s("boundingBox") << ": " << getBoundingBoxJsonString() << "," << endl;
 	ss << t(1) << s("encoding") << ": " << s(options.encoding) << "," << endl;
+	ss << t(1) << std::format(R"("pointBuffer":     {{"offset": {:12}, "size": {:12}}},)", state.pointBufferOffset, state.pointBufferSize) << "\n";
+	ss << t(1) << std::format(R"("hierarchyBuffer": {{"offset": {:12}, "size": {:12}}},)", state.hierarchyBufferOffset, state.hierarchyBufferSize) << "\n";
 	ss << t(1) << s("attributes") << ": " << getAttributesJsonString() << endl;
 	ss << t(0) << "}" << endl;
 
@@ -875,7 +880,7 @@ void buildHierarchy(Indexer* indexer, Node* node, shared_ptr<Buffer> points, int
 			ss << "min: " << node->min.toString() << "\n";
 			ss << "max: " << node->max.toString() << "\n";
 
-			logger::ERROR(ss.str());
+			printfmt("ERROR: {} \n", ss.str());
 		}
 
 		Buffer tmp(numPoints * bpp);
@@ -948,7 +953,7 @@ void buildHierarchy(Indexer* indexer, Node* node, shared_ptr<Buffer> points, int
 			ss << "min: " << node->min.toString() << "\n";
 			ss << "max: " << node->max.toString() << "\n";
 
-			logger::ERROR(ss.str());
+			printfmt("ERROR: {} \n", ss.str());
 		}
 
 		auto buffer = make_shared<Buffer>(bytes);
@@ -978,7 +983,7 @@ void buildHierarchy(Indexer* indexer, Node* node, shared_ptr<Buffer> points, int
 		auto buffer = subject->points;
 		
 		if (sanityCheck > needRefinement.size() * 2) {
-			logger::ERROR("failed to partition point cloud in indexer::buildHierarchy().");
+			printfmt("ERROR: failed to partition point cloud in indexer::buildHierarchy().");
 		}
 
 		if (subject->numPoints == numPoints) {
@@ -1018,7 +1023,7 @@ void buildHierarchy(Indexer* indexer, Node* node, shared_ptr<Buffer> points, int
 				ss << "#points in box: " << numPointsInBox << ", #unique points in box: " << numUniquePoints << ", ";
 				ss << "min: " << subject->min.toString() << ", max: " << subject->max.toString();
 
-				logger::WARN(ss.str());
+				printfmt("WARNING: {} \n", ss.str());
 			} else {
 
 				// remove the duplicates, then try again
@@ -1063,7 +1068,7 @@ void buildHierarchy(Indexer* indexer, Node* node, shared_ptr<Buffer> points, int
 				msg << "Duplicates inside node will be dropped! ";
 				msg << "min: " << subject->min.toString() << ", max: " << subject->max.toString();
 
-				logger::WARN(msg.str());
+				printfmt("WARNING: {} \n", msg.str());
 
 				shared_ptr<Buffer> distinctBuffer = make_shared<Buffer>(distinct.size() * bpp);
 
@@ -1352,14 +1357,12 @@ shared_ptr<Buffer> compress(Node* node, Attributes attributes) {
 				outputBuffer = make_shared<Buffer>(encoded_size);
 				encoded_buffer = outputBuffer->data_u8;
 
-				logger::WARN("reserved encoded_buffer size was too small. Trying again with size " + formatNumber(encoded_size) + ".");
+				printfmt("WARNING: reserved encoded_buffer size was too small. Trying again with size {} \n", formatNumber(encoded_size));
 			}
 		}
 
 		if (success == BROTLI_FALSE) {
-			stringstream ss;
-			ss << "failed to compress node " << node->name << ". aborting conversion." ;
-			logger::ERROR(ss.str());
+			printfmt("ERROR: failed to compress node {}. aborting conversion. \n", node->name);
 
 			exit(123);
 		}
@@ -1376,8 +1379,13 @@ shared_ptr<Buffer> compress(Node* node, Attributes attributes) {
 Writer::Writer(Indexer* indexer) {
 	this->indexer = indexer;
 
-	string octreePath = indexer->targetDir + "/octree.bin";
-	fsOctree.open(octreePath, ios::out | ios::binary);
+	fsPotree.open(indexer->targetPath, ios::out | ios::binary);
+
+	// reserve first <METADATA_CAPACITY_BYTES>, 
+	// to be filled with metadata at the end
+	uint8_t data[METADATA_CAPACITY_BYTES];
+	memset(data, 0, METADATA_CAPACITY_BYTES);
+	fsPotree.write((const char*)data, METADATA_CAPACITY_BYTES);
 
 	launchWriterThread();
 }
@@ -1564,7 +1572,7 @@ void Writer::writeAndUnload(Node* node) {
 				ss << "min: " << node->min.toString() << "\n";
 				ss << "max: " << node->max.toString() << "\n";
 
-				logger::ERROR(ss.str());
+				printfmt("ERROR: {} \n", ss.str());
 			}
 		};
 
@@ -1623,7 +1631,8 @@ void Writer::launchWriterThread() {
 				indexer->bytesWritten += numBytes;
 				indexer->bytesToWrite -= numBytes;
 
-				fsOctree.write(buffer->data_char, numBytes);
+				//fsOctree.write(buffer->data_char, numBytes);
+				fsPotree.write(buffer->data_char, numBytes);
 
 				indexer->bytesInMemory -= numBytes;
 			} else {
@@ -1650,7 +1659,7 @@ void Writer::closeAndWait() {
 	closeRequested = true;
 	cvClose.wait(lock);
 
-	fsOctree.close();
+	//fsOctree.close();
 
 }
 
@@ -1660,7 +1669,7 @@ void Writer::closeAndWait() {
 
 
 
-void doIndexing(string targetDir, State& state, Options& options) {
+void doIndexing(string targetPath, State& state, Options& options) {
 
 	cout << endl;
 	cout << "=======================================" << endl;
@@ -1675,10 +1684,12 @@ void doIndexing(string targetDir, State& state, Options& options) {
 	state.bytesProcessed = 0;
 	state.duration = 0;
 
-	auto chunks = getChunks(targetDir);
+	string targetWorkdir = targetPathToWorkdir(targetPath);
+
+	auto chunks = getChunks(targetWorkdir);
 	auto attributes = chunks->attributes;
 
-	Indexer indexer(targetDir);
+	Indexer indexer(targetPath);
 	indexer.options = options;
 	indexer.attributes = attributes;
 	indexer.root = make_shared<Node>("r", chunks->min, chunks->max);
@@ -1690,17 +1701,12 @@ void doIndexing(string targetDir, State& state, Options& options) {
 
 		for(auto child : node->children){
 			if(child == nullptr) continue;
-			// if(child->serializedBuffer == nullptr) continue;
-
-			// child->byteSize = child->serializedBuffer->size;
 
 			indexer.writer->writeAndUnload(child.get());
 			indexer.hierarchyFlusher->write(child.get(), hierarchyStepSize);
 		}
 
 		if(node->name == "r"){
-			// node->byteSize = node->serializedBuffer->size;
-
 			indexer.writer->writeAndUnload(node);
 			indexer.hierarchyFlusher->write(node, hierarchyStepSize);
 		}
@@ -1769,14 +1775,6 @@ void doIndexing(string targetDir, State& state, Options& options) {
 
 		sampler->sample(chunkRoot.get(), attributes, indexer.spacing, onNodeCompleted, onNodeDiscarded);
 
-		// if(chunkRoot->unfilteredVoxelData)
-		// { // DEBUG
-		// 	vector<uint16_t> dbg(10, 0);
-		// 	memcpy(dbg.data(), chunkRoot->unfilteredVoxelData->data, 20);
-
-		// 	printfmt("doIndexing - sample {}: {}, {}, {}, {}, {} \n", chunkRoot->name, dbg[0], dbg[1], dbg[2], dbg[3], dbg[4]);
-		// }
-
 		// detach anything below the chunk root. Will be reloaded from
 		// temporarily flushed hierarchy during creation of the hierarchy file
 		chunkRoot->children.clear();
@@ -1803,7 +1801,7 @@ void doIndexing(string targetDir, State& state, Options& options) {
 
 		nodes.push_back(chunkRoot);
 
-		logger::INFO("finished indexing chunk " + chunk->id);
+		printfmt("finished indexing chunk {} \n", chunk->id);
 
 		activeThreads--;
 	});
@@ -1823,7 +1821,7 @@ void doIndexing(string targetDir, State& state, Options& options) {
 
 		auto sampler = make_shared<SamplerWeighted>();
 		
-		string tmpChunkRootsPath = targetDir + "/tmpChunkRoots.bin";
+		string tmpChunkRootsPath = targetWorkdir + "/tmpChunkRoots.bin";
 		auto tasks = indexer.processChunkRoots();
 
 		for(auto& task : tasks){
@@ -1878,36 +1876,55 @@ void doIndexing(string targetDir, State& state, Options& options) {
 
 	indexer.hierarchyFlusher->flush(hierarchyStepSize);
 
-	string hierarchyDir = indexer.targetDir + "/.hierarchyChunks";
+	state.pointBufferOffset = METADATA_CAPACITY_BYTES;
+	state.pointBufferSize = indexer.bytesWritten;
+	state.hierarchyBufferOffset = indexer.writer->fsPotree.tellp();
+
+	string hierarchyDir = indexer.targetWorkDir + "/.hierarchyChunks";
 	HierarchyBuilder builder(hierarchyDir, hierarchyStepSize, &byteOffsets, &unfilteredByteOffsets);
-	builder.build();
+	builder.build(indexer.writer->fsPotree);
+
+	state.hierarchyBufferSize = uint64_t(indexer.writer->fsPotree.tellp()) - state.hierarchyBufferOffset;
 
 	Hierarchy hierarchy = {
 		.stepSize = hierarchyStepSize,
 		.firstChunkSize = builder.batch_root->byteSize,
 	};
 
-	string metadataPath = targetDir + "/metadata.json";
+	// string metadataPath = targetDir + "/metadata.json";
 	string metadata = indexer.createMetadata(options, state, hierarchy);
-	writeFile(metadataPath, metadata);
+	// writeFile(metadataPath, metadata);
+
+	// indexer.writer->fsPotree.close();
+
+	// write metadata at beginning of file
+	// indexer.writer->fsPotree.open(indexer.writer->outPath, ios::out);
+	indexer.writer->fsPotree.seekp(0);
+	uint32_t metadataSize = metadata.size();
+	indexer.writer->fsPotree.write((const char*)&metadataSize, 4);
+	indexer.writer->fsPotree.write(metadata.c_str(), metadata.size());
+
+	indexer.writer->fsPotree.close();
 
 	printElapsedTime("metadata & hierarchy", tStart);
 
-	// {
-	// 	printfmt("deleting temporary files \n");
+	{
+		printfmt("deleting temporary files \n");
 
-	// 	// delete chunk directory
-	// 	if (!options.keepChunks) {
-	// 		string chunksMetadataPath = targetDir + "/chunks/metadata.json";
+		// delete chunk directory
+		if (!options.keepChunks) {
+			string chunksMetadataPath = indexer.targetWorkDir + "/chunks/metadata.json";
 
-	// 		fs::remove(chunksMetadataPath);
-	// 		fs::remove(targetDir + "/chunks");
-	// 	}
+			fs::remove(chunksMetadataPath);
+			fs::remove(indexer.targetWorkDir + "/chunks");
+		}
 
-	// 	// delete chunk roots data
-	// 	string octreePath = targetDir + "/tmpChunkRoots.bin";
-	// 	fs::remove(octreePath);
-	// }
+		// delete chunk roots data
+		string octreePath = indexer.targetWorkDir + "/tmpChunkRoots.bin";
+		fs::remove(octreePath);
+
+		fs::remove(indexer.targetWorkDir);
+	}
 
 	double duration = now() - tStart;
 	state.values["duration(indexing)"] = formatNumber(duration, 3);
