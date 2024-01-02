@@ -109,6 +109,19 @@ Performance comparison (Ryzen 2700, NVMe SSD):
 
 ![](./docs/images/performance_chart.png)
 
-# License 
+# Bibtex 
 
-PotreeConverter is available under the [BSD 2-clause license](./LICENSE).
+@article{SCHUETZ-2020-MPC,
+	title =      "Fast Out-of-Core Octree Generation for Massive Point Clouds",
+	author =     "Markus Schütz and Stefan Ohrhallinger and Michael Wimmer",
+	year =       "2020",
+	month =      nov,
+	journal =    "Computer Graphics Forum",
+	volume =     "39",
+	number =     "7",
+	doi =        "10.1111/cgf.14134",
+	pages =      "13",
+	publisher =  "John Wiley & Sons, Inc.",
+	pages =      "1--13",
+	keywords =   "point clouds, point-based rendering, level of detail",
+}
