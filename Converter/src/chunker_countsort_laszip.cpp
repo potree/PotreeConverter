@@ -225,9 +225,9 @@ namespace chunker_countsort_laszip {
 					double y = coordinates[1];
 					double z = coordinates[2];
 
-					int32_t X = int32_t((x - posOffset.x) / posScale.x);
-					int32_t Y = int32_t((y - posOffset.y) / posScale.y);
-					int32_t Z = int32_t((z - posOffset.z) / posScale.z);
+					int32_t X = int32_t(std::round((x - posOffset.x) / posScale.x));
+					int32_t Y = int32_t(std::round((y - posOffset.y) / posScale.y));
+					int32_t Z = int32_t(std::round((z - posOffset.z) / posScale.z));
 
 					double ux = (double(X) * posScale.x + posOffset.x - min.x) / size.x;
 					double uy = (double(Y) * posScale.y + posOffset.y - min.y) / size.y;
@@ -237,17 +237,27 @@ namespace chunker_countsort_laszip {
 					inBox = inBox && ux <= 1.0 && uy <= 1.0 && uz <= 1.0;
 
 					if (!inBox) {
-						stringstream ss;
-						ss << "encountered point outside bounding box." << endl;
-						ss << "box.min: " << min.toString() << endl;
-						ss << "box.max: " << max.toString() << endl;
-						ss << "point: " << Vector3(x, y, z).toString() << endl;
-						ss << "file: " << path << endl;
-						ss << "PotreeConverter requires a valid bounding box to operate." << endl;
-						ss << "Please try to repair the bounding box, e.g. using lasinfo with the -repair_bb argument." << endl;
-						logger::ERROR(ss.str());
+						// Also check with unrounded bounding box
 
-						exit(123);
+						bool xInBox = std::round(x / posScale.x) >= std::round(min.x / posScale.x) && std::round(x / posScale.x) <= std::round((min.x + size.x) / posScale.x);
+						bool yInBox = std::round(y / posScale.y) >= std::round(min.y / posScale.y) && std::round(y / posScale.y) <= std::round((min.y + size.y) / posScale.y);
+						bool zInBox = std::round(z / posScale.z) >= std::round(min.z / posScale.z) && std::round(z / posScale.z) <= std::round((min.z + size.z) / posScale.z);
+
+						if (!(xInBox && yInBox && zInBox))
+						{
+							// Point truely outside bounding box
+							stringstream ss;
+							ss << "encountered point outside bounding box." << endl;
+							ss << "box.min: " << min.toString() << endl;
+							ss << "box.max: " << max.toString() << endl;
+							ss << "point: " << Vector3(x, y, z).toString() << endl;
+							ss << "file: " << path << endl;
+							ss << "PotreeConverter requires a valid bounding box to operate." << endl;
+							ss << "Please try to repair the bounding box, e.g. using lasinfo with the -repair_bb argument." << endl;
+							logger::ERROR(ss.str());
+
+							exit(123);
+						}
 					}
 
 					int64_t ix = int64_t(std::min(dGridSize * ux, dGridSize - 1.0));
@@ -778,9 +788,9 @@ namespace chunker_countsort_laszip {
 						double y = coordinates[1];
 						double z = coordinates[2];
 
-						int32_t X = int32_t((x - outputAttributes.posOffset.x) / scale.x);
-						int32_t Y = int32_t((y - outputAttributes.posOffset.y) / scale.y);
-						int32_t Z = int32_t((z - outputAttributes.posOffset.z) / scale.z);
+						int32_t X = int32_t(std::round((x - outputAttributes.posOffset.x) / scale.x));
+						int32_t Y = int32_t(std::round((y - outputAttributes.posOffset.y) / scale.y));
+						int32_t Z = int32_t(std::round((z - outputAttributes.posOffset.z) / scale.z));
 
 						memcpy(data + offset + 0, &X, 4);
 						memcpy(data + offset + 4, &Y, 4);
