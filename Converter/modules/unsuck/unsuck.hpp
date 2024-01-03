@@ -38,6 +38,7 @@ static long long unsuck_start_time = high_resolution_clock::now().time_since_epo
 
 static double Infinity = std::numeric_limits<double>::infinity();
 
+inline bool deterministicOperation = false;
 
 #if defined(__linux__)
 constexpr auto fseek_64_all_platforms = fseeko64;
