@@ -30,6 +30,7 @@ Options parseArguments(int argc, char** argv) {
 	args.addArgument("keep-chunks", "Skip deleting temporary chunks during conversion");
 	args.addArgument("no-chunking", "Disable chunking phase");
 	args.addArgument("no-indexing", "Disable indexing phase");
+	args.addArgument("fixbb", "Fix bounding box");
 	args.addArgument("attributes", "Attributes in output file");
 	args.addArgument("projection", "Add the projection of the pointcloud to the metadata");
 	args.addArgument("generate-page,p", "Generate a ready to use web page with the given name");
@@ -117,6 +118,7 @@ Options parseArguments(int argc, char** argv) {
 	bool keepChunks = args.has("keep-chunks");
 	bool noChunking = args.has("no-chunking");
 	bool noIndexing = args.has("no-indexing");
+	bool fixbb = args.has("fixbb");
 
 	Options options;
 	options.source = source;
@@ -134,7 +136,8 @@ Options parseArguments(int argc, char** argv) {
 	options.keepChunks = keepChunks;
 	options.noChunking = noChunking;
 	options.noIndexing = noIndexing;
-
+	options.fixbb = fixbb;
+	
 	//cout << "flags: ";
 	//for (string flag : options.flags) {
 	//	cout << flag << ", ";
@@ -212,7 +215,7 @@ struct Stats {
 	int64_t totalPoints = 0;
 };
 
-Stats computeStats(vector<Source> sources){
+Stats computeStats(vector<Source> sources, bool fixbb){
 
 	Vector3 min = { Infinity , Infinity , Infinity };
 	Vector3 max = { -Infinity , -Infinity , -Infinity };
@@ -273,9 +276,11 @@ Stats computeStats(vector<Source> sources){
 	{ // sanity check
 		bool sizeError = (size.x == 0.0) || (size.y == 0.0) || (size.z == 0);
 		if (sizeError) {
-			logger::ERROR("invalid bounding box. at least one axis has a size of zero.");
-
-			exit(123);
+			if (!fixbb) {
+				logger::ERROR("invalid bounding box. at least one axis has a size of zero.");
+				exit(123);
+			}
+			cout << "Ignoring invalid bounding box due to --fixbb option\n";
 		}
 		
 	}
@@ -529,8 +534,12 @@ int main(int argc, char** argv) {
 	auto outputAttributes = computeOutputAttributes(sources, options.attributes);
 	cout << toString(outputAttributes);
 
-	auto stats = computeStats(sources);
-	
+	auto stats = computeStats(sources, options.fixbb);
+	if (options.fixbb) {
+		chunker_countsort_laszip::fixBoundingBox(sources, stats.min, stats.max, outputAttributes);
+	}
+	cout << "Bring!!\n";
+
 	string targetDir = options.outdir;
 	if (options.generatePage) {
 
