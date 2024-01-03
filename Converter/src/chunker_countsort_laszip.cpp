@@ -571,11 +571,6 @@ namespace chunker_countsort_laszip {
 			int firstExtraIndex = formatToExtraIndex[header->point_data_format];
 			int sourceOffset = 0;
 
-			int attributeOffset = 0;
-			for (int i = 0; i < firstExtraIndex; i++) {
-				attributeOffset += inputAttributes.list[i].size;
-			}
-
 			for (int i = firstExtraIndex; i < inputAttributes.list.size(); i++) {
 				Attribute& inputAttribute = inputAttributes.list[i];
 				Attribute* attribute = outputAttributes.get(inputAttribute.name);
@@ -584,8 +579,8 @@ namespace chunker_countsort_laszip {
 				int attributeSize = inputAttribute.size;
 
 				if (attribute != nullptr) {
-					auto handleAttribute = [data, point, header, attributeSize, attributeOffset, sourceOffset, attribute](int64_t offset) {
-						memcpy(data + offset + attributeOffset, point->extra_bytes + sourceOffset, attributeSize);
+					auto handleAttribute = [data, point, header, attributeSize, targetOffset, sourceOffset, attribute](int64_t offset) {
+						memcpy(data + offset + targetOffset, point->extra_bytes + sourceOffset, attributeSize);
 
 						std::function<double(uint8_t*)> f;
 
