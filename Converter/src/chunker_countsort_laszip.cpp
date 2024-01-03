@@ -6,6 +6,7 @@
 #include <mutex>
 #include <memory>
 #include <atomic>
+#include <cfloat>
 
 #include "chunker_countsort_laszip.h"
 
@@ -234,7 +235,7 @@ namespace chunker_countsort_laszip {
 					double uz = (double(Z) * posScale.z + posOffset.z - min.z) / size.z;
 
 					bool inBox = ux >= 0.0 && uy >= 0.0 && uz >= 0.0;
-					inBox = inBox && ux <= 1.0 && uy <= 1.0 && uz <= 1.0;
+					inBox = inBox && ux <= 1.0 + DBL_EPSILON && uy <= 1.0 + DBL_EPSILON && uz <= 1.0 + DBL_EPSILON;
 
 					if (!inBox) {
 						stringstream ss;
@@ -242,6 +243,7 @@ namespace chunker_countsort_laszip {
 						ss << "box.min: " << min.toString() << endl;
 						ss << "box.max: " << max.toString() << endl;
 						ss << "point: " << Vector3(x, y, z).toString() << endl;
+						ss << "uxyz: " << Vector3(ux, uy, uz).toString() << endl;
 						ss << "file: " << path << endl;
 						ss << "PotreeConverter requires a valid bounding box to operate." << endl;
 						ss << "Please try to repair the bounding box, e.g. using lasinfo with the -repair_bb argument." << endl;
