@@ -207,9 +207,13 @@ inline Attributes computeOutputAttributes(vector<Source>& sources, vector<string
 	// compute scale and offset from all sources
 	{
 		mutex mtx;
-		auto parallel = std::execution::par;
-		for_each(parallel, sources.begin(), sources.end(), [&mtx, &sources, &scaleMin, &min, &max, requestedAttributes, &fullAttributeList, &acceptedAttributeNames](Source source) {
 
+		#if defined(__APPLE__)
+			for_each(sources.begin(), sources.end(), [&mtx, &sources, &scaleMin, &min, &max, requestedAttributes, &fullAttributeList, &acceptedAttributeNames](Source source) {
+		#else
+			auto parallel = std::execution::par;
+			for_each(parallel, sources.begin(), sources.end(), [&mtx, &sources, &scaleMin, &min, &max, requestedAttributes, &fullAttributeList, &acceptedAttributeNames](Source source) {
+		#endif
 			auto header = loadLasHeader(source.path);
 
 			vector<Attribute> attributes = computeOutputAttributes(header);

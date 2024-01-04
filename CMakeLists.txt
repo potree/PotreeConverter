@@ -52,8 +52,9 @@ target_include_directories(PotreeConverter PRIVATE "./Converter/include")
 target_include_directories(PotreeConverter PRIVATE "./Converter/modules")
 target_include_directories(PotreeConverter PRIVATE "./Converter/libs")
 
-
-if (UNIX)
+if(APPLE)
+	## Do nothing. Just skip the Unix check
+elseif (UNIX)
 	find_package(Threads REQUIRED)
 	find_package(TBB REQUIRED)
 	
@@ -62,7 +63,7 @@ if (UNIX)
 
 
 	#SET(CMAKE_CXX_FLAGS "-pthread -ltbb")
-endif (UNIX)
+endif ()
 
 ###############################################
 # COPY PAGE TEMPLATE TO BINARY DIRECTORY
