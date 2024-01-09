@@ -822,7 +822,7 @@ vector<NodeCandidate> createNodes(vector<vector<int64_t>>& pyramid) {
 // 4. Recursively repeat at 1. for identified nodes
 void buildHierarchy(Indexer* indexer, Node* node, shared_ptr<Buffer> points, int64_t numPoints, int64_t depth = 0) {
 
-	if (numPoints < maxPointsPerChunk) {
+	if (numPoints <= maxPointsPerChunk) {
 		Node* realization = node;
 		realization->indexStart = 0;
 		realization->numPoints = numPoints;
