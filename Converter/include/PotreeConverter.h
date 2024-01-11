@@ -160,7 +160,7 @@ inline vector<Attribute> computeOutputAttributes(LasHeader& header) {
 	if (format == 0) {
 		list = { xyz, intensity, returnNumber, numberOfReturns, classification, scanAngleRank, userData, pointSourceId };
 	} else if (format == 1) {
-		list = { xyz, intensity, returnNumber, numberOfReturns, classification, scanAngleRank, userData, pointSourceId, gpsTime };
+		list = { xyz, intensity, returnNumber, /*numberOfReturns,*/ classification, scanAngleRank, userData, pointSourceId, gpsTime };
 	} else if (format == 2) {
 		list = { xyz, intensity, returnNumber, numberOfReturns, classification, scanAngleRank, userData, pointSourceId, rgb };
 	} else if (format == 3) {
