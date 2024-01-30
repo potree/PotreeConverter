@@ -1400,12 +1400,16 @@ int64_t Writer::backlogSizeMB() {
 	return backlogMB;
 }
 
+// - writes children of <node> into one consecutive byte region
+// - If it <node> is the root, it also writes the root node to the file
 void Writer::writeAndUnload(Node* node) {
 
 	//if(node->serializedBuffer == nullptr) return;
 
 	auto attributes = indexer->attributes;
 	string encoding = indexer->options.encoding;
+
+	lock_guard<mutex> lock(mtx);
 
 	// shared_ptr<Buffer> sourceBuffer;
 	// if (encoding == "BROTLI") {
@@ -1421,183 +1425,344 @@ void Writer::writeAndUnload(Node* node) {
 
 	// 	printfmt("writeAndUnload - start {}: {}, {}, {}, {}, {} \n", node->name, dbg[0], dbg[1], dbg[2], dbg[3], dbg[4]);
 	// }
-	
-	// if node->level is odd, store in cache
-	// if node->level is even, write node and its cached children
-	bool isEvenLeveled = (node->level() % 2) == 0;
-	bool isOddLeveled = !isEvenLeveled;
 
-	if(isOddLeveled){
-		// STORE ODD-LEVELED NODE IN CACHE
-		lock_guard<mutex> lock(mtx);
-
-		CacheItem item = {
-			.serializationIndex = node->serializationIndex,
-			.points             = node->serializedPoints,
-			.position           = node->serializedPosition,
-			.filtered           = node->serializedFiltered,
-			.unfiltered         = node->serializedUnfiltered,
-		};
-
-		string parentName = node->name.substr(0, node->name.size() - 1);
-
-		if(cache.find(parentName) == cache.end()){
-			cache[parentName] = vector<CacheItem>();
-		}
-
-		cache[parentName].push_back(item);
-	}else if(isEvenLeveled){
-		// WRITE EVEN-LEVELED NODE AND ITS CACHED CHILDREN IN CONTIGUOUS MEMORY
-
-		lock_guard<mutex> lock(mtx);
-
-		vector<CacheItem> cachedItems = cache[node->name];
-
-		CacheItem item = {
-			.name               = node->name,
-			.serializationIndex = node->serializationIndex,
-			.points             = node->serializedPoints,
-			.position           = node->serializedPosition,
-			.filtered           = node->serializedFiltered,
-			.unfiltered         = node->serializedUnfiltered,
-		};
-
-		cachedItems.push_back(item);
-
-		uint64_t chunkByteSize = 0;
-		for(auto cachedItem : cachedItems){
-			chunkByteSize += cachedItem.points     ? cachedItem.points->size     : 0;
-			chunkByteSize += cachedItem.position   ? cachedItem.position->size   : 0;
-			chunkByteSize += cachedItem.filtered   ? cachedItem.filtered->size   : 0;
-			chunkByteSize += cachedItem.unfiltered ? cachedItem.unfiltered->size : 0;
-		}
-
-		// if(item.unfiltered)
-		// { // DEBUG
-		// 	vector<uint16_t> dbg(10, 0);
-		// 	memcpy(dbg.data(), item.unfiltered->data, 20);
-
-		// 	printfmt("writeAndUnload {}: {}, {}, {}, {}, {} \n", item.name, dbg[0], dbg[1], dbg[2], dbg[3], dbg[4]);
-		// }
-
-		uint64_t chunkByteOffset = indexer->byteOffset.fetch_add(chunkByteSize);
-		shared_ptr<Buffer> chunkBuffer = make_shared<Buffer>(chunkByteSize);
-
-		if(byteOffsets.size() <= node->serializationIndex){
-			byteOffsets.resize(1.5f * float(node->serializationIndex));
-		}
-		if(unfilteredByteOffsets.size() <= node->serializationIndex){
-			unfilteredByteOffsets.resize(1.5f * float(node->serializationIndex));
-		}
-
-		// CREATE CHUNK BUFFER
-		// leaves: store all point data, one node after the other
-		// inner: 
-		//     1. store all position and filtered data from all nodes in chunk, 
-		//     2. store all unfiltered data from all nodes in chunk
-		uint64_t chunkBytesProcessed = 0;
-
-		// POINTS
-		for(auto cachedItem : cachedItems){		
-			if(cachedItem.points){
-				uint64_t nodeByteOffset = chunkByteOffset + chunkBytesProcessed;
-				byteOffsets[cachedItem.serializationIndex] = nodeByteOffset;
-
-				memcpy(
-					chunkBuffer->data_u8 + chunkBytesProcessed, 
-					cachedItem.points->data, 
-					cachedItem.points->size
-				);
-				chunkBytesProcessed += cachedItem.points->size;
-			}
-		}
-
-		// VOXEL POSITION AND FILTERED DATA
-		for(auto cachedItem : cachedItems){
-			if(cachedItem.position){
-				uint64_t nodeByteOffset = chunkByteOffset + chunkBytesProcessed;
-				byteOffsets[cachedItem.serializationIndex] = nodeByteOffset;
-
-				memcpy(
-					chunkBuffer->data_u8 + chunkBytesProcessed, 
-					cachedItem.position->data, 
-					cachedItem.position->size
-				);
-				chunkBytesProcessed += cachedItem.position->size;
-
-				memcpy(
-					chunkBuffer->data_u8 + chunkBytesProcessed, 
-					cachedItem.filtered->data, 
-					cachedItem.filtered->size
-				);
-				chunkBytesProcessed += cachedItem.filtered->size;
-			}
-		}
-
-		// VOXEL UNFILTERED DATA
-		for(auto cachedItem : cachedItems){
-			if(cachedItem.unfiltered){
-				uint64_t nodeByteOffset = chunkByteOffset + chunkBytesProcessed;
-				unfilteredByteOffsets[cachedItem.serializationIndex] = nodeByteOffset;
-
-				memcpy(
-					chunkBuffer->data_u8 + chunkBytesProcessed, 
-					cachedItem.unfiltered->data, 
-					cachedItem.unfiltered->size
-				);
-				chunkBytesProcessed += cachedItem.unfiltered->size;
-
-				if(cachedItem.name == "r"){
-					//uint16_t* dbg = ((uint16_t*)(cachedItem.unfiltered->data));
-
-					vector<uint16_t> dbg(100, 0);
-					memcpy(dbg.data(), cachedItem.unfiltered->data, 200);
-
-					int a = 10;
-				}
-			}
-		}
-
-
-
-
-		auto errorCheck = [node](int64_t size) {
-			if (size < 0) {
-				stringstream ss;
-
-				ss << "invalid call to malloc(" << to_string(size) << ")\n";
-				ss << "in function writeAndUnload()\n";
-				ss << "node: " << node->name << "\n";
-				ss << "#points: " << node->numPoints << "\n";
-				ss << "min: " << node->min.toString() << "\n";
-				ss << "max: " << node->max.toString() << "\n";
-
-				printfmt("ERROR: {} \n", ss.str());
-			}
-		};
-
-		shared_ptr<Buffer> buffer = nullptr;
-		int64_t targetOffset = 0;
-		{
-			if (activeBuffer == nullptr) {
-				errorCheck(capacity);
-				activeBuffer = make_shared<Buffer>(capacity);
-			} else if (activeBuffer->pos + chunkByteSize > capacity) {
-				backlog.push_back(activeBuffer);
-
-				capacity = std::max(capacity, int64_t(chunkByteSize));
-				errorCheck(capacity);
-				activeBuffer = make_shared<Buffer>(capacity);
-			}
-
-			buffer = activeBuffer;
-			targetOffset = activeBuffer->pos;
-
-			activeBuffer->pos += chunkByteSize;
-		}	
-
-		memcpy(buffer->data_char + targetOffset, chunkBuffer->data, chunkByteSize);
+	if (node->isLeaf()) {
+		return;
 	}
+
+
+	vector<Node*> nodesToWrite;
+	if(node->name == "r"){
+		nodesToWrite.push_back(node);
+	}
+	for(shared_ptr<Node> child : node->children){
+		if(child == nullptr) continue;
+		nodesToWrite.push_back(child.get());
+	}
+
+
+	int64_t chunkByteSize = 0;
+
+	uint64_t maxSerializationIndex = 0;
+	for(Node* node : nodesToWrite){
+		chunkByteSize += node->serializedPoints       ? node->serializedPoints->size        : 0;
+		chunkByteSize += node->serializedPosition     ? node->serializedPosition->size      : 0;
+		chunkByteSize += node->serializedFiltered     ? node->serializedFiltered->size      : 0;
+		chunkByteSize += node->serializedUnfiltered   ? node->serializedUnfiltered->size    : 0;
+
+		maxSerializationIndex = max(maxSerializationIndex, node->serializationIndex);
+	}
+
+	uint64_t chunkByteOffset = indexer->byteOffset.fetch_add(chunkByteSize);
+	shared_ptr<Buffer> chunkBuffer = make_shared<Buffer>(chunkByteSize);
+
+	if(byteOffsets.size() <= maxSerializationIndex){
+		byteOffsets.resize(1.5f * float(maxSerializationIndex));
+	}
+	if(unfilteredByteOffsets.size() <= maxSerializationIndex){
+		unfilteredByteOffsets.resize(1.5f * float(maxSerializationIndex));
+	}
+
+	uint64_t chunkBytesProcessed = 0;
+
+	// POINTS
+	for(Node* node : nodesToWrite){
+		if(node->points){
+			uint64_t nodeByteOffset = chunkByteOffset + chunkBytesProcessed;
+			byteOffsets[node->serializationIndex] = nodeByteOffset;
+
+			memcpy(
+				chunkBuffer->data_u8 + chunkBytesProcessed, 
+				node->points->data, 
+				node->points->size
+			);
+			chunkBytesProcessed += node->points->size;
+		}
+	}
+
+	// VOXEL POSITION AND FILTERED DATA
+	for(Node* node : nodesToWrite){
+		if(node->serializedPosition){
+			uint64_t nodeByteOffset = chunkByteOffset + chunkBytesProcessed;
+			byteOffsets[node->serializationIndex] = nodeByteOffset;
+
+			memcpy(
+				chunkBuffer->data_u8 + chunkBytesProcessed, 
+				node->serializedPosition->data, 
+				node->serializedPosition->size
+			);
+			chunkBytesProcessed += node->serializedPosition->size;
+
+			memcpy(
+				chunkBuffer->data_u8 + chunkBytesProcessed, 
+				node->serializedFiltered->data, 
+				node->serializedFiltered->size
+			);
+			chunkBytesProcessed += node->serializedFiltered->size;
+		}
+	}
+
+	// VOXEL UNFILTERED DATA
+	for(Node* node : nodesToWrite){
+		if(node->serializedUnfiltered){
+			uint64_t nodeByteOffset = chunkByteOffset + chunkBytesProcessed;
+			unfilteredByteOffsets[node->serializationIndex] = nodeByteOffset;
+
+			memcpy(
+				chunkBuffer->data_u8 + chunkBytesProcessed, 
+				node->serializedUnfiltered->data, 
+				node->serializedUnfiltered->size
+			);
+			chunkBytesProcessed += node->serializedUnfiltered->size;
+
+			if(node->name == "r"){
+				vector<uint16_t> dbg(100, 0);
+				memcpy(dbg.data(), node->serializedUnfiltered->data, 200);
+
+				int a = 10;
+			}
+		}
+	}
+
+	for(Node* node : nodesToWrite){
+		if(node->name.size() <= 3){
+
+			int64_t nodeByteSize = 0;
+			nodeByteSize += node->serializedPoints       ? node->serializedPoints->size        : 0;
+			nodeByteSize += node->serializedPosition     ? node->serializedPosition->size      : 0;
+			nodeByteSize += node->serializedFiltered     ? node->serializedFiltered->size      : 0;
+			nodeByteSize += node->serializedUnfiltered   ? node->serializedUnfiltered->size    : 0;
+
+			printfmt("[{:5}] offsets: {:11L}, unfiltered: {:11L} | sizes: points: {:11L}, position: {:11L}, filtered: {:11L}, unfiltered: {:11L} \n",
+				node->name, byteOffsets[node->serializationIndex], unfilteredByteOffsets[node->serializationIndex],
+				(node->serializedPoints       ? node->serializedPoints->size        : 0),
+				(node->serializedPosition     ? node->serializedPosition->size      : 0),
+				(node->serializedFiltered     ? node->serializedFiltered->size      : 0),
+				(node->serializedUnfiltered   ? node->serializedUnfiltered->size    : 0)
+			);
+		}
+	}
+
+	auto errorCheck = [node](int64_t size) {
+		if (size < 0) {
+			stringstream ss;
+
+			ss << "invalid call to malloc(" << to_string(size) << ")\n";
+			ss << "in function writeAndUnload()\n";
+			ss << "node: " << node->name << "\n";
+			ss << "#points: " << node->numPoints << "\n";
+			ss << "min: " << node->min.toString() << "\n";
+			ss << "max: " << node->max.toString() << "\n";
+
+			printfmt("ERROR: {} \n", ss.str());
+		}
+	};
+
+	shared_ptr<Buffer> buffer = nullptr;
+	int64_t targetOffset = 0;
+	{
+		if (activeBuffer == nullptr) {
+			errorCheck(capacity);
+			activeBuffer = make_shared<Buffer>(capacity);
+		} else if (activeBuffer->pos + chunkByteSize > capacity) {
+			backlog.push_back(activeBuffer);
+
+			capacity = std::max(capacity, int64_t(chunkByteSize));
+			errorCheck(capacity);
+			activeBuffer = make_shared<Buffer>(capacity);
+		}
+
+		buffer = activeBuffer;
+		targetOffset = activeBuffer->pos;
+
+		activeBuffer->pos += chunkByteSize;
+	}	
+
+	memcpy(buffer->data_char + targetOffset, chunkBuffer->data, chunkByteSize);
+
+
+
+
+
+
+
+	
+	// // if node->level is odd, store in cache
+	// // if node->level is even, write node and its cached children
+	// bool isEvenLeveled = (node->level() % 2) == 0;
+	// bool isOddLeveled = !isEvenLeveled;
+
+	// if(isOddLeveled){
+	// 	// STORE ODD-LEVELED NODE IN CACHE
+	// 	lock_guard<mutex> lock(mtx);
+
+	// 	CacheItem item = {
+	// 		.serializationIndex = node->serializationIndex,
+	// 		.points             = node->serializedPoints,
+	// 		.position           = node->serializedPosition,
+	// 		.filtered           = node->serializedFiltered,
+	// 		.unfiltered         = node->serializedUnfiltered,
+	// 	};
+
+	// 	string parentName = node->name.substr(0, node->name.size() - 1);
+
+	// 	if(cache.find(parentName) == cache.end()){
+	// 		cache[parentName] = vector<CacheItem>();
+	// 	}
+
+	// 	cache[parentName].push_back(item);
+	// }else if(isEvenLeveled){
+	// 	// WRITE EVEN-LEVELED NODE AND ITS CACHED CHILDREN IN CONTIGUOUS MEMORY
+
+	// 	lock_guard<mutex> lock(mtx);
+
+	// 	vector<CacheItem> cachedItems = cache[node->name];
+
+	// 	CacheItem item = {
+	// 		.name               = node->name,
+	// 		.serializationIndex = node->serializationIndex,
+	// 		.points             = node->serializedPoints,
+	// 		.position           = node->serializedPosition,
+	// 		.filtered           = node->serializedFiltered,
+	// 		.unfiltered         = node->serializedUnfiltered,
+	// 	};
+
+	// 	cachedItems.push_back(item);
+
+	// 	uint64_t chunkByteSize = 0;
+	// 	for(auto cachedItem : cachedItems){
+	// 		chunkByteSize += cachedItem.points     ? cachedItem.points->size     : 0;
+	// 		chunkByteSize += cachedItem.position   ? cachedItem.position->size   : 0;
+	// 		chunkByteSize += cachedItem.filtered   ? cachedItem.filtered->size   : 0;
+	// 		chunkByteSize += cachedItem.unfiltered ? cachedItem.unfiltered->size : 0;
+	// 	}
+
+	// 	// if(item.unfiltered)
+	// 	// { // DEBUG
+	// 	// 	vector<uint16_t> dbg(10, 0);
+	// 	// 	memcpy(dbg.data(), item.unfiltered->data, 20);
+
+	// 	// 	printfmt("writeAndUnload {}: {}, {}, {}, {}, {} \n", item.name, dbg[0], dbg[1], dbg[2], dbg[3], dbg[4]);
+	// 	// }
+
+	// 	uint64_t chunkByteOffset = indexer->byteOffset.fetch_add(chunkByteSize);
+	// 	shared_ptr<Buffer> chunkBuffer = make_shared<Buffer>(chunkByteSize);
+
+	// 	if(byteOffsets.size() <= node->serializationIndex){
+	// 		byteOffsets.resize(1.5f * float(node->serializationIndex));
+	// 	}
+	// 	if(unfilteredByteOffsets.size() <= node->serializationIndex){
+	// 		unfilteredByteOffsets.resize(1.5f * float(node->serializationIndex));
+	// 	}
+
+	// 	// CREATE CHUNK BUFFER
+	// 	// leaves: store all point data, one node after the other
+	// 	// inner: 
+	// 	//     1. store all position and filtered data from all nodes in chunk, 
+	// 	//     2. store all unfiltered data from all nodes in chunk
+	// 	uint64_t chunkBytesProcessed = 0;
+
+	// 	// POINTS
+	// 	for(auto cachedItem : cachedItems){		
+	// 		if(cachedItem.points){
+	// 			uint64_t nodeByteOffset = chunkByteOffset + chunkBytesProcessed;
+	// 			byteOffsets[cachedItem.serializationIndex] = nodeByteOffset;
+
+	// 			memcpy(
+	// 				chunkBuffer->data_u8 + chunkBytesProcessed, 
+	// 				cachedItem.points->data, 
+	// 				cachedItem.points->size
+	// 			);
+	// 			chunkBytesProcessed += cachedItem.points->size;
+	// 		}
+	// 	}
+
+	// 	// VOXEL POSITION AND FILTERED DATA
+	// 	for(auto cachedItem : cachedItems){
+	// 		if(cachedItem.position){
+	// 			uint64_t nodeByteOffset = chunkByteOffset + chunkBytesProcessed;
+	// 			byteOffsets[cachedItem.serializationIndex] = nodeByteOffset;
+
+	// 			memcpy(
+	// 				chunkBuffer->data_u8 + chunkBytesProcessed, 
+	// 				cachedItem.position->data, 
+	// 				cachedItem.position->size
+	// 			);
+	// 			chunkBytesProcessed += cachedItem.position->size;
+
+	// 			memcpy(
+	// 				chunkBuffer->data_u8 + chunkBytesProcessed, 
+	// 				cachedItem.filtered->data, 
+	// 				cachedItem.filtered->size
+	// 			);
+	// 			chunkBytesProcessed += cachedItem.filtered->size;
+	// 		}
+	// 	}
+
+	// 	// VOXEL UNFILTERED DATA
+	// 	for(auto cachedItem : cachedItems){
+	// 		if(cachedItem.unfiltered){
+	// 			uint64_t nodeByteOffset = chunkByteOffset + chunkBytesProcessed;
+	// 			unfilteredByteOffsets[cachedItem.serializationIndex] = nodeByteOffset;
+
+	// 			memcpy(
+	// 				chunkBuffer->data_u8 + chunkBytesProcessed, 
+	// 				cachedItem.unfiltered->data, 
+	// 				cachedItem.unfiltered->size
+	// 			);
+	// 			chunkBytesProcessed += cachedItem.unfiltered->size;
+
+	// 			if(cachedItem.name == "r"){
+	// 				//uint16_t* dbg = ((uint16_t*)(cachedItem.unfiltered->data));
+
+	// 				vector<uint16_t> dbg(100, 0);
+	// 				memcpy(dbg.data(), cachedItem.unfiltered->data, 200);
+
+	// 				int a = 10;
+	// 			}
+	// 		}
+	// 	}
+
+
+
+
+	// 	auto errorCheck = [node](int64_t size) {
+	// 		if (size < 0) {
+	// 			stringstream ss;
+
+	// 			ss << "invalid call to malloc(" << to_string(size) << ")\n";
+	// 			ss << "in function writeAndUnload()\n";
+	// 			ss << "node: " << node->name << "\n";
+	// 			ss << "#points: " << node->numPoints << "\n";
+	// 			ss << "min: " << node->min.toString() << "\n";
+	// 			ss << "max: " << node->max.toString() << "\n";
+
+	// 			printfmt("ERROR: {} \n", ss.str());
+	// 		}
+	// 	};
+
+	// 	shared_ptr<Buffer> buffer = nullptr;
+	// 	int64_t targetOffset = 0;
+	// 	{
+	// 		if (activeBuffer == nullptr) {
+	// 			errorCheck(capacity);
+	// 			activeBuffer = make_shared<Buffer>(capacity);
+	// 		} else if (activeBuffer->pos + chunkByteSize > capacity) {
+	// 			backlog.push_back(activeBuffer);
+
+	// 			capacity = std::max(capacity, int64_t(chunkByteSize));
+	// 			errorCheck(capacity);
+	// 			activeBuffer = make_shared<Buffer>(capacity);
+	// 		}
+
+	// 		buffer = activeBuffer;
+	// 		targetOffset = activeBuffer->pos;
+
+	// 		activeBuffer->pos += chunkByteSize;
+	// 	}	
+
+	// 	memcpy(buffer->data_char + targetOffset, chunkBuffer->data, chunkByteSize);
+	// }
 }
 
 void Writer::launchWriterThread() {
@@ -1697,19 +1862,35 @@ void doIndexing(string targetPath, State& state, Options& options) {
 
 	auto onNodeCompleted = [&indexer](Node* node) {
 
+		printfmt("onNodeCompleted({}) \n", node->name);
+
 		OctreeSerializer::serialize(node, &indexer.attributes);
 
+		if(node->isLeaf()) return;
+
+		indexer.writer->writeAndUnload(node);
 		for(auto child : node->children){
 			if(child == nullptr) continue;
 
-			indexer.writer->writeAndUnload(child.get());
 			indexer.hierarchyFlusher->write(child.get(), hierarchyStepSize);
 		}
 
 		if(node->name == "r"){
-			indexer.writer->writeAndUnload(node);
 			indexer.hierarchyFlusher->write(node, hierarchyStepSize);
 		}
+		
+
+		// for(auto child : node->children){
+		// 	if(child == nullptr) continue;
+
+		// 	indexer.writer->writeAndUnload(child.get());
+		// 	indexer.hierarchyFlusher->write(child.get(), hierarchyStepSize);
+		// }
+
+		// if(node->name == "r"){
+		// 	indexer.writer->writeAndUnload(node);
+		// 	indexer.hierarchyFlusher->write(node, hierarchyStepSize);
+		// }
 
 	};
 
@@ -1756,9 +1937,9 @@ void doIndexing(string targetPath, State& state, Options& options) {
 
 		auto filesize = fs::file_size(chunk->file);
 
-		printfmt("start indexing chunk {:>8}. filesize: {:11L}, min: {}, max: {} \n", 
-			chunk->id, filesize, chunk->min.toString(), chunk->max.toString()
-		);
+		// printfmt("start indexing chunk {:>8}. filesize: {:11L}, min: {}, max: {} \n", 
+		// 	chunk->id, filesize, chunk->min.toString(), chunk->max.toString()
+		// );
 
 		indexer.bytesInMemory += filesize;
 		auto pointBuffer = readBinaryFile(chunk->file);
@@ -1801,7 +1982,7 @@ void doIndexing(string targetPath, State& state, Options& options) {
 
 		nodes.push_back(chunkRoot);
 
-		printfmt("finished indexing chunk {} \n", chunk->id);
+		// printfmt("finished indexing chunk {} \n", chunk->id);
 
 		activeThreads--;
 	});
@@ -1831,7 +2012,7 @@ void doIndexing(string targetPath, State& state, Options& options) {
 			for(auto& fcr : task.fcrs){
 				auto buffer = make_shared<Buffer>(fcr.size);
 				readBinaryFile(tmpChunkRootsPath, fcr.offset, fcr.size, buffer->data);
-				printfmt("reloading {} \n", fcr.node->name);
+				// printfmt("reloading {} \n", fcr.node->name);
 
 				if(fcr.node->numPoints > 0){
 					fcr.node->points = buffer;
