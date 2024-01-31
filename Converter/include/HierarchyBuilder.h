@@ -314,6 +314,10 @@ struct HierarchyBuilder{
 						node->byteSizePosition + node->byteSizeFiltered);
 				}
 
+				if(node->name == "r402233"){
+					int a = 10;
+				}
+
 				buffer->set<uint8_t >(type                     , HIERARCHY_NODE_BYTESIZE * recordsProcessed +  0);
 				buffer->set<uint8_t >(node->childMask          , HIERARCHY_NODE_BYTESIZE * recordsProcessed +  1);
 				buffer->set<uint32_t>(node->numSamples         , HIERARCHY_NODE_BYTESIZE * recordsProcessed +  2);
