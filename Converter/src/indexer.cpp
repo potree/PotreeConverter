@@ -1468,20 +1468,16 @@ void Writer::writeAndUnload(Node* node) {
 	// POINTS
 	for(Node* node : nodesToWrite){
 
-		if(node->name == "r402233"){
-			int a = 10;
-		}
-
-		if(node->points){
+		if(node->serializedPoints){
 			uint64_t nodeByteOffset = chunkByteOffset + chunkBytesProcessed;
 			byteOffsets[node->serializationIndex] = nodeByteOffset;
 
 			memcpy(
 				chunkBuffer->data_u8 + chunkBytesProcessed, 
-				node->points->data, 
-				node->points->size
+				node->serializedPoints->data,
+				node->serializedPoints->size
 			);
-			chunkBytesProcessed += node->points->size;
+			chunkBytesProcessed += node->serializedPoints->size;
 		}
 	}
 

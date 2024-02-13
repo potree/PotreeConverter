@@ -39,7 +39,7 @@ struct OctreeSerializer{
 
 		shared_ptr<Buffer> out;
 
-		int quality = 6;
+		int quality = 3;
 		int lgwin = BROTLI_DEFAULT_WINDOW;
 		auto mode = BROTLI_DEFAULT_MODE;
 		uint8_t* input_buffer = buffer->data_u8;
@@ -336,15 +336,10 @@ struct OctreeSerializer{
 
 	static shared_ptr<Buffer> toPointsBuffer(Node* node, Attributes* attributes){
 
-		// auto compressed = OctreeSerializer::compress(node->points);
+		auto compressed = OctreeSerializer::compress(node->points);
+		int compressionRate = (100ull * compressed->size) / node->points->size;
 
-		// int compressionRate = (100ull * compressed->size) / node->points->size;
-
-		// printfmt("original: {}, compressed: {}, compression-rate: {}% \n",
-		// 	node->points->size, compressed->size, compressionRate
-		// );
-
-		return node->points;
+		return compressed;
 	}
 
 	// Serializes <node->children> relative to voxel coordinates in <node>
@@ -374,6 +369,48 @@ struct OctreeSerializer{
 				child->serializedPosition   = toVoxelCoordBuffer(child, parent, attributes);
 				child->serializedFiltered   = toFilteredBuffer(child, attributes);
 				child->serializedUnfiltered = toUnfilteredBuffer(child, attributes);
+
+				// { // DEBUG
+
+				// 	static mutex mtx;
+
+				// 	auto compressed_position = OctreeSerializer::compress(child->serializedPosition);
+				// 	auto compressed_filtered = OctreeSerializer::compress(child->serializedFiltered);
+				// 	auto compressed_unfiltered = OctreeSerializer::compress(child->serializedUnfiltered);
+
+				// 	// float rate_position   = 100.0f * float(compressed_position->size) / float(child->serializedPosition->size);
+				// 	// float rate_filtered   = 100.0f * float(compressed_filtered->size) / float(child->serializedFiltered->size);
+				// 	// float rate_unfiltered = 100.0f * float(compressed_unfiltered->size) / float(child->serializedUnfiltered->size);
+
+				// 	//printfmt("compression: {:4.0f} - {:4.0f} - {:4.0f} \n", rate_position, rate_filtered, rate_unfiltered);
+
+				// 	static int64_t sum_uncomp_position = 0;
+				// 	static int64_t sum_uncomp_filtered = 0;
+				// 	static int64_t sum_uncomp_unfiltered = 0;
+				// 	static int64_t sum_comp_position = 0;
+				// 	static int64_t sum_comp_filtered = 0;
+				// 	static int64_t sum_comp_unfiltered = 0;
+
+				// 	mtx.lock();
+
+				// 	sum_uncomp_position   += child->serializedPosition->size;
+				// 	sum_uncomp_filtered   += child->serializedFiltered->size;
+				// 	sum_uncomp_unfiltered += child->serializedUnfiltered->size;
+				// 	sum_comp_position     += compressed_position->size;
+				// 	sum_comp_filtered     += compressed_filtered->size;
+				// 	sum_comp_unfiltered   += compressed_unfiltered->size;
+
+				// 	double rate_position   = 100.0 * double(sum_comp_position)   / double(sum_uncomp_position);
+				// 	double rate_filtered   = 100.0 * double(sum_comp_filtered)   / double(sum_uncomp_filtered);
+				// 	double rate_unfiltered = 100.0 * double(sum_comp_unfiltered) / double(sum_uncomp_unfiltered);
+
+				// 	printfmt("=========================\n");
+				// 	printfmt("sizes:             {:12L} - {:12L} - {:12L} \n", sum_uncomp_position, sum_uncomp_filtered, sum_uncomp_unfiltered);
+				// 	printfmt("compressed sizes:  {:12L} - {:12L} - {:12L} \n", sum_comp_position, sum_comp_filtered, sum_comp_unfiltered);
+				// 	printfmt("compression:       {:4.0f} - {:4.0f} - {:4.0f} \n", rate_position, rate_filtered, rate_unfiltered);
+
+				// 	mtx.unlock();
+				// }
 
 				child->sPositionSize   = child->serializedPosition->size;
 				child->sFilteredSize   = child->serializedFiltered->size;
