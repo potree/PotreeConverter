@@ -175,6 +175,10 @@ namespace indexer{
 				.serializationIndex = node->serializationIndex,
 			};
 
+			if (node->sPointsSize == 0) {
+				int a = 10;
+			}
+
 			buffer.push_back(hnode);
 
 			if(buffer.size() > 10'000){
@@ -333,6 +337,7 @@ namespace indexer{
 		Options options;
 
 		Attributes attributes;
+		Attributes outputAttributes;
 		shared_ptr<Node> root;
 
 		shared_ptr<Writer> writer;

@@ -316,37 +316,37 @@ inline Attributes computeOutputAttributes(vector<Source>& sources, vector<string
 	return attributes;
 }
 
-inline string toString(Attributes& attributes){
+// inline string toString(Attributes& attributes){
 
-	stringstream ss;
+// 	stringstream ss;
 
-	ss << endl << "output attributes: " << endl;
+// 	ss << endl << "output attributes: " << endl;
 
-	int c0 = 30;
-	int c1 = 10;
-	int c2 = 8;
-	int ct = c0 + c1 + c2;
+// 	int c0 = 30;
+// 	int c1 = 10;
+// 	int c2 = 8;
+// 	int ct = c0 + c1 + c2;
 
-	ss << rightPad("name", c0) << leftPad("offset", c1) << leftPad("size", c2) << endl;
-	ss << string(ct, '=') << endl;
+// 	ss << rightPad("name", c0) << leftPad("offset", c1) << leftPad("size", c2) << endl;
+// 	ss << string(ct, '=') << endl;
 
-	int offset = 0;
-	for (auto attribute : attributes.list) {
-		ss << rightPad(attribute.name, c0)
-			<< leftPad(formatNumber(offset), c1)
-			<< leftPad(formatNumber(attribute.size), c2)
-			<< endl;
+// 	int offset = 0;
+// 	for (auto attribute : attributes.list) {
+// 		ss << rightPad(attribute.name, c0)
+// 			<< leftPad(formatNumber(offset), c1)
+// 			<< leftPad(formatNumber(attribute.size), c2)
+// 			<< endl;
 
-		offset += attribute.size;
-	}
-	ss << string(ct, '=') << endl;
+// 		offset += attribute.size;
+// 	}
+// 	ss << string(ct, '=') << endl;
 
-	//cout << "bytes per point: " << attributes.bytes << endl;
-	ss << leftPad(formatNumber(attributes.bytes), ct) << endl;
-	ss << string(ct, '=') << endl;
+// 	//cout << "bytes per point: " << attributes.bytes << endl;
+// 	ss << leftPad(formatNumber(attributes.bytes), ct) << endl;
+// 	ss << string(ct, '=') << endl;
 
-	return ss.str();
-}
+// 	return ss.str();
+// }
 
 
 

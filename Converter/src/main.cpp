@@ -512,7 +512,8 @@ int main(int argc, char** argv) {
 	}
 
 	auto outputAttributes = computeOutputAttributes(sources, options.attributes);
-	cout << toString(outputAttributes);
+	cout << "attributes: " << endl;
+	cout << outputAttributes.toString({.printMinMax = false});
 
 	auto stats = computeStats(sources);
 	

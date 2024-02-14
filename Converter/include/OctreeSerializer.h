@@ -275,7 +275,9 @@ struct OctreeSerializer{
 				bits = bits | T << (bitsPerSample * blockSampleIndex);
 				buffer->set<uint16_t>(bits, blockOffset + 6);
 			}
-			
+
+			// auto compressedBuffer = OctreeSerializer::compress(buffer);
+			// return compressedBuffer;
 			return buffer;
 		}
 
@@ -331,32 +333,84 @@ struct OctreeSerializer{
 
 		}
 
-		return buffer;
+		auto compressedBuffer = OctreeSerializer::compress(buffer);
+			
+		return compressedBuffer;
 	}
 
-	static shared_ptr<Buffer> toPointsBuffer(Node* node, Attributes* attributes){
+	static shared_ptr<Buffer> toPointsBuffer(Node* node, Attributes* inputAttributes, Attributes* outputAttributes){
 
-		auto compressed = OctreeSerializer::compress(node->points);
-		int compressionRate = (100ull * compressed->size) / node->points->size;
+		struct Mapping{
+			int64_t offset_source;
+			int64_t offset_target;
+			int64_t byteSize;
+		};
+		vector<Mapping> mappings;
+
+		for(int i_in = 0; i_in < inputAttributes->list.size(); i_in++){
+			Attribute attribute_in = inputAttributes->list[i_in];
+			Attribute* attribute_out = outputAttributes->get(attribute_in.name);
+
+			if(attribute_out != nullptr){
+				Mapping mapping;
+				mapping.offset_source = inputAttributes->getOffset(attribute_in.name);
+				mapping.offset_target = outputAttributes->getOffset(attribute_in.name);
+				mapping.byteSize = attribute_in.size;
+				mappings.push_back(mapping);
+			}
+		}
+
+		int64_t numBytes = outputAttributes->bytes * node->numPoints;
+		auto prunedData = make_shared<Buffer>(numBytes);
+
+		int stride_in = inputAttributes->bytes;
+		int stride_out = outputAttributes->bytes;
+
+		for(int i = 0; i < node->numPoints; i++){
+
+			for(Mapping& mapping : mappings){
+				int offset_source = i * stride_in + mapping.offset_source;
+				int offset_target = i * stride_out + mapping.offset_target;
+
+				memcpy(prunedData->data_u8 + offset_target, node->points->data_u8 + offset_source, mapping.byteSize);
+			}
+		}
+
+		//{ // DEBUG
+
+		//	int32_t X_source = node->points->get<int32_t>(0);
+		//	int32_t X_target = prunedData->get<int32_t>(0);
+
+		//	if(X_source != X_target){
+		//		int a = 10;
+		//	}
+
+		//}
+
+		auto compressed = OctreeSerializer::compress(prunedData);
+		// int compressionRate = (100ull * compressed->size) / node->points->size;
+		
+		// auto compressed = OctreeSerializer::compress(node->points);
+		// int compressionRate = (100ull * compressed->size) / node->points->size;
 
 		return compressed;
 	}
 
 	// Serializes <node->children> relative to voxel coordinates in <node>
 	// <node> is serialized only if it is the root node.
-	static void serialize(Node* node, Attributes* attributes){
+	static void serialize(Node* node, Attributes* inputAttributes, Attributes* outputAttributes){
 
 		// printfmt("serialize {} \n", node->name);
 
 		auto tStart = now();
 
-		auto process = [attributes](Node* child, Node* parent){
+		auto process = [inputAttributes, outputAttributes](Node* child, Node* parent){
 
 			static atomic<uint64_t> numNodesSerialized = atomic<uint64_t>(0);
 
 			if(child->numPoints > 0){
 				// serialize points
-				auto pointsBuffer = toPointsBuffer(child, attributes);
+				auto pointsBuffer = toPointsBuffer(child, inputAttributes, outputAttributes);
 
 				child->serializedPoints = pointsBuffer;
 				child->serializationIndex = numNodesSerialized++;
@@ -366,9 +420,9 @@ struct OctreeSerializer{
 			}else if(child->numVoxels > 0){
 				// serialize voxels
 
-				child->serializedPosition   = toVoxelCoordBuffer(child, parent, attributes);
-				child->serializedFiltered   = toFilteredBuffer(child, attributes);
-				child->serializedUnfiltered = toUnfilteredBuffer(child, attributes);
+				child->serializedPosition   = toVoxelCoordBuffer(child, parent, inputAttributes);
+				child->serializedFiltered   = toFilteredBuffer(child, inputAttributes);
+				child->serializedUnfiltered = toUnfilteredBuffer(child, inputAttributes);
 
 				// { // DEBUG
 

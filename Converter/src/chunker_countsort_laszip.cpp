@@ -657,7 +657,10 @@ namespace chunker_countsort_laszip {
 
 	}
 
-	void distributePoints(vector<Source> sources, Vector3 min, Vector3 max, string targetDir, NodeLUT& lut, State& state, Attributes& outputAttributes, Monitor* monitor) {
+	void distributePoints(
+		vector<Source> sources, Vector3 min, Vector3 max, string targetDir, NodeLUT& lut, State& state, 
+		Attributes& outputAttributes, Monitor* monitor
+	){
 
 		cout << endl;
 		cout << "=======================================" << endl;
@@ -1235,7 +1238,7 @@ namespace chunker_countsort_laszip {
 		// COUNT
 		auto grid = countPointsInCells(sources, min, max, gridSize, state, outputAttributes, monitor);
 
-		{ // DISTIRBUTE
+		{ // DISTRIBUTE
 			auto tStartDistribute = now();
 
 			auto lut = createLUT(grid, gridSize);
@@ -1248,6 +1251,22 @@ namespace chunker_countsort_laszip {
 				state.values["duration(chunking-distribute)"] = formatNumber(duration, 3);
 			}
 		}
+
+		// // prune unused attributes
+		// vector<Attribute> pruned;
+		// for(auto attribute : outputAttributes.list){
+		// 	bool unusedX = (attribute.min.x == 0 && attribute.max.x == 0) || (attribute.min.x == Infinity && attribute.max.x == -Infinity);
+		// 	bool unusedY = (attribute.min.y == 0 && attribute.max.y == 0) || (attribute.min.y == Infinity && attribute.max.y == -Infinity);
+		// 	bool unusedZ = (attribute.min.z == 0 && attribute.max.z == 0) || (attribute.min.z == Infinity && attribute.max.z == -Infinity);
+		// 	bool used = !(unusedX && unusedY && unusedZ);
+
+		// 	if(used){
+		// 		pruned.push_back(attribute);
+		// 	}
+		// }
+		// outputAttributes = Attributes(pruned);
+		// printfmt("Pruning unused/empty attributes. Remaining output attributes: \n");
+		// cout << outputAttributes.toString();
 		
 
 		string metadataPath = targetWorkDir + "/chunks/metadata.json";

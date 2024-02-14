@@ -423,7 +423,7 @@ string Indexer::createMetadata(Options options, State& state, Hierarchy hierarch
 		return ss.str();
 	};
 
-	Attributes& attributes = this->attributes;
+	Attributes& attributes = this->outputAttributes;
 	auto getAttributesJsonString = [&attributes, t, s, toJson, vecToJson, vecI64ToJson]() {
 
 		stringstream ss;
@@ -541,127 +541,6 @@ HierarchyChunk Indexer::gatherChunk(Node* start, int levels) {
 	}
 
 	return chunk;
-}
-
-vector<HierarchyChunk> Indexer::createHierarchyChunks(Node* root, int hierarchyStepSize) {
-
-	vector<HierarchyChunk> hierarchyChunks;
-	vector<Node*> stack = { root };
-	while (!stack.empty()) {
-		Node* chunkRoot = stack.back();
-		stack.pop_back();
-
-		auto chunk = gatherChunk(chunkRoot, hierarchyStepSize);
-
-		for (auto node : chunk.nodes) {
-			bool isProxy = node->level() == chunkRoot->level() + hierarchyStepSize;
-
-			if (isProxy) {
-				stack.push_back(node);
-			}
-
-		}
-
-		hierarchyChunks.push_back(chunk);
-	}
-
-	return hierarchyChunks;
-}
-
-Hierarchy Indexer::createHierarchy(string path) {
-
-	constexpr int bytesPerNode = 1 + 1 + 4 + 8 + 8;
-
-	auto chunkSize = [](HierarchyChunk& chunk) {
-		return chunk.nodes.size() * bytesPerNode;
-	};
-
-	auto chunks = createHierarchyChunks(root.get(), hierarchyStepSize);
-
-	unordered_map<string, int> chunkPointers;
-	vector<int64_t> chunkByteOffsets(chunks.size(), 0);
-	int64_t hierarchyBufferSize = 0;
-
-	for (size_t i = 0; i < chunks.size(); i++) {
-		auto& chunk = chunks[i];
-		chunkPointers[chunk.name] = i;
-
-		sortBreadthFirst(chunk.nodes);
-
-		if (i >= 1) {
-			chunkByteOffsets[i] = chunkByteOffsets[i - 1] + chunkSize(chunks[i - 1]);
-		}
-
-		hierarchyBufferSize += chunkSize(chunk);
-	}
-
-	vector<uint8_t> hierarchyBuffer(hierarchyBufferSize);
-
-	enum TYPE {
-		NORMAL = 0,
-		LEAF = 1,
-		PROXY = 2,
-	};
-
-	int offset = 0;
-	for (int i = 0; i < chunks.size(); i++) {
-		auto& chunk = chunks[i];
-		auto chunkLevel = chunk.name.size() - 1;
-
-		for (auto node : chunk.nodes) {
-			bool isProxy = node->level() == chunkLevel + hierarchyStepSize;
-
-			uint8_t childMask           = childMaskOf(node);
-			uint64_t targetOffset       = 0;
-			uint32_t byteSize           = 0;
-			uint32_t byteSizePosition   = 0;
-			uint32_t byteSizeFiltered   = 0;
-			uint32_t byteSizeUnfiltered = 0;
-			uint32_t numPoints          = uint32_t(node->numPoints);
-			uint8_t type                = node->isLeaf() ? TYPE::LEAF : TYPE::NORMAL;
-
-			if (isProxy) {
-				int targetChunkIndex = chunkPointers[node->name];
-				auto targetChunk = chunks[targetChunkIndex];
-
-				type = TYPE::PROXY;
-				targetOffset = chunkByteOffsets[targetChunkIndex];
-				byteSize = chunkSize(targetChunk);
-			} else {
-				targetOffset = node->byteOffset;
-				
-				if(node->numPoints > 0){
-					byteSize = node->sPointsSize;
-				}else{
-					byteSizePosition = node->sPositionSize;
-					byteSizeFiltered = node->sFilteredSize;
-					byteSizeUnfiltered = node->sUnfilteredSize;
-					byteSize = byteSizePosition + byteSizeFiltered;
-				}
-			}
-
-			// 30 bytes
-			memcpy(hierarchyBuffer.data() + offset +  0, &type,                   1);
-			memcpy(hierarchyBuffer.data() + offset +  1, &childMask,              1);
-			memcpy(hierarchyBuffer.data() + offset +  2, &numPoints,              4);
-			memcpy(hierarchyBuffer.data() + offset +  6, &targetOffset,           8);
-			memcpy(hierarchyBuffer.data() + offset + 14, &byteSize,               4);
-			memcpy(hierarchyBuffer.data() + offset + 18, &byteSizePosition,       4);
-			memcpy(hierarchyBuffer.data() + offset + 22, &byteSizeFiltered,       4);
-			memcpy(hierarchyBuffer.data() + offset + 26, &byteSizeUnfiltered,     4);
-
-			offset += bytesPerNode;
-		}
-
-	}
-
-	Hierarchy hierarchy;
-	hierarchy.stepSize = hierarchyStepSize;
-	hierarchy.buffer = hierarchyBuffer;
-	hierarchy.firstChunkSize = chunks[0].nodes.size() * bytesPerNode;
-
-	return hierarchy;
-
 }
 
 
@@ -1404,32 +1283,11 @@ int64_t Writer::backlogSizeMB() {
 // - If it <node> is the root, it also writes the root node to the file
 void Writer::writeAndUnload(Node* node) {
 
-	//if(node->serializedBuffer == nullptr) return;
-
-	auto attributes = indexer->attributes;
-	string encoding = indexer->options.encoding;
-
 	lock_guard<mutex> lock(mtx);
-
-	// shared_ptr<Buffer> sourceBuffer;
-	// if (encoding == "BROTLI") {
-	// 	sourceBuffer = compress(node, attributes);
-	// } else {
-	// 	sourceBuffer = node->points;
-	// }
-
-	// if(node->unfilteredVoxelData)
-	// { // DEBUG
-	// 	vector<uint16_t> dbg(10, 0);
-	// 	memcpy(dbg.data(), node->unfilteredVoxelData->data, 20);
-
-	// 	printfmt("writeAndUnload - start {}: {}, {}, {}, {}, {} \n", node->name, dbg[0], dbg[1], dbg[2], dbg[3], dbg[4]);
-	// }
 
 	if (node->isLeaf()) {
 		return;
 	}
-
 
 	vector<Node*> nodesToWrite;
 	if(node->name == "r"){
@@ -1439,7 +1297,6 @@ void Writer::writeAndUnload(Node* node) {
 		if(child == nullptr) continue;
 		nodesToWrite.push_back(child.get());
 	}
-
 
 	int64_t chunkByteSize = 0;
 
@@ -1665,47 +1522,33 @@ void doIndexing(string targetPath, State& state, Options& options) {
 	auto chunks = getChunks(targetWorkdir);
 	auto attributes = chunks->attributes;
 
+	// prune unused attributes
+	vector<Attribute> pruned;
+	for(auto attribute : attributes.list){
+		bool unusedX = (attribute.min.x == 0 && attribute.max.x == 0) || (attribute.min.x == Infinity && attribute.max.x == -Infinity);
+		bool unusedY = (attribute.min.y == 0 && attribute.max.y == 0) || (attribute.min.y == Infinity && attribute.max.y == -Infinity);
+		bool unusedZ = (attribute.min.z == 0 && attribute.max.z == 0) || (attribute.min.z == Infinity && attribute.max.z == -Infinity);
+		bool used = !(unusedX && unusedY && unusedZ);
+
+		if(used){
+			pruned.push_back(attribute);
+		}
+	}
+	Attributes outputAttributes = Attributes(pruned);
+	outputAttributes.posOffset = attributes.posOffset;
+	outputAttributes.posScale = attributes.posScale;
+	printfmt("Pruning unused/empty attributes. Remaining output attributes: \n");
+	cout << outputAttributes.toString({.printMinMax = true});
+
 	Indexer indexer(targetPath);
 	indexer.options = options;
 	indexer.attributes = attributes;
+	indexer.outputAttributes = outputAttributes;
 	indexer.root = make_shared<Node>("r", chunks->min, chunks->max);
 	indexer.spacing = (chunks->max - chunks->min).x / 128.0;
 
-	auto onNodeCompleted = [&indexer](Node* node) {
-
-		// printfmt("onNodeCompleted({}) \n", node->name);
-
-		// if(node->isLeaf())
-		// { // DEBUG: write as CSV
-
-		// 	int stride = indexer.attributes.bytes;
-		// 	int offset_rgb = indexer.attributes.getOffset("rgb");
-
-		// 	if(offset_rgb == 0) exit(123);
-
-		// 	stringstream ss;
-		// 	for(int i = 0; i < node->numPoints; i++){
-		// 		int X = node->points->get<int32_t>(i * stride + 0);
-		// 		int Y = node->points->get<int32_t>(i * stride + 4);
-		// 		int Z = node->points->get<int32_t>(i * stride + 8);
-
-		// 		double x = double(X) * indexer.scale;
-		// 		double y = double(Y) * indexer.scale;
-		// 		double z = double(Z) * indexer.scale;
-
-		// 		auto normalize = [](int value) {return value < 256 ? value : value / 256; };
-		// 		int r = normalize(node->points->get<uint16_t>(i * stride + offset_rgb));
-		// 		int g = normalize(node->points->get<uint16_t>(i * stride + offset_rgb));
-		// 		int b = normalize(node->points->get<uint16_t>(i * stride + offset_rgb));
-
-		// 		ss << format("{:.3f}, {:.3f}, {:.3f}, {}, {}, {} \n", x, y, z, r, g, b);
-		// 	}
-
-		// 	string str = ss.str();
-		// 	writeFile(format("D:/temp/debug/{}.csv", node->name), str);
-		// }
-
-		OctreeSerializer::serialize(node, &indexer.attributes);
+	auto onNodeCompleted = [&indexer, &outputAttributes](Node* node) {
+		OctreeSerializer::serialize(node, &indexer.attributes, &outputAttributes);
 
 		if(node->isLeaf()) return;
 
@@ -1742,9 +1585,7 @@ void doIndexing(string targetPath, State& state, Options& options) {
 	int64_t pointsProcessed = 0;
 	double lastReport = now();
 
-	auto writeAndUnload = [&indexer](Node* node) {
-		// indexer.writer->writeAndUnload(node);
-	};
+	auto writeAndUnload = [&indexer](Node* node) {};
 
 	atomic_int64_t activeThreads = 0;
 	mutex mtx_nodes;
@@ -1899,14 +1740,9 @@ void doIndexing(string targetPath, State& state, Options& options) {
 		.firstChunkSize = builder.batch_root->byteSize,
 	};
 
-	// string metadataPath = targetDir + "/metadata.json";
 	string metadata = indexer.createMetadata(options, state, hierarchy);
-	// writeFile(metadataPath, metadata);
-
-	// indexer.writer->fsPotree.close();
 
 	// write metadata at beginning of file
-	// indexer.writer->fsPotree.open(indexer.writer->outPath, ios::out);
 	indexer.writer->fsPotree.seekp(0);
 	uint32_t metadataSize = metadata.size();
 	indexer.writer->fsPotree.write((const char*)&metadataSize, 4);

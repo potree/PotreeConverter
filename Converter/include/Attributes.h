@@ -184,6 +184,52 @@ struct Attributes {
 		return nullptr;
 	}
 
+	struct ToStringOptions{
+		bool printMinMax = false;
+	};
+
+	string toString(ToStringOptions options = {}){
+		stringstream ss;
+
+		int c0 = 30;
+		int c1 = 10;
+		int c2 = 10;
+		int c4 = 40;
+		int c5 = 40;
+		int ct = c0 + c1 + c2 + c4 + c5;
+
+
+		ss << format("{:30}{:>10}{:>10}{:>40}{:>40}\n", "name", "offset", "bytes", "min", "max");
+
+		ss << string(ct, '=') << endl;
+
+		int offset = 0;
+		for (auto attribute : this->list) {
+			// ss << rightPad(attribute.name, c0)
+			// 	<< leftPad(formatNumber(offset), c1)
+			// 	<< leftPad(formatNumber(attribute.size), c2)
+			// 	<< endl;
+
+			if(options.printMinMax){
+				string strMin = attribute.min.toString();
+				string strMax = attribute.max.toString();
+				ss << format("{:30}{:10}{:10}{:>40}{:>40}\n", attribute.name, offset, attribute.size, strMin, strMax);
+			}else{
+				ss << format("{:30}{:10}{:10}{:>40}{:>40}\n", attribute.name, offset, attribute.size, "-", "-");
+			}
+
+			offset += attribute.size;
+		}
+		ss << string(ct, '=') << endl;
+
+		//cout << "bytes per point: " << attributes.bytes << endl;
+		ss << format("{:50}", this->bytes) << endl;
+		// ss << leftPad(formatNumber(this->bytes), ct) << endl;
+		ss << string(ct, '=') << endl;
+
+		return ss.str();
+	}
+
 };
 
 

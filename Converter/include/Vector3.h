@@ -93,14 +93,6 @@ struct Vector3{
 	}
 
 	string toString() {
-
-		// auto digits = std::numeric_limits<double>::max_digits10;
-
-		// std::stringstream ss;
-		// ss << std::setprecision(digits);
-		// ss << x << ", " << y << ", " << z;
-
-		// return ss.str();
 		return format("{:4.3f}, {:.3f}, {:.3f}", x, y, z);
 	}
 
