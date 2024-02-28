@@ -168,118 +168,130 @@ struct OctreeSerializer{
 
 	}
 
+	static shared_ptr<Buffer> compress_bc(vector<Voxel>& voxels){
+
+		int numVoxels = voxels.size();
+
+		//  BC-ish encoded voxels
+		int blocksize = 8;
+		int numSamples = 4;
+		int bitsPerSample = 2;
+		int numBlocks = (numVoxels + blocksize - 1) / blocksize;
+		int bitsPerBlock = (48 + blocksize * bitsPerSample);
+		int bytesPerBlock = 8; // with this specific settings...
+		int numBits = bitsPerBlock * numBlocks;
+		int numBytes = numBits / 8;
+		// memset(target.data, 0, target.size);
+		auto buffer = make_shared<Buffer>(numBytes);
+		memset(buffer->data, 0, buffer->size);
+
+		vector<Vector3> starts;
+		vector<Vector3> ends;
+		
+		// compute line endpoints
+		for(int i = 0; i < numVoxels; i++){
+
+			if((i % blocksize) == 0){
+				// new block
+				Vector3 min = {Infinity, Infinity, Infinity};
+				Vector3 max = {-Infinity, -Infinity, -Infinity};
+
+				starts.push_back(min);
+				ends.push_back(max);
+			}
+
+			int blockIndex = i / blocksize;
+			Voxel voxel = voxels[i];
+			
+			starts[blockIndex].x = std::min(starts[blockIndex].x, double(voxel.r));
+			starts[blockIndex].y = std::min(starts[blockIndex].y, double(voxel.g));
+			starts[blockIndex].z = std::min(starts[blockIndex].z, double(voxel.b));
+			ends[blockIndex].x = std::max(ends[blockIndex].x, double(voxel.r));
+			ends[blockIndex].y = std::max(ends[blockIndex].y, double(voxel.g));
+			ends[blockIndex].z = std::max(ends[blockIndex].z, double(voxel.b));
+		}
+
+		// store endpoints in buffer
+		for(int blockIndex = 0; blockIndex < numBlocks; blockIndex++){
+			Vector3 start = starts[blockIndex];
+			Vector3 end = ends[blockIndex];
+
+			uint8_t start_r = uint8_t(start.x > 255.0 ? start.x / 256.0 : start.x);
+			uint8_t start_g = uint8_t(start.y > 255.0 ? start.y / 256.0 : start.y);
+			uint8_t start_b = uint8_t(start.z > 255.0 ? start.z / 256.0 : start.z);
+
+			uint8_t end_r = uint8_t(end.x > 255.0 ? end.x / 256.0 : end.x);
+			uint8_t end_g = uint8_t(end.y > 255.0 ? end.y / 256.0 : end.y);
+			uint8_t end_b = uint8_t(end.z > 255.0 ? end.z / 256.0 : end.z);
+
+			int blockOffset = bytesPerBlock * blockIndex;
+			buffer->set<uint8_t>(start_r, blockOffset + 0);
+			buffer->set<uint8_t>(start_g, blockOffset + 1);
+			buffer->set<uint8_t>(start_b, blockOffset + 2);
+			buffer->set<uint8_t>(end_r, blockOffset + 3);
+			buffer->set<uint8_t>(end_g, blockOffset + 4);
+			buffer->set<uint8_t>(end_b, blockOffset + 5);
+		}
+
+		// encode voxel colors along line
+		for(int i = 0; i < numVoxels; i++){
+
+			int blockIndex = i / blocksize;
+			Vector3 start = starts[blockIndex];
+			Vector3 end = ends[blockIndex];
+
+			Voxel voxel = voxels[i];
+			Vector3 point;
+			point.x = voxel.r;
+			point.y = voxel.g;
+			point.z = voxel.b;
+			
+			float t = OctreeSerializer::closestPointToPointParameter(start, end, point);
+
+			int T = std::round(t * float(numSamples));
+			T = std::min(T, numSamples - 1);
+			T = std::max(T, 0);
+
+			int blockOffset = bytesPerBlock * blockIndex;
+
+			int blockSampleIndex = i % blocksize;
+			uint16_t bits = buffer->get<uint16_t>(blockOffset + 6);
+			bits = bits | T << (bitsPerSample * blockSampleIndex);
+			buffer->set<uint16_t>(bits, blockOffset + 6);
+		}
+
+		return buffer;
+	}
+
 	static shared_ptr<Buffer> toFilteredBuffer(Node* node, Attributes* attributes){
 
-		int numVoxels = node->numVoxels;
+		// int numVoxels = node->numVoxels;
 
-		if(node->name == "r"){
-			// store root colors as 3 x uint8
-			int bytesPerVoxel = 3;
+		// if(node->name == "r"){
+		// 	// store root colors as 3 x uint8
+		// 	int bytesPerVoxel = 3;
 
-			auto buffer = make_shared<Buffer>(3 * numVoxels);
+		// 	auto buffer = make_shared<Buffer>(3 * numVoxels);
 
-			for(int i = 0; i < numVoxels; i++){
-				Voxel voxel = node->voxels[i];
+		// 	for(int i = 0; i < numVoxels; i++){
+		// 		Voxel voxel = node->voxels[i];
 
-				buffer->set<uint8_t>(voxel.r, 3 * i + 0);
-				buffer->set<uint8_t>(voxel.g, 3 * i + 1);
-				buffer->set<uint8_t>(voxel.b, 3 * i + 2);
-			}
+		// 		buffer->set<uint8_t>(voxel.r, 3 * i + 0);
+		// 		buffer->set<uint8_t>(voxel.g, 3 * i + 1);
+		// 		buffer->set<uint8_t>(voxel.b, 3 * i + 2);
+		// 	}
 
-			 return buffer;
-		}else{
+		// 	 return buffer;
+		// }else{
 
-			//  BC-ish encoded voxels
-			int blocksize = 8;
-			int numSamples = 4;
-			int bitsPerSample = 2;
-			int numBlocks = (numVoxels + blocksize - 1) / blocksize;
-			int bitsPerBlock = (48 + blocksize * bitsPerSample);
-			int bytesPerBlock = 8; // with this specific settings...
-			int numBits = bitsPerBlock * numBlocks;
-			int numBytes = numBits / 8;
-			auto buffer = make_shared<Buffer>(numBytes);
-			memset(buffer->data, 0, buffer->size);
+		// 	auto buffer = compress_bc(node->voxels);
 
-			vector<Vector3> starts;
-			vector<Vector3> ends;
-			
-			// compute line endpoints
-			for(int i = 0; i < numVoxels; i++){
+		// 	return buffer;
+		// }
 
-				if((i % blocksize) == 0){
-					// new block
-					Vector3 min = {Infinity, Infinity, Infinity};
-					Vector3 max = {-Infinity, -Infinity, -Infinity};
+		auto buffer = compress_bc(node->voxels);
 
-					starts.push_back(min);
-					ends.push_back(max);
-				}
-
-				int blockIndex = i / blocksize;
-				Voxel voxel = node->voxels[i];
-				
-				starts[blockIndex].x = std::min(starts[blockIndex].x, double(voxel.r));
-				starts[blockIndex].y = std::min(starts[blockIndex].y, double(voxel.g));
-				starts[blockIndex].z = std::min(starts[blockIndex].z, double(voxel.b));
-				ends[blockIndex].x = std::max(ends[blockIndex].x, double(voxel.r));
-				ends[blockIndex].y = std::max(ends[blockIndex].y, double(voxel.g));
-				ends[blockIndex].z = std::max(ends[blockIndex].z, double(voxel.b));
-			}
-
-			// store endpoints in buffer
-			for(int blockIndex = 0; blockIndex < numBlocks; blockIndex++){
-				Vector3 start = starts[blockIndex];
-				Vector3 end = ends[blockIndex];
-
-				uint8_t start_r = uint8_t(start.x > 255.0 ? start.x / 256.0 : start.x);
-				uint8_t start_g = uint8_t(start.y > 255.0 ? start.y / 256.0 : start.y);
-				uint8_t start_b = uint8_t(start.z > 255.0 ? start.z / 256.0 : start.z);
-
-				uint8_t end_r = uint8_t(end.x > 255.0 ? end.x / 256.0 : end.x);
-				uint8_t end_g = uint8_t(end.y > 255.0 ? end.y / 256.0 : end.y);
-				uint8_t end_b = uint8_t(end.z > 255.0 ? end.z / 256.0 : end.z);
-
-				int blockOffset = bytesPerBlock * blockIndex;
-				buffer->set<uint8_t>(start_r, blockOffset + 0);
-				buffer->set<uint8_t>(start_g, blockOffset + 1);
-				buffer->set<uint8_t>(start_b, blockOffset + 2);
-				buffer->set<uint8_t>(end_r, blockOffset + 3);
-				buffer->set<uint8_t>(end_g, blockOffset + 4);
-				buffer->set<uint8_t>(end_b, blockOffset + 5);
-			}
-
-			// encode voxel colors along line
-			for(int i = 0; i < numVoxels; i++){
-
-				int blockIndex = i / blocksize;
-				Vector3 start = starts[blockIndex];
-				Vector3 end = ends[blockIndex];
-
-				Voxel voxel = node->voxels[i];
-				Vector3 point;
-				point.x = voxel.r;
-				point.y = voxel.g;
-				point.z = voxel.b;
-				
-				float t = OctreeSerializer::closestPointToPointParameter(start, end, point);
-
-				int T = std::round(t * float(numSamples));
-				T = std::min(T, numSamples - 1);
-				T = std::max(T, 0);
-
-				int blockOffset = bytesPerBlock * blockIndex;
-
-				int blockSampleIndex = i % blocksize;
-				uint16_t bits = buffer->get<uint16_t>(blockOffset + 6);
-				bits = bits | T << (bitsPerSample * blockSampleIndex);
-				buffer->set<uint16_t>(bits, blockOffset + 6);
-			}
-
-			// auto compressedBuffer = OctreeSerializer::compress(buffer);
-			// return compressedBuffer;
-			return buffer;
-		}
+		return buffer;
 
 	}
 
@@ -363,6 +375,8 @@ struct OctreeSerializer{
 		int64_t numBytes = outputAttributes->bytes * node->numPoints;
 		auto prunedData = make_shared<Buffer>(numBytes);
 
+		auto pruned_soa = make_shared<Buffer>(numBytes);
+
 		int stride_in = inputAttributes->bytes;
 		int stride_out = outputAttributes->bytes;
 
@@ -373,27 +387,46 @@ struct OctreeSerializer{
 				int offset_target = i * stride_out + mapping.offset_target;
 
 				memcpy(prunedData->data_u8 + offset_target, node->points->data_u8 + offset_source, mapping.byteSize);
+
+
+
+				{ // DEBUG
+					int offset_attributes = node->numPoints * mapping.offset_target;
+					int offset_target = offset_attributes + i * mapping.byteSize;
+
+					memcpy(pruned_soa->data_u8 + offset_target, node->points->data_u8 + offset_source, mapping.byteSize);
+				}
 			}
 		}
 
-		//{ // DEBUG
+		// auto compressed_aos = OctreeSerializer::compress(prunedData);
+		auto compressed_soa = OctreeSerializer::compress(pruned_soa);
 
-		//	int32_t X_source = node->points->get<int32_t>(0);
-		//	int32_t X_target = prunedData->get<int32_t>(0);
+		// // int compressionRate = (100ull * compressed->size) / node->points->size;
 
-		//	if(X_source != X_target){
-		//		int a = 10;
-		//	}
+		// static int64_t bytes_uncompressed = 0;
+		// static atomic_int64_t bytes_aos = 0;
+		// static atomic_int64_t bytes_soa = 0;
 
-		//}
+		// { // DEBUG
+		// 	auto compressed_soa = OctreeSerializer::compress(pruned_soa);
 
-		auto compressed = OctreeSerializer::compress(prunedData);
-		// int compressionRate = (100ull * compressed->size) / node->points->size;
-		
-		// auto compressed = OctreeSerializer::compress(node->points);
-		// int compressionRate = (100ull * compressed->size) / node->points->size;
+		// 	bytes_uncompressed += node->points->size;
+		// 	bytes_aos += compressed->size;
+		// 	bytes_soa += compressed_soa->size;
 
-		return compressed;
+		// 	int compressionRate_aos = (100ull * bytes_aos) / bytes_uncompressed;
+		// 	int compressionRate_soa = (100ull * bytes_soa) / bytes_uncompressed;
+		// 	// int compressionRate_aos = (100ull * compressed->size) / node->points->size;
+		// 	// int compressionRate_soa = (100ull * compressed_soa->size) / node->points->size;
+
+		// 	cout << format("aos: {:4}%, soa: {:4}% \n", compressionRate_aos, compressionRate_soa);
+		// 	// cout << format("aos: {:4}%, soa: {:4}% \n", compressionRate_aos, compressionRate_soa);
+
+
+		// }
+
+		return compressed_soa;
 	}
 
 	// Serializes <node->children> relative to voxel coordinates in <node>

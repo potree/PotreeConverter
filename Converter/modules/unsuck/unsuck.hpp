@@ -92,7 +92,49 @@ inline string formatNumber(T number, int decimals = 0) {
 	return ss.str();
 }
 
-struct Buffer {
+// struct BufferView{
+// 	uint8_t* data = nullptr;
+// 	int64_t size = 0;
+
+// 	BufferView(){
+
+// 	}
+
+// 	BufferView(void* ptr, int64_t size){
+// 		this->data = (uint8_t*)ptr;
+// 		this->size = size;
+// 	}
+
+// 	template<class T>
+// 	void set(T value, int64_t position) {
+// 		memcpy(data + position, &value, sizeof(T));
+// 	}
+
+// 	template<class T>
+// 	T get(int64_t position) {
+// 		T value;
+
+// 		memcpy(
+// 			&value, 
+// 			data + position,
+// 			sizeof(T)
+// 		);
+
+// 		return value;
+// 	}
+
+// 	BufferView slice(int64_t offset, int64_t size){
+
+// 		BufferView subview;
+// 		subview.data = data + offset;
+// 		subview.size = size;
+
+// 		return subview;
+// 	}
+
+// };
+
+struct Buffer{
 
 	void* data = nullptr;
 	uint8_t* data_u8 = nullptr;
@@ -174,7 +216,7 @@ struct Buffer {
 
 		memcpy(
 			&value, 
-			data_u8 + position, 
+			data_u8 + position,
 			sizeof(T)
 		);
 
@@ -188,6 +230,8 @@ struct Buffer {
 	}
 
 };
+
+
 
 
 

@@ -392,6 +392,13 @@ struct HierarchyBuilder{
 			// fout.write(buffer->data_char, buffer->size);
 			fout_potree.write(buffer->data_char, buffer->size);
 			bytesWritten += buffer->size;
+
+			// { // DEBUG
+			// 	string filename = filepath.filename().string();
+
+			// 	Buffer& bufferRef = *buffer.get();
+			// 	writeBinaryFile("E:/temp/potree/" + filename, bufferRef);
+			// }
 		}
 
 		// close/flush file so that we can reopen it to modify beginning
@@ -408,6 +415,13 @@ struct HierarchyBuilder{
 
 			fout_potree.seekp(initialFilePos);
 			fout_potree.write(buffer->data_char, buffer->size);
+
+			// { // DEBUG
+			// 	string filename = "r.bin";
+
+			// 	Buffer& bufferRef = *buffer.get();
+			// 	writeBinaryFile("E:/temp/potree/" + filename, bufferRef);
+			// }
 		}
 
 		// redundant security check
