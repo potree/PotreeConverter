@@ -5,7 +5,12 @@ project(PotreeConverter LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
-set(CMAKE_BUILD_TYPE "Release" CACHE STRING "" FORCE)
+
+# Set the default build type in a way that keeps it overridable from the CLI.
+# From: https://stackoverflow.com/questions/48832233/have-a-cmake-project-default-to-the-release-build-type/48832234#48832234
+if (NOT CMAKE_BUILD_TYPE OR CMAKE_BUILD_TYPE STREQUAL "")
+    set(CMAKE_BUILD_TYPE "Release" CACHE STRING "" FORCE)
+endif()
 
 #message(${PROJECT_SOURCE_DIR})
 
