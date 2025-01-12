@@ -516,13 +516,35 @@ inline string readFile(string path) {
 }
 
 inline void writeFile(string path, string text) {
+	// Use C API to get proper error messages, e.g. disk being full.
 
-	ofstream out;
-	out.open(path);
+	FILE * f = ::fopen(path.c_str(), "wb"); // convenience over open() just for string flags
+	if (f == NULL) {
+		// Using `system_error` gets us around buffer size management with `strerror_r()`
+		throw std::runtime_error("Failed to open " + path + " for writing: " + std::system_error(errno, std::system_category()).what());
+	}
+	int fd = ::fileno(f);
+	if (fd < 0) {
+		throw std::runtime_error("Failed to obtain FD for " + path + ": " + std::system_error(errno, std::system_category()).what());
+	}
+	const char * buf = text.data();
+	for (size_t bytes_written = 0; bytes_written < text.size(); ) {
+		::ssize_t res = ::write(fd, &buf[bytes_written], text.size() - bytes_written);
+		if (res < 0) {
+			if (errno == EINTR) {
+				continue;
+			}
+			if (::fclose(f) != 0) {
+				throw std::runtime_error("Failed to close after write to " + path + ": " + std::system_error(errno, std::system_category()).what());
+			}
+			throw std::runtime_error("Failed to write to " + path + ": " + std::system_error(errno, std::system_category()).what());
+		}
+		bytes_written += res;
+	}
+	if (::fclose(f) != 0) {
+		throw std::runtime_error("Failed to close " + path + ": " + std::system_error(errno, std::system_category()).what());
+	}
 
-	out << text;
-
-	out.close();
 }
 
 
