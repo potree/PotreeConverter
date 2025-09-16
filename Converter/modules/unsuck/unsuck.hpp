@@ -42,7 +42,7 @@ static double Infinity = std::numeric_limits<double>::infinity();
 #if defined(__linux__)
 constexpr auto fseek_64_all_platforms = fseeko64;
 #elif defined(_WIN32)
-constexpr auto fseek_64_all_platforms = _fseeki64;
+inline const auto fseek_64_all_platforms = &_fseeki64;
 #endif
 
 
