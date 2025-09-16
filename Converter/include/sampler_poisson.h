@@ -79,7 +79,7 @@ struct SamplerPoisson : public Sampler {
 			vector<int64_t> numRejectedPerChild(8, 0);
 			int64_t numAccepted = 0;
 
-			for (int64_t childIndex = 0; childIndex < 8; childIndex++) {
+			for (int32_t childIndex = 0; childIndex < 8; childIndex++) {
 				auto child = node->children[childIndex];
 
 				if (child == nullptr) {
@@ -92,8 +92,8 @@ struct SamplerPoisson : public Sampler {
 				vector<int8_t> acceptedFlags(child->numPoints, 0);
 				acceptedChildPointFlags.push_back(acceptedFlags);
 
-				for (int64_t i = 0; i < child->numPoints; i++) {
-					int64_t pointOffset = i * attributes.bytes;
+				for (int32_t i = 0; i < child->numPoints; i++) {
+					int64_t pointOffset = (int64_t)i * attributes.bytes;
 					int32_t* xyz = reinterpret_cast<int32_t*>(child->points->data_u8 + pointOffset);
 
 					double x = (xyz[0] * scale.x) + offset.x;
