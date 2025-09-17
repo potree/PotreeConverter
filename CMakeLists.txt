@@ -54,14 +54,8 @@ target_include_directories(PotreeConverter PRIVATE "./Converter/libs")
 
 
 if (UNIX)
-	find_package(Threads REQUIRED)
 	find_package(TBB REQUIRED)
-	
-	target_link_libraries(${PROJECT_NAME} Threads::Threads)
-	target_link_libraries(${PROJECT_NAME} tbb)
-
-
-	#SET(CMAKE_CXX_FLAGS "-pthread -ltbb")
+	target_link_libraries(${PROJECT_NAME} TBB::tbb)
 endif (UNIX)
 
 ###############################################
