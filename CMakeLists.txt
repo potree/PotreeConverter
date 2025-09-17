@@ -52,11 +52,25 @@ target_include_directories(PotreeConverter PRIVATE "./Converter/include")
 target_include_directories(PotreeConverter PRIVATE "./Converter/modules")
 target_include_directories(PotreeConverter PRIVATE "./Converter/libs")
 
+include(CheckCXXSymbolExists)
+set(_quiet_flag ${CMAKE_REQUIRED_QUIET})
+set(CMAKE_REQUIRED_QUIET TRUE)
+check_cxx_symbol_exists(_LIBCPP_VERSION "version" LIBCPP)
+check_cxx_symbol_exists(__GLIBCXX__ "version" GLIBCXX)
+set(CMAKE_REQUIRED_QUIET ${_quiet_flag})
+unset(_quiet_flag)
 
-if (UNIX)
+if (LIBCPP) # libc++
+	message(WARNING "libc++ parallel STL is still in working. See https://libcxx.llvm.org/Status/PSTL.html")
+	target_compile_options(${PROJECT_NAME} PRIVATE "-fexperimental-library")
+	target_link_options(${PROJECT_NAME} PRIVATE "-fexperimental-library")
+elseif (GLIBCXX) # libstdc++
+	message(WARNING "TBB is used as backend of parallel algorithm in c++17. See https://gcc.gnu.org/onlinedocs/libstdc++/manual/parallel_mode.html")
+	# The libstdc++ parallel mode is an experimental parallel implementation of many algorithms of the C++ Standard Library.
+	# OpenMP or TBB can be used as a backend.
 	find_package(TBB REQUIRED)
 	target_link_libraries(${PROJECT_NAME} TBB::tbb)
-endif (UNIX)
+endif()
 
 ###############################################
 # COPY PAGE TEMPLATE TO BINARY DIRECTORY
