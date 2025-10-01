@@ -22,17 +22,11 @@ Altough the converter made a major step to version 2.0, the format it produces i
 1. Download windows binaries or
     * Download source code
 	* Install [CMake](https://cmake.org/) 3.16 or later
-	* Create and jump into folder "build"
+	* run
+	    ```shell
+	    cmake -B build # -G "Ninja Multi-Config" # Use Ninja to parallelize building
+	    cmake --build build --config Release
 	    ```
-	    mkdir build
-	    cd build
-	    ```
-	* run 
-	    ```
-	    cmake ../
-	    ```
-	* On linux, run: ```make```
-	* On windows, open Visual Studio 2019 Project ./Converter/Converter.sln and compile it in release mode
 2. run ```PotreeConverter.exe <input> -o <outputDir>```
     * Optionally specify the sampling strategy:
 	* Poisson-disk sampling (default): ```PotreeConverter.exe <input> -o <outputDir> -m poisson```
