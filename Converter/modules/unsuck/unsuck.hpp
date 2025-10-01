@@ -39,10 +39,12 @@ static long long unsuck_start_time = high_resolution_clock::now().time_since_epo
 static double Infinity = std::numeric_limits<double>::infinity();
 
 
-#if defined(__linux__)
-constexpr auto fseek_64_all_platforms = fseeko64;
+#if (LONG_MAX == INT64_MAX)
+constexpr auto fseek_64_all_platforms = &fseek;
 #elif defined(_WIN32)
 inline const auto fseek_64_all_platforms = &_fseeki64;
+#else // e.g. LP32
+constexpr auto fseek_64_all_platforms = &fseeko64;
 #endif
 
 
