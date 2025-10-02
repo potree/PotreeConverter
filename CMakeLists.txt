@@ -38,6 +38,10 @@ add_executable(PotreeConverter
 	${HEADER_FILES}
 )
 
+if (CMAKE_GENERATOR MATCHES "Visual Studio")
+	target_compile_options(${PROJECT_NAME} PRIVATE /MP)
+endif()
+
 set(LASZIP_DIR "${PROJECT_SOURCE_DIR}/Converter/libs/laszip")
 add_subdirectory(${LASZIP_DIR})
 target_link_libraries(PotreeConverter laszip)
