@@ -1,7 +1,11 @@
 cmake_minimum_required(VERSION 3.16)
 set(CMAKE_SUPPRESS_REGENERATION true)
 
-project(PotreeConverter LANGUAGES CXX)
+project(PotreeConverter
+	VERSION 2.0
+	HOMEPAGE_URL "http://potree.org/"
+	LANGUAGES CXX
+)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
@@ -119,3 +123,32 @@ add_custom_command(
 		${PROJECT_SOURCE_DIR}/README.md
 		$<TARGET_FILE_DIR:${PROJECT_NAME}>/README.md)
 
+
+include(GNUInstallDirs)
+install(TARGETS ${PROJECT_NAME}
+  EXPORT ${PROJECT_NAME}Targets
+  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+  LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+)
+install(FILES ${PROJECT_SOURCE_DIR}/LICENSE
+	RENAME license_potree_converter.txt
+	DESTINATION ${CMAKE_INSTALL_BINDIR}/licenses
+)
+
+install(FILES ${LASZIP_DIR}/COPYING
+	RENAME license_laszip.txt
+	DESTINATION ${CMAKE_INSTALL_BINDIR}/licenses
+)
+install(FILES ${BROTLI_DIR}/LICENSE
+	RENAME license_brotli.txt
+	DESTINATION ${CMAKE_INSTALL_BINDIR}/licenses
+)
+install(FILES ${PROJECT_SOURCE_DIR}/Converter/libs/json/LICENSE
+	RENAME license_json.txt
+	DESTINATION ${CMAKE_INSTALL_BINDIR}/licenses
+)
+
+include(CPack)
+set(CPACK_RESOURCE_FILE_LICENSE "${PROJECT_SOURCE_DIR}/licenses/license_potree_converter.txt")
+set(CPACK_RESOURCE_FILE_README "${PROJECT_SOURCE_DIR}/README.md")
