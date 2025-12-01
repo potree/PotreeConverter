@@ -1,4 +1,3 @@
-
 #include <iostream>
 #include <filesystem>
 #include <unordered_map>
@@ -584,8 +583,8 @@ namespace chunker_countsort_laszip {
 				int attributeSize = inputAttribute.size;
 
 				if (attribute != nullptr) {
-					auto handleAttribute = [data, point, header, attributeSize, attributeOffset, sourceOffset, attribute](int64_t offset) {
-						memcpy(data + offset + attributeOffset, point->extra_bytes + sourceOffset, attributeSize);
+					auto handleAttribute = [data, point, header, attributeSize, targetOffset, sourceOffset, attribute](int64_t offset) {
+						memcpy(data + offset + targetOffset, point->extra_bytes + sourceOffset, attributeSize);
 
 						std::function<double(uint8_t*)> f;
 
