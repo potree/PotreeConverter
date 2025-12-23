@@ -28,8 +28,8 @@ namespace potree_to_laz {
 	struct Node {
 		string name;
 
-		int nodeType = 2;
-		int64_t numPoints = 0;
+		uint8_t nodeType = 2;
+		uint32_t numPoints = 0;
 		int64_t byteOffset = 0;
 		int64_t byteSize = 0;
 
@@ -50,7 +50,7 @@ namespace potree_to_laz {
 		}
 	};
 
-	Attributes getAttributes(json& jsMetadata) {
+	Attributes getAttributes(const json& jsMetadata) {
 
 		vector<Attribute> attributeList;
 		auto jsAttributes = jsMetadata["attributes"];
@@ -84,7 +84,7 @@ namespace potree_to_laz {
 		return attributes;
 	}
 
-	shared_ptr<Node> loadHierarchy(string path, json& js) {
+	shared_ptr<Node> loadHierarchy(string path, const json& js) {
 		auto buffer = readBinaryFile(path + "/hierarchy.bin");
 
 		auto jsHierarchy = js["hierarchy"];
@@ -111,30 +111,19 @@ namespace potree_to_laz {
 			int64_t byteOffset = reinterpret_cast<uint64_t*>(buffer->data_u8 + i * bytesPerNode + 6)[0];
 			int64_t byteSize = reinterpret_cast<uint64_t*>(buffer->data_u8 + i * bytesPerNode + 14)[0];
 
-			
+			current->nodeType = type;
+			current->numPoints = numPoints;
+			current->byteOffset = byteOffset;
+			current->byteSize = byteSize;
 
 			if (current->nodeType == 2) {
-				// replace proxy with real node
-				current->byteOffset = byteOffset;
-				current->byteSize = byteSize;
-				current->numPoints = numPoints;
-			} else if (type == 2) {
 				// load proxy
-				//current->hierarchyByteOffset = byteOffset;
-				//current->hierarchyByteSize = byteSize;
-				current->numPoints = numPoints;
-			} else {
-				// load real node 
-				current->byteOffset = byteOffset;
-				current->byteSize = byteSize;
-				current->numPoints = numPoints;
+				continue;
 			}
-		
-			current->nodeType = type;
 
-			for (int childIndex = 0; childIndex < 8; childIndex++) {
+			for (uint8_t childIndex = 0; childIndex < 8; childIndex++) {
 
-				bool childExists = ((1 << childIndex) & childMask) != 0;
+				bool childExists = ((1U << childIndex) & childMask) != 0;
 
 				if (!childExists) {
 					continue;
@@ -250,8 +239,8 @@ namespace potree_to_laz {
 			vector<Point>& points = levels[level];
 
 			auto buffer = readBinaryFile(path + "/octree.bin", node->byteOffset, node->byteSize);
-			int bpp = attributes.bytes;
-			int numPoints = buffer.size() / bpp;
+			uint32_t bpp = attributes.bytes;
+			uint32_t numPoints = buffer.size() / bpp;
 
 			int64_t rgbOffset = 0;
 			int64_t rgbOffsetFind = 0;
@@ -264,9 +253,9 @@ namespace potree_to_laz {
 				rgbOffsetFind += attribute.size;
 			}
 
-			for (int64_t i = 0; i < numPoints; i++) {
-				int64_t pointOffset = i * bpp;
-				
+			for (uint32_t i = 0; i < numPoints; i++) {
+				uint64_t pointOffset = (uint64_t)i * bpp;
+
 				int32_t ix = read<int32_t>(buffer, pointOffset + 0);
 				int32_t iy = read<int32_t>(buffer, pointOffset + 4);
 				int32_t iz = read<int32_t>(buffer, pointOffset + 8);
@@ -309,7 +298,7 @@ namespace potree_to_laz {
 
 
 
-		
+
 
 
 	}
