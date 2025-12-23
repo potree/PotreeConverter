@@ -96,7 +96,7 @@ namespace potree_to_laz {
 		int64_t hierarchyByteOffset = 0;
 		int64_t hierarchyByteSize = firstChunkSize;
 		int64_t bytesPerNode = 22;
-		int64_t numNodes = buffer->size / bytesPerNode;
+		int64_t numNodes = hierarchyByteSize / bytesPerNode;
 
 		auto root = make_shared<Node>();
 		root->name = "r";
