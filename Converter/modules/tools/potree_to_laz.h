@@ -34,7 +34,7 @@ namespace potree_to_laz {
 		int64_t byteSize = 0;
 
 		vector<shared_ptr<Node>> children = vector<shared_ptr<Node>>(8, nullptr);
-		shared_ptr<Node> parent = nullptr;
+		Node* parent = nullptr;
 
 
 		void traverse(function<void(Node*, int level)> callback, int level = 0) {
@@ -144,9 +144,9 @@ namespace potree_to_laz {
 
 				auto child = make_shared<Node>();
 				child->name = childName;
-				
+
 				current->children[childIndex] = child;
-				child->parent = current;
+				child->parent = current.get();
 
 				nodes.push_back(child);
 
