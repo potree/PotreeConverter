@@ -6,7 +6,9 @@
 #include <mutex>
 #include <memory>
 #include <atomic>
+#include <print>
 #include <cmath>
+#include <format>
 
 #include "chunker_countsort_laszip.h"
 
@@ -36,6 +38,8 @@ using std::make_shared;
 using std::shared_ptr;
 using std::unique_ptr;
 using std::atomic_int32_t;
+using std::println;
+using std::format;
 
 namespace fs = std::filesystem;
 
@@ -139,12 +143,11 @@ namespace chunker_countsort_laszip {
 
 		auto tStart = now();
 
-		//Vector3 size = max - min;
-
 		vector<std::atomic_int32_t> grid(gridSize * gridSize * gridSize);
 
 		struct Task{
 			string path;
+			int64_t id;
 			int64_t totalPoints = 0;
 			int64_t firstPoint;
 			int64_t firstByte;
@@ -168,17 +171,14 @@ namespace chunker_countsort_laszip {
 			Vector3 min = task->min;
 			Vector3 max = task->max;
 
+			string filename = fs::path(task->path).filename().string();
+
 			stringstream ss;
-			ss << "counting " << fs::path(task->path).filename().string() 
+			ss << "counting " << filename 
 				<< ", first point: " << formatNumber(task->firstPoint)
 				<< ", num points: " << formatNumber(task->numPoints);
-			// cout << ss.str();
-			// monitor->print("counter message", ss.str());
 
 			logger::INFO(ss.str());
-			
-			
-
 			thread_local unique_ptr<void, void(*)(void*)> buffer(nullptr, free);
 			thread_local int64_t bufferSize = -1;
 
@@ -201,7 +201,13 @@ namespace chunker_countsort_laszip {
 				laszip_create(&laszip_reader);
 				laszip_request_compatibility_mode(laszip_reader, request_reader);
 				laszip_open_reader(laszip_reader, path.c_str(), &is_compressed);
-				laszip_seek_point(laszip_reader, task->firstPoint);
+				auto result = laszip_seek_point(laszip_reader, task->firstPoint);
+
+				if (result != 0) {
+					println("ERROR: laszip_seek_point failed. Currupt chunk table?");
+					println("ERROR: could not read file {}", path);
+					exit(623452356);
+				}
 			}
 
 			double cubeSize = (max - min).max();
@@ -285,6 +291,44 @@ namespace chunker_countsort_laszip {
 
 		auto tStartTaskAssembly = now();
 
+		// Sanity Check
+		bool hasInvalidFiles = false;
+		for_each(execution::par, sources.begin(), sources.end(), [&](Source& source){
+			laszip_POINTER laszip_reader;
+			laszip_header* header;
+			laszip_BOOL request_reader = 1;
+			laszip_BOOL is_compressed = iEndsWith(source.path, ".laz") ? 1 : 0;
+
+			laszip_create(&laszip_reader);
+			laszip_request_compatibility_mode(laszip_reader, request_reader);
+			laszip_open_reader(laszip_reader, source.path.c_str(), &is_compressed);
+			laszip_get_header_pointer(laszip_reader, &header);
+
+			// Check if chunk table is corrupted.
+			// Corrupt chunk tables have caused stackoverflows in LASreadPoint::search_chunk_table before
+			// - Invalid chunk table leads to number_chunks being 0
+			// - search_chunk_table is called with lower: 0 and upper: 0
+			// - These arguments make search_chunk_table recurse infinitely
+			int64_t numPoints = std::max(uint64_t(header->number_of_point_records), header->extended_number_of_point_records);
+			int64_t seekLocation = numPoints - numPoints % 50'000ll; // Seek to last multiple of 50k (typical chunk size)
+
+			auto result = laszip_seek_point(laszip_reader, seekLocation);
+			if(result != 0){
+				println("ERROR: Encountered a non-seekable file. Does it have a corrupted chunk table? file: {}", source.path);
+				hasInvalidFiles = true;
+			}
+
+			laszip_close_reader(laszip_reader);
+			laszip_destroy(laszip_reader);
+		});
+
+		if(hasInvalidFiles){
+			println("Canceling conversion because invalid files were encountered. ");
+			exit(3526345);
+		}
+
+		int64_t numTotalTasksSubmitted = 0;
+		
 		for (auto source : sources) {
 		//auto parallel = std::execution::par;
 		//for_each(parallel, paths.begin(), paths.end(), [&mtx, &sources](string path) {
@@ -301,6 +345,19 @@ namespace chunker_countsort_laszip {
 				laszip_request_compatibility_mode(laszip_reader, request_reader);
 				laszip_open_reader(laszip_reader, source.path.c_str(), &is_compressed);
 				laszip_get_header_pointer(laszip_reader, &header);
+
+				// Check if chunk table is corrupted.
+				// Corrupt chunk tables have caused stackoverflows in LASreadPoint::search_chunk_table before
+				// - Invalid chunk table leads to number_chunks being 0
+				// - search_chunk_table is called with lower: 0 and upper: 0
+				// - These arguments make search_chunk_table recurse infinitely
+				int64_t numPoints = std::max(uint64_t(header->number_of_point_records), header->extended_number_of_point_records);
+				int64_t seekLocation = numPoints - numPoints % 50'000ll; // Seek to last multiple of 50k (typical chunk size)
+
+				auto result = laszip_seek_point(laszip_reader, seekLocation);
+				if(result != 0){
+					println("ERROR: Encountered a non-seekable file. Does it have a corrupted chunk table? file: {}", source.path);
+				}
 			}
 			
 			int64_t bpp = header->point_data_record_length;
@@ -332,12 +389,14 @@ namespace chunker_countsort_laszip {
 				task->numBytes = numBytes;
 				task->numPoints = numToRead;
 				task->bpp = header->point_data_record_length; 
+				task->id = numTotalTasksSubmitted;
 				//task->scale = { header->x_scale_factor, header->y_scale_factor, header->z_scale_factor };
 				//task->offset = { header->x_offset, header->y_offset, header->z_offset };
 				task->min = min;
 				task->max = max;
 
 				pool.addTask(task);
+				numTotalTasksSubmitted++;
 
 				numRead += batchSize;
 			}

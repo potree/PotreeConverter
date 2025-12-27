@@ -89,6 +89,10 @@ inline string formatNumber(T number, int decimals = 0) {
 	return ss.str();
 }
 
+inline auto getSaneLocale(){
+	return std::locale(std::cout.getloc(), new punct_facet);
+}
+
 struct Buffer {
 
 	void* data = nullptr;
