@@ -1,5 +1,38 @@
-
 #include "unsuck.hpp"
+
+#include <cstdint>
+#include <chrono>
+#include <iostream>
+#include <thread>
+
+void printMemoryReport() {
+	static constexpr auto gb = 1024.0 * 1024.0 * 1024.0;
+	const auto memoryData = getMemoryData();
+	const auto vm = double(memoryData.virtual_usedByProcess) / gb;
+	const auto pm = double(memoryData.physical_usedByProcess) / gb;
+
+	std::cout
+		<< "memory usage: "
+		<< "virtual: " << formatNumber(vm, 1) << " GB, "
+		<< "physical: " << formatNumber(pm, 1) << " GB"
+		<< std::endl;
+}
+
+void launchMemoryChecker(int64_t maxMB, double checkInterval) {
+	const auto interval = std::chrono::milliseconds(int64_t(checkInterval * 1000));
+
+	std::thread([maxMB, interval]() {
+		static constexpr double lastReport = 0.0;
+		static constexpr double reportInterval = 1.0;
+		static constexpr double lastUsage = 0.0;
+		static constexpr double largestUsage = 0.0;
+
+		while (true) {
+			auto memdata = getMemoryData();
+			std::this_thread::sleep_for(interval);
+		}
+	}).detach();
+}
 
 #ifdef _WIN32
 	#include "TCHAR.h"
@@ -51,45 +84,6 @@ MemoryData getMemoryData() {
 	return data;
 }
 
-
-void printMemoryReport() {
-
-	auto memoryData = getMemoryData();
-	double vm = double(memoryData.virtual_usedByProcess) / (1024.0 * 1024.0 * 1024.0);
-	double pm = double(memoryData.physical_usedByProcess) / (1024.0 * 1024.0 * 1024.0);
-
-	stringstream ss;
-	ss << "memory usage: "
-		<< "virtual: " << formatNumber(vm, 1) << " GB, "
-		<< "physical: " << formatNumber(pm, 1) << " GB"
-		<< endl;
-
-	cout << ss.str();
-
-}
-
-void launchMemoryChecker(int64_t maxMB, double checkInterval) {
-
-	auto interval = std::chrono::milliseconds(int64_t(checkInterval * 1000));
-
-	thread t([maxMB, interval]() {
-
-		static double lastReport = 0.0;
-		static double reportInterval = 1.0;
-		static double lastUsage = 0.0;
-		static double largestUsage = 0.0;
-
-		while (true) {
-			auto memdata = getMemoryData();
-
-			using namespace std::chrono_literals;
-			std::this_thread::sleep_for(interval);
-		}
-
-	});
-	t.detach();
-
-}
 
 static ULARGE_INTEGER lastCPU, lastSysCPU, lastUserCPU;
 static int numProcessors;
@@ -258,45 +252,6 @@ MemoryData getMemoryData() {
 	return data;
 }
 
-
-void printMemoryReport() {
-
-	auto memoryData = getMemoryData();
-	double vm = double(memoryData.virtual_usedByProcess) / (1024.0 * 1024.0 * 1024.0);
-	double pm = double(memoryData.physical_usedByProcess) / (1024.0 * 1024.0 * 1024.0);
-
-	stringstream ss;
-	ss << "memory usage: "
-		<< "virtual: " << formatNumber(vm, 1) << " GB, "
-		<< "physical: " << formatNumber(pm, 1) << " GB"
-		<< endl;
-
-	cout << ss.str();
-
-}
-
-void launchMemoryChecker(int64_t maxMB, double checkInterval) {
-
-	auto interval = std::chrono::milliseconds(int64_t(checkInterval * 1000));
-
-	thread t([maxMB, interval]() {
-
-		static double lastReport = 0.0;
-		static double reportInterval = 1.0;
-		static double lastUsage = 0.0;
-		static double largestUsage = 0.0;
-
-		while (true) {
-			auto memdata = getMemoryData();
-
-			using namespace std::chrono_literals;
-			std::this_thread::sleep_for(interval);
-		}
-
-	});
-	t.detach();
-
-}
 
 static int numProcessors;
 static bool initialized = false;
