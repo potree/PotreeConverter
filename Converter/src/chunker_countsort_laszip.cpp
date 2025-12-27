@@ -652,6 +652,17 @@ namespace chunker_countsort_laszip {
 				attributeClassificationFlags->max.x = std::max(attributeClassificationFlags->max.x, double(point->extended_classification_flags));
 			};
 
+			int offsetNIR = outputAttributes.getOffset("NIR");
+			Attribute* attributeNIR = outputAttributes.get("NIR");
+			auto nir = [data, point, header, offsetNIR, attributeNIR](int64_t offset) {
+				uint8_t value = point->extended_classification_flags;
+
+				memcpy(data + offset + offsetNIR, &value, 1);
+
+				attributeNIR->min.x = 0;//std::min(attributeClassificationFlags->min.x, double(point->extended_classification_flags));
+				attributeNIR->max.x = 65'000;//std::max(attributeClassificationFlags->max.x, double(point->extended_classification_flags));
+			};
+
 			unordered_map<string, function<void(int64_t)>> mapping = {
 				{"rgb", rgb},
 				{"intensity", intensity},
@@ -664,6 +675,7 @@ namespace chunker_countsort_laszip {
 				{"point source id", pointSourceId},
 				{"gps-time", gpsTime},
 				{"classification flags", classificationFlags},
+				{"NIR", nir},
 			};
 
 			for (auto& attribute : inputAttributes.list) {
