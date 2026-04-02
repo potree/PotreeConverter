@@ -5,6 +5,7 @@
 #include <thread>
 #include <mutex>
 #include <memory>
+#include <algorithm>
 #include <atomic>
 
 #include "chunker_countsort_laszip.h"
@@ -183,9 +184,9 @@ namespace chunker_countsort_laszip {
 			{ // sanity checks
 				if(numBytes < 0){
 					logger::ERROR("invalid malloc size: " + formatNumber(numBytes));
+					return;
 				}
 			}
-
 			if (bufferSize < numBytes){
 				buffer.reset(malloc(numBytes));
 				bufferSize = numBytes;
@@ -198,8 +199,17 @@ namespace chunker_countsort_laszip {
 
 				laszip_create(&laszip_reader);
 				laszip_request_compatibility_mode(laszip_reader, request_reader);
-				laszip_open_reader(laszip_reader, path.c_str(), &is_compressed);
-				laszip_seek_point(laszip_reader, task->firstPoint);
+				if (laszip_open_reader(laszip_reader, path.c_str(), &is_compressed)) {
+					logger::ERROR("failed to open reader for " + path);
+					laszip_destroy(laszip_reader);
+					return;
+				}
+				if (laszip_seek_point(laszip_reader, task->firstPoint)) {
+					logger::ERROR("failed to seek to point " + formatNumber(task->firstPoint) + " in " + path);
+					laszip_close_reader(laszip_reader);
+					laszip_destroy(laszip_reader);
+					return;
+				}
 			}
 
 			double cubeSize = (max - min).max();
@@ -216,7 +226,7 @@ namespace chunker_countsort_laszip {
 			for (int i = 0; i < numToRead; i++) {
 				int64_t pointOffset = i * bpp;
 
-				laszip_read_point(laszip_reader);
+				if (laszip_read_point(laszip_reader)) { continue; }
 				laszip_get_coordinates(laszip_reader, coordinates);
 
 				{
@@ -250,9 +260,9 @@ namespace chunker_countsort_laszip {
 						exit(123);
 					}
 
-					int64_t ix = int64_t(std::min(dGridSize * ux, dGridSize - 1.0));
-					int64_t iy = int64_t(std::min(dGridSize * uy, dGridSize - 1.0));
-					int64_t iz = int64_t(std::min(dGridSize * uz, dGridSize - 1.0));
+					int64_t ix = int64_t(std::clamp(dGridSize * ux, 0.0, dGridSize - 1.0));
+					int64_t iy = int64_t(std::clamp(dGridSize * uy, 0.0, dGridSize - 1.0));
+					int64_t iz = int64_t(std::clamp(dGridSize * uz, 0.0, dGridSize - 1.0));
 
 					int64_t index = ix + iy * gridSize + iz * gridSize * gridSize;
 
@@ -264,11 +274,11 @@ namespace chunker_countsort_laszip {
 			laszip_close_reader(laszip_reader);
 			laszip_destroy(laszip_reader);
 
-			static int64_t pointsProcessed = 0;
+			static std::atomic<int64_t> pointsProcessed{0};
 			pointsProcessed += task->numPoints;
 
 			state.name = "COUNTING";
-			state.pointsProcessed = pointsProcessed;
+			state.pointsProcessed = pointsProcessed.load();
 			state.duration = now() - tStart;
 
 			//cout << ("end: " + formatNumber(dbgCurr)) << endl;
@@ -557,6 +567,9 @@ namespace chunker_countsort_laszip {
 				{5, 15},
 				{6, 10},
 				{7, 11},
+				{8, 12},
+				{9, 13},
+				{10, 14},
 			};
 
 			bool noMapping = formatToExtraIndex.find(header->point_data_format) == formatToExtraIndex.end();
@@ -716,7 +729,7 @@ namespace chunker_countsort_laszip {
 			{ // sanity checks
 				if(numBytes < 0){
 					logger::ERROR("invalid malloc size: " + formatNumber(numBytes));
-
+					return;
 				}
 			}
 
@@ -756,11 +769,20 @@ namespace chunker_countsort_laszip {
 
 				laszip_create(&laszip_reader);
 				laszip_request_compatibility_mode(laszip_reader, request_reader);
-				laszip_open_reader(laszip_reader, path.c_str(), &is_compressed);
+				if (laszip_open_reader(laszip_reader, path.c_str(), &is_compressed)) {
+					logger::ERROR("failed to open reader for " + path);
+					laszip_destroy(laszip_reader);
+					return;
+				}
 				laszip_get_header_pointer(laszip_reader, &header);
 				laszip_get_point_pointer(laszip_reader, &point);
 
-				laszip_seek_point(laszip_reader, task->firstPoint);
+				if (laszip_seek_point(laszip_reader, task->firstPoint)) {
+					logger::ERROR("failed to seek to point " + formatNumber(task->firstPoint) + " in " + path);
+					laszip_close_reader(laszip_reader);
+					laszip_destroy(laszip_reader);
+					return;
+				}
 				
 				auto attributeHandlers = createAttributeHandlers(header, data, point, inputAttributes, outputAttributesCopy);
 
@@ -768,7 +790,7 @@ namespace chunker_countsort_laszip {
 				auto aPosition = outputAttributesCopy.get("position");
 
 				for (int64_t i = 0; i < batchSize; i++) {
-					laszip_read_point(laszip_reader);
+					if (laszip_read_point(laszip_reader)) { continue; }
 					laszip_get_coordinates(laszip_reader, coordinates);
 
 					int64_t offset = i * outputAttributes.bytes;
@@ -825,9 +847,9 @@ namespace chunker_countsort_laszip {
 				double uy = (double(Y) * scale.y + outputAttributes.posOffset.y - min.y) / size.y;
 				double uz = (double(Z) * scale.z + outputAttributes.posOffset.z - min.z) / size.z;
 
-				int64_t ix = int64_t(std::min(dGridSize * ux, dGridSize - 1.0));
-				int64_t iy = int64_t(std::min(dGridSize * uy, dGridSize - 1.0));
-				int64_t iz = int64_t(std::min(dGridSize * uz, dGridSize - 1.0));
+				int64_t ix = int64_t(std::clamp(dGridSize * ux, 0.0, dGridSize - 1.0));
+				int64_t iy = int64_t(std::clamp(dGridSize * uy, 0.0, dGridSize - 1.0));
+				int64_t iz = int64_t(std::clamp(dGridSize * uz, 0.0, dGridSize - 1.0));
 
 				int64_t index = ix + iy * gridSize + iz * gridSize * gridSize;
 
@@ -854,9 +876,9 @@ namespace chunker_countsort_laszip {
 					double uy = (xyz[1] * scale.y + outputAttributes.posOffset.y) / size.y;
 					double uz = (xyz[2] * scale.z + outputAttributes.posOffset.z) / size.z;
 
-					int64_t ix = int64_t(std::min(dGridSize * ux, dGridSize - 1.0));
-					int64_t iy = int64_t(std::min(dGridSize * uy, dGridSize - 1.0));
-					int64_t iz = int64_t(std::min(dGridSize * uz, dGridSize - 1.0));
+					int64_t ix = int64_t(std::clamp(dGridSize * ux, 0.0, dGridSize - 1.0));
+					int64_t iy = int64_t(std::clamp(dGridSize * uy, 0.0, dGridSize - 1.0));
+					int64_t iz = int64_t(std::clamp(dGridSize * uz, 0.0, dGridSize - 1.0));
 
 					int64_t index = ix + iy * gridSize + iz * gridSize * gridSize;
 

@@ -178,6 +178,9 @@ struct Buffer {
 	}
 
 	inline void write(void* source, int64_t size) {
+		if (pos + size > this->size) {
+			return;
+		}
 		memcpy(data_u8 + pos, source, size);
 
 		pos += size;
