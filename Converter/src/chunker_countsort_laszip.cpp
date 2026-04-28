@@ -580,14 +580,22 @@ namespace chunker_countsort_laszip {
 				exit(123);
 			}
 
-			// handle extra bytes individually to compute per-attribute information
+			// handle extra bytes individually to compute per-attribute information.
+			//
+			// sourceOffset advances through the input record's extra-bytes section,
+			// once per input attribute (whether or not it ends up in the output).
+			// The destination offset within the output buffer is read directly from
+			// outputAttributes.getOffset(name) — the same mechanism the standard
+			// attribute handlers above use. Earlier this code accumulated an
+			// `attributeOffset` from input-layout sizes and used it as the
+			// destination, which silently corrupted the chunk buffer (writing past
+			// the per-point slot) when --attributes filters the output to a subset
+			// that includes extras: format 2 places its first extra at input
+			// offset 27 but at output offset 20 when only intensity+rgb are kept,
+			// so the memcpy clobbered the next point's slot and the worker thread
+			// SIGSEGV'd, surfacing only as exit(123) after "CREATING CHUNKS".
 			int firstExtraIndex = formatToExtraIndex[header->point_data_format];
 			int sourceOffset = 0;
-
-			int attributeOffset = 0;
-			for (int i = 0; i < firstExtraIndex; i++) {
-				attributeOffset += inputAttributes.list[i].size;
-			}
 
 			for (int i = firstExtraIndex; i < inputAttributes.list.size(); i++) {
 				Attribute& inputAttribute = inputAttributes.list[i];
@@ -597,8 +605,8 @@ namespace chunker_countsort_laszip {
 				int attributeSize = inputAttribute.size;
 
 				if (attribute != nullptr) {
-					auto handleAttribute = [data, point, header, attributeSize, attributeOffset, sourceOffset, attribute](int64_t offset) {
-						memcpy(data + offset + attributeOffset, point->extra_bytes + sourceOffset, attributeSize);
+					auto handleAttribute = [data, point, header, attributeSize, targetOffset, sourceOffset, attribute](int64_t offset) {
+						memcpy(data + offset + targetOffset, point->extra_bytes + sourceOffset, attributeSize);
 
 						std::function<double(uint8_t*)> f;
 
@@ -657,7 +665,6 @@ namespace chunker_countsort_laszip {
 					};
 
 					handlers.push_back(handleAttribute);
-					attributeOffset += attribute->size;
 				}
 
 				sourceOffset += inputAttribute.size;
