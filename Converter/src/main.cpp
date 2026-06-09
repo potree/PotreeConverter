@@ -24,6 +24,7 @@ Options parseArguments(int argc, char** argv) {
 	args.addArgument("source,i,", "Input file(s)");
 	args.addArgument("help,h", "Display help information");
 	args.addArgument("outdir,o", "Output directory");
+	args.addArgument("chunkdir", "Directory for intermediate chunk data. ");
 	args.addArgument("encoding", "Encoding type \"BROTLI\", \"UNCOMPRESSED\" (default)");
 	args.addArgument("method,m", "Point sampling method \"poisson\", \"poisson_average\", \"random\"");
 	args.addArgument("chunkMethod", "Chunking method");
@@ -103,6 +104,12 @@ Options parseArguments(int argc, char** argv) {
 
 	outdir = fs::weakly_canonical(fs::path(outdir)).string();
 
+	string chunkdir = "";
+	if(args.has("chunkdir")){
+		chunkdir = args.get("chunkdir").as<string>();
+	}
+	chunkdir = fs::weakly_canonical(fs::path(chunkdir)).string();
+
 	//vector<string> flags = args.get("flags").as<vector<string>>();
 
 	vector<string> attributes = args.get("attributes").as<vector<string>>();
@@ -123,6 +130,7 @@ Options parseArguments(int argc, char** argv) {
 	Options options;
 	options.source = source;
 	options.outdir = outdir;
+	options.chunkdir = chunkdir;
 	options.method = method;
 	options.encoding = encoding;
 	options.chunkMethod = chunkMethod;
@@ -510,8 +518,8 @@ int main(int argc, char** argv) {
 
 	// 	return 0;
 	// }
-
-
+	
+	std::locale::global(getSaneLocale());
 
 	double tStart = now(); 
 
@@ -543,8 +551,7 @@ int main(int argc, char** argv) {
 		targetDir = targetDir + "/pointclouds/" + options.pageName;
 	}
 	cout << "target directory: '" << targetDir << "'" << endl;
-	fs::create_directories(targetDir);
-	logger::addOutputFile(targetDir + "/log.txt");
+	
 
 	State state;
 	state.pointsTotal = stats.totalPoints;
@@ -557,10 +564,22 @@ int main(int argc, char** argv) {
 
 	{ // this is the real important stuff
 
-		chunking(options, sources, targetDir, stats, state, outputAttributes, monitor.get());
-		// return 0;
+		if(!options.noChunking){
+			string chunkdir = targetDir;
+			if(options.chunkdir != ""){
+				chunkdir = options.chunkdir;
+				fs::create_directories(chunkdir);
+				logger::addOutputFile(chunkdir + "/log.txt");
+			}
 
-		indexing(options, targetDir, state);
+			chunking(options, sources, chunkdir, stats, state, outputAttributes, monitor.get());
+		}
+
+		if(!options.noIndexing){
+			fs::create_directories(targetDir);
+			logger::addOutputFile(targetDir + "/log.txt");
+			indexing(options, targetDir, state);
+		}
 
 	}
 

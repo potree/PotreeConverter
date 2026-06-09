@@ -1135,6 +1135,7 @@ SoA toStructOfArrays(Node* node, Attributes attributes) {
 
 	unordered_map<string, shared_ptr<Buffer>> buffers;
 	vector<MortonCode> mcs;
+	mcs.reserve(numPoints);
 
 	for (Attribute attribute : attributes.list) {
 
@@ -1168,17 +1169,29 @@ SoA toStructOfArrays(Node* node, Attributes attributes) {
 			struct P {
 				int32_t x, y, z;
 			};
-			vector<P> ps;
+
 			P min;
 			min.x = std::numeric_limits<int64_t>::max();
 			min.y = std::numeric_limits<int64_t>::max();
 			min.z = std::numeric_limits<int64_t>::max();
 		
+			// Compute minimum
 			for (int64_t i = 0; i < numPoints; i++) {
 
 				int64_t pointOffset = i * attributes.bytes;
 
-				// MORTON
+				int32_t XYZ[3];
+				memcpy(XYZ, source + pointOffset + attributeOffset, 12);
+
+				min.x = std::min(min.x, XYZ[0]);
+				min.y = std::min(min.y, XYZ[1]);
+				min.z = std::min(min.z, XYZ[2]);
+			}
+
+			// Now generate buffer of morton codes
+			for (int64_t i = 0; i < numPoints; i++) {
+				
+				int64_t pointOffset = i * attributes.bytes;
 
 				int32_t XYZ[3];
 				memcpy(XYZ, source + pointOffset + attributeOffset, 12);
@@ -1187,17 +1200,6 @@ SoA toStructOfArrays(Node* node, Attributes attributes) {
 				p.x = XYZ[0];
 				p.y = XYZ[1];
 				p.z = XYZ[2];
-
-				min.x = std::min(min.x, p.x);
-				min.y = std::min(min.y, p.y);
-				min.z = std::min(min.z, p.z);
-
-				ps.push_back(p);
-			}
-
-
-			int64_t i = 0;
-			for (P p : ps) {
 
 				uint32_t mx = p.x - min.x;
 				uint32_t my = p.y - min.y;
@@ -1252,9 +1254,6 @@ SoA toStructOfArrays(Node* node, Attributes attributes) {
 				mc.index = i;
 
 				mcs.push_back(mc);
-
-				i++;
-
 			}
 
 			{
@@ -1601,7 +1600,11 @@ void doIndexing(string targetDir, State& state, Options& options, Sampler& sampl
 	state.bytesProcessed = 0;
 	state.duration = 0;
 
-	auto chunks = getChunks(targetDir);
+	string chunkdir = targetDir;
+	if(options.chunkdir != ""){
+		chunkdir = options.chunkdir;
+	}
+	auto chunks = getChunks(chunkdir);
 	auto attributes = chunks->attributes;
 
 	Indexer indexer(targetDir);
@@ -1644,6 +1647,7 @@ void doIndexing(string targetDir, State& state, Options& options, Sampler& sampl
 	mutex mtx_nodes;
 	vector<shared_ptr<Node>> nodes;
 	int numThreads = numSampleThreads() + 4;
+	//int numThreads = 1;
 	TaskPool<Task> pool(numThreads, [&onNodeCompleted, &onNodeDiscarded, &writeAndUnload, &state, &options, &activeThreads, tStart, &lastReport, &totalPoints, totalBytes, &pointsProcessed, chunks, &indexer, &nodes, &mtx_nodes, &sampler](auto task) {
 		
 		auto chunk = task->chunk;
@@ -1678,12 +1682,12 @@ void doIndexing(string targetDir, State& state, Options& options, Sampler& sampl
 				uint64_t uncompressedBatchSize = compressed->get<uint64_t>(offset + 0);
 				uint64_t compressedBatchSize = compressed->get<uint64_t>(offset + 8);
 
-				println("uncompressedBatchSize: {}, compressedBatchSize: {}", uncompressedBatchSize, compressedBatchSize);
+				// println("uncompressedBatchSize: {}, compressedBatchSize: {}", uncompressedBatchSize, compressedBatchSize);
 
 				offset = offset + 16 + compressedBatchSize;
 				uncompressedSize = uncompressedSize + uncompressedBatchSize;
 			}
-			println("uncompressedSize: {}", uncompressedSize);
+			// println("uncompressedSize: {}", uncompressedSize);
 
 			// allocate sufficient memory for all decompressed chunks
 			size_t decoded_size = uncompressedSize;

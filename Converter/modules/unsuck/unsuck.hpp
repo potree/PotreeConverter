@@ -15,6 +15,7 @@
 #include <thread>
 #include <cstdint>
 #include <cstring>
+#include <print>
 
 using std::cout;
 using std::endl;
@@ -31,6 +32,7 @@ using std::ios;
 using std::shared_ptr;
 using std::make_shared;
 using std::chrono::high_resolution_clock;
+using std::println;
 
 namespace fs = std::filesystem;
 
@@ -117,6 +119,8 @@ struct Buffer {
 
 	Buffer(int64_t size) {
 		data = malloc(size);
+		
+		println("allocating buffer with size {:L}", size);
 
 		if (data == nullptr) {
 			auto memory = getMemoryData();

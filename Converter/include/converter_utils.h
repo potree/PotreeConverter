@@ -158,6 +158,7 @@ inline void dbgPrint_ts_later(string message, bool now = false) {
 struct Options {
 	vector<string> source;
 	string encoding = "DEFAULT"; // "BROTLI", "UNCOMPRESSED"
+	string chunkdir = "";
 	string outdir = "";
 	string name = "";
 	string method = "";
