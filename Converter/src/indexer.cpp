@@ -1126,18 +1126,24 @@ struct MortonCode {
 };
 
 struct SoA {
-	unordered_map<string, shared_ptr<Buffer>> buffers;
-	vector<MortonCode> mcs;
+	unordered_map<string, void*> buffers;
+	unordered_map<string, i64> bufferSizes;
+	MortonCode* mcs;
 };
 
-SoA toStructOfArrays(Node* node, Attributes attributes) {
+SoA toStructOfArrays(Node* node, Attributes attributes, VBuffer* target) {
 
 	auto numPoints = node->numPoints;
 	uint8_t* source = node->points->data_u8;
 
-	unordered_map<string, shared_ptr<Buffer>> buffers;
-	vector<MortonCode> mcs;
-	mcs.reserve(numPoints);
+	unordered_map<string, void*> buffers;
+	unordered_map<string, i64> bufferSizes;
+	
+	i64 targetSize = 0;
+	
+	MortonCode* mcs = (MortonCode*)(target->ptr + targetSize);
+	targetSize += numPoints * sizeof(MortonCode);
+	target->commit(targetSize);
 
 	for (Attribute attribute : attributes.list) {
 
@@ -1146,7 +1152,10 @@ SoA toStructOfArrays(Node* node, Attributes attributes) {
 
 		if (attribute.name == "rgb") {
 
-			auto bufferMC = make_shared<Buffer>(8 * numPoints);
+			i64 bufferSize = sizeof(u64) * numPoints;
+			u64* bufferMC = (u64*)(target->ptr + targetSize);
+			targetSize += bufferSize;
+			target->commit(targetSize);
 
 			for (int64_t i = 0; i < numPoints; i++) {
 
@@ -1160,10 +1169,12 @@ SoA toStructOfArrays(Node* node, Attributes attributes) {
 
 
 				auto mc = mortonEncode_magicbits(r, g, b);
-				bufferMC->write(&mc, 8);
+				// bufferMC->write(&mc, 8);
+				bufferMC[i] = mc;
 			}
 
 			buffers["rgb_morton"] = bufferMC;
+			bufferSizes["rgb_morton"] = bufferSize;
 
 		} else if (attribute.name == "position"){
 
@@ -1223,22 +1234,24 @@ SoA toStructOfArrays(Node* node, Attributes attributes) {
 				mc.whatever = mortonEncode_magicbits(mx, my, mz);
 				mc.index = i;
 
-				mcs.push_back(mc);
+				mcs[i] = mc;
 			}
 
 			{
-				auto bufferMc = make_shared<Buffer>(16 * numPoints);
-
+				i64 bufferSize = 16 * numPoints;
+				u64* bufferMc = (u64*)(target->ptr + targetSize);
+				targetSize += bufferSize;
+				target->commit(targetSize);
+				
 				for (int i = 0; i < numPoints; i++) {
 					auto mc = mcs[i];
 
-					bufferMc->write(&mc.upper, 8);
-					bufferMc->write(&mc.lower, 8);
+					bufferMc[2 * i + 0] = mc.upper;
+					bufferMc[2 * i + 1] = mc.lower;
 				}
-
-
 				
 				buffers["position_morton"] = bufferMc;
+				bufferSizes["position_morton"] = bufferSize;
 			}
 
 
@@ -1247,22 +1260,31 @@ SoA toStructOfArrays(Node* node, Attributes attributes) {
 
 		{
 
-			auto buffer = make_shared<Buffer>(bytes);
+			i64 bufferSize = bytes;
+			u8* buffer = (u8*)(target->ptr + targetSize);
+			targetSize += bufferSize;
+			target->commit(targetSize);
 
 			for (int64_t i = 0; i < numPoints; i++) {
 
 				int64_t pointOffset = i * attributes.bytes;
 
-				buffer->write(source + pointOffset + attributeOffset, attribute.size);
+				memcpy(
+					buffer + i * attribute.size,
+					source + pointOffset + attributeOffset,
+					attribute.size
+				);
 			}
 
 			buffers[attribute.name] = buffer;
+			bufferSizes[attribute.name] = bufferSize;
 		}
 	}
 
 	SoA soa;
 	soa.buffers = buffers;
 	soa.mcs = mcs;
+	soa.bufferSizes = bufferSizes;
 
 	return soa;
 }
@@ -1333,11 +1355,13 @@ static void brotliPoolFree(void* opaque, void* address) {
 }
 
 shared_ptr<Buffer> compress(Node* node, Attributes attributes) {
+	
+	thread_local VBuffer soa_buffer = VBuffer::create(100'000'000);
 
 	auto numPoints = node->numPoints;
-	auto soa = toStructOfArrays(node, attributes);
+	auto soa = toStructOfArrays(node, attributes, &soa_buffer);
 
-	std::sort(soa.mcs.begin(), soa.mcs.end(), [](MortonCode& a, MortonCode& b) {
+	std::sort(soa.mcs, soa.mcs + numPoints, [](MortonCode& a, MortonCode& b) {
 
 		if (a.upper == b.upper) {
 			return a.lower < b.lower;
@@ -1360,9 +1384,8 @@ shared_ptr<Buffer> compress(Node* node, Attributes attributes) {
 	int64_t bufferSize = 0;
 	for (Attribute& attribute : attributes.list) {
 		string name = mapName(attribute.name);
-		auto buffer = soa.buffers[name];
 
-		bufferSize += buffer->size;
+		bufferSize += soa.bufferSizes[name];
 	}
 	
 	// Allocating virtual memory with lots of capacity.
@@ -1376,16 +1399,17 @@ shared_ptr<Buffer> compress(Node* node, Attributes attributes) {
 
 		string name = mapName(attribute.name);
 
-		auto buffer = soa.buffers[name];
+		u8* buffer = (u8*)soa.buffers[name];
+		i64 bufferSize = soa.bufferSizes[name];
 
-		int64_t bufferAttributeSize = buffer->size / numPoints;
+		int64_t bufferAttributeSize = bufferSize / numPoints;
 
 		for (int i = 0; i < numPoints; i++) {
 			int sourceIndex = soa.mcs[i].index;
 
 			memcpy(
 				bufferMerged.ptr + targetOffset,
-				buffer->data_u8 + sourceIndex * bufferAttributeSize,
+				buffer + sourceIndex * bufferAttributeSize,
 				bufferAttributeSize
 			);
 			targetOffset += bufferAttributeSize;
@@ -1698,7 +1722,7 @@ void doIndexing(string targetDir, State& state, Options& options, Sampler& sampl
 	mutex mtx_nodes;
 	vector<shared_ptr<Node>> nodes;
 	int numThreads = numSampleThreads() + 4;
-	//int numThreads = 1;
+	// numThreads = 1;
 	TaskPool<Task> pool(numThreads, [&onNodeCompleted, &onNodeDiscarded, &writeAndUnload, &state, &options, &activeThreads, tStart, &lastReport, &totalPoints, totalBytes, &pointsProcessed, chunks, &indexer, &nodes, &mtx_nodes, &sampler](auto task) {
 		
 		auto chunk = task->chunk;
