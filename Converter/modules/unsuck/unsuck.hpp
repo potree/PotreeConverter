@@ -40,6 +40,15 @@ static long long unsuck_start_time = high_resolution_clock::now().time_since_epo
 
 static double Infinity = std::numeric_limits<double>::infinity();
 
+using i64 =  int64_t;
+using u64 = uint64_t;
+using i32 =  int32_t;
+using u32 = uint32_t;
+using i16 =  int16_t;
+using u16 = uint16_t;
+using i8  =   int8_t;
+using u8  =  uint8_t;
+
 
 #if defined(__linux__)
 constexpr auto fseek_64_all_platforms = fseeko64;
@@ -120,7 +129,7 @@ struct Buffer {
 	Buffer(int64_t size) {
 		data = malloc(size);
 		
-		println("allocating buffer with size {:L}", size);
+		// println("allocating buffer with size {:L}", size);
 
 		if (data == nullptr) {
 			auto memory = getMemoryData();

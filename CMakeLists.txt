@@ -3,7 +3,7 @@ set(CMAKE_SUPPRESS_REGENERATION true)
 
 project(PotreeConverter LANGUAGES CXX)
 
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 set(CMAKE_BUILD_TYPE "Release" CACHE STRING "" FORCE)
 
@@ -33,6 +33,7 @@ add_executable(PotreeConverter
 	./Converter/src/indexer.cpp 
 	./Converter/src/main.cpp
 	./Converter/src/logger.cpp
+	./Converter/src/VBuffer.cpp
 	./Converter/modules/LasLoader/LasLoader.cpp
 	./Converter/modules/unsuck/unsuck_platform_specific.cpp
 	${HEADER_FILES}

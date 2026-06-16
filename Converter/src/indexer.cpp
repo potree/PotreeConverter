@@ -3,6 +3,7 @@
 #include <execution>
 #include <algorithm>
 #include <print>
+#include <format>
 
 #include "indexer.h"
 
@@ -13,9 +14,11 @@
 #include "brotli/encode.h"
 #include "brotli/decode.h"
 #include "HierarchyBuilder.h"
+#include "VBuffer.h"
 
 using std::unique_lock;
 using std::println;
+using std::format;
 
 namespace indexer{
 
@@ -365,17 +368,12 @@ string Indexer::createMetadata(Options options, State& state, Hierarchy hierarch
 	auto max = root->max;
 
 	auto d = [](double value) {
-		auto digits = std::numeric_limits<double>::max_digits10;
+		return format("{:f}", value);
 
-		std::stringstream ss;
-		ss << std::setprecision(digits);
-		ss << value;
-		
-		return ss.str();
 	};
 
 	auto s = [](string str) {
-		return "\"" + str + "\"";
+		return format("\"{}\"", str);
 	};
 
 	auto t = [](int numTabs) {
@@ -407,6 +405,7 @@ string Indexer::createMetadata(Options options, State& state, Hierarchy hierarch
 	auto vecI64ToJson = [](vector<int64_t> &values) {
 
 		stringstream ss;
+		ss.imbue(std::locale::classic());
 		ss << "[";
 
 		for (int i = 0; i < values.size(); i++) {
@@ -426,6 +425,8 @@ string Indexer::createMetadata(Options options, State& state, Hierarchy hierarch
 	auto getHierarchyJsonString = [hierarchy, octreeDepth, t, s]() {
 
 		stringstream ss;
+		ss.imbue(std::locale::classic());
+		
 		ss << "{" << endl;
 		ss << t(2) << s("firstChunkSize") << ": " << hierarchy.firstChunkSize << ", " << endl;
 		ss << t(2) << s("stepSize") << ": " << hierarchy.stepSize << ", " << endl;
@@ -509,6 +510,7 @@ string Indexer::createMetadata(Options options, State& state, Hierarchy hierarch
 	};
 
 	stringstream ss;
+	ss.imbue(std::locale::classic());
 
 	ss << t(0) << "{" << endl;
 	ss << t(1) << s("version") << ": " << s("2.0") << "," << endl;
@@ -1140,7 +1142,6 @@ SoA toStructOfArrays(Node* node, Attributes attributes) {
 	for (Attribute attribute : attributes.list) {
 
 		int64_t bytes = attribute.size * numPoints;
-		//auto buffer = make_shared<Buffer>(bytes);
 		auto attributeOffset = attributes.getOffset(attribute.name);
 
 		if (attribute.name == "rgb") {
@@ -1216,37 +1217,6 @@ SoA toStructOfArrays(Node* node, Attributes attributes) {
 				auto mc_l = mortonEncode_magicbits(mx_l, my_l, mz_l);
 				auto mc_h = mortonEncode_magicbits(mx_h, my_h, mz_h);
 
-				//{ // try decode and compare
-
-				//	uint32_t x_decoded = 0;
-				//	uint32_t y_decoded = 0;
-				//	uint32_t z_decoded = 0;
-
-				//	for (int i = 0; i < 21; i++) {
-
-				//		uint64_t mask = (mc_l >> (3 * i)) & 0b111;
-
-				//		x_decoded = x_decoded | (((mask >> 0) & 0b001) << i);
-				//		y_decoded = y_decoded | (((mask >> 1) & 0b001) << i);
-				//		z_decoded = z_decoded | (((mask >> 2) & 0b001) << i);
-
-
-				//	}
-
-				//	bool okayX = x_decoded == mx_l;
-				//	bool okayY = y_decoded == my_l;
-				//	bool okayZ = z_decoded == mz_l;
-
-				//	if (!okayX || !okayY || !okayZ) {
-
-				//		cout << "could not revert morton code!!!" << endl;
-
-				//		exit(123);
-				//	}
-
-				//}
-
-
 				MortonCode mc;
 				mc.lower = mc_l;
 				mc.upper = mc_h;
@@ -1288,11 +1258,6 @@ SoA toStructOfArrays(Node* node, Attributes attributes) {
 
 			buffers[attribute.name] = buffer;
 		}
-
-		
-
-		//vector<uint8_t> dbg1(buffer->data_u8, buffer->data_u8 + buffer->size);
-
 	}
 
 	SoA soa;
@@ -1343,8 +1308,14 @@ shared_ptr<Buffer> compress(Node* node, Attributes attributes) {
 
 		bufferSize += buffer->size;
 	}
+	
+	// Allocating virtual memory with lots of capacity.
+	// Note: A single octree node should never need that much capacity.
+	// If it is, something is wrong and crashing is expected.
+	thread_local VBuffer bufferMerged = VBuffer::create(100'000'000ll);
+	bufferMerged.commit(bufferSize);
 
-	auto bufferMerged = make_shared<Buffer>(bufferSize);
+	i64 targetOffset = 0;
 	for (Attribute& attribute : attributes.list) {
 
 		string name = mapName(attribute.name);
@@ -1356,19 +1327,23 @@ shared_ptr<Buffer> compress(Node* node, Attributes attributes) {
 		for (int i = 0; i < numPoints; i++) {
 			int sourceIndex = soa.mcs[i].index;
 
-			bufferMerged->write(buffer->data_u8 + sourceIndex * bufferAttributeSize, bufferAttributeSize);
+			memcpy(
+				bufferMerged.ptr + targetOffset,
+				buffer->data_u8 + sourceIndex * bufferAttributeSize,
+				bufferAttributeSize
+			);
+			targetOffset += bufferAttributeSize;
 		}
 	}
 
 	shared_ptr<Buffer> out;
 	{
-		auto buffer = bufferMerged;
 
 		int quality = 6;
 		int lgwin = BROTLI_DEFAULT_WINDOW;
 		auto mode = BROTLI_DEFAULT_MODE;
-		uint8_t* input_buffer = buffer->data_u8;
-		size_t input_size = buffer->size;
+		uint8_t* input_buffer = bufferMerged.ptr;
+		size_t input_size = targetOffset;
 
 		size_t encoded_size = input_size * 1.5 + 1'000;
 		shared_ptr<Buffer> outputBuffer = make_shared<Buffer>(encoded_size);
