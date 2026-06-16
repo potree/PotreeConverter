@@ -2,9 +2,14 @@
 #pragma once
 
 #include <execution>
+#include <random>
+#include <chrono>
+#include <cstring>
 
 #include "structures.h"
 #include "Attributes.h"
+#include "VBuffer.h"
+#include "BitEdit.h"
 
 
 
@@ -88,33 +93,37 @@ struct SamplerRandom : public Sampler {
 
 			bool isLeaf = node->isLeaf();
 			if (isLeaf) {
-				// shuffle?
+				// shuffle
 
-				//
-				// a not particularly efficient approach to shuffling:
-				// 
+				u8* pointBuffer = node->points->data_u8;
+				i64 numPoints = node->numPoints;
+				i64 bytesPerPoint = attributes.bytes;
+				
+				// Fisher-Yates shuffle of pointBuffer, in place.
+				// - Each point in pointBuffer has <bytesPerPoint> size.
+				// - There are <numPoints> points in pointBuffer that need to be shuffled.
+				if (numPoints > 1) {
+					unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
+					thread_local std::mt19937_64 rng(seed);
 
-				vector<int> indices(node->numPoints);
-				for (int i = 0; i < node->numPoints; i++) {
-					indices[i] = i;
+					thread_local vector<u8> tmp;
+					tmp.resize(bytesPerPoint);
+
+					for (i64 i = numPoints - 1; i > 0; i--) {
+						std::uniform_int_distribution<i64> dist(0, i);
+						i64 j = dist(rng);
+
+						if (i == j) continue;
+
+						u8* a = pointBuffer + i * bytesPerPoint;
+						u8* b = pointBuffer + j * bytesPerPoint;
+
+						memcpy(tmp.data(), a, bytesPerPoint);
+						memcpy(a, b, bytesPerPoint);
+						memcpy(b, tmp.data(), bytesPerPoint);
+					}
 				}
 
-				unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
-
-				shuffle(indices.begin(), indices.end(), std::default_random_engine(seed));
-
-				auto buffer = make_shared<Buffer>(node->points->size);
-
-				for (int i = 0; i < node->numPoints; i++) {
-
-					int64_t sourceOffset = i * attributes.bytes;
-					int64_t targetOffset = indices[i] * attributes.bytes;
-
-					memcpy(buffer->data_u8 + targetOffset, node->points->data_u8 + sourceOffset, attributes.bytes);
-
-				}
-
-				node->points = buffer;
 
 
 				return false;
@@ -126,21 +135,36 @@ struct SamplerRandom : public Sampler {
 			//
 			// first, check for each point whether it's accepted or rejected
 			// save result in an array with one element for each point
+			
+			
+			
+			// u32* acceptedChildPoints[8] = {0};
+			
+			i64 numPointsInChildren = 0;
+			for (int childIndex = 0; childIndex < 8; childIndex++) {
+				auto child = node->children[childIndex];
+				
+				if(child){
+					numPointsInChildren += child->numPoints;
+				}
+			}
+			
+			// Needs one bit per point in all child nodes, plus some extra padding
+			thread_local VBuffer acceptedChildPointsBuffer = VBuffer::create(10'000'000);
+			acceptedChildPointsBuffer.commit(numPointsInChildren / 8 + 256);
+			memset(acceptedChildPointsBuffer.ptr, 0, numPointsInChildren / 8 + 256);
 
-			vector<vector<int8_t>> acceptedChildPointFlags;
-			vector<int64_t> numRejectedPerChild;
+			i64 numRejectedPerChild[8] = {0};
 			int64_t numAccepted = 0;
+			i64 processedPointCounter = 0;
 			for (int childIndex = 0; childIndex < 8; childIndex++) {
 				auto child = node->children[childIndex];
 
 				if (child == nullptr) {
-					acceptedChildPointFlags.push_back({});
-					numRejectedPerChild.push_back({});
 
 					continue;
 				}
 
-				vector<int8_t> acceptedFlags(child->numPoints, 0);
 				int64_t numRejected = 0;
 
 				for (int i = 0; i < child->numPoints; i++) {
@@ -174,40 +198,50 @@ struct SamplerRandom : public Sampler {
 						numRejected++;
 					}
 
-					acceptedFlags[i] = isAccepted ? 1 : 0;
+					if(isAccepted){
+						BitEdit::writeU32((u32*)acceptedChildPointsBuffer.ptr, processedPointCounter, 1, 1);
+					}
+					
+					processedPointCounter++;
 				}
 
-				acceptedChildPointFlags.push_back(acceptedFlags);
-				numRejectedPerChild.push_back(numRejected);
+				numRejectedPerChild[childIndex] = numRejected;
 			}
 
 			auto accepted = make_shared<Buffer>(numAccepted * attributes.bytes);
+			processedPointCounter = 0;
 			for (int childIndex = 0; childIndex < 8; childIndex++) {
 				auto child = node->children[childIndex];
 
 				if (child == nullptr) continue;
 
 				auto numRejected = numRejectedPerChild[childIndex];
-				auto& acceptedFlags = acceptedChildPointFlags[childIndex];
-				auto rejected = make_shared<Buffer>(numRejected * attributes.bytes);
+				i64 numRejectedCompacted = 0;
 
 				for (int i = 0; i < child->numPoints; i++) {
-					auto isAccepted = acceptedFlags[i];
+					bool isAccepted = BitEdit::readU32((u32*)acceptedChildPointsBuffer.ptr, processedPointCounter, 1) == 1;
 					int64_t pointOffset = i * attributes.bytes;
 
 					if (isAccepted) {
 						accepted->write(child->points->data_u8 + pointOffset, attributes.bytes);
 					} else {
-						rejected->write(child->points->data_u8 + pointOffset, attributes.bytes);
+						memcpy(
+							child->points->data_u8 + numRejectedCompacted * attributes.bytes,
+							child->points->data_u8 + pointOffset,
+							attributes.bytes
+						);
+						numRejectedCompacted++;
 					}
+					
+					processedPointCounter++;
 				}
+				child->points->size = numRejectedCompacted * attributes.bytes;
 
 				if (numRejected == 0 && child->isLeaf()) {
 					onNodeDiscarded(child.get());
 
 					node->children[childIndex] = nullptr;
 				} if (numRejected > 0) {
-					child->points = rejected;
 					child->numPoints = numRejected;
 
 					onNodeCompleted(child.get());
