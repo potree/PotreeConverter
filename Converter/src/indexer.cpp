@@ -1276,6 +1276,62 @@ SoA toStructOfArrays(Node* node, Attributes attributes) {
 //static unordered_map<string, int64_t> compressedCounters;
 //static mutex mtx_dbg_compress;
 
+// Pooling allocator for the Brotli encoder.
+//
+// The one-shot BrotliEncoderCompress creates a fresh BrotliEncoderState for every
+// node, so all of its internal buffers (storage, ring buffer, hashers, command/literal
+// buffers) are malloc'd and freed per node. The large multi-MB allocations go through
+// VirtualAlloc/VirtualFree on Windows, which are slow and serialized across the parallel
+// writer threads (this shows up as time spent in GetBrotliStorage).
+//
+// Instead we drive the streaming API with a thread_local pooling allocator: freed blocks
+// are kept in a per-thread free list (bucketed by rounded-up size) and reused across nodes,
+// so the system allocator is hit rarely and there is no cross-thread contention.
+static size_t brotliPoolBucket(size_t size) {
+	// Round up to the next power of two so similar-sized requests share a bucket.
+	size_t bucket = 64;
+	while (bucket < size) {
+		bucket <<= 1;
+	}
+	return bucket;
+}
+
+// One free list per thread, shared by alloc and free. Bucket size -> cached blocks.
+static std::unordered_map<size_t, std::vector<void*>>& brotliPoolFreelists() {
+	thread_local std::unordered_map<size_t, std::vector<void*>> freelists;
+	return freelists;
+}
+
+static void* brotliPoolAlloc(void* opaque, size_t size) {
+	if (size == 0) return nullptr;
+
+	size_t bucket = brotliPoolBucket(size);
+
+	auto& list = brotliPoolFreelists()[bucket];
+	uint8_t* block;
+	if (!list.empty()) {
+		block = reinterpret_cast<uint8_t*>(list.back());
+		list.pop_back();
+	} else {
+		block = reinterpret_cast<uint8_t*>(malloc(bucket + sizeof(size_t)));
+		if (block == nullptr) return nullptr;
+	}
+
+	// Store the bucket size in a header so free can return it to the right list.
+	*reinterpret_cast<size_t*>(block) = bucket;
+
+	return block + sizeof(size_t);
+}
+
+static void brotliPoolFree(void* opaque, void* address) {
+	if (address == nullptr) return;
+
+	uint8_t* block = reinterpret_cast<uint8_t*>(address) - sizeof(size_t);
+	size_t bucket = *reinterpret_cast<size_t*>(block);
+
+	brotliPoolFreelists()[bucket].push_back(block);
+}
+
 shared_ptr<Buffer> compress(Node* node, Attributes attributes) {
 
 	auto numPoints = node->numPoints;
@@ -1349,12 +1405,32 @@ shared_ptr<Buffer> compress(Node* node, Attributes attributes) {
 		shared_ptr<Buffer> outputBuffer = make_shared<Buffer>(encoded_size);
 		uint8_t* encoded_buffer = outputBuffer->data_u8;
 
-		BROTLI_BOOL success = BROTLI_FALSE;
+		bool success = false;
 
+		// Use the streaming API (which BrotliEncoderCompress itself wraps) so we can feed
+		// it a thread_local pooling allocator that reuses the encoder's internal buffers
+		// across nodes instead of malloc/free-ing them every call.
 		for (int i = 0; i < 5; i++) {
-			success = BrotliEncoderCompress(quality, lgwin, mode, input_size, input_buffer, &encoded_size, encoded_buffer);
+			BrotliEncoderState* s = BrotliEncoderCreateInstance(brotliPoolAlloc, brotliPoolFree, nullptr);
+			BrotliEncoderSetParameter(s, BROTLI_PARAM_QUALITY, (uint32_t)quality);
+			BrotliEncoderSetParameter(s, BROTLI_PARAM_LGWIN, (uint32_t)lgwin);
+			BrotliEncoderSetParameter(s, BROTLI_PARAM_MODE, (uint32_t)mode);
+			BrotliEncoderSetParameter(s, BROTLI_PARAM_SIZE_HINT, (uint32_t)input_size);
 
-			if (success == BROTLI_TRUE) {
+			size_t available_in = input_size;
+			const uint8_t* next_in = input_buffer;
+			size_t available_out = encoded_size;
+			uint8_t* next_out = encoded_buffer;
+			size_t total_out = 0;
+
+			BROTLI_BOOL result = BrotliEncoderCompressStream(s, BROTLI_OPERATION_FINISH,
+				&available_in, &next_in, &available_out, &next_out, &total_out);
+
+			success = (result == BROTLI_TRUE) && BrotliEncoderIsFinished(s);
+			BrotliEncoderDestroyInstance(s);
+
+			if (success) {
+				encoded_size = total_out;
 				break;
 			} else {
 				encoded_size = (encoded_size + 1024) * 1.5;
@@ -1365,7 +1441,7 @@ shared_ptr<Buffer> compress(Node* node, Attributes attributes) {
 			}
 		}
 
-		if (success == BROTLI_FALSE) {
+		if (!success) {
 			stringstream ss;
 			ss << "failed to compress node " << node->name << ". aborting conversion." ;
 			logger::ERROR(ss.str());
