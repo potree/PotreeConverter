@@ -1131,7 +1131,7 @@ struct SoA {
 	MortonCode* mcs;
 };
 
-SoA toStructOfArrays(Node* node, Attributes attributes, VBuffer* target) {
+SoA toStructOfArrays(Node* node, Attributes& attributes, VBuffer* target) {
 
 	auto numPoints = node->numPoints;
 	uint8_t* source = node->points->data_u8;
@@ -1354,7 +1354,7 @@ static void brotliPoolFree(void* opaque, void* address) {
 	brotliPoolFreelists()[bucket].push_back(block);
 }
 
-shared_ptr<Buffer> compress(Node* node, Attributes attributes) {
+void compress(Node* node, Attributes& attributes, VBuffer* encoded, i64* out_encodedSize) {
 	
 	thread_local VBuffer soa_buffer = VBuffer::create(100'000'000);
 
@@ -1416,7 +1416,6 @@ shared_ptr<Buffer> compress(Node* node, Attributes attributes) {
 		}
 	}
 
-	shared_ptr<Buffer> out;
 	{
 
 		int quality = 6;
@@ -1426,8 +1425,7 @@ shared_ptr<Buffer> compress(Node* node, Attributes attributes) {
 		size_t input_size = targetOffset;
 
 		size_t encoded_size = input_size * 1.5 + 1'000;
-		shared_ptr<Buffer> outputBuffer = make_shared<Buffer>(encoded_size);
-		uint8_t* encoded_buffer = outputBuffer->data_u8;
+		encoded->commit(encoded_size);
 
 		bool success = false;
 
@@ -1444,7 +1442,7 @@ shared_ptr<Buffer> compress(Node* node, Attributes attributes) {
 			size_t available_in = input_size;
 			const uint8_t* next_in = input_buffer;
 			size_t available_out = encoded_size;
-			uint8_t* next_out = encoded_buffer;
+			uint8_t* next_out = encoded->ptr;
 			size_t total_out = 0;
 
 			BROTLI_BOOL result = BrotliEncoderCompressStream(s, BROTLI_OPERATION_FINISH,
@@ -1458,8 +1456,6 @@ shared_ptr<Buffer> compress(Node* node, Attributes attributes) {
 				break;
 			} else {
 				encoded_size = (encoded_size + 1024) * 1.5;
-				outputBuffer = make_shared<Buffer>(encoded_size);
-				encoded_buffer = outputBuffer->data_u8;
 
 				logger::WARN("reserved encoded_buffer size was too small. Trying again with size " + formatNumber(encoded_size) + ".");
 			}
@@ -1473,42 +1469,9 @@ shared_ptr<Buffer> compress(Node* node, Attributes attributes) {
 			exit(123);
 		}
 
-		out = make_shared<Buffer>(encoded_size);
-		memcpy(out->data, encoded_buffer, encoded_size);
-		
-		//{ // DEBUG
-		//	lock_guard<mutex> lock(mtx_dbg_compress);
-
-		//	totalUncompressed += input_size;
-		//	totalCompressed += encoded_size;
-		//}
+		*out_encodedSize = encoded_size;
 	}
 
-	//{
-	//	lock_guard<mutex> lock(mtx_dbg_compress);
-
-	//	static int i = 0;
-	//	if ((i % 100) == 0) {
-
-	//		stringstream ss;
-	//		ss << "===================================================" << endl;
-
-	//		{
-	//			double ratio = double(totalCompressed) / double(totalUncompressed);
-
-	//			ss << "[total] " << formatNumber(totalUncompressed) << " > " << formatNumber(totalCompressed) << " - " << formatNumber(100.0 * ratio, 1) << endl;
-	//			cout << ss.str();
-	//		}
-
-	//		cout << ss.str();
-
-	//	}
-	//	i++;
-
-
-	//}
-
-	return out;
 }
 
 
@@ -1539,18 +1502,22 @@ void Writer::writeAndUnload(Node* node) {
 	auto attributes = indexer->attributes;
 	string encoding = indexer->options.encoding;
 
-	shared_ptr<Buffer> sourceBuffer;
+	void* sourceBuffer = nullptr;
+	i64 sourceBufferSize = 0;
 
 	if (encoding == "BROTLI") {
-		sourceBuffer = compress(node, attributes);
+		thread_local VBuffer vbuffer = VBuffer::create(100'000'000);
+		i64 outSize = 0;
+		compress(node, attributes, &vbuffer, &outSize);
+		sourceBuffer = vbuffer.ptr;
+		sourceBufferSize = outSize;
 	} else {
-		sourceBuffer = node->points;
+		sourceBuffer = node->points->data;
+		sourceBufferSize = node->points->size;
 	}
-	
 
-	int64_t byteSize = sourceBuffer->size;
 
-	node->byteSize = byteSize;
+	node->byteSize = sourceBufferSize;
 
 	auto errorCheck = [node](int64_t size) {
 		if (size < 0) {
@@ -1572,16 +1539,16 @@ void Writer::writeAndUnload(Node* node) {
 	{
 		lock_guard<mutex> lock(mtx);
 
-		int64_t byteOffset = indexer->byteOffset.fetch_add(byteSize);
+		int64_t byteOffset = indexer->byteOffset.fetch_add(sourceBufferSize);
 		node->byteOffset = byteOffset;
 
 		if (activeBuffer == nullptr) {
 			errorCheck(capacity);
 			activeBuffer = make_shared<Buffer>(capacity);
-		} else if (activeBuffer->pos + byteSize > capacity) {
+		} else if (activeBuffer->pos + sourceBufferSize > capacity) {
 			backlog.push_back(activeBuffer);
 
-			capacity = std::max(capacity, byteSize);
+			capacity = std::max(capacity, sourceBufferSize);
 			errorCheck(capacity);
 			activeBuffer = make_shared<Buffer>(capacity);
 		}
@@ -1589,10 +1556,10 @@ void Writer::writeAndUnload(Node* node) {
 		buffer = activeBuffer;
 		targetOffset = activeBuffer->pos;
 
-		activeBuffer->pos += byteSize;
+		activeBuffer->pos += sourceBufferSize;
 	}	
 
-	memcpy(buffer->data_char + targetOffset, sourceBuffer->data, byteSize);
+	memcpy(buffer->data_char + targetOffset, sourceBuffer, sourceBufferSize);
 
 	node->points = nullptr;
 }
