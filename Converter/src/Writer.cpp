@@ -442,6 +442,8 @@ i64 Writer::write(void* buffer, i64 size){
 void Writer::launchWriterThread(){
 	// Launch a single thread that writes incoming data to fsOctree.
 	writerThread = std::thread([this]{
+		
+		i64 bytesToFlush = 1'000'000'000;
 
 		while(true){
 
@@ -469,6 +471,13 @@ void Writer::launchWriterThread(){
 			// ring buffer. The region [flushPos, writePos) is never touched by write()
 			// until we advance flushPos below, so reading it here is safe.
 			fsOctree.write((char*)(ringBuffer.ptr + offset), length);
+			
+			// Flush every now and then so that we can better observe the current size of the file. 
+			bytesToFlush -= length;
+			if(bytesToFlush <= 0){
+				fsOctree.flush();
+				bytesToFlush = 1'000'000'000;
+			}
 			
 			indexer->bytesWritten += length;
 			indexer->bytesToWrite -= length;

@@ -181,6 +181,8 @@ namespace indexer{
 			chunk->max = box.max;
 
 			chunksToLoad.push_back(chunk);
+			
+			if(chunksToLoad.size() >= 10'000) break;
 		}
 
 		auto chunks = make_shared<Chunks>(chunksToLoad, min, max);
@@ -856,8 +858,6 @@ void buildHierarchy(Indexer* indexer, Node* node, shared_ptr<Buffer> points, int
 	auto scale = attributes.posScale;
 	auto offset = attributes.posOffset;
 
-	//vector<int32_t> dbg(pointBuffer->data_i32, pointBuffer->data_i32 + 10);
-
 	auto gridIndexOf = [&points, bpp, scale, offset, min, size, counterGridSize](int64_t pointIndex) {
 
 		int64_t pointOffset = pointIndex * bpp;
@@ -1277,6 +1277,40 @@ void doIndexing(string targetDir, State& state, Options& options, Sampler& sampl
 		if (!options.keepChunks) {
 			fs::remove(chunk->file);
 		}
+		
+		// { // DEBUG: Convert brotli compressed chunks to csv files
+			
+		// 	// Write the point cloud in <pointBuffer> into a .csv file with attributes: x, y, z, intensity
+		// 	auto scale = attributes.posScale;
+		// 	auto offset = attributes.posOffset;
+		// 	int offsetIntensity = attributes.getOffset("intensity");
+		// 	int64_t numPointsInChunk = pointBuffer->size / bpp;
+
+		// 	fs::path csvPath = fs::path("E:/temp") / (chunk->id + ".csv");
+		// 	fs::create_directories(csvPath.parent_path());
+			
+		// 	println("Writing chunk {}", csvPath.string());
+
+		// 	std::ofstream csv(csvPath.string());
+		// 	csv << "x, y, z, intensity\n";
+
+		// 	for (int64_t i = 0; i < numPointsInChunk; i++) {
+		// 		int64_t pointOffset = i * bpp;
+
+		// 		int32_t* xyz = reinterpret_cast<int32_t*>(pointBuffer->data_u8 + pointOffset);
+		// 		double x = (xyz[0] * scale.x) + offset.x;
+		// 		double y = (xyz[1] * scale.y) + offset.y;
+		// 		double z = (xyz[2] * scale.z) + offset.z;
+
+		// 		uint16_t* intensity = reinterpret_cast<uint16_t*>(pointBuffer->data_u8 + pointOffset + offsetIntensity);
+
+		// 		csv << format("{}, {}, {}, {}\n", x, y, z, intensity[0]);
+		// 	}
+
+		// 	csv.close();
+			
+		// 	println("Writing chunk {} finished", csvPath.string());
+		// }
 
 		int64_t numPoints = pointBuffer->size / bpp;
 
@@ -1296,6 +1330,10 @@ void doIndexing(string targetDir, State& state, Options& options, Sampler& sampl
 		}
 
 		lock_guard<mutex> lock(mtx_nodes);
+		
+		static i64 totalNumPoints = 0;
+		totalNumPoints += numPoints;
+		println("processed points: {:L}", totalNumPoints);
 
 		pointsProcessed = pointsProcessed + numPoints;
 		double progress = double(pointsProcessed) / double(totalPoints);

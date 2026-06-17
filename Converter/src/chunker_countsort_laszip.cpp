@@ -434,7 +434,7 @@ namespace chunker_countsort_laszip {
 				continue;
 			}
 
-			auto& node = nodes[nodeIndex];			
+			auto& node = nodes[nodeIndex];
 			auto buffer = newBuckets[nodeIndex];
 
 			if(!compressChunks){
