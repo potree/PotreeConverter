@@ -24,6 +24,7 @@
 #include "unsuck/unsuck.hpp"
 #include "unsuck/TaskPool.hpp"
 #include "structures.h"
+#include "Writer.h"
 
 using json = nlohmann::json;
 
@@ -79,44 +80,7 @@ namespace indexer{
 	};
 
 	shared_ptr<Chunks> getChunks(string pathIn);
-
 	
-
-	struct Indexer;
-
-	struct Writer {
-
-		Indexer* indexer = nullptr;
-		int64_t capacity = 16 * 1024 * 1024;
-
-		// copy node data here first
-		shared_ptr<Buffer> activeBuffer = nullptr;
-
-		// backlog of buffers that reached capacity and are ready to be written to disk
-		deque<shared_ptr<Buffer>> backlog;
-
-		bool closeRequested = false;
-		bool closed = false;
-		std::condition_variable cvClose;
-
-		fstream fsOctree;
-
-		//thread tWrite;
-
-		mutex mtx;
-
-		Writer(Indexer* indexer);
-
-		void writeAndUnload(Node* node);
-
-		void launchWriterThread();
-
-		void closeAndWait();
-
-		int64_t backlogSizeMB();
-
-	};
-
 	struct HierarchyFlusher{
 
 		struct HNode{

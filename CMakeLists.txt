@@ -34,6 +34,7 @@ add_executable(PotreeConverter
 	./Converter/src/main.cpp
 	./Converter/src/logger.cpp
 	./Converter/src/VBuffer.cpp
+	./Converter/src/Writer.cpp
 	./Converter/modules/LasLoader/LasLoader.cpp
 	./Converter/modules/unsuck/unsuck_platform_specific.cpp
 	${HEADER_FILES}

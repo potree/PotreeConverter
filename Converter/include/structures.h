@@ -11,6 +11,7 @@
 #include "Vector3.h"
 #include "unsuck/unsuck.hpp"
 #include "Attributes.h"
+#include "converter_utils.h"
 
 using std::vector;
 using std::shared_ptr;
