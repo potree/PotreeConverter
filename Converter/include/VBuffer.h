@@ -22,6 +22,9 @@ struct VBuffer{
 
 	// Ensure that at least <size> bytes of physical memory is allocated and mapped.
 	void commit(i64 size);
+	
+	// May also free previously allocated physical pages
+	void commitOrShrink(i64 size);
 
 	// Release the reserved virtual memory and any committed physical memory.
 	void destroy();

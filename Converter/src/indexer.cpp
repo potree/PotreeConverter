@@ -812,6 +812,71 @@ vector<NodeCandidate> createNodes(Pyramid* pyramid) {
 	return nodes;
 }
 
+inline i64 gridIndexOf(
+	i64 pointIndex, 
+	shared_ptr<Buffer> &points, 
+	i64 bpp, 
+	Vector3 scale, 
+	Vector3 offset, 
+	Vector3 min, 
+	Vector3 size, 
+	i64 counterGridSize
+){
+
+	i64 pointOffset = pointIndex * bpp;
+	int32_t* xyz = reinterpret_cast<int32_t*>(points->data_u8 + pointOffset);
+
+	double x = (xyz[0] * scale.x) + offset.x;
+	double y = (xyz[1] * scale.y) + offset.y;
+	double z = (xyz[2] * scale.z) + offset.z;
+
+	i64 ix = double(counterGridSize) * (x - min.x) / size.x;
+	i64 iy = double(counterGridSize) * (y - min.y) / size.y;
+	i64 iz = double(counterGridSize) * (z - min.z) / size.z;
+
+	ix = std::max(i64(0), std::min(ix, counterGridSize - 1));
+	iy = std::max(i64(0), std::min(iy, counterGridSize - 1));
+	iz = std::max(i64(0), std::min(iz, counterGridSize - 1));
+
+	i64 index = mortonEncode_magicbits(iz, iy, ix);
+
+	return index;
+}
+
+Node* expandTo(Node* node, NodeCandidate& candidate) {
+
+	string startName = node->name;
+	string fullName = startName + candidate.name;
+
+	// e.g. startName: r, fullName: r031
+	// start iteration with char at index 1: "0"
+
+	Node* currentNode = node;
+	for (int64_t i = startName.size(); i < fullName.size(); i++) {
+		int64_t index = fullName.at(i) - '0';
+
+		if (currentNode->children[index] == nullptr) {
+			auto childBox = childBoundingBoxOf(currentNode->min, currentNode->max, index);
+			string childName = currentNode->name + to_string(index);
+
+			shared_ptr<Node> child = make_shared<Node>();
+			child->min = childBox.min;
+			child->max = childBox.max;
+			child->name = childName;
+			child->children.resize(8);
+
+			currentNode->children[index] = child;
+			currentNode = child.get();
+		} else {
+			currentNode = currentNode->children[index].get();
+		}
+
+		
+	}
+
+	return currentNode;
+};
+
 // 1. Counter grid
 // 2. Hierarchy from counter grid
 // 3. identify nodes that need further refinment
@@ -835,6 +900,8 @@ void buildHierarchy(Indexer* indexer, Node* node, shared_ptr<Buffer> points, int
 	constexpr i64 counterGridNumElements = counterGridSize * counterGridSize * counterGridSize; 
 	
 	thread_local Pyramid* pyramid = nullptr;
+	
+	// init counter pyramid data
 	if(!pyramid){
 		pyramid = new Pyramid();
 		pyramid->maxLevel = levels;
@@ -848,40 +915,18 @@ void buildHierarchy(Indexer* indexer, Node* node, shared_ptr<Buffer> points, int
 		}
 	}
 
-	auto min = node->min;
-	auto max = node->max;
-	auto size = max - min;
-	auto attributes = indexer->attributes;
-	int64_t bpp = attributes.bytes;
-	auto scale = attributes.posScale;
-	auto offset = attributes.posOffset;
-
-	auto gridIndexOf = [&points, bpp, scale, offset, min, size, counterGridSize](int64_t pointIndex) {
-
-		int64_t pointOffset = pointIndex * bpp;
-		int32_t* xyz = reinterpret_cast<int32_t*>(points->data_u8 + pointOffset);
-
-		double x = (xyz[0] * scale.x) + offset.x;
-		double y = (xyz[1] * scale.y) + offset.y;
-		double z = (xyz[2] * scale.z) + offset.z;
-
-		int64_t ix = double(counterGridSize) * (x - min.x) / size.x;
-		int64_t iy = double(counterGridSize) * (y - min.y) / size.y;
-		int64_t iz = double(counterGridSize) * (z - min.z) / size.z;
-
-		ix = std::max(int64_t(0), std::min(ix, counterGridSize - 1));
-		iy = std::max(int64_t(0), std::min(iy, counterGridSize - 1));
-		iz = std::max(int64_t(0), std::min(iz, counterGridSize - 1));
-
-		int64_t index = mortonEncode_magicbits(iz, iy, ix);
-
-		return index;
-	};
+	Vector3 min = node->min;
+	Vector3 max = node->max;
+	Vector3 size = max - min;
+	Attributes attributes = indexer->attributes;
+	i64 bpp = attributes.bytes;
+	Vector3 scale = attributes.posScale;
+	Vector3 offset = attributes.posOffset;
 
 	// COUNTING
 	memset(pyramid->counters[pyramid->maxLevel], 0, counterGridNumElements * sizeof(i64));
 	for (int64_t i = 0; i < numPoints; i++) {
-		auto index = gridIndexOf(i);
+		auto index = gridIndexOf(i, points, bpp, scale, offset, min, size, counterGridSize);
 		pyramid->counters[pyramid->maxLevel][index]++;
 	}
 	
@@ -898,7 +943,7 @@ void buildHierarchy(Indexer* indexer, Node* node, shared_ptr<Buffer> points, int
 		memcpy(offsets, pyramid->prefixSum[pyramid->maxLevel], sizeof(offsets));
 
 		for (i64 i = 0; i < numPoints; i++) {
-			i64 index = gridIndexOf(i);
+			i64 index = gridIndexOf(i, points, bpp, scale, offset, min, size, counterGridSize);
 			i64 targetIndex = offsets[index]++;
 
 			if (targetIndex * bpp >= tmp.comittedCapacity) {
@@ -911,64 +956,17 @@ void buildHierarchy(Indexer* indexer, Node* node, shared_ptr<Buffer> points, int
 		memcpy(points->data, tmp.ptr, numPoints * bpp);
 	}
 
-	auto nodes = createNodes(pyramid);
-
-	auto expandTo = [node](NodeCandidate& candidate) {
-
-		string startName = node->name;
-		string fullName = startName + candidate.name;
-
-		// e.g. startName: r, fullName: r031
-		// start iteration with char at index 1: "0"
-
-		Node* currentNode = node;
-		for (int64_t i = startName.size(); i < fullName.size(); i++) {
-			int64_t index = fullName.at(i) - '0';
-
-			if (currentNode->children[index] == nullptr) {
-				auto childBox = childBoundingBoxOf(currentNode->min, currentNode->max, index);
-				string childName = currentNode->name + to_string(index);
-
-				shared_ptr<Node> child = make_shared<Node>();
-				child->min = childBox.min;
-				child->max = childBox.max;
-				child->name = childName;
-				child->children.resize(8);
-
-				currentNode->children[index] = child;
-				currentNode = child.get();
-			} else {
-				currentNode = currentNode->children[index].get();
-			}
-
-			
-		}
-
-		return currentNode;
-	};
-
+	vector<NodeCandidate> nodes = createNodes(pyramid);
 	vector<Node*> needRefinement;
 
+	// Turn candidates into actual nodes
 	int64_t octreeDepth = 0;
 	for (NodeCandidate& candidate : nodes) {
 
-		Node* realization = expandTo(candidate);
+		Node* realization = expandTo(node, candidate);
 		realization->indexStart = candidate.indexStart;
 		realization->numPoints = candidate.numPoints;
 		int64_t bytes = candidate.numPoints * bpp;
-
-		if (bytes < 0) {
-			stringstream ss;
-
-			ss << "invalid call to malloc(" << to_string(bytes) << ")\n";
-			ss << "in function buildHierarchy()\n";
-			ss << "node: " << node->name << "\n";
-			ss << "#points: " << node->numPoints << "\n";
-			ss << "min: " << node->min.toString() << "\n";
-			ss << "max: " << node->max.toString() << "\n";
-
-			logger::ERROR(ss.str());
-		}
 
 		auto buffer = make_shared<Buffer>(bytes);
 		memcpy(buffer->data,
@@ -987,10 +985,10 @@ void buildHierarchy(Indexer* indexer, Node* node, shared_ptr<Buffer> points, int
 
 	{
 		lock_guard<mutex> lock(indexer->mtx_depth);
-
 		indexer->octreeDepth = std::max(indexer->octreeDepth, octreeDepth);
 	}
 
+	
 	int64_t sanityCheck = 0;
 	for (int64_t nodeIndex = 0; nodeIndex < needRefinement.size(); nodeIndex++) {
 		auto subject = needRefinement[nodeIndex];
@@ -1096,7 +1094,6 @@ void buildHierarchy(Indexer* indexer, Node* node, shared_ptr<Buffer> points, int
 				// try again
 				nodeIndex--;
 			}
-
 		}
 
 		int64_t nextNumPoins = subject->numPoints;
