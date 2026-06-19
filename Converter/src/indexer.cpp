@@ -182,7 +182,7 @@ namespace indexer{
 
 			chunksToLoad.push_back(chunk);
 			
-			if(chunksToLoad.size() >= 10'000) break;
+			// if(chunksToLoad.size() >= 1'000) break;
 		}
 
 		auto chunks = make_shared<Chunks>(chunksToLoad, min, max);
@@ -700,72 +700,57 @@ struct NodeCandidate {
 	int64_t z = 0;
 };
 
-vector<vector<int64_t>> createSumPyramid(vector<int64_t>& grid, int gridSize) {
+struct Pyramid{
+	i64 maxLevel; // starting from zero. maxLevel 2  ->  0: 1x1x1, 1: 2x2x2; 2: 4x4x4
+	vector<i64*> counters;
+	vector<i64*> prefixSum;
+};
 
-	auto tStart = now();
+void computeSumPyramid(Pyramid* pyramid){
 
-	int maxLevel = std::log2(gridSize);
-	int currentGridSize = gridSize / 2;
-
-	vector<vector<int64_t>> sumPyramid(maxLevel + 1);
-	for (int level = 0; level < maxLevel; level++) {
-		auto cells = pow(8, level);
-		sumPyramid[level].resize(cells, 0);
-	}
-	sumPyramid[maxLevel] = grid;
-
-	for (int level = maxLevel - 1; level >= 0; level--) {
+	// Compute counters in lower LODs
+	for (int level = pyramid->maxLevel - 1; level >= 0; level--) {
+		
+		i64 currentGridSize = pow(2, level);
 
 		for (int x = 0; x < currentGridSize; x++) {
-		for (int y = 0; y < currentGridSize; y++) {
-		for (int z = 0; z < currentGridSize; z++) {
+			for (int y = 0; y < currentGridSize; y++) {
+				for (int z = 0; z < currentGridSize; z++) {
 
-			auto index = mortonEncode_magicbits(z, y, x);
-			auto index_p1 = mortonEncode_magicbits(2 * z, 2 * y, 2 * x);
+					auto index = mortonEncode_magicbits(z, y, x);
+					auto index_p1 = mortonEncode_magicbits(2 * z, 2 * y, 2 * x);
 
-			int64_t sum = 0;
-			for (int i = 0; i < 8; i++) {
-				sum += sumPyramid[level + 1][index_p1 + i];
+					int64_t sum = 0;
+					for (int i = 0; i < 8; i++) {
+						sum += pyramid->counters[level + 1][index_p1 + i];
+					}
+					
+					pyramid->counters[level][index] = sum;
+				}
 			}
-
-			sumPyramid[level][index] = sum;
-
 		}
+	}
+	
+	// Compute prefix sum
+	for(int level = 0; level <= pyramid->maxLevel; level++){
+		
+		i64 gridsize = pow(2, level);
+		i64 numCells = gridsize * gridsize * gridsize;
+		
+		i64* counters = pyramid->counters[level];
+		i64* prefixSum = pyramid->prefixSum[level];
+		prefixSum[0] = 0;
+		
+		for (i64 i = 1; i < numCells; i++) {
+			prefixSum[i] = prefixSum[i - 1] + counters[i - 1];
 		}
-		}
-
-		currentGridSize = currentGridSize / 2;
-
 	}
 
-	return sumPyramid;
 }
 
-vector<NodeCandidate> createNodes(vector<vector<int64_t>>& pyramid) {
+vector<NodeCandidate> createNodes(Pyramid* pyramid) {
 
 	vector<NodeCandidate> nodes;
-
-	vector<vector<int64_t>> pyramidOffsets;
-	for (auto& counters : pyramid) {
-
-		if (counters.size() == 1) {
-			pyramidOffsets.push_back({ 0 });
-		} else {
-
-			vector<int64_t> offsets(counters.size(), 0);
-			for (int64_t i = 1; i < counters.size(); i++) {
-				int64_t offset = offsets[i - 1] + counters[i - 1];
-
-				offsets[i] = offset;
-			}
-
-			pyramidOffsets.push_back(offsets);
-		}
-	}
-
-	// pyramid starts at level 0 -> gridSize = 1
-	// 2 levels -> levels 0 and 1 -> maxLevel 1
-	auto maxLevel = pyramid.size() - 1;
 
 	NodeCandidate root;
 	root.name = "";
@@ -785,12 +770,11 @@ vector<NodeCandidate> createNodes(vector<vector<int64_t>>& pyramid) {
 		auto x = candidate.x;
 		auto y = candidate.y;
 		auto z = candidate.z;
-
-		auto& grid = pyramid[level];
+		
 		auto index = mortonEncode_magicbits(z, y, x);
-		int64_t numPoints = grid[index];
+		i64 numPoints = pyramid->counters[level][index];
 
-		if (level == maxLevel) {
+		if (level == pyramid->maxLevel) {
 			// don't split further at this time. May be split further in another pass
 
 			if (numPoints > 0) {
@@ -802,13 +786,13 @@ vector<NodeCandidate> createNodes(vector<vector<int64_t>>& pyramid) {
 			for (int i = 0; i < 8; i++) {
 
 				auto index_p1 = mortonEncode_magicbits(2 * z, 2 * y, 2 * x) + i;
-				auto count = pyramid[level + 1][index_p1];
+				auto count = pyramid->counters[level + 1][index_p1];
 
 				if (count > 0) {
 					NodeCandidate child;
 					child.level = level + 1;
 					child.name = candidate.name + to_string(i);
-					child.indexStart = pyramidOffsets[level + 1][index_p1];
+					child.indexStart = pyramid->prefixSum[level + 1][index_p1];
 					child.numPoints = count;
 					child.x = 2 * x + ((i & 0b100) >> 2);
 					child.y = 2 * y + ((i & 0b010) >> 1);
@@ -846,9 +830,23 @@ void buildHierarchy(Indexer* indexer, Node* node, shared_ptr<Buffer> points, int
 
 	auto tStart = now();
 
-	int64_t levels = 5; // = gridSize 32
-	int64_t counterGridSize = pow(2, levels);
-	vector<int64_t> counters(counterGridSize * counterGridSize * counterGridSize, 0);
+	constexpr i64 levels = 5; // = gridSize 32
+	constexpr i64 counterGridSize = 32; // pow(2, levels);
+	constexpr i64 counterGridNumElements = counterGridSize * counterGridSize * counterGridSize; 
+	
+	thread_local Pyramid* pyramid = nullptr;
+	if(!pyramid){
+		pyramid = new Pyramid();
+		pyramid->maxLevel = levels;
+		pyramid->counters.resize(pyramid->maxLevel + 1);
+		pyramid->prefixSum.resize(pyramid->maxLevel + 1);
+		for(int level = 0; level <= pyramid->maxLevel; level++){
+			i64 gridSize = pow(2, level);
+			i64 numCells = gridSize * gridSize * gridSize;
+			pyramid->counters[level] = (i64*)malloc(sizeof(i64) * numCells);
+			pyramid->prefixSum[level] = (i64*)malloc(sizeof(i64) * numCells);
+		}
+	}
 
 	auto min = node->min;
 	auto max = node->max;
@@ -881,44 +879,37 @@ void buildHierarchy(Indexer* indexer, Node* node, shared_ptr<Buffer> points, int
 	};
 
 	// COUNTING
+	memset(pyramid->counters[pyramid->maxLevel], 0, counterGridNumElements * sizeof(i64));
 	for (int64_t i = 0; i < numPoints; i++) {
 		auto index = gridIndexOf(i);
-		counters[index]++;
+		pyramid->counters[pyramid->maxLevel][index]++;
 	}
+	
+	// Update counters in lower levels of pyramid, and compute prefix sum
+	computeSumPyramid(pyramid);
 
 	{ // DISTRIBUTING
-		vector<int64_t> offsets(counters.size(), 0);
-		for (int64_t i = 1; i < counters.size(); i++) {
-			offsets[i] = offsets[i - 1] + counters[i - 1];
+
+		// Buffer tmp(numPoints * bpp);
+		thread_local VBuffer tmp = VBuffer::create(500'000'000);
+		tmp.commit(numPoints * bpp);
+
+		thread_local i64 offsets[counterGridNumElements];
+		memcpy(offsets, pyramid->prefixSum[pyramid->maxLevel], sizeof(offsets));
+
+		for (i64 i = 0; i < numPoints; i++) {
+			i64 index = gridIndexOf(i);
+			i64 targetIndex = offsets[index]++;
+
+			if (targetIndex * bpp >= tmp.comittedCapacity) {
+				__debugbreak();
+			}
+
+			memcpy(tmp.ptr + targetIndex * bpp, points->data_u8 + i * bpp, bpp);
 		}
 
-		if(numPoints * bpp < 0){
-			stringstream ss;
-
-			auto size = numPoints * bpp;
-			ss << "invalid call to malloc(" << to_string(size) << ")\n";
-			ss << "in function buildHierarchy()\n";
-			ss << "node: " << node->name << "\n";
-			ss << "#points: " << node->numPoints<< "\n";
-			ss << "min: " << node->min.toString() << "\n";
-			ss << "max: " << node->max.toString() << "\n";
-
-			logger::ERROR(ss.str());
-		}
-
-		Buffer tmp(numPoints * bpp);
-
-		for (int64_t i = 0; i < numPoints; i++) {
-			auto index = gridIndexOf(i);
-			auto targetIndex = offsets[index]++;
-
-			memcpy(tmp.data_u8 + targetIndex * bpp, points->data_u8 + i * bpp, bpp);
-		}
-
-		memcpy(points->data, tmp.data, numPoints * bpp);
+		memcpy(points->data, tmp.ptr, numPoints * bpp);
 	}
-
-	auto pyramid = createSumPyramid(counters, counterGridSize);
 
 	auto nodes = createNodes(pyramid);
 

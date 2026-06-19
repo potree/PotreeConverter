@@ -52,6 +52,7 @@ void VBuffer::commit(i64 size){
 
 	if(size > virtualCapacity){
 		println("ERROR: VBuffer::commit - requested {} bytes exceeds reserved capacity of {} bytes.", size, virtualCapacity);
+		__debugbreak();
 		exit(4314);
 	}
 
