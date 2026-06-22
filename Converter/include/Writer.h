@@ -24,7 +24,7 @@ struct Writer{
 
 	indexer::Indexer* indexer = nullptr;
 	i64 capacity = 1024 * 1024 * 1024;
-	VBuffer ringBuffer;
+	shared_ptr<VBuffer> ringBuffer;
 	fstream fsOctree;   // File to which we write
 
 	// Ring buffer bookkeeping, expressed as monotonically increasing absolute byte

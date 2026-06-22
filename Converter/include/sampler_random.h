@@ -9,6 +9,7 @@
 #include "structures.h"
 #include "Attributes.h"
 #include "VBuffer.h"
+#include "VBufferPool.h"
 #include "BitEdit.h"
 
 
@@ -95,7 +96,7 @@ struct SamplerRandom : public Sampler {
 			if (isLeaf) {
 				// shuffle
 
-				u8* pointBuffer = node->points->data_u8;
+				u8* pointBuffer = node->points->ptr;
 				i64 numPoints = node->numPoints;
 				i64 bytesPerPoint = attributes.bytes;
 				
@@ -150,9 +151,9 @@ struct SamplerRandom : public Sampler {
 			}
 			
 			// Needs one bit per point in all child nodes, plus some extra padding
-			thread_local VBuffer acceptedChildPointsBuffer = VBuffer::create(10'000'000);
-			acceptedChildPointsBuffer.commit(numPointsInChildren / 8 + 256);
-			memset(acceptedChildPointsBuffer.ptr, 0, numPointsInChildren / 8 + 256);
+			thread_local shared_ptr<VBuffer> acceptedChildPointsBuffer = VBuffer::create(10'000'000);
+			acceptedChildPointsBuffer->commit(numPointsInChildren / 8 + 256);
+			memset(acceptedChildPointsBuffer->ptr, 0, numPointsInChildren / 8 + 256);
 
 			i64 numRejectedPerChild[8] = {0};
 			int64_t numAccepted = 0;
@@ -170,7 +171,7 @@ struct SamplerRandom : public Sampler {
 				for (int i = 0; i < child->numPoints; i++) {
 
 					int64_t pointOffset = i * attributes.bytes;
-					int32_t* xyz = reinterpret_cast<int32_t*>(child->points->data_u8 + pointOffset);
+					int32_t* xyz = reinterpret_cast<int32_t*>(child->points->ptr + pointOffset);
 
 					double x = (xyz[0] * scale.x) + offset.x;
 					double y = (xyz[1] * scale.y) + offset.y;
@@ -199,7 +200,7 @@ struct SamplerRandom : public Sampler {
 					}
 
 					if(isAccepted){
-						BitEdit::writeU32((u32*)acceptedChildPointsBuffer.ptr, processedPointCounter, 1, 1);
+						BitEdit::writeU32((u32*)acceptedChildPointsBuffer->ptr, processedPointCounter, 1, 1);
 					}
 					
 					processedPointCounter++;
@@ -208,8 +209,12 @@ struct SamplerRandom : public Sampler {
 				numRejectedPerChild[childIndex] = numRejected;
 			}
 
-			auto accepted = make_shared<Buffer>(numAccepted * attributes.bytes);
+			// auto accepted = make_shared<Buffer>(numAccepted * attributes.bytes);
+			auto accepted = VBufferPool::acquire();
+			accepted->commit(numAccepted * attributes.bytes);
+			
 			processedPointCounter = 0;
+			i64 numAcceptedProcessed = 0;
 			for (int childIndex = 0; childIndex < 8; childIndex++) {
 				auto child = node->children[childIndex];
 
@@ -219,15 +224,21 @@ struct SamplerRandom : public Sampler {
 				i64 numRejectedCompacted = 0;
 
 				for (int i = 0; i < child->numPoints; i++) {
-					bool isAccepted = BitEdit::readU32((u32*)acceptedChildPointsBuffer.ptr, processedPointCounter, 1) == 1;
+					bool isAccepted = BitEdit::readU32((u32*)acceptedChildPointsBuffer->ptr, processedPointCounter, 1) == 1;
 					int64_t pointOffset = i * attributes.bytes;
 
 					if (isAccepted) {
-						accepted->write(child->points->data_u8 + pointOffset, attributes.bytes);
+						// accepted->write(child->points->ptr + pointOffset, attributes.bytes);
+						memcpy(
+							accepted->ptr + numAcceptedProcessed * attributes.bytes,
+							child->points->ptr + pointOffset, 
+							attributes.bytes
+						);
+						numAcceptedProcessed++;
 					} else {
 						memcpy(
-							child->points->data_u8 + numRejectedCompacted * attributes.bytes,
-							child->points->data_u8 + pointOffset,
+							child->points->ptr + numRejectedCompacted * attributes.bytes,
+							child->points->ptr + pointOffset,
 							attributes.bytes
 						);
 						numRejectedCompacted++;

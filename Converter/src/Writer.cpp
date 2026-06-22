@@ -3,6 +3,7 @@
 
 #include "structures.h"
 #include "indexer.h"
+#include "VBufferPool.h"
 
 struct MortonCode {
 	uint64_t lower;
@@ -20,7 +21,7 @@ struct SoA {
 SoA toStructOfArrays(Node* node, Attributes& attributes, VBuffer* target) {
 
 	auto numPoints = node->numPoints;
-	uint8_t* source = node->points->data_u8;
+	uint8_t* source = node->points->ptr;
 
 	unordered_map<string, void*> buffers;
 	unordered_map<string, i64> bufferSizes;
@@ -242,10 +243,10 @@ static void brotliPoolFree(void* opaque, void* address) {
 
 void compress(Node* node, Attributes& attributes, VBuffer* encoded, i64* out_encodedSize) {
 	
-	thread_local VBuffer soa_buffer = VBuffer::create(100'000'000);
+	thread_local shared_ptr<VBuffer> soa_buffer = VBuffer::create(100'000'000);
 
 	auto numPoints = node->numPoints;
-	auto soa = toStructOfArrays(node, attributes, &soa_buffer);
+	auto soa = toStructOfArrays(node, attributes, soa_buffer.get());
 
 	std::sort(soa.mcs, soa.mcs + numPoints, [](MortonCode& a, MortonCode& b) {
 
@@ -277,8 +278,8 @@ void compress(Node* node, Attributes& attributes, VBuffer* encoded, i64* out_enc
 	// Allocating virtual memory with lots of capacity.
 	// Note: A single octree node should never need that much capacity.
 	// If it is, something is wrong and crashing is expected.
-	thread_local VBuffer bufferMerged = VBuffer::create(100'000'000ll);
-	bufferMerged.commit(bufferSize);
+	thread_local shared_ptr<VBuffer> bufferMerged = VBuffer::create(100'000'000ll);
+	bufferMerged->commit(bufferSize);
 
 	i64 targetOffset = 0;
 	for (Attribute& attribute : attributes.list) {
@@ -294,7 +295,7 @@ void compress(Node* node, Attributes& attributes, VBuffer* encoded, i64* out_enc
 			int sourceIndex = soa.mcs[i].index;
 
 			memcpy(
-				bufferMerged.ptr + targetOffset,
+				bufferMerged->ptr + targetOffset,
 				buffer + sourceIndex * bufferAttributeSize,
 				bufferAttributeSize
 			);
@@ -307,7 +308,7 @@ void compress(Node* node, Attributes& attributes, VBuffer* encoded, i64* out_enc
 		int quality = 6;
 		int lgwin = BROTLI_DEFAULT_WINDOW;
 		auto mode = BROTLI_DEFAULT_MODE;
-		uint8_t* input_buffer = bufferMerged.ptr;
+		uint8_t* input_buffer = bufferMerged->ptr;
 		size_t input_size = targetOffset;
 
 		size_t encoded_size = input_size * 1.5 + 1'000;
@@ -369,7 +370,7 @@ Writer::Writer(indexer::Indexer* indexer){
 	fsOctree.open(octreePath, ios::out | ios::binary);
 	
 	ringBuffer = VBuffer::create(capacity);
-	ringBuffer.commit(capacity);
+	ringBuffer->commit(capacity);
 	
 	launchWriterThread();
 }
@@ -385,18 +386,19 @@ void Writer::writeAndUnload(Node* node){
 	i64 sourceBufferSize = 0;
 
 	if (encoding == "BROTLI") {
-		thread_local VBuffer vbuffer = VBuffer::create(100'000'000);
+		thread_local shared_ptr<VBuffer> vbuffer = VBuffer::create(100'000'000);
 		i64 outSize = 0;
-		compress(node, attributes, &vbuffer, &outSize);
-		sourceBuffer = vbuffer.ptr;
+		compress(node, attributes, vbuffer.get(), &outSize);
+		sourceBuffer = vbuffer->ptr;
 		sourceBufferSize = outSize;
 	} else {
-		sourceBuffer = node->points->data;
+		sourceBuffer = node->points->ptr;
 		sourceBufferSize = node->points->size;
 	}
 	
 	node->byteSize = sourceBufferSize;
 	node->byteOffset = write(sourceBuffer, sourceBufferSize);
+	VBufferPool::release(node->points);
 	node->points = nullptr;
 }
 
@@ -424,9 +426,9 @@ i64 Writer::write(void* buffer, i64 size){
 	i64 firstPart = std::min(size, capacity - offset);
 	i64 secondPart = size - firstPart;
 
-	memcpy(ringBuffer.ptr + offset, source, firstPart);
+	memcpy(ringBuffer->ptr + offset, source, firstPart);
 	if(secondPart > 0){
-		memcpy(ringBuffer.ptr, source + firstPart, secondPart);
+		memcpy(ringBuffer->ptr, source + firstPart, secondPart);
 	}
 	
 	i64 byteOffset = writePos;
@@ -466,11 +468,14 @@ void Writer::launchWriterThread(){
 				// remainder is picked up on the next iteration.
 				length = std::min(available, capacity - offset);
 			}
+			
+			// Write a maximum of X bytes in a single iteration
+			// length = std::min(length, 100'000'000ll);
 
 			// Disk I/O happens outside the lock so producers can keep filling the
 			// ring buffer. The region [flushPos, writePos) is never touched by write()
 			// until we advance flushPos below, so reading it here is safe.
-			fsOctree.write((char*)(ringBuffer.ptr + offset), length);
+			fsOctree.write((char*)(ringBuffer->ptr + offset), length);
 			
 			// Flush every now and then so that we can better observe the current size of the file. 
 			bytesToFlush -= length;

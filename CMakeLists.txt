@@ -18,7 +18,6 @@ set(HEADER_FILES
 	./Converter/include/indexer.h
 	./Converter/include/prototyping.h
 	./Converter/include/sampler_poisson.h
-	./Converter/include/sampler_poisson_average.h
 	./Converter/include/sampler_random.h
 	./Converter/include/structures.h
 	./Converter/include/Vector3.h

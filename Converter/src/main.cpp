@@ -7,7 +7,7 @@
 #include "chunker_countsort_laszip.h"
 #include "indexer.h"
 #include "sampler_poisson.h"
-#include "sampler_poisson_average.h"
+// #include "sampler_poisson_average.h"
 #include "sampler_random.h"
 #include "Attributes.h"
 #include "PotreeConverter.h"
@@ -396,9 +396,12 @@ void indexing(Options& options, string targetDir, State& state) {
 		indexer::doIndexing(targetDir, state, options, sampler);
 
 	} else if (options.method == "poisson_average") {
+		
+		println("ERROR: poisson_average removed");
+		exit(262356);
 
-		SamplerPoissonAverage sampler;
-		indexer::doIndexing(targetDir, state, options, sampler);
+		// SamplerPoissonAverage sampler;
+		// indexer::doIndexing(targetDir, state, options, sampler);
 
 	}
 }

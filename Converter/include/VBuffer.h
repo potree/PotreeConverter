@@ -16,9 +16,14 @@ struct VBuffer{
 	i64 pageSize = 0;
 	i64 virtualCapacity = 0;
 	i64 comittedCapacity = 0;
+	i64 size = 0; // Size according to the most recent commit() call
+	
+	~VBuffer(){
+		destroy();
+	}
 
 	// Reserve <size> bytes of virtual memory without committing physical memory yet.
-	static VBuffer create(i64 size);
+	static shared_ptr<VBuffer> create(i64 size);
 
 	// Ensure that at least <size> bytes of physical memory is allocated and mapped.
 	void commit(i64 size);

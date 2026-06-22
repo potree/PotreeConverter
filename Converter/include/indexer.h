@@ -25,6 +25,7 @@
 #include "unsuck/TaskPool.hpp"
 #include "structures.h"
 #include "Writer.h"
+#include "VBuffer.h"
 
 using json = nlohmann::json;
 

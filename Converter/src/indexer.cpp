@@ -15,6 +15,7 @@
 #include "brotli/decode.h"
 #include "HierarchyBuilder.h"
 #include "VBuffer.h"
+#include "VBufferPool.h"
 
 using std::unique_lock;
 using std::println;
@@ -179,10 +180,12 @@ namespace indexer{
 
 			chunk->min = box.min;
 			chunk->max = box.max;
+			
 
 			chunksToLoad.push_back(chunk);
 			
-			// if(chunksToLoad.size() >= 1'000) break;
+			// if(chunksToLoad.size() >= 30'000) break; // works
+			// if(chunksToLoad.size() >= 100'000) break;
 		}
 
 		auto chunks = make_shared<Chunks>(chunksToLoad, min, max);
@@ -198,7 +201,7 @@ namespace indexer{
 		static int64_t offset = 0;
 		int64_t size = chunkRoot->points->size;
 
-		fChunkRoots.write(chunkRoot->points->data_char, size);
+		fChunkRoots.write((const char*)chunkRoot->points->ptr, size);
 
 		FlushedChunkRoot fcr;
 		fcr.node = chunkRoot;
@@ -319,8 +322,10 @@ namespace indexer{
 			int64_t start = task->offset;
 			int64_t size = task->size;
 
-			auto buffer = make_shared<Buffer>(size);
-			readBinaryFile(octreePath, start, size, buffer->data);
+			// auto buffer = make_shared<Buffer>(size);
+			auto buffer = VBufferPool::acquire();
+			buffer->commit(size);
+			readBinaryFile(octreePath, start, size, buffer->ptr);
 
 			node->points = buffer;
 		});
@@ -887,7 +892,9 @@ void buildHierarchy(Indexer* indexer, Node* node, shared_ptr<Buffer> points, int
 		Node* realization = node;
 		realization->indexStart = 0;
 		realization->numPoints = numPoints;
-		realization->points = points;
+		realization->points = VBufferPool::acquire();
+		realization->points->commit(points->size);
+		memcpy(realization->points->ptr, points->data, points->size);
 
 		return;
 	}
@@ -936,8 +943,8 @@ void buildHierarchy(Indexer* indexer, Node* node, shared_ptr<Buffer> points, int
 	{ // DISTRIBUTING
 
 		// Buffer tmp(numPoints * bpp);
-		thread_local VBuffer tmp = VBuffer::create(500'000'000);
-		tmp.commit(numPoints * bpp);
+		thread_local shared_ptr<VBuffer> tmp = VBuffer::create(2'000'000'000);
+		tmp->commit(numPoints * bpp);
 
 		thread_local i64 offsets[counterGridNumElements];
 		memcpy(offsets, pyramid->prefixSum[pyramid->maxLevel], sizeof(offsets));
@@ -946,14 +953,14 @@ void buildHierarchy(Indexer* indexer, Node* node, shared_ptr<Buffer> points, int
 			i64 index = gridIndexOf(i, points, bpp, scale, offset, min, size, counterGridSize);
 			i64 targetIndex = offsets[index]++;
 
-			if (targetIndex * bpp >= tmp.comittedCapacity) {
+			if (targetIndex * bpp >= tmp->comittedCapacity) {
 				__debugbreak();
 			}
 
-			memcpy(tmp.ptr + targetIndex * bpp, points->data_u8 + i * bpp, bpp);
+			memcpy(tmp->ptr + targetIndex * bpp, points->data_u8 + i * bpp, bpp);
 		}
 
-		memcpy(points->data, tmp.ptr, numPoints * bpp);
+		memcpy(points->data, tmp->ptr, numPoints * bpp);
 	}
 
 	vector<NodeCandidate> nodes = createNodes(pyramid);
@@ -968,8 +975,10 @@ void buildHierarchy(Indexer* indexer, Node* node, shared_ptr<Buffer> points, int
 		realization->numPoints = candidate.numPoints;
 		int64_t bytes = candidate.numPoints * bpp;
 
-		auto buffer = make_shared<Buffer>(bytes);
-		memcpy(buffer->data,
+		// auto buffer = make_shared<Buffer>(bytes);
+		shared_ptr<VBuffer> buffer = VBufferPool::acquire();
+		buffer->commit(bytes);
+		memcpy(buffer->ptr,
 			points->data_u8 + candidate.indexStart * bpp,
 			candidate.numPoints * bpp
 		);
@@ -992,7 +1001,9 @@ void buildHierarchy(Indexer* indexer, Node* node, shared_ptr<Buffer> points, int
 	int64_t sanityCheck = 0;
 	for (int64_t nodeIndex = 0; nodeIndex < needRefinement.size(); nodeIndex++) {
 		auto subject = needRefinement[nodeIndex];
-		auto buffer = subject->points;
+		// auto buffer = subject->points;
+		shared_ptr<Buffer> buffer = make_shared<Buffer>(subject->points->size);
+		memcpy(buffer->data, subject->points->ptr, subject->points->size);
 		
 		if (sanityCheck > needRefinement.size() * 2) {
 			logger::ERROR("failed to partition point cloud in indexer::buildHierarchy().");
@@ -1013,7 +1024,7 @@ void buildHierarchy(Indexer* indexer, Node* node, shared_ptr<Buffer> points, int
 				memcpy(&X, buffer->data_u8 + sourceOffset + 0, 4);
 				memcpy(&Y, buffer->data_u8 + sourceOffset + 4, 4);
 				memcpy(&Z, buffer->data_u8 + sourceOffset + 8, 4);
-
+				
 				stringstream ss;
 				ss << X << ", " << Y << ", " << Z;
 
@@ -1072,8 +1083,6 @@ void buildHierarchy(Indexer* indexer, Node* node, shared_ptr<Buffer> points, int
 
 				}
 
-				//cout << "#distinct: " << distinct.size() << endl;
-
 				stringstream msg;
 				msg << "Too many duplicate points were encountered. #points: " << subject->numPoints;
 				msg << ", #unique points: " << distinct.size() << endl;
@@ -1082,10 +1091,17 @@ void buildHierarchy(Indexer* indexer, Node* node, shared_ptr<Buffer> points, int
 
 				logger::WARN(msg.str());
 
-				shared_ptr<Buffer> distinctBuffer = make_shared<Buffer>(distinct.size() * bpp);
+				// shared_ptr<Buffer> distinctBuffer = make_shared<Buffer>(distinct.size() * bpp);
+				shared_ptr<VBuffer> distinctBuffer = VBufferPool::acquire();
+				distinctBuffer->commit(distinct.size() * bpp);
 
 				for(int64_t i = 0; i < distinct.size(); i++){
-					distinctBuffer->write(buffer->data_u8 + i * bpp, bpp);
+					// distinctBuffer->write(buffer->ptr + distinct[i] * bpp, bpp);
+					memcpy(
+						distinctBuffer->ptr + i * bpp,
+						buffer->data_u8 + distinct[i] * bpp,
+						bpp
+					);
 				}
 
 				subject->points = distinctBuffer;
@@ -1168,7 +1184,8 @@ void doIndexing(string targetDir, State& state, Options& options, Sampler& sampl
 	atomic_int64_t activeThreads = 0;
 	mutex mtx_nodes;
 	vector<shared_ptr<Node>> nodes;
-	int numThreads = numSampleThreads() + 4;
+	// int numThreads = numSampleThreads() + 4;
+	int numThreads = numSampleThreads() / 4 + 2;
 	// numThreads = 1;
 	TaskPool<Task> pool(numThreads, [&onNodeCompleted, &onNodeDiscarded, &writeAndUnload, &state, &options, &activeThreads, tStart, &lastReport, &totalPoints, totalBytes, &pointsProcessed, chunks, &indexer, &nodes, &mtx_nodes, &sampler](auto task) {
 		
@@ -1192,6 +1209,7 @@ void doIndexing(string targetDir, State& state, Options& options, Sampler& sampl
 		indexer.bytesInMemory += filesize;
 
 		shared_ptr<Buffer> pointBuffer = nullptr;
+		
 		if(iEndsWith(chunk->file, "bin")){
 			pointBuffer = readBinaryFile(chunk->file);
 		}else if(iEndsWith(chunk->file, "br")){
@@ -1359,8 +1377,10 @@ void doIndexing(string targetDir, State& state, Options& options, Sampler& sampl
 		for(auto& task : tasks){
 
 			for(auto& fcr : task.fcrs){
-				auto buffer = make_shared<Buffer>(fcr.size);
-				readBinaryFile(tmpChunkRootsPath, fcr.offset, fcr.size, buffer->data);
+				// auto buffer = make_shared<Buffer>(fcr.size);
+				shared_ptr<VBuffer> buffer = VBufferPool::acquire();
+				buffer->commit(fcr.size);
+				readBinaryFile(tmpChunkRootsPath, fcr.offset, fcr.size, buffer->ptr);
 
 				fcr.node->points = buffer;
 			}
