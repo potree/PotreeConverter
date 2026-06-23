@@ -1,7 +1,13 @@
-
-
 #include <iostream>
 #include <execution>
+#include <string>
+
+#ifdef WINDOWS
+	#include <windows.h>
+#else
+	#include <limits.h>
+	#include <unistd.h>
+#endif
 
 #include "unsuck/unsuck.hpp"
 #include "chunker_countsort_laszip.h"
@@ -494,6 +500,17 @@ void generatePage(string exePath, string pagedir, string pagename) {
 
 #include "HierarchyBuilder.h"
 
+std::string getExePath() {
+#ifdef WINDOWS
+	char result[ MAX_PATH ];
+	return std::string(result, GetModuleFileName(NULL, result, MAX_PATH));
+#else
+	char result[ PATH_MAX ];
+	ssize_t count = readlink("/proc/self/exe", result, PATH_MAX);
+	return std::string(result, (count > 0) ? count : 0);
+#endif
+}
+
 int main(int argc, char** argv) {
 
 	
@@ -512,7 +529,8 @@ int main(int argc, char** argv) {
 
 	double tStart = now(); 
 
-	auto exePath = fs::canonical(fs::absolute(argv[0])).parent_path().string();
+	auto exePath = getExePath();
+	cout << "#exe path: " << exePath << endl;
 
 	launchMemoryChecker(2 * 1024, 0.1);
 	auto cpuData = getCpuData();
