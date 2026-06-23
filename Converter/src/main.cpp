@@ -467,9 +467,9 @@ void generatePage(string exePath, string pagedir, string pagename) {
 			
 			let material = pointcloud.material;
 			material.size = 1;
-			material.pointSizeType = Potree.PointSizeType.ADAPTIVE;
-			material.shape = Potree.PointShape.SQUARE;
-			material.activeAttributeName = "rgba";
+			material.pointSizeType = Potree.PointSizeType.FIXED;
+			material.shape = Potree.PointShape.PARABOLOID;
+			material.activeAttributeName = "classification";
 			
 			scene.addPointCloud(pointcloud);
 			

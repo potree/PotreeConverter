@@ -1,0 +1,23 @@
+version: "3.9"
+
+services:
+  potree-webviewer:
+    image: potree_complete  # Use the pre-built image
+    container_name: potree_webviewer
+    ports:
+      - "1234:1234"  # Map container's port 1234 to host's port 1234
+      - "8501:8501"
+    volumes:
+      - /home:/home
+      - <ADD PATH>/output:/app/potree/crescer
+
+    restart: unless-stopped
+    networks:
+      - potree_network
+    environment:
+      - NODE_ENV=production  # Optional environment variable for Node.js
+
+networks:
+  potree_network:
+    driver: bridge
+

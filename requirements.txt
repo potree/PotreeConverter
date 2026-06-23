@@ -1,0 +1,8 @@
+lazrs==0.6.1
+laszip==0.2.3
+laspy==2.5.4
+numpy
+pandas
+tqdm
+icecream
+streamlit==1.37.1
