@@ -6,12 +6,7 @@ cmake_minimum_required(VERSION 2.8.6)
 
 project(brotli C)
 
-if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
-  message(STATUS "Setting build type to Release as none was specified.")
-  set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Choose the type of build." FORCE)
-else()
-  message(STATUS "Build type is '${CMAKE_BUILD_TYPE}'")
-endif()
+message(STATUS "Build type is '${CMAKE_BUILD_TYPE}'")
 
 include(CheckCSourceCompiles)
 check_c_source_compiles(

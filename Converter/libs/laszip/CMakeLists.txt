@@ -41,7 +41,8 @@ target_include_directories(laszip PRIVATE
 	../
 )
 
-set(CMAKE_BUILD_TYPE "Release" CACHE STRING "" FORCE)
+# set(CMAKE_BUILD_TYPE "Release" CACHE STRING "" FORCE)
+message(STATUS "Build type is '${CMAKE_BUILD_TYPE}'")
 
 add_compile_definitions(OPENCV_VERSION=${OpenCV_VERSION})
 add_compile_definitions(_CRT_SECURE_NO_DEPRECATE)
