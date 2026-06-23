@@ -95,7 +95,7 @@ typedef union I64U32I32F32 { I64 i64; U32 u32[2]; I32 i32[2]; F32 f32[2]; } I64U
 #define U32_MIN            ((U32)0x0)            // 0
 #define U32_MAX            ((U32)0xFFFFFFFF)     // 4294967295
 #define U32_MAX_MINUS_ONE  ((U32)0xFFFFFFFE)     // 4294967294
-#if defined(WIN32)            // 64 byte unsigned int constant under Windows 
+#if defined(_WIN32)            // 64 byte unsigned int constant under Windows 
 #define U32_MAX_PLUS_ONE   0x0000000100000000    // 4294967296
 #else                         // 64 byte unsigned int constant elsewhere ... 
 #define U32_MAX_PLUS_ONE   0x0000000100000000ull // 4294967296

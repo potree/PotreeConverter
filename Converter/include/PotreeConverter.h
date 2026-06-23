@@ -210,8 +210,7 @@ inline Attributes computeOutputAttributes(vector<Source>& sources, vector<string
 	// compute scale and offset from all sources
 	{
 		mutex mtx;
-		auto parallel = std::execution::par;
-		for_each(parallel, sources.begin(), sources.end(), [&mtx, &sources, &scaleMin, &min, &max, requestedAttributes, &fullAttributeList, &acceptedAttributeNames](Source source) {
+		for_each(std::execution::par, sources.begin(), sources.end(), [&mtx, &sources, &scaleMin, &min, &max, requestedAttributes, &fullAttributeList, &acceptedAttributeNames](Source source) {
 
 			auto header = loadLasHeader(source.path);
 

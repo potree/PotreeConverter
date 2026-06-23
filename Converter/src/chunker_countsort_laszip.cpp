@@ -279,8 +279,7 @@ namespace chunker_countsort_laszip {
 		auto tStartTaskAssembly = now();
 
 		for (auto source : sources) {
-		//auto parallel = std::execution::par;
-		//for_each(parallel, paths.begin(), paths.end(), [&mtx, &sources](string path) {
+		//for_each(std::execution::par, paths.begin(), paths.end(), [&mtx, &sources](string path) {
 
 			laszip_POINTER laszip_reader;
 			laszip_header* header;
