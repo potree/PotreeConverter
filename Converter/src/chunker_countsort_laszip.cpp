@@ -586,7 +586,10 @@ namespace chunker_countsort_laszip {
 
 			int attributeOffset = 0;
 			for (int i = 0; i < firstExtraIndex; i++) {
-				attributeOffset += inputAttributes.list[i].size;
+				bool isIncludedInOutput = outputAttributes.get(inputAttributes.list[i].name) != nullptr;
+				if (isIncludedInOutput) {
+					attributeOffset += inputAttributes.list[i].size;
+				}
 			}
 
 			for (int i = firstExtraIndex; i < inputAttributes.list.size(); i++) {
