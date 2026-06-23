@@ -100,7 +100,9 @@ struct SamplerRandom : public Sampler {
 				}
 
 				unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
-
+				if (deterministicOperation) {
+					seed = 20;
+				}
 				shuffle(indices.begin(), indices.end(), std::default_random_engine(seed));
 
 				auto buffer = make_shared<Buffer>(node->points->size);

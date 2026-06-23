@@ -30,6 +30,7 @@ Options parseArguments(int argc, char** argv) {
 	args.addArgument("keep-chunks", "Skip deleting temporary chunks during conversion");
 	args.addArgument("no-chunking", "Disable chunking phase");
 	args.addArgument("no-indexing", "Disable indexing phase");
+	args.addArgument("deterministic", "Same output files for same input");
 	args.addArgument("attributes", "Attributes in output file");
 	args.addArgument("projection", "Add the projection of the pointcloud to the metadata");
 	args.addArgument("generate-page,p", "Generate a ready to use web page with the given name");
@@ -117,6 +118,7 @@ Options parseArguments(int argc, char** argv) {
 	bool keepChunks = args.has("keep-chunks");
 	bool noChunking = args.has("no-chunking");
 	bool noIndexing = args.has("no-indexing");
+	deterministicOperation = args.has("deterministic");
 
 	Options options;
 	options.source = source;
@@ -520,6 +522,9 @@ int main(int argc, char** argv) {
 	cout << "#threads: " << cpuData.numProcessors << endl;
 
 	auto options = parseArguments(argc, argv);
+	if (deterministicOperation) {
+		cout << "Deterministic Operation locks everything to single threading\n";
+	}
 
 	auto [name, sources] = curateSources(options.source);
 	if (options.name.size() == 0) {
