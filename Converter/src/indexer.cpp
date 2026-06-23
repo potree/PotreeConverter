@@ -1162,9 +1162,9 @@ SoA toStructOfArrays(Node* node, Attributes attributes) {
 			};
 			vector<P> ps;
 			P min;
-			min.x = std::numeric_limits<int64_t>::max();
-			min.y = std::numeric_limits<int64_t>::max();
-			min.z = std::numeric_limits<int64_t>::max();
+			min.x = 0;
+			min.y = 0;
+			min.z = 0;
 		
 			for (int64_t i = 0; i < numPoints; i++) {
 
