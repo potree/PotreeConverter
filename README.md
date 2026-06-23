@@ -19,6 +19,8 @@ Altough the converter made a major step to version 2.0, the format it produces i
 
 # Getting Started
 
+**IMPORTANT** Mac usage info not 100% accurate. The word accurate should probably not even be mentioned, but it works.
+
 1. Download windows binaries or
     * Download source code
 	* Install [CMake](https://cmake.org/) 3.16 or later
@@ -31,7 +33,7 @@ Altough the converter made a major step to version 2.0, the format it produces i
 	    ```
 	    cmake ../
 	    ```
-	* On linux, run: ```make```
+	* On linux/mac, run: ```make```
 	* On windows, open Visual Studio 2019 Project ./Converter/Converter.sln and compile it in release mode
 2. run ```PotreeConverter.exe <input> -o <outputDir>```
     * Optionally specify the sampling strategy:

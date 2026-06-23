@@ -232,9 +232,10 @@ namespace chunker_countsort_laszip {
 					double ux = (double(X) * posScale.x + posOffset.x - min.x) / size.x;
 					double uy = (double(Y) * posScale.y + posOffset.y - min.y) / size.y;
 					double uz = (double(Z) * posScale.z + posOffset.z - min.z) / size.z;
-
+					
+					double iota = 0.0001;
 					bool inBox = ux >= 0.0 && uy >= 0.0 && uz >= 0.0;
-					inBox = inBox && ux <= 1.0 && uy <= 1.0 && uz <= 1.0;
+					inBox = inBox && ux <= 1.0 + iota && uy <= 1.0 + iota && uz <= 1.0 + iota;
 
 					if (!inBox) {
 						stringstream ss;
@@ -242,6 +243,7 @@ namespace chunker_countsort_laszip {
 						ss << "box.min: " << min.toString() << endl;
 						ss << "box.max: " << max.toString() << endl;
 						ss << "point: " << Vector3(x, y, z).toString() << endl;
+						ss << "uxyz: " << Vector3(ux, uy, uz).toString() << endl;
 						ss << "file: " << path << endl;
 						ss << "PotreeConverter requires a valid bounding box to operate." << endl;
 						ss << "Please try to repair the bounding box, e.g. using lasinfo with the -repair_bb argument." << endl;

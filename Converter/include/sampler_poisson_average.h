@@ -280,9 +280,14 @@ struct SamplerPoissonAverage : public Sampler {
 
 			};
 
+
+		#if defined(__APPLE__)
+			std::sort(points.begin(), points.end(), [center](Point a, Point b) -> bool {
+		#else
 			auto parallel = std::execution::par_unseq;
 			std::sort(parallel, points.begin(), points.end(), [center](Point a, Point b) -> bool {
-
+		#endif
+		
 				auto ax = a.x - center.x;
 				auto ay = a.y - center.y;
 				auto az = a.z - center.z;
