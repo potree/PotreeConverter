@@ -2,6 +2,7 @@
 #include <cerrno>
 #include <execution>
 #include <algorithm>
+#include <limits>
 
 #include "indexer.h"
 
