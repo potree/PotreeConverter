@@ -1,4 +1,5 @@
 
+#include <queue>
 #include <string>
 
 #include "laszip/laszip_api.h"
@@ -28,13 +29,13 @@ namespace potree_to_laz {
 	struct Node {
 		string name;
 
-		int nodeType = 2;
-		int64_t numPoints = 0;
+		uint8_t nodeType = 2;
+		uint32_t numPoints = 0;
 		int64_t byteOffset = 0;
 		int64_t byteSize = 0;
 
 		vector<shared_ptr<Node>> children = vector<shared_ptr<Node>>(8, nullptr);
-		shared_ptr<Node> parent = nullptr;
+		Node* parent = nullptr;
 
 
 		void traverse(function<void(Node*, int level)> callback, int level = 0) {
@@ -50,7 +51,7 @@ namespace potree_to_laz {
 		}
 	};
 
-	Attributes getAttributes(json& jsMetadata) {
+	Attributes getAttributes(const json& jsMetadata) {
 
 		vector<Attribute> attributeList;
 		auto jsAttributes = jsMetadata["attributes"];
@@ -84,78 +85,73 @@ namespace potree_to_laz {
 		return attributes;
 	}
 
-	shared_ptr<Node> loadHierarchy(string path, json& js) {
+	shared_ptr<Node> loadHierarchy(string path, const json& js, bool expandProxy = false) {
 		auto buffer = readBinaryFile(path + "/hierarchy.bin");
 
 		auto jsHierarchy = js["hierarchy"];
 		int64_t firstChunkSize = jsHierarchy["firstChunkSize"];
-		int stepSize = jsHierarchy["stepSize"];
 
-		// only load first hierarchy chunk
+		auto root = make_shared<Node>(Node{
+			"r",
+			2,
+			0,
+			0,
+			firstChunkSize
+		});
+		auto proxyQueue = std::queue<shared_ptr<Node>>{{ root }};
+		while (!proxyQueue.empty()) {
+			auto currentProxy = proxyQueue.front();
+			proxyQueue.pop();
 
-		int64_t hierarchyByteOffset = 0;
-		int64_t hierarchyByteSize = firstChunkSize;
-		int64_t bytesPerNode = 22;
-		int64_t numNodes = buffer->size / bytesPerNode;
+			const auto currentBuffer = &buffer->data_u8[currentProxy->byteOffset];
 
-		auto root = make_shared<Node>();
-		root->name = "r";
-		vector<shared_ptr<Node>> nodes = { root };
+			static constexpr uint32_t bytesPerNode = 22;
+			uint32_t numNodes = currentProxy->byteSize / bytesPerNode;
 
-		for (int i = 0; i < numNodes; i++) {
-			auto current = nodes[i];
+			vector<shared_ptr<Node>> nodes = { currentProxy };
 
-			uint8_t type = buffer->data_u8[i * bytesPerNode + 0];
-			uint8_t childMask = buffer->data_u8[i * bytesPerNode + 1];
-			uint32_t numPoints = reinterpret_cast<uint32_t*>(buffer->data_u8 + i * bytesPerNode + 2)[0];
-			int64_t byteOffset = reinterpret_cast<uint64_t*>(buffer->data_u8 + i * bytesPerNode + 6)[0];
-			int64_t byteSize = reinterpret_cast<uint64_t*>(buffer->data_u8 + i * bytesPerNode + 14)[0];
+			for (uint32_t i = 0; i < numNodes; i++) {
+				auto current = nodes[i];
 
-			
+				uint8_t type = currentBuffer[i * bytesPerNode + 0];
+				uint8_t childMask = currentBuffer[i * bytesPerNode + 1];
+				uint32_t numPoints = reinterpret_cast<uint32_t*>(currentBuffer + i * bytesPerNode + 2)[0];
+				int64_t byteOffset = reinterpret_cast<uint64_t*>(currentBuffer + i * bytesPerNode + 6)[0];
+				int64_t byteSize = reinterpret_cast<uint64_t*>(currentBuffer + i * bytesPerNode + 14)[0];
 
-			if (current->nodeType == 2) {
-				// replace proxy with real node
+				current->nodeType = type;
+				current->numPoints = numPoints;
 				current->byteOffset = byteOffset;
 				current->byteSize = byteSize;
-				current->numPoints = numPoints;
-			} else if (type == 2) {
-				// load proxy
-				//current->hierarchyByteOffset = byteOffset;
-				//current->hierarchyByteSize = byteSize;
-				current->numPoints = numPoints;
-			} else {
-				// load real node 
-				current->byteOffset = byteOffset;
-				current->byteSize = byteSize;
-				current->numPoints = numPoints;
-			}
-		
-			current->nodeType = type;
 
-			for (int childIndex = 0; childIndex < 8; childIndex++) {
-
-				bool childExists = ((1 << childIndex) & childMask) != 0;
-
-				if (!childExists) {
+				if (current->nodeType == 2) {
+					// load proxy
+					if (expandProxy) {
+						proxyQueue.push(current);
+					}
 					continue;
 				}
 
-				string childName = current->name + to_string(childIndex);
+				for (uint8_t childIndex = 0; childIndex < 8; childIndex++) {
 
-				auto child = make_shared<Node>();
-				child->name = childName;
-				
-				current->children[childIndex] = child;
-				child->parent = current;
+					bool childExists = ((1U << childIndex) & childMask) != 0;
 
-				nodes.push_back(child);
+					if (!childExists) {
+						continue;
+					}
 
+					string childName = current->name + to_string(childIndex);
+
+					auto child = make_shared<Node>();
+					child->name = childName;
+
+					current->children[childIndex] = child;
+					child->parent = current.get();
+
+					nodes.push_back(child);
+				}
 			}
-
-
 		}
-
-
 		return root;
 	}
 
@@ -250,8 +246,8 @@ namespace potree_to_laz {
 			vector<Point>& points = levels[level];
 
 			auto buffer = readBinaryFile(path + "/octree.bin", node->byteOffset, node->byteSize);
-			int bpp = attributes.bytes;
-			int numPoints = buffer.size() / bpp;
+			uint32_t bpp = attributes.bytes;
+			uint32_t numPoints = buffer.size() / bpp;
 
 			int64_t rgbOffset = 0;
 			int64_t rgbOffsetFind = 0;
@@ -264,9 +260,9 @@ namespace potree_to_laz {
 				rgbOffsetFind += attribute.size;
 			}
 
-			for (int64_t i = 0; i < numPoints; i++) {
-				int64_t pointOffset = i * bpp;
-				
+			for (uint32_t i = 0; i < numPoints; i++) {
+				uint64_t pointOffset = (uint64_t)i * bpp;
+
 				int32_t ix = read<int32_t>(buffer, pointOffset + 0);
 				int32_t iy = read<int32_t>(buffer, pointOffset + 4);
 				int32_t iz = read<int32_t>(buffer, pointOffset + 8);
@@ -309,7 +305,7 @@ namespace potree_to_laz {
 
 
 
-		
+
 
 
 	}
