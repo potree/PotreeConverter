@@ -1,6 +1,8 @@
 
 #include "VBuffer.h"
 
+#include <cstring>
+
 #ifdef _WIN32
 	#define NOMINMAX 
 	#include "windows.h"
@@ -123,6 +125,20 @@ void VBuffer::commit(i64 size){
 
 // 	comittedCapacity = target;
 // }
+
+
+void VBuffer::memcpy(u64 byteOffset, void* source, u64 numBytes){
+
+	i64 requiredSize = byteOffset + numBytes;
+
+	if(requiredSize > comittedCapacity){
+		println("ERROR: VBuffer::memcpy - writing {} bytes at offset {} exceeds comitted capacity of {} bytes.", numBytes, byteOffset, comittedCapacity);
+		__debugbreak();
+		exit(4317);
+	}
+
+	::memcpy(ptr + byteOffset, source, numBytes);
+}
 
 void VBuffer::destroy(){
 

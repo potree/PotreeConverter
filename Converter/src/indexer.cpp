@@ -184,8 +184,12 @@ namespace indexer{
 
 			chunksToLoad.push_back(chunk);
 			
+			// .\PotreeConverter.exe -i "G:\swisssurface3d" --encoding BROTLI --attributes rgb intensity --compress-chunks --no-chunking --keep-chunks --chunkdir "H:\swisssurface3d_chunks" --method random -o "E:\swisssurface3d_chunks_converted"
 			// if(chunksToLoad.size() >= 30'000) break; // works
-			// if(chunksToLoad.size() >= 100'000) break;
+			// if(chunksToLoad.size() >= 60'000) break; // works; 355 billion points
+			// if(chunksToLoad.size() >= 70'000) break; // works; 425 billion points
+			if(chunksToLoad.size() >= 80'000) break; // does not work. 488 billion points
+			// if(chunksToLoad.size() >= 100'000) break; // does not work; 630 billion points
 		}
 
 		auto chunks = make_shared<Chunks>(chunksToLoad, min, max);
@@ -262,7 +266,7 @@ namespace indexer{
 
 			}else{
 
-				int numPoints = 0;
+				i32 numPoints = 0;
 				for(auto child : node->children){
 					if(!child) continue;
 
@@ -1185,7 +1189,7 @@ void doIndexing(string targetDir, State& state, Options& options, Sampler& sampl
 	mutex mtx_nodes;
 	vector<shared_ptr<Node>> nodes;
 	// int numThreads = numSampleThreads() + 4;
-	int numThreads = numSampleThreads() / 4 + 2;
+	int numThreads = numSampleThreads() / 3 + 2;
 	// numThreads = 1;
 	TaskPool<Task> pool(numThreads, [&onNodeCompleted, &onNodeDiscarded, &writeAndUnload, &state, &options, &activeThreads, tStart, &lastReport, &totalPoints, totalBytes, &pointsProcessed, chunks, &indexer, &nodes, &mtx_nodes, &sampler](auto task) {
 		
@@ -1364,12 +1368,17 @@ void doIndexing(string targetDir, State& state, Options& options, Sampler& sampl
 		pool.addTask(task);
 	}
 
+	logger::INFO("All tasks submitted, waiting for finish");
 	pool.waitTillEmpty();
+	logger::INFO("Closing Task Pool");
 	pool.close();
-
+	
+	logger::INFO("Closing fChunkRoots stream");
 	indexer.fChunkRoots.close();
 
 	{ // process chunk roots in batches
+	
+		logger::INFO("Start processing chunk roots");
 		
 		string tmpChunkRootsPath = targetDir + "/tmpChunkRoots.bin";
 		auto tasks = indexer.processChunkRoots();
@@ -1377,7 +1386,9 @@ void doIndexing(string targetDir, State& state, Options& options, Sampler& sampl
 		for(auto& task : tasks){
 
 			for(auto& fcr : task.fcrs){
-				// auto buffer = make_shared<Buffer>(fcr.size);
+				
+				logger::INFO(format("Processing FlushedChunkRoot '{}'", fcr.node->name));
+				
 				shared_ptr<VBuffer> buffer = VBufferPool::acquire();
 				buffer->commit(fcr.size);
 				readBinaryFile(tmpChunkRootsPath, fcr.offset, fcr.size, buffer->ptr);
@@ -1385,24 +1396,27 @@ void doIndexing(string targetDir, State& state, Options& options, Sampler& sampl
 				fcr.node->points = buffer;
 			}
 
+			logger::INFO(format("sampling node '{}'", task.node->name));
 			sampler.sample(task.node, attributes, indexer.spacing, onNodeCompleted, onNodeDiscarded);
 
 			task.node->children.clear();
 		}
 	}
 
-
 	// sample up to root node
+	logger::INFO("sampling to root node");
 	if (chunks->list.size() == 1) {
 		auto node = nodes[0];
 
 		indexer.root = node;
 	} else if (!indexer.root->sampled){
+		sampler.enableTrace = true;
 		sampler.sample(indexer.root.get(), attributes, indexer.spacing, onNodeCompleted, onNodeDiscarded);
 	}
 
 	// root is automatically finished after subsampling all descendants
 	onNodeCompleted(indexer.root.get());
+	logger::INFO("Finished root node");
 
 	printElapsedTime("sampling", tStart);
 

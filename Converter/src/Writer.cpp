@@ -69,23 +69,29 @@ SoA toStructOfArrays(Node* node, Attributes& attributes, VBuffer* target) {
 				int32_t x, y, z;
 			};
 
-			P min;
-			min.x = std::numeric_limits<int64_t>::max();
-			min.y = std::numeric_limits<int64_t>::max();
-			min.z = std::numeric_limits<int64_t>::max();
+			// NOTE: I think this didn't actually do what was intended. 
+			// P min;
+			// min.x = 0;
+			// min.y = 0;
+			// min.z = 0;
+			// min.x = std::numeric_limits<int64_t>::max();
+			// min.y = std::numeric_limits<int64_t>::max();
+			// min.z = std::numeric_limits<int64_t>::max();
+			
+			// __debugbreak();
 		
-			// Compute minimum
-			for (int64_t i = 0; i < numPoints; i++) {
+			// // Compute minimum
+			// for (int64_t i = 0; i < numPoints; i++) {
 
-				int64_t pointOffset = i * attributes.bytes;
+			// 	int64_t pointOffset = i * attributes.bytes;
 
-				int32_t XYZ[3];
-				memcpy(XYZ, source + pointOffset + attributeOffset, 12);
+			// 	int32_t XYZ[3];
+			// 	memcpy(XYZ, source + pointOffset + attributeOffset, 12);
 
-				min.x = std::min(min.x, XYZ[0]);
-				min.y = std::min(min.y, XYZ[1]);
-				min.z = std::min(min.z, XYZ[2]);
-			}
+			// 	min.x = std::min(min.x, XYZ[0]);
+			// 	min.y = std::min(min.y, XYZ[1]);
+			// 	min.z = std::min(min.z, XYZ[2]);
+			// }
 
 			// Now generate buffer of morton codes
 			for (int64_t i = 0; i < numPoints; i++) {
@@ -100,9 +106,9 @@ SoA toStructOfArrays(Node* node, Attributes& attributes, VBuffer* target) {
 				p.y = XYZ[1];
 				p.z = XYZ[2];
 
-				uint32_t mx = p.x - min.x;
-				uint32_t my = p.y - min.y;
-				uint32_t mz = p.z - min.z;
+				uint32_t mx = p.x; // - min.x;
+				uint32_t my = p.y; // - min.y;
+				uint32_t mz = p.z; // - min.z;
 
 				uint32_t mx_l = (mx & 0x0000'ffff);
 				uint32_t my_l = (my & 0x0000'ffff);

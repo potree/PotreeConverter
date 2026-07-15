@@ -152,6 +152,8 @@ struct SamplerState {
 
 
 struct Sampler {
+	
+	bool enableTrace = false;
 
 
 	Sampler() {

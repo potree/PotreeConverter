@@ -225,7 +225,7 @@ namespace indexer{
 		Node* node;
 		vector<shared_ptr<CRNode>> children;
 		vector<FlushedChunkRoot> fcrs;
-		int numPoints = 0;
+		i32 numPoints = 0;
 
 		CRNode(){
 			children.resize(8, nullptr);

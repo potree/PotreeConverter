@@ -33,5 +33,7 @@ struct VBuffer{
 
 	// Release the reserved virtual memory and any committed physical memory.
 	void destroy();
+	
+	void memcpy(u64 byteOffset, void* source, u64 numBytes);
 
 };
