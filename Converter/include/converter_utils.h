@@ -160,6 +160,7 @@ struct Options {
 	vector<string> source;
 	string encoding = "DEFAULT"; // "BROTLI", "UNCOMPRESSED"
 	string outdir = "";
+	string chunkDir = ""; // if empty, defaults to "<outdir>/chunks"
 	string name = "";
 	string method = "";
 	string chunkMethod = "";

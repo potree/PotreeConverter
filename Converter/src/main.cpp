@@ -24,6 +24,7 @@ Options parseArguments(int argc, char** argv) {
 	args.addArgument("source,i,", "Input file(s)");
 	args.addArgument("help,h", "Display help information");
 	args.addArgument("outdir,o", "Output directory");
+	args.addArgument("chunk-dir", "Directory for temporary chunks (default: <outdir>/chunks)");
 	args.addArgument("encoding", "Encoding type \"BROTLI\", \"UNCOMPRESSED\" (default)");
 	args.addArgument("method,m", "Point sampling method \"poisson\", \"poisson_average\", \"random\"");
 	args.addArgument("chunkMethod", "Chunking method");
@@ -102,6 +103,12 @@ Options parseArguments(int argc, char** argv) {
 
 	outdir = fs::weakly_canonical(fs::path(outdir)).string();
 
+	string chunkDir = "";
+	if (args.has("chunk-dir")) {
+		chunkDir = args.get("chunk-dir").as<string>();
+		chunkDir = fs::weakly_canonical(fs::path(chunkDir)).string();
+	}
+
 	//vector<string> flags = args.get("flags").as<vector<string>>();
 
 	vector<string> attributes = args.get("attributes").as<vector<string>>();
@@ -121,6 +128,7 @@ Options parseArguments(int argc, char** argv) {
 	Options options;
 	options.source = source;
 	options.outdir = outdir;
+	options.chunkDir = chunkDir;
 	options.method = method;
 	options.encoding = encoding;
 	options.chunkMethod = chunkMethod;
@@ -342,7 +350,7 @@ Stats computeStats(vector<Source> sources){
 // }
 
 
-void chunking(Options& options, vector<Source>& sources, string targetDir, Stats& stats, State& state, Attributes outputAttributes, Monitor* monitor) {
+void chunking(Options& options, vector<Source>& sources, string chunkDir, Stats& stats, State& state, Attributes outputAttributes, Monitor* monitor) {
 
 	if (options.noChunking) {
 		return;
@@ -350,7 +358,7 @@ void chunking(Options& options, vector<Source>& sources, string targetDir, Stats
 
 	if (options.chunkMethod == "LASZIP") {
 
-		chunker_countsort_laszip::doChunking(sources, targetDir, stats.min, stats.max, state, outputAttributes, monitor);
+		chunker_countsort_laszip::doChunking(sources, chunkDir, stats.min, stats.max, state, outputAttributes, monitor);
 
 	} else if (options.chunkMethod == "LAS_CUSTOM") {
 
@@ -368,7 +376,7 @@ void chunking(Options& options, vector<Source>& sources, string targetDir, Stats
 	}
 }
 
-void indexing(Options& options, string targetDir, State& state) {
+void indexing(Options& options, string targetDir, string chunkDir, State& state) {
 
 	if (options.noIndexing) {
 		return;
@@ -377,17 +385,17 @@ void indexing(Options& options, string targetDir, State& state) {
 	if (options.method == "random") {
 
 		SamplerRandom sampler;
-		indexer::doIndexing(targetDir, state, options, sampler);
+		indexer::doIndexing(targetDir, chunkDir, state, options, sampler);
 
 	} else if (options.method == "poisson") {
 
 		SamplerPoisson sampler;
-		indexer::doIndexing(targetDir, state, options, sampler);
+		indexer::doIndexing(targetDir, chunkDir, state, options, sampler);
 
 	} else if (options.method == "poisson_average") {
 
 		SamplerPoissonAverage sampler;
-		indexer::doIndexing(targetDir, state, options, sampler);
+		indexer::doIndexing(targetDir, chunkDir, state, options, sampler);
 
 	}
 }
@@ -543,6 +551,9 @@ int main(int argc, char** argv) {
 	fs::create_directories(targetDir);
 	logger::addOutputFile(targetDir + "/log.txt");
 
+	string chunkDir = options.chunkDir.size() > 0 ? options.chunkDir : (targetDir + "/chunks");
+	cout << "chunk directory: '" << chunkDir << "'" << endl;
+
 	State state;
 	state.pointsTotal = stats.totalPoints;
 	state.bytesProcessed = stats.totalBytes;
@@ -554,9 +565,9 @@ int main(int argc, char** argv) {
 
 	{ // this is the real important stuff
 
-		chunking(options, sources, targetDir, stats, state, outputAttributes, monitor.get());
+		chunking(options, sources, chunkDir, stats, state, outputAttributes, monitor.get());
 
-		indexing(options, targetDir, state);
+		indexing(options, targetDir, chunkDir, state);
 
 	}
 
