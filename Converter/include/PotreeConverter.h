@@ -154,6 +154,7 @@ inline vector<Attribute> computeOutputAttributes(LasHeader& header) {
 	Attribute XYZt("XYZ(t)", 12, 3, 4, AttributeType::FLOAT);
 	Attribute classificationFlags("classification flags", 1, 1, 1, AttributeType::UINT8);
 	Attribute scanAngle("scan angle", 2, 1, 2, AttributeType::INT16);
+	Attribute NIR("NIR", 2, 1, 2, AttributeType::UINT16);
 
 	vector<Attribute> list;
 
@@ -179,6 +180,8 @@ inline vector<Attribute> computeOutputAttributes(LasHeader& header) {
 		list = { xyz, intensity, returnNumber, numberOfReturns, classificationFlags, classification, userData, scanAngle, pointSourceId, gpsTime };
 	} else if (format == 7) {
 		list = { xyz, intensity, returnNumber, numberOfReturns, classificationFlags, classification, userData, scanAngle, pointSourceId, gpsTime, rgb };
+	} else if (format == 8) {
+		list = { xyz, intensity, returnNumber, numberOfReturns, classificationFlags, classification, userData, scanAngle, pointSourceId, gpsTime, rgb, NIR};
 	} else {
 		cout << "ERROR: currently unsupported LAS format: " << int(format) << endl;
 
