@@ -38,8 +38,8 @@ MemoryData getMemoryData() {
 		static size_t virtualUsedMax = 0;
 		static size_t physicalUsedMax = 0;
 
-		virtualUsedMax = max(virtualMemUsedByMe, virtualUsedMax);
-		physicalUsedMax = max(physMemUsedByMe, physicalUsedMax);
+		virtualUsedMax = (std::max)(virtualMemUsedByMe, virtualUsedMax);
+		physicalUsedMax = (std::max)(physMemUsedByMe, physicalUsedMax);
 
 		data.virtual_usedByProcess = virtualMemUsedByMe;
 		data.virtual_usedByProcess_max = virtualUsedMax;

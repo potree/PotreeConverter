@@ -78,7 +78,7 @@ namespace indexer{
 
 	};
 
-	shared_ptr<Chunks> getChunks(string pathIn);
+	shared_ptr<Chunks> getChunks(string chunkDir);
 
 	
 
@@ -376,7 +376,7 @@ namespace indexer{
 		string do_grouping() const { return "\3"; }
 	};
 
-	void doIndexing(string targetDir, State& state, Options& options, Sampler& sampler);
+	void doIndexing(string targetDir, string chunkDir, State& state, Options& options, Sampler& sampler);
 
 
 }

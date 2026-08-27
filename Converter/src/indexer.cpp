@@ -50,8 +50,7 @@ namespace indexer{
 		return mask;
 	}
 
-	shared_ptr<Chunks> getChunks(string pathIn) {
-		string chunkDirectory = pathIn + "/chunks";
+	shared_ptr<Chunks> getChunks(string chunkDirectory) {
 
 		string metadataText = readTextFile(chunkDirectory + "/metadata.json");
 		json js = json::parse(metadataText);
@@ -1578,7 +1577,7 @@ void Writer::closeAndWait() {
 
 
 
-void doIndexing(string targetDir, State& state, Options& options, Sampler& sampler) {
+void doIndexing(string targetDir, string chunkDir, State& state, Options& options, Sampler& sampler) {
 
 	cout << endl;
 	cout << "=======================================" << endl;
@@ -1593,7 +1592,7 @@ void doIndexing(string targetDir, State& state, Options& options, Sampler& sampl
 	state.bytesProcessed = 0;
 	state.duration = 0;
 
-	auto chunks = getChunks(targetDir);
+	auto chunks = getChunks(chunkDir);
 	auto attributes = chunks->attributes;
 
 	Indexer indexer(targetDir);
@@ -1777,10 +1776,10 @@ void doIndexing(string targetDir, State& state, Options& options, Sampler& sampl
 
 		// delete chunk directory
 		if (!options.keepChunks) {
-			string chunksMetadataPath = targetDir + "/chunks/metadata.json";
+			string chunksMetadataPath = chunkDir + "/metadata.json";
 
 			fs::remove(chunksMetadataPath);
-			fs::remove(targetDir + "/chunks");
+			fs::remove(chunkDir);
 		}
 
 		// delete chunk roots data

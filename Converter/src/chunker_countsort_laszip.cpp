@@ -360,7 +360,7 @@ namespace chunker_countsort_laszip {
 		return std::move(grid);
 	}
 
-	void addBuckets(string targetDir, vector<shared_ptr<Buffer>>& newBuckets) {
+	void addBuckets(string chunkDir, vector<shared_ptr<Buffer>>& newBuckets) {
 
 		for(int nodeIndex = 0; nodeIndex < nodes.size(); nodeIndex++){
 
@@ -369,7 +369,7 @@ namespace chunker_countsort_laszip {
 			}
 
 			auto& node = nodes[nodeIndex];
-			string path = targetDir + "/chunks/" + node.id + ".bin";
+			string path = chunkDir + "/" + node.id + ".bin";
 			auto buffer = newBuckets[nodeIndex];
 
 			writer->write(path, buffer);
@@ -670,7 +670,7 @@ namespace chunker_countsort_laszip {
 
 	}
 
-	void distributePoints(vector<Source> sources, Vector3 min, Vector3 max, string targetDir, NodeLUT& lut, State& state, Attributes& outputAttributes, Monitor* monitor) {
+	void distributePoints(vector<Source> sources, Vector3 min, Vector3 max, string chunkDir, NodeLUT& lut, State& state, Attributes& outputAttributes, Monitor* monitor) {
 
 		cout << endl;
 		cout << "=======================================" << endl;
@@ -706,7 +706,7 @@ namespace chunker_countsort_laszip {
 
 		printElapsedTime("distributePoints1", tStart);
 
-		auto processor = [&mtx_push_point, &counters, targetDir, &state, tStart, &outputAttributes](shared_ptr<Task> task) {
+		auto processor = [&mtx_push_point, &counters, chunkDir, &state, tStart, &outputAttributes](shared_ptr<Task> task) {
 
 			auto path = task->path;
 			auto batchSize = task->batchSize;
@@ -921,7 +921,7 @@ namespace chunker_countsort_laszip {
 			state.duration = now() - tStart;
 
 			auto tAddBuckets = now();
-			addBuckets(targetDir, buckets);
+			addBuckets(chunkDir, buckets);
 
 			// merge attribute metadata of this batch into global attribute metadata
 			for (int i = 0; i < outputAttributesCopy.list.size(); i++) {
@@ -1216,7 +1216,7 @@ namespace chunker_countsort_laszip {
 		return {gridSize, lut};
 	}
 
-	void doChunking(vector<Source> sources, string targetDir, Vector3 min, Vector3 max, State& state, Attributes outputAttributes, Monitor* monitor) {
+	void doChunking(vector<Source> sources, string chunkDir, Vector3 min, Vector3 max, State& state, Attributes outputAttributes, Monitor* monitor) {
 
 		auto tStart = now();
 
@@ -1235,10 +1235,9 @@ namespace chunker_countsort_laszip {
 		state.currentPass = 1;
 
 		{ // prepare/clean target directories
-			string dir = targetDir + "/chunks";
-			fs::create_directories(dir);
+			fs::create_directories(chunkDir);
 
-			for (const auto& entry : std::filesystem::directory_iterator(dir)) {
+			for (const auto& entry : std::filesystem::directory_iterator(chunkDir)) {
 				std::filesystem::remove(entry);
 			}
 		}
@@ -1252,16 +1251,16 @@ namespace chunker_countsort_laszip {
 			auto lut = createLUT(grid, gridSize);
 
 			state.currentPass = 2;
-			distributePoints(sources, min, max, targetDir, lut, state, outputAttributes, monitor);
+			distributePoints(sources, min, max, chunkDir, lut, state, outputAttributes, monitor);
 
 			{
 				double duration = now() - tStartDistribute;
 				state.values["duration(chunking-distribute)"] = formatNumber(duration, 3);
 			}
 		}
-		
 
-		string metadataPath = targetDir + "/chunks/metadata.json";
+
+		string metadataPath = chunkDir + "/metadata.json";
 		double cubeSize = (max - min).max();
 		Vector3 size = { cubeSize, cubeSize, cubeSize };
 		max = min + cubeSize;
