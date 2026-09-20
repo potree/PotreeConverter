@@ -36,6 +36,7 @@ Options parseArguments(int argc, char** argv) {
 	args.addArgument("projection", "Add the projection of the pointcloud to the metadata");
 	args.addArgument("generate-page,p", "Generate a ready to use web page with the given name");
 	args.addArgument("title", "Page title used when generating a web page");
+	args.addArgument("stage", "CHUNKING, INDEXING, MERGING");
 
 	if (args.has("help")) {
 		cout << "PotreeConverter <source> -o <outdir>" << endl;
@@ -126,6 +127,11 @@ Options parseArguments(int argc, char** argv) {
 	bool compressChunks = args.has("compress-chunks");
 	bool noChunking = args.has("no-chunking");
 	bool noIndexing = args.has("no-indexing");
+	
+	string stage = "";
+	if(args.has("stage")){
+		stage = args.get("stage").as<string>();
+	}
 
 	Options options;
 	options.source = source;
@@ -145,6 +151,13 @@ Options parseArguments(int argc, char** argv) {
 	options.noChunking = noChunking;
 	options.noIndexing = noIndexing;
 	options.compressChunks = compressChunks;
+	options.stage = stage;
+	
+	// Map legacy "noChunking" and "noIndexing" to "stage"
+	{
+		if(noChunking) stage = "INDEXING";
+		if(noIndexing) stage = "CHUNKING";
+	}
 
 	//cout << "flags: ";
 	//for (string flag : options.flags) {
@@ -406,6 +419,25 @@ void indexing(Options& options, string targetDir, State& state) {
 	}
 }
 
+void merging(Options& options, string targetDir, State& state) {
+
+	if (options.noIndexing) {
+		return;
+	}
+
+	if (options.method == "random") {
+
+		SamplerRandom sampler;
+		indexer::doMerging(targetDir, state, options, sampler);
+
+	} else if (options.method == "poisson") {
+
+		SamplerPoisson sampler;
+		indexer::doMerging(targetDir, state, options, sampler);
+
+	}
+}
+
 void createReport(Options& options, vector<Source> sources, string targetDir, Stats& stats, State& state, double tStart) {
 	double duration = now() - tStart;
 	double throughputMB = (stats.totalBytes / duration) / (1024 * 1024);
@@ -567,7 +599,8 @@ int main(int argc, char** argv) {
 
 	{ // this is the real important stuff
 
-		if(!options.noChunking){
+		
+		if(options.stage == "" || options.stage == "CHUNKING"){
 			string chunkdir = targetDir;
 			if(options.chunkdir != ""){
 				chunkdir = options.chunkdir;
@@ -578,10 +611,16 @@ int main(int argc, char** argv) {
 			chunking(options, sources, chunkdir, stats, state, outputAttributes, monitor.get());
 		}
 
-		if(!options.noIndexing){
+		if(options.stage == "" || options.stage == "INDEXING"){
 			fs::create_directories(targetDir);
 			logger::addOutputFile(targetDir + "/log.txt");
 			indexing(options, targetDir, state);
+		}
+		
+		if(options.stage == "" || options.stage == "MERGING"){
+			fs::create_directories(targetDir);
+			logger::addOutputFile(targetDir + "/log.txt");
+			merging(options, targetDir, state);
 		}
 
 	}

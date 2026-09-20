@@ -43,7 +43,9 @@ struct Writer{
 	std::condition_variable cvSpace;  // notified when flushed data frees up space
 	std::thread writerThread;
 
-	Writer(indexer::Indexer* indexer);
+	// resume = true: keep the existing octree.bin and continue appending to it,
+	// instead of starting a new one. Used when resuming from a serialized stage.
+	Writer(indexer::Indexer* indexer, bool resume = false);
 
 	void writeAndUnload(Node* node);
 	

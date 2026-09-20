@@ -188,7 +188,7 @@ namespace indexer{
 			// if(chunksToLoad.size() >= 30'000) break; // works
 			// if(chunksToLoad.size() >= 60'000) break; // works; 355 billion points
 			// if(chunksToLoad.size() >= 70'000) break; // works; 425 billion points
-			if(chunksToLoad.size() >= 80'000) break; // does not work. 488 billion points
+			// if(chunksToLoad.size() >= 80'000) break; // does not work. 488 billion points
 			// if(chunksToLoad.size() >= 100'000) break; // does not work; 630 billion points
 		}
 
@@ -250,7 +250,7 @@ namespace indexer{
 
 		// mark/flag/insert flushed chunk roots
 		for(auto fcr : flushedChunkRoots){
-			auto node = nodesMap[fcr.node->name];
+			shared_ptr<CRNode> node = nodesMap[fcr.node->name];
 			
 			node->fcrs.push_back(fcr);
 			node->numPoints += fcr.node->numPoints;
@@ -266,7 +266,7 @@ namespace indexer{
 
 			}else{
 
-				i32 numPoints = 0;
+				i64 numPoints = 0;
 				for(auto child : node->children){
 					if(!child) continue;
 
@@ -1126,6 +1126,285 @@ void buildHierarchy(Indexer* indexer, Node* node, shared_ptr<Buffer> points, int
 
 }
 
+void serialize_stage_chunkroots(
+	Indexer& indexer, 
+	shared_ptr<indexer::Chunks> chunks,
+	vector<shared_ptr<Node>>& nodes,
+	State& state, 
+	i64 totalPoints, 
+	i64 totalBytes, 
+	i64 pointsProcessed
+){
+	// Persist the state of the chunk-roots stage to <targetDir>/stage_chunkroots.
+	// At this point, everything below the chunk roots has already been sampled and
+	// permanently written out (point data via indexer.writer to octree.bin, hierarchy
+	// records via indexer.hierarchyFlusher to .hierarchyChunks). The only thing that is
+	// still "in flight" is the leftover, unsampled data of each chunk root itself, which
+	// sits in tmpChunkRoots.bin at the [offset, offset + size) ranges recorded in
+	// indexer.flushedChunkRoots.
+	//
+	// A node's bounding box is fully determined by its name and the root bounding box
+	// (see childBoundingBoxOf/addDescendant), so we don't need to serialize the whole
+	// node tree - just the root bounding box plus, for every chunk root, its name,
+	// byte range in tmpChunkRoots.bin, and point count. That's enough to reconstruct
+	// both indexer.root (via addDescendant) and indexer.flushedChunkRoots.
+	//
+	// load_stage_chunkroots restores this state at the beginning of doMerging.
+
+	// make sure everything that was already handed to the writer/hierarchy flusher
+	// is actually durable on disk before we call this stage "checkpointed".
+	// closing the writer also ensures that octree.bin's file size matches the
+	// writer's final writePos, which the resumed writer continues from.
+	indexer.writer->closeAndWait();
+	indexer.hierarchyFlusher->flush(hierarchyStepSize);
+
+	string stageDir = indexer.targetDir + "/stage_chunkroots";
+	fs::create_directories(stageDir);
+
+	auto vec3ToJson = [](Vector3 value){
+		return json::array({value.x, value.y, value.z});
+	};
+
+	json js;
+	js["version"] = 1;
+	js["totalPoints"] = totalPoints;
+	js["totalBytes"] = totalBytes;
+	js["pointsProcessed"] = pointsProcessed;
+
+	js["indexer"]["root"]["name"] = indexer.root->name;
+	js["indexer"]["root"]["min"] = vec3ToJson(indexer.root->min);
+	js["indexer"]["root"]["max"] = vec3ToJson(indexer.root->max);
+	js["indexer"]["spacing"] = indexer.spacing;
+	js["indexer"]["octreeDepth"] = indexer.octreeDepth;
+
+	{ // indexer.attributes (== chunks->attributes)
+		// same field names as chunks/metadata.json, so loading can reuse the parsing in getChunks
+		json jsAttributes = json::array();
+		for(auto& attribute : indexer.attributes.list){
+			json jsAttribute;
+			jsAttribute["name"] = attribute.name;
+			jsAttribute["description"] = attribute.description;
+			jsAttribute["size"] = attribute.size;
+			jsAttribute["numElements"] = attribute.numElements;
+			jsAttribute["elementSize"] = attribute.elementSize;
+			jsAttribute["type"] = getAttributeTypename(attribute.type);
+			jsAttribute["min"] = vec3ToJson(attribute.min);       // nlohmann dumps Infinity as null,
+			jsAttribute["max"] = vec3ToJson(attribute.max);       // which is what getChunks expects
+			jsAttribute["scale"] = vec3ToJson(attribute.scale);
+			jsAttribute["offset"] = vec3ToJson(attribute.offset);
+			jsAttribute["histogram"] = attribute.histogram;
+
+			jsAttributes.push_back(jsAttribute);
+		}
+		js["indexer"]["attributes"] = jsAttributes;
+		js["indexer"]["attributes_posScale"] = vec3ToJson(indexer.attributes.posScale);
+		js["indexer"]["attributes_posOffset"] = vec3ToJson(indexer.attributes.posOffset);
+	}
+
+	js["state"]["name"] = state.name;
+	js["state"]["pointsTotal"] = i64(state.pointsTotal);
+	js["state"]["pointsProcessed"] = i64(state.pointsProcessed);
+	js["state"]["bytesProcessed"] = i64(state.bytesProcessed);
+	js["state"]["duration"] = state.duration;
+	js["state"]["numPasses"] = state.numPasses;
+	js["state"]["currentPass"] = state.currentPass;
+	js["state"]["values"] = state.values;
+
+	// chunk list; min/max of each chunk are derived from id + root bounding box on load,
+	// attributes are stored in js["indexer"]["attributes"]
+	js["chunks"]["min"] = vec3ToJson(chunks->min);
+	js["chunks"]["max"] = vec3ToJson(chunks->max);
+	json jsChunkList = json::array();
+	for(auto& chunk : chunks->list){
+		json jsChunk;
+		jsChunk["id"] = chunk->id;
+		jsChunk["file"] = chunk->file;
+
+		jsChunkList.push_back(jsChunk);
+	}
+	js["chunks"]["list"] = jsChunkList;
+
+	json jsChunkRoots = json::array();
+	for(auto& fcr : indexer.flushedChunkRoots){
+		json jsChunkRoot;
+		jsChunkRoot["name"] = fcr.node->name;
+		jsChunkRoot["offset"] = fcr.offset;
+		jsChunkRoot["size"] = fcr.size;
+		jsChunkRoot["numPoints"] = fcr.node->numPoints;
+		jsChunkRoot["byteOffset"] = fcr.node->byteOffset;
+		jsChunkRoot["byteSize"] = fcr.node->byteSize;
+		jsChunkRoot["sampled"] = fcr.node->sampled;
+
+		jsChunkRoots.push_back(jsChunkRoot);
+	}
+	js["chunkRoots"] = jsChunkRoots;
+
+	// the <nodes> vector holds the same chunk-root Node objects that flushedChunkRoots
+	// references, so their data is already stored in js["chunkRoots"] - only the names
+	// are needed to rebuild the vector (order preserved)
+	json jsNodes = json::array();
+	for(auto& node : nodes){
+		jsNodes.push_back(node->name);
+	}
+	js["nodes"] = jsNodes;
+
+
+	string statePath = stageDir + "/state.json";
+	writeFile(statePath, js.dump(2));
+
+	logger::INFO(format("serialized chunk-roots stage to '{}' ({} chunk roots)", statePath, indexer.flushedChunkRoots.size()));
+}
+
+void load_stage_chunkroots(
+	string targetDir,
+	Options& options,
+	Indexer* indexer,
+	indexer::Chunks* chunks,
+	vector<shared_ptr<Node>>* nodes,
+	State* state,
+	i64* totalPoints,
+	i64* totalBytes,
+	i64* pointsProcessed
+){
+	// Load the state that was written by serialize_stage_chunkroots and reconstruct
+	// indexer, chunks, nodes and state as they were at the end of the chunk-roots
+	// stage of doIndexing.
+
+	string statePath = targetDir + "/stage_chunkroots/state.json";
+
+	if(!fs::exists(statePath)){
+		println("ERROR: could not find serialized chunk-roots stage at '{}'", statePath);
+		exit(45123);
+	}
+
+	json js = json::parse(readTextFile(statePath));
+
+	// serialize_stage_chunkroots dumps non-finite doubles (e.g. Infinity in attribute
+	// min/max) as null, so restore nulls to the given fallback
+	auto jsToVec3 = [](json js, double fallback) -> Vector3 {
+		auto d = [fallback](json value) -> double {
+			return value.is_null() ? fallback : double(value);
+		};
+
+		return { d(js[0]), d(js[1]), d(js[2]) };
+	};
+
+	*totalPoints = js["totalPoints"];
+	*totalBytes = js["totalBytes"];
+	*pointsProcessed = js["pointsProcessed"];
+
+	state->name = js["state"]["name"];
+	state->pointsTotal = i64(js["state"]["pointsTotal"]);
+	state->pointsProcessed = i64(js["state"]["pointsProcessed"]);
+	state->bytesProcessed = i64(js["state"]["bytesProcessed"]);
+	state->duration = js["state"]["duration"];
+	state->numPasses = js["state"]["numPasses"];
+	state->currentPass = js["state"]["currentPass"];
+	state->values = js["state"]["values"].get<std::map<string, string>>();
+
+	vector<Attribute> attributeList;
+	for(auto jsAttribute : js["indexer"]["attributes"]){
+		string name = jsAttribute["name"];
+		int size = jsAttribute["size"];
+		int numElements = jsAttribute["numElements"];
+		int elementSize = jsAttribute["elementSize"];
+		AttributeType type = typenameToType(jsAttribute["type"]);
+
+		Attribute attribute(name, size, numElements, elementSize, type);
+		attribute.description = jsAttribute["description"];
+		attribute.min = jsToVec3(jsAttribute["min"], Infinity);
+		attribute.max = jsToVec3(jsAttribute["max"], -Infinity);
+		attribute.scale = jsToVec3(jsAttribute["scale"], 1.0);
+		attribute.offset = jsToVec3(jsAttribute["offset"], 0.0);
+		attribute.histogram = jsAttribute["histogram"].get<vector<int64_t>>();
+
+		attributeList.push_back(attribute);
+	}
+	Attributes attributes(attributeList);
+	attributes.posScale = jsToVec3(js["indexer"]["attributes_posScale"], 1.0);
+	attributes.posOffset = jsToVec3(js["indexer"]["attributes_posOffset"], 0.0);
+
+	indexer->targetDir = targetDir;
+	indexer->options = options;
+	indexer->attributes = attributes;
+	indexer->spacing = js["indexer"]["spacing"];
+	indexer->octreeDepth = js["indexer"]["octreeDepth"];
+
+	// resume writing where the chunk-roots stage left off, instead of starting
+	// over - octree.bin is appended to, .hierarchyChunks is kept
+	indexer->writer = make_shared<Writer>(indexer, true);
+	indexer->hierarchyFlusher = make_shared<HierarchyFlusher>(targetDir + "/.hierarchyChunks", false);
+	// note: fChunkRoots stays unopened. The merging stage only reads tmpChunkRoots.bin,
+	// and opening the stream for writing would truncate it.
+
+	Vector3 rootMin = jsToVec3(js["indexer"]["root"]["min"], 0.0);
+	Vector3 rootMax = jsToVec3(js["indexer"]["root"]["max"], 0.0);
+	indexer->root = make_shared<Node>(js["indexer"]["root"]["name"], rootMin, rootMax);
+
+	// bounding boxes are not serialized; they are fully determined by
+	// the node/chunk name and the root bounding box
+	auto boundsOf = [rootMin, rootMax](string name) -> BoundingBox {
+		BoundingBox box = {rootMin, rootMax};
+
+		for(int i = 1; i < name.size(); i++){
+			int index = name[i] - '0';
+			box = childBoundingBoxOf(box.min, box.max, index);
+		}
+
+		return box;
+	};
+
+	// restore flushed chunk roots and insert them into the node tree.
+	// FlushedChunkRoot::node and the tree node must be the same object,
+	// just like in doIndexing.
+	unordered_map<string, shared_ptr<Node>> chunkRootsByName;
+	for(auto& jsChunkRoot : js["chunkRoots"]){
+		string name = jsChunkRoot["name"];
+		auto box = boundsOf(name);
+
+		auto node = make_shared<Node>(name, box.min, box.max);
+		node->numPoints = jsChunkRoot["numPoints"];
+		node->byteOffset = jsChunkRoot["byteOffset"];
+		node->byteSize = jsChunkRoot["byteSize"];
+		node->sampled = jsChunkRoot["sampled"];
+
+		FlushedChunkRoot fcr;
+		fcr.node = node;
+		fcr.offset = jsChunkRoot["offset"];
+		fcr.size = jsChunkRoot["size"];
+
+		indexer->flushedChunkRoots.push_back(fcr);
+
+		// add chunk root, provided it isn't the root - same as in doIndexing
+		if(name.size() > 1){
+			indexer->root->addDescendant(node);
+		}
+
+		chunkRootsByName[name] = node;
+	}
+
+	for(string name : js["nodes"]){
+		nodes->push_back(chunkRootsByName[name]);
+	}
+
+	chunks->min = jsToVec3(js["chunks"]["min"], 0.0);
+	chunks->max = jsToVec3(js["chunks"]["max"], 0.0);
+	chunks->attributes = attributes;
+	for(auto& jsChunk : js["chunks"]["list"]){
+		auto chunk = make_shared<Chunk>();
+		chunk->id = jsChunk["id"];
+		chunk->file = jsChunk["file"];
+
+		auto box = boundsOf(chunk->id);
+		chunk->min = box.min;
+		chunk->max = box.max;
+
+		chunks->list.push_back(chunk);
+	}
+
+	logger::INFO(format("loaded chunk-roots stage from '{}' ({} chunk roots)", statePath, indexer->flushedChunkRoots.size()));
+}
+
 
 void doIndexing(string targetDir, State& state, Options& options, Sampler& sampler) {
 
@@ -1146,8 +1425,8 @@ void doIndexing(string targetDir, State& state, Options& options, Sampler& sampl
 	if(options.chunkdir != ""){
 		chunkdir = options.chunkdir;
 	}
-	auto chunks = getChunks(chunkdir);
-	auto attributes = chunks->attributes;
+	shared_ptr<indexer::Chunks> chunks = getChunks(chunkdir);
+	Attributes attributes = chunks->attributes;
 
 	Indexer indexer(targetDir);
 	indexer.options = options;
@@ -1375,7 +1654,43 @@ void doIndexing(string targetDir, State& state, Options& options, Sampler& sampl
 	
 	logger::INFO("Closing fChunkRoots stream");
 	indexer.fChunkRoots.close();
+	
+	serialize_stage_chunkroots(indexer, chunks, nodes, state, totalPoints, totalBytes, pointsProcessed);
 
+}
+
+void doMerging(string targetDir, State& state, Options& options, Sampler& sampler) {
+	
+	cout << endl;
+	cout << "=======================================" << endl;
+	cout << "=== MERGING                            " << endl;
+	cout << "=======================================" << endl;
+	
+	auto tStart = now();
+	
+	Indexer indexer;
+	i64 totalPoints = 0;
+	i64 totalBytes = 0;
+	i64 pointsProcessed = 0;
+	
+	indexer::Chunks chunks;
+	vector<shared_ptr<Node>> nodes;
+
+	load_stage_chunkroots(targetDir, options, &indexer, &chunks, &nodes, &state, &totalPoints, &totalBytes, &pointsProcessed);
+
+	Attributes attributes = chunks.attributes;
+	
+	state.name = "MERGING";
+
+	auto onNodeCompleted = [&indexer](Node* node) {
+		indexer.writer->writeAndUnload(node);
+		indexer.hierarchyFlusher->write(node, hierarchyStepSize);
+	};
+
+	auto onNodeDiscarded = [&indexer](Node* node) {};
+	
+	
+	
 	{ // process chunk roots in batches
 	
 		logger::INFO("Start processing chunk roots");
@@ -1405,7 +1720,7 @@ void doIndexing(string targetDir, State& state, Options& options, Sampler& sampl
 
 	// sample up to root node
 	logger::INFO("sampling to root node");
-	if (chunks->list.size() == 1) {
+	if (chunks.list.size() == 1) {
 		auto node = nodes[0];
 
 		indexer.root = node;
@@ -1459,13 +1774,11 @@ void doIndexing(string targetDir, State& state, Options& options, Sampler& sampl
 
 		// delete chunk roots data
 		string octreePath = targetDir + "/tmpChunkRoots.bin";
-		fs::remove(octreePath);
+		//fs::remove(octreePath);
 	}
 
 	double duration = now() - tStart;
 	state.values["duration(indexing)"] = formatNumber(duration, 3);
-
-
 }
 
 

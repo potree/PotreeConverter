@@ -71,6 +71,10 @@ namespace indexer{
 		Vector3 min;
 		Vector3 max;
 		Attributes attributes;
+		
+		Chunks(){
+			
+		}
 
 		Chunks(vector<shared_ptr<Chunk>> list, Vector3 min, Vector3 max) {
 			this->list = list;
@@ -96,10 +100,14 @@ namespace indexer{
 		unordered_map<string, int> chunks;
 		vector<HNode> buffer;
 
-		HierarchyFlusher(string path){
+		// clearExisting = false keeps previously flushed hierarchy chunks,
+		// used when resuming from a serialized stage
+		HierarchyFlusher(string path, bool clearExisting = true){
 			this->path = path;
 
-			this->clear();
+			if(clearExisting){
+				this->clear();
+			}
 		}
 
 		void clear(){
@@ -225,7 +233,7 @@ namespace indexer{
 		Node* node;
 		vector<shared_ptr<CRNode>> children;
 		vector<FlushedChunkRoot> fcrs;
-		i32 numPoints = 0;
+		i64 numPoints = 0;
 
 		CRNode(){
 			children.resize(8, nullptr);
@@ -297,6 +305,10 @@ namespace indexer{
 		mutex mtx_chunkRoot;
 		fstream fChunkRoots;
 		vector<FlushedChunkRoot> flushedChunkRoots;
+		
+		Indexer() {
+
+		}
 
 		Indexer(string targetDir) {
 
@@ -342,6 +354,7 @@ namespace indexer{
 	};
 
 	void doIndexing(string targetDir, State& state, Options& options, Sampler& sampler);
+	void doMerging(string targetDir, State& state, Options& options, Sampler& sampler);
 
 
 }

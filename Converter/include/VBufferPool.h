@@ -41,6 +41,7 @@ struct VBufferPool{
 	inline static void release(shared_ptr<VBuffer> buffer){
 
 		// nothing to pool for an empty/destroyed buffer
+		if(buffer == nullptr) return;
 		if(buffer->ptr == nullptr) return;
 
 		lock_guard<mutex> lock(mtx);

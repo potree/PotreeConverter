@@ -369,12 +369,26 @@ void compress(Node* node, Attributes& attributes, VBuffer* encoded, i64* out_enc
 
 
 
-Writer::Writer(indexer::Indexer* indexer){
+Writer::Writer(indexer::Indexer* indexer, bool resume){
 	this->indexer = indexer;
-	
+
 	string octreePath = indexer->targetDir + "/octree.bin";
-	fsOctree.open(octreePath, ios::out | ios::binary);
-	
+
+	if(resume){
+		// Continue appending to the octree.bin of a previous stage. writePos/flushPos
+		// continue at the current file size so that byteOffsets of newly written nodes
+		// stay consistent with the nodes that were already written. Requires that the
+		// previous stage's writer was closed via closeAndWait(), so that the file
+		// is fully flushed and file_size == its final writePos.
+		i64 filesize = fs::file_size(octreePath);
+		fsOctree.open(octreePath, ios::in | ios::out | ios::binary);
+		fsOctree.seekp(0, ios::end);
+		writePos = filesize;
+		flushPos = filesize;
+	}else{
+		fsOctree.open(octreePath, ios::out | ios::binary);
+	}
+
 	ringBuffer = VBuffer::create(capacity);
 	ringBuffer->commit(capacity);
 	
