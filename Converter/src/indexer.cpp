@@ -379,7 +379,12 @@ string Indexer::createMetadata(Options options, State& state, Hierarchy hierarch
 	auto max = root->max;
 
 	auto d = [](double value) {
-		return format("{:f}", value);
+		// Use the shortest round-trippable representation instead of fixed 6-decimal
+		// notation. Fixed notation ("{:f}") silently rounds very small magnitudes to
+		// "0.000000" - e.g. the position scale of small, high-precision models, which
+		// computeScaleOffset floors at size/2^30 (~4e-9). A scale of 0 in metadata.json
+		// makes the viewer decode every point to the same position (x = X*0 + offset).
+		return format("{}", value);
 
 	};
 
@@ -1739,11 +1744,6 @@ void doMerging(string targetDir, State& state, Options& options, Sampler& sample
 
 	printElapsedTime("flushing", tStart);
 
-
-	//string hierarchyPath = targetDir + "/hierarchy.bin";
-	//Hierarchy hierarchy = indexer.createHierarchy(hierarchyPath);
-	//writeBinaryFile(hierarchyPath, hierarchy.buffer);
-
 	indexer.hierarchyFlusher->flush(hierarchyStepSize);
 
 	string hierarchyDir = indexer.targetDir + "/.hierarchyChunks";
@@ -1767,14 +1767,21 @@ void doMerging(string targetDir, State& state, Options& options, Sampler& sample
 		// delete chunk directory
 		if (!options.keepChunks) {
 			string chunksMetadataPath = targetDir + "/chunks/metadata.json";
+			string chunksDir = targetDir + "/chunks";
+			string chunkrootsDir = indexer.targetDir + "/stage_chunkroots";
 
+			println("deleting '{}'", chunksMetadataPath);
+			println("deleting '{}'", chunksDir);
+			println("deleting '{}'", chunkrootsDir);
 			fs::remove(chunksMetadataPath);
-			fs::remove(targetDir + "/chunks");
+			fs::remove_all(chunksDir);
+			fs::remove_all(chunkrootsDir);
 		}
 
 		// delete chunk roots data
 		string octreePath = targetDir + "/tmpChunkRoots.bin";
-		//fs::remove(octreePath);
+		println("deleting '{}'", octreePath);
+		fs::remove(octreePath);
 	}
 
 	double duration = now() - tStart;
