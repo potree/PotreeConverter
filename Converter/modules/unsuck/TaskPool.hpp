@@ -8,6 +8,7 @@
 #include <vector>
 #include <functional>
 #include <atomic>
+#include <print>
 
 //using namespace std;
 
@@ -18,6 +19,7 @@ using std::vector;
 using std::deque;
 using std::function;
 using std::lock_guard;
+using std::println;
 
 // might be better off using https://github.com/progschj/ThreadPool
 template<class Task>
@@ -99,6 +101,11 @@ public:
 		isClosed = true;
 
 		for (thread& t : threads) {
+			if(!t.joinable()){
+				println("ERROR: A task pool thread wasn't joinable. ");
+				println("Exiting app to avoid infite loop.");
+				exit(746345);
+			}
 			t.join();
 		}
 	}

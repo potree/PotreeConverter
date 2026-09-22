@@ -6,6 +6,7 @@
 #include "structures.h"
 #include "Attributes.h"
 #include "PotreeConverter.h"
+#include "VBufferPool.h"
 
 
 struct SamplerPoisson : public Sampler {
@@ -94,7 +95,7 @@ struct SamplerPoisson : public Sampler {
 
 				for (int64_t i = 0; i < child->numPoints; i++) {
 					int64_t pointOffset = i * attributes.bytes;
-					int32_t* xyz = reinterpret_cast<int32_t*>(child->points->data_u8 + pointOffset);
+					int32_t* xyz = reinterpret_cast<int32_t*>(child->points->ptr + pointOffset);
 
 					double x = (xyz[0] * scale.x) + offset.x;
 					double y = (xyz[1] * scale.y) + offset.y;
@@ -244,7 +245,10 @@ struct SamplerPoisson : public Sampler {
 
 			}
 
-			auto accepted = make_shared<Buffer>(numAccepted * attributes.bytes);
+			// auto accepted = make_shared<Buffer>(numAccepted * attributes.bytes);
+			auto accepted = VBufferPool::acquire();
+			accepted->commit(numAccepted * attributes.bytes);
+			i64 numAcceptedProcessed = 0;
 			for (int64_t childIndex = 0; childIndex < 8; childIndex++) {
 				auto child = node->children[childIndex];
 
@@ -254,17 +258,31 @@ struct SamplerPoisson : public Sampler {
 
 				auto numRejected = numRejectedPerChild[childIndex];
 				auto& acceptedFlags = acceptedChildPointFlags[childIndex];
-				auto rejected = make_shared<Buffer>(numRejected * attributes.bytes);
+				// auto rejected = make_shared<Buffer>(numRejected * attributes.bytes);
+				auto rejected = VBufferPool::acquire();
+				rejected->commit(numRejected * attributes.bytes);
+				i64 numRejectedProcessed = 0;
 
 				for (int64_t i = 0; i < child->numPoints; i++) {
 					auto isAccepted = acceptedFlags[i];
 					int64_t pointOffset = i * attributes.bytes;
 
 					if (isAccepted) {
-						accepted->write(child->points->data_u8 + pointOffset, attributes.bytes);
-						// rejected->write(child->points->data_u8 + pointOffset, attributes.bytes);
+						// accepted->write(child->points->ptr + pointOffset, attributes.bytes);
+						memcpy(
+							accepted->ptr + numAcceptedProcessed * attributes.bytes,
+							child->points->ptr + pointOffset,
+							attributes.bytes
+						);
+						numAcceptedProcessed++;
 					} else {
-						rejected->write(child->points->data_u8 + pointOffset, attributes.bytes);
+						// rejected->write(child->points->ptr + pointOffset, attributes.bytes);
+						memcpy(
+							rejected->ptr + numRejectedProcessed * attributes.bytes,
+							child->points->ptr + pointOffset,
+							attributes.bytes
+						);
+						numRejectedProcessed++;
 					}
 				}
 
@@ -273,6 +291,7 @@ struct SamplerPoisson : public Sampler {
 
 					node->children[childIndex] = nullptr;
 				} if (numRejected > 0) {
+					VBufferPool::release(child->points);
 					child->points = rejected;
 					child->numPoints = numRejected;
 
@@ -284,12 +303,14 @@ struct SamplerPoisson : public Sampler {
 					// this node has points but because it doesn't have any,
 					// decompressing the nonexistent point buffer fails
 					// https://github.com/potree/potree/issues/1125
+					VBufferPool::release(child->points);
 					child->points = nullptr;
 					child->numPoints = 0;
 					onNodeCompleted(child.get());
 				}
 			}
 
+			VBufferPool::release(node->points);
 			node->points = accepted;
 			node->numPoints = numAccepted;
 

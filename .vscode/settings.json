@@ -87,7 +87,10 @@
 		"compare": "cpp",
 		"format": "cpp",
 		"optional": "cpp",
-		"stop_token": "cpp"
+		"stop_token": "cpp",
+		"print": "cpp",
+		"ranges": "cpp",
+		"span": "cpp"
 	},
 	"files.trimTrailingWhitespace": false,
 	"editor.fontSize": 28,

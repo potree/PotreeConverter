@@ -7,7 +7,7 @@
 #include "chunker_countsort_laszip.h"
 #include "indexer.h"
 #include "sampler_poisson.h"
-#include "sampler_poisson_average.h"
+// #include "sampler_poisson_average.h"
 #include "sampler_random.h"
 #include "Attributes.h"
 #include "PotreeConverter.h"
@@ -24,16 +24,19 @@ Options parseArguments(int argc, char** argv) {
 	args.addArgument("source,i,", "Input file(s)");
 	args.addArgument("help,h", "Display help information");
 	args.addArgument("outdir,o", "Output directory");
+	args.addArgument("chunkdir", "Directory for intermediate chunk data. ");
 	args.addArgument("encoding", "Encoding type \"BROTLI\", \"UNCOMPRESSED\" (default)");
 	args.addArgument("method,m", "Point sampling method \"poisson\", \"poisson_average\", \"random\"");
 	args.addArgument("chunkMethod", "Chunking method");
 	args.addArgument("keep-chunks", "Skip deleting temporary chunks during conversion");
+	args.addArgument("compress-chunks", "Compress temporarily generated chunks to reduce max disk space needed. ");
 	args.addArgument("no-chunking", "Disable chunking phase");
 	args.addArgument("no-indexing", "Disable indexing phase");
 	args.addArgument("attributes", "Attributes in output file");
 	args.addArgument("projection", "Add the projection of the pointcloud to the metadata");
 	args.addArgument("generate-page,p", "Generate a ready to use web page with the given name");
 	args.addArgument("title", "Page title used when generating a web page");
+	args.addArgument("stage", "CHUNKING, INDEXING, MERGING");
 
 	if (args.has("help")) {
 		cout << "PotreeConverter <source> -o <outdir>" << endl;
@@ -102,6 +105,12 @@ Options parseArguments(int argc, char** argv) {
 
 	outdir = fs::weakly_canonical(fs::path(outdir)).string();
 
+	string chunkdir = "";
+	if(args.has("chunkdir")){
+		chunkdir = args.get("chunkdir").as<string>();
+	}
+	chunkdir = fs::weakly_canonical(fs::path(chunkdir)).string();
+
 	//vector<string> flags = args.get("flags").as<vector<string>>();
 
 	vector<string> attributes = args.get("attributes").as<vector<string>>();
@@ -115,12 +124,19 @@ Options parseArguments(int argc, char** argv) {
 	string projection = args.get("projection").as<string>();
 
 	bool keepChunks = args.has("keep-chunks");
+	bool compressChunks = args.has("compress-chunks");
 	bool noChunking = args.has("no-chunking");
 	bool noIndexing = args.has("no-indexing");
+	
+	string stage = "";
+	if(args.has("stage")){
+		stage = args.get("stage").as<string>();
+	}
 
 	Options options;
 	options.source = source;
 	options.outdir = outdir;
+	options.chunkdir = chunkdir;
 	options.method = method;
 	options.encoding = encoding;
 	options.chunkMethod = chunkMethod;
@@ -134,6 +150,14 @@ Options parseArguments(int argc, char** argv) {
 	options.keepChunks = keepChunks;
 	options.noChunking = noChunking;
 	options.noIndexing = noIndexing;
+	options.compressChunks = compressChunks;
+	options.stage = stage;
+	
+	// Map legacy "noChunking" and "noIndexing" to "stage"
+	{
+		if(noChunking) stage = "INDEXING";
+		if(noIndexing) stage = "CHUNKING";
+	}
 
 	//cout << "flags: ";
 	//for (string flag : options.flags) {
@@ -350,7 +374,7 @@ void chunking(Options& options, vector<Source>& sources, string targetDir, Stats
 
 	if (options.chunkMethod == "LASZIP") {
 
-		chunker_countsort_laszip::doChunking(sources, targetDir, stats.min, stats.max, state, outputAttributes, monitor);
+		chunker_countsort_laszip::doChunking(options, sources, targetDir, stats.min, stats.max, state, outputAttributes, monitor);
 
 	} else if (options.chunkMethod == "LAS_CUSTOM") {
 
@@ -385,9 +409,31 @@ void indexing(Options& options, string targetDir, State& state) {
 		indexer::doIndexing(targetDir, state, options, sampler);
 
 	} else if (options.method == "poisson_average") {
+		
+		println("ERROR: poisson_average removed");
+		exit(262356);
 
-		SamplerPoissonAverage sampler;
-		indexer::doIndexing(targetDir, state, options, sampler);
+		// SamplerPoissonAverage sampler;
+		// indexer::doIndexing(targetDir, state, options, sampler);
+
+	}
+}
+
+void merging(Options& options, string targetDir, State& state) {
+
+	if (options.noIndexing) {
+		return;
+	}
+
+	if (options.method == "random") {
+
+		SamplerRandom sampler;
+		indexer::doMerging(targetDir, state, options, sampler);
+
+	} else if (options.method == "poisson") {
+
+		SamplerPoisson sampler;
+		indexer::doMerging(targetDir, state, options, sampler);
 
 	}
 }
@@ -507,8 +553,8 @@ int main(int argc, char** argv) {
 
 	// 	return 0;
 	// }
-
-
+	
+	std::locale::global(getSaneLocale());
 
 	double tStart = now(); 
 
@@ -540,8 +586,7 @@ int main(int argc, char** argv) {
 		targetDir = targetDir + "/pointclouds/" + options.pageName;
 	}
 	cout << "target directory: '" << targetDir << "'" << endl;
-	fs::create_directories(targetDir);
-	logger::addOutputFile(targetDir + "/log.txt");
+	
 
 	State state;
 	state.pointsTotal = stats.totalPoints;
@@ -554,9 +599,29 @@ int main(int argc, char** argv) {
 
 	{ // this is the real important stuff
 
-		chunking(options, sources, targetDir, stats, state, outputAttributes, monitor.get());
+		
+		if(options.stage == "" || options.stage == "CHUNKING"){
+			string chunkdir = targetDir;
+			if(options.chunkdir != ""){
+				chunkdir = options.chunkdir;
+				fs::create_directories(chunkdir);
+				logger::addOutputFile(chunkdir + "/log.txt");
+			}
 
-		indexing(options, targetDir, state);
+			chunking(options, sources, chunkdir, stats, state, outputAttributes, monitor.get());
+		}
+
+		if(options.stage == "" || options.stage == "INDEXING"){
+			fs::create_directories(targetDir);
+			logger::addOutputFile(targetDir + "/log.txt");
+			indexing(options, targetDir, state);
+		}
+		
+		if(options.stage == "" || options.stage == "MERGING"){
+			fs::create_directories(targetDir);
+			logger::addOutputFile(targetDir + "/log.txt");
+			merging(options, targetDir, state);
+		}
 
 	}
 
@@ -567,3 +632,259 @@ int main(int argc, char** argv) {
 
 	return 0;
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// #include <print>
+// #include <string>
+// #include <vector>
+// #include <cstdint>
+// #include <algorithm>
+// #include <execution>
+// #include <unordered_map>
+// #include <mutex>
+
+// #include "unsuck/unsuck.hpp"
+// #include "brotli/encode.h"
+
+// using namespace std;
+
+// struct Encoder{
+// 	BrotliEncoderState* state = nullptr;
+// };
+
+// vector<Encoder> encoders;
+
+
+// void printRAM() {
+// 	auto mem = getMemoryData();
+
+// 		// float MBs = double(mem.physical_usedByProcess) / 1'000'000.0;
+
+// 		auto MB = [](size_t value){
+// 			return double(value) / 1'000'000.0;
+// 		};
+
+// 		// println("RAM used: {:.1f} MB", MBs);
+// 		// println("RAM used: {:.1f} MB", MBs);
+
+// 		println("RAM: {:.1f} MB / {:.1f} MB.     used by current process: {:.1f} MB",
+// 			MB(mem.physical_used),
+// 			MB(mem.physical_total),
+// 			MB(mem.physical_usedByProcess)
+// 		);
+// }
+
+// string chunkDir = "E:/temp/brotlitest/converted/chunks";
+
+// void basicBrotli(){
+// 	// https://www.brotli.org/encode.html#a512
+// 	int numEncoders = 1;
+// 	encoders.reserve(numEncoders);
+
+// 	for(int i = 0; i < numEncoders; i++){
+
+// 		Encoder encoder;
+// 		encoder.state = BrotliEncoderCreateInstance(0, 0, 0);
+
+// 		encoders.push_back(encoder);
+// 	}
+
+// 	vector<uint32_t> data;
+// 	for(int i = 0; i < 100'000; i++){
+// 		data.push_back(i);
+// 	}
+
+// 	for(int i = 0; i < numEncoders; i++){
+
+// 		Encoder& encoder = encoders[i];
+
+// 		BrotliEncoderSetParameter(encoder.state, BROTLI_PARAM_QUALITY, (uint32_t)BROTLI_DEFAULT_QUALITY );
+// 		BrotliEncoderSetParameter(encoder.state, BROTLI_PARAM_LGWIN, (uint32_t)BROTLI_DEFAULT_WINDOW);
+// 		BrotliEncoderSetParameter(encoder.state, BROTLI_PARAM_MODE, (uint32_t)BROTLI_MODE_GENERIC);
+
+// 		size_t available_in = data.size();
+// 		const uint8_t* next_in = (uint8_t*)data.data();
+// 		size_t available_out = data.size() * sizeof(uint32_t);
+// 		void* compressedBuffer = malloc(available_out);
+// 		uint8_t* next_out = (uint8_t*)compressedBuffer;
+		
+// 		size_t total_out = 0;
+
+// 		printRAM();
+
+
+// 		{
+// 			// compress first 50k elements
+// 			size_t available_in = 50'000 * sizeof(uint32_t);
+// 			const uint8_t* next_in = (uint8_t*)&data[0];
+
+// 			BROTLI_BOOL result = BrotliEncoderCompressStream(encoder.state, BROTLI_OPERATION_FLUSH,
+// 				&available_in, &next_in, &available_out, &next_out, &total_out);
+
+// 			println("available_in:  {}", available_in);
+// 			println("available_out: {}", available_out);
+// 			printRAM();
+// 		}
+
+// 		{
+// 			// compress last 50k elements
+// 			size_t available_in = 50'000 * sizeof(uint32_t);
+// 			const uint8_t* next_in = (uint8_t*)&data[50'000];
+
+// 			BROTLI_BOOL result = BrotliEncoderCompressStream(encoder.state, BROTLI_OPERATION_FINISH,
+// 				&available_in, &next_in, &available_out, &next_out, &total_out);
+
+// 			println("available_in:  {}", available_in);
+// 			println("available_out: {}", available_out);
+// 			printRAM();
+// 		}
+
+		
+// 		// while(available_in > 0){
+// 		// 	// BROTLI_OPERATION_FINISH
+// 		// 	BROTLI_BOOL result = BrotliEncoderCompressStream(encoder.state, BROTLI_OPERATION_FINISH,
+// 		// 		&available_in, &next_in, &available_out, &next_out, &total_out);
+
+// 		// 	println("available_in:  {}", available_in);
+// 		// 	println("available_out: {}", available_out);
+// 		// }
+
+		
+
+// 		free(compressedBuffer);
+
+// 		println("available_in:  {}", available_in);
+// 		println("available_out: {}", available_out);
+
+// 		printRAM();
+// 	}
+
+// 	// auto mem = getMemoryData();
+
+// 	// if (!BrotliEncoderIsFinished(s)) result = 0;
+
+// 	// BrotliEncoderDestroyInstance(s);
+
+// }
+
+// int main(){
+	
+
+// 	vector<string> files;
+// 	for (const auto& entry : fs::directory_iterator(chunkDir)) {
+// 		if (entry.is_regular_file()) {
+// 			string filename = entry.path().filename().string();
+
+// 			if(iEndsWith(filename, ".bin")){
+// 				files.push_back(entry.path().string());
+// 			}
+// 		}
+// 	}
+
+// 	// for(string file : files){
+// 	// 	println("{}", file);
+// 	// }
+
+// 	string outDir = chunkDir + "/../compressed";
+// 	fs::create_directories(outDir);
+
+// 	unordered_map<string, Encoder> encoders;
+// 	mutex mtx_encoders;
+
+
+// 	for_each(std::execution::par, files.begin(), files.end(), [&](string file){
+// 		//println("{}", file);
+
+// 		string filename = fs::path(file).filename().string();
+// 		if(filename.size() > 7) return;
+
+// 		//if(file != files[0]) return;
+// 		println("compressing {}", file);
+
+// 		shared_ptr<Buffer> buffer = readBinaryFile(file);
+
+// 		Encoder encoder;
+// 		encoder.state = BrotliEncoderCreateInstance(0, 0, 0);
+
+// 		{
+// 			lock_guard<mutex> lock(mtx_encoders);
+// 			encoders[file] = encoder;
+// 		}
+
+// 		// BrotliEncoderSetParameter(encoder.state, BROTLI_PARAM_QUALITY, (uint32_t)BROTLI_DEFAULT_QUALITY );
+// 		BrotliEncoderSetParameter(encoder.state, BROTLI_PARAM_QUALITY, 6);
+// 		BrotliEncoderSetParameter(encoder.state, BROTLI_PARAM_LGWIN, (uint32_t)BROTLI_DEFAULT_WINDOW);
+// 		BrotliEncoderSetParameter(encoder.state, BROTLI_PARAM_MODE, (uint32_t)BROTLI_MODE_GENERIC);
+
+// 		size_t available_in = buffer->size;
+// 		const uint8_t* next_in = buffer->data_u8;
+// 		size_t available_out = buffer->size * sizeof(uint32_t);
+// 		void* compressedBuffer = malloc(available_out);
+// 		uint8_t* next_out = (uint8_t*)compressedBuffer;
+		
+// 		size_t total_out = 0;
+
+// 		while(available_in > 0){
+// 			size_t available_in_capped = max(available_in, size_t(100llu * 1024llu));
+// 			size_t available_in_capped_prev = available_in_capped;
+// 			BROTLI_BOOL result = BrotliEncoderCompressStream(encoder.state, BROTLI_OPERATION_FLUSH,
+// 				&available_in_capped, &next_in, &available_out, &next_out, &total_out);
+
+// 			size_t bytesProcessed = available_in_capped_prev - available_in_capped;
+// 			available_in = available_in - bytesProcessed;
+// 		}
+
+// 		BROTLI_BOOL result = BrotliEncoderCompressStream(encoder.state, BROTLI_OPERATION_FINISH,
+// 			&available_in, &next_in, &available_out, &next_out, &total_out);
+
+		
+// 		string outPath = format("{}/{}.brotli", outDir, filename);
+// 		writeBinaryFile(outPath, compressedBuffer, total_out);
+
+// 		free(compressedBuffer);
+
+// 		float ratio = double(total_out) / double(buffer->size);
+
+// 		// println("available_in:  {}", available_in);
+// 		// println("available_out: {}", available_out);
+// 		// println("total_out: {}", total_out);
+// 		// println("outPath: {}", outPath);
+// 		int iRatio = int(100.0 * ratio);
+// 		println("{}: compression ratio: {} %", filename, iRatio);
+
+// 	});
+
+// 	println("processing files finished");
+// 	printRAM();
+
+// 	println("destroy encoders");
+// 	for(auto [path, encoder] : encoders){
+// 		BrotliEncoderDestroyInstance(encoder.state);
+// 	}
+
+// 	printRAM();
+
+	
+
+// 	return 0;
+// }
+
+

@@ -24,6 +24,8 @@
 #include "unsuck/unsuck.hpp"
 #include "unsuck/TaskPool.hpp"
 #include "structures.h"
+#include "Writer.h"
+#include "VBuffer.h"
 
 using json = nlohmann::json;
 
@@ -69,6 +71,10 @@ namespace indexer{
 		Vector3 min;
 		Vector3 max;
 		Attributes attributes;
+		
+		Chunks(){
+			
+		}
 
 		Chunks(vector<shared_ptr<Chunk>> list, Vector3 min, Vector3 max) {
 			this->list = list;
@@ -79,44 +85,7 @@ namespace indexer{
 	};
 
 	shared_ptr<Chunks> getChunks(string pathIn);
-
 	
-
-	struct Indexer;
-
-	struct Writer {
-
-		Indexer* indexer = nullptr;
-		int64_t capacity = 16 * 1024 * 1024;
-
-		// copy node data here first
-		shared_ptr<Buffer> activeBuffer = nullptr;
-
-		// backlog of buffers that reached capacity and are ready to be written to disk
-		deque<shared_ptr<Buffer>> backlog;
-
-		bool closeRequested = false;
-		bool closed = false;
-		std::condition_variable cvClose;
-
-		fstream fsOctree;
-
-		//thread tWrite;
-
-		mutex mtx;
-
-		Writer(Indexer* indexer);
-
-		void writeAndUnload(Node* node);
-
-		void launchWriterThread();
-
-		void closeAndWait();
-
-		int64_t backlogSizeMB();
-
-	};
-
 	struct HierarchyFlusher{
 
 		struct HNode{
@@ -131,10 +100,14 @@ namespace indexer{
 		unordered_map<string, int> chunks;
 		vector<HNode> buffer;
 
-		HierarchyFlusher(string path){
+		// clearExisting = false keeps previously flushed hierarchy chunks,
+		// used when resuming from a serialized stage
+		HierarchyFlusher(string path, bool clearExisting = true){
 			this->path = path;
 
-			this->clear();
+			if(clearExisting){
+				this->clear();
+			}
 		}
 
 		void clear(){
@@ -260,7 +233,7 @@ namespace indexer{
 		Node* node;
 		vector<shared_ptr<CRNode>> children;
 		vector<FlushedChunkRoot> fcrs;
-		int numPoints = 0;
+		i64 numPoints = 0;
 
 		CRNode(){
 			children.resize(8, nullptr);
@@ -332,6 +305,10 @@ namespace indexer{
 		mutex mtx_chunkRoot;
 		fstream fChunkRoots;
 		vector<FlushedChunkRoot> flushedChunkRoots;
+		
+		Indexer() {
+
+		}
 
 		Indexer(string targetDir) {
 
@@ -377,6 +354,7 @@ namespace indexer{
 	};
 
 	void doIndexing(string targetDir, State& state, Options& options, Sampler& sampler);
+	void doMerging(string targetDir, State& state, Options& options, Sampler& sampler);
 
 
 }

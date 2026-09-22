@@ -15,6 +15,7 @@
 #include <thread>
 #include <cstdint>
 #include <cstring>
+#include <print>
 
 using std::cout;
 using std::endl;
@@ -31,12 +32,22 @@ using std::ios;
 using std::shared_ptr;
 using std::make_shared;
 using std::chrono::high_resolution_clock;
+using std::println;
 
 namespace fs = std::filesystem;
 
 static long long unsuck_start_time = high_resolution_clock::now().time_since_epoch().count();
 
 static double Infinity = std::numeric_limits<double>::infinity();
+
+using i64 =  int64_t;
+using u64 = uint64_t;
+using i32 =  int32_t;
+using u32 = uint32_t;
+using i16 =  int16_t;
+using u16 = uint16_t;
+using i8  =   int8_t;
+using u8  =  uint8_t;
 
 
 #if defined(__linux__)
@@ -89,6 +100,10 @@ inline string formatNumber(T number, int decimals = 0) {
 	return ss.str();
 }
 
+inline auto getSaneLocale(){
+	return std::locale(std::cout.getloc(), new punct_facet);
+}
+
 struct Buffer {
 
 	void* data = nullptr;
@@ -113,6 +128,8 @@ struct Buffer {
 
 	Buffer(int64_t size) {
 		data = malloc(size);
+		
+		// println("allocating buffer with size {:L}", size);
 
 		if (data == nullptr) {
 			auto memory = getMemoryData();
@@ -511,6 +528,27 @@ inline void writeBinaryFile(string path, Buffer& data) {
 
 	of.close();
 }
+
+inline void writeBinaryFile(string path, void* data, size_t size) {
+	std::ios_base::sync_with_stdio(false);
+	auto of = fstream(path, ios::out | ios::binary);
+
+	int64_t remaining = size;
+	int64_t offset = 0;
+
+	while (remaining > 0) {
+		constexpr int64_t mb4 = int64_t(4 * 1024 * 1024);
+		int batchSize = std::min(remaining, mb4);
+		of.write(reinterpret_cast<char*>(data) + offset, batchSize);
+
+		offset += batchSize;
+		remaining -= batchSize;
+	}
+
+
+	of.close();
+}
+
 
 // taken from: https://stackoverflow.com/questions/2602013/read-whole-ascii-file-into-c-stdstring/2602060
 inline string readFile(string path) {
