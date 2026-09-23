@@ -655,12 +655,12 @@ namespace chunker_countsort_laszip {
 			int offsetNIR = outputAttributes.getOffset("NIR");
 			Attribute* attributeNIR = outputAttributes.get("NIR");
 			auto nir = [data, point, header, offsetNIR, attributeNIR](int64_t offset) {
-				uint8_t value = point->extended_classification_flags;
+				uint16_t value = point->rgb[3];
 
-				memcpy(data + offset + offsetNIR, &value, 1);
+				memcpy(data + offset + offsetNIR, &value, 2);
 
-				attributeNIR->min.x = 0;//std::min(attributeClassificationFlags->min.x, double(point->extended_classification_flags));
-				attributeNIR->max.x = 65'000;//std::max(attributeClassificationFlags->max.x, double(point->extended_classification_flags));
+				attributeNIR->min.x = std::min(attributeNIR->min.x, double(value));
+				attributeNIR->max.x = std::max(attributeNIR->max.x, double(value));
 			};
 
 			unordered_map<string, function<void(int64_t)>> mapping = {
