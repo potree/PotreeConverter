@@ -32,7 +32,7 @@ Altough the converter made a major step to version 2.0, the format it produces i
 	    cmake ../
 	    ```
 	* On linux, run: ```make```
-	* On windows, open Visual Studio 2019 Project ./Converter/Converter.sln and compile it in release mode
+	* On windows, open Visual Studio 2019 Project ./build/PotreeConverter.sln and compile it in release mode
 2. run ```PotreeConverter.exe <input> -o <outputDir>```
     * Optionally specify the sampling strategy:
 	* Poisson-disk sampling (default): ```PotreeConverter.exe <input> -o <outputDir> -m poisson```
