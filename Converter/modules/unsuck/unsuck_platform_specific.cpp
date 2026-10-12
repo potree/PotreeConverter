@@ -306,7 +306,10 @@ void init() {
 	numProcessors = std::thread::hardware_concurrency();
 	
 	FILE* file = fopen("/proc/stat", "r");
-    fscanf(file, "cpu %llu %llu %llu %llu", &lastTotalUser, &lastTotalUserLow, &lastTotalSys, &lastTotalIdle);
+    int ret = fscanf(file, "cpu %llu %llu %llu %llu", &lastTotalUser, &lastTotalUserLow, &lastTotalSys, &lastTotalIdle);
+    if (ret == EOF) {
+      perror("Could not read /proc/stat");
+    }
     fclose(file);
 
 	initialized = true;
@@ -318,7 +321,14 @@ double getCpuUsage(){
     unsigned long long totalUser, totalUserLow, totalSys, totalIdle, total;
 
     file = fopen("/proc/stat", "r");
-    fscanf(file, "cpu %llu %llu %llu %llu", &totalUser, &totalUserLow, &totalSys, &totalIdle);
+    int ret = fscanf(file, "cpu %llu %llu %llu %llu", &totalUser, &totalUserLow, &totalSys, &totalIdle);
+    if (ret == EOF) {
+      perror("Could not read /proc/stat");
+      return 0.0;
+    }
+    if (ret < 4) {
+			return 0.0;
+    }
     fclose(file);
 
     if (totalUser < lastTotalUser || totalUserLow < lastTotalUserLow ||
