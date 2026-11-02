@@ -112,6 +112,11 @@ struct SamplerPoisson : public Sampler {
 
 			thread_local vector<Point> dbgAccepted(1'000'000);
 			int64_t dbgNumAccepted = 0;
+
+			if (dbgAccepted.size() < points.size()) {
+				println("WARNING: Accepting more than 1M points in a node. That's very unusual, unless you are processing volumetric data.");
+				dbgAccepted.resize(points.size());
+			}
 			double spacing = baseSpacing / pow(2.0, node->level());
 			double squaredSpacing = spacing * spacing;
 

@@ -772,6 +772,8 @@ vector<NodeCandidate> createNodes(Pyramid* pyramid) {
 	root.x = 0;
 	root.y = 0;
 	root.z = 0;
+	root.indexStart = 0;
+	root.numPoints = pyramid->counters[0][0];
 
 	vector<NodeCandidate> stack = { root };
 
@@ -897,7 +899,7 @@ Node* expandTo(Node* node, NodeCandidate& candidate) {
 // 4. Recursively repeat at 1. for identified nodes
 void buildHierarchy(Indexer* indexer, Node* node, shared_ptr<Buffer> points, int64_t numPoints, int64_t depth = 0) {
 
-	if (numPoints < maxPointsPerChunk) {
+	if (numPoints <= maxPointsPerChunk) {
 		Node* realization = node;
 		realization->indexStart = 0;
 		realization->numPoints = numPoints;
