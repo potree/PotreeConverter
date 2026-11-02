@@ -26,7 +26,7 @@ Options parseArguments(int argc, char** argv) {
 	args.addArgument("outdir,o", "Output directory");
 	args.addArgument("chunkdir", "Directory for intermediate chunk data. ");
 	args.addArgument("encoding", "Encoding type \"BROTLI\", \"UNCOMPRESSED\" (default)");
-	args.addArgument("method,m", "Point sampling method \"poisson\", \"poisson_average\", \"random\"");
+	args.addArgument("method,m", "Point sampling method \"poisson\", \"random\"");
 	args.addArgument("chunkMethod", "Chunking method");
 	args.addArgument("keep-chunks", "Skip deleting temporary chunks during conversion");
 	args.addArgument("compress-chunks", "Compress temporarily generated chunks to reduce max disk space needed. ");
@@ -63,6 +63,13 @@ Options parseArguments(int argc, char** argv) {
 	string encoding = args.get("encoding").as<string>("DEFAULT");
 	string method = args.get("method").as<string>("poisson");
 	string chunkMethod = args.get("chunkMethod").as<string>("LASZIP");
+
+	if (method != "poisson" && method != "random") {
+		cout << "ERROR: unknown sampling method: " << method << endl;
+		cout << "valid values for --method are: poisson, random" << endl;
+
+		exit(1);
+	}
 
 	string outdir = "";
 	if (args.has("outdir")) {

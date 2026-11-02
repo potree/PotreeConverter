@@ -1,0 +1,41 @@
+{
+	// Build tasks for the CMake project in ./build (Visual Studio 17 2022 generator, multi-config).
+	// Run via "Terminal > Run Task..." or Ctrl+Shift+B (default: Release).
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "CMake: configure",
+			"type": "process",
+			"command": "cmake",
+			"args": ["-S", "${workspaceFolder}", "-B", "${workspaceFolder}/build", "-G", "Visual Studio 17 2022", "-A", "x64"],
+			"problemMatcher": []
+		},
+		{
+			"label": "Build: Debug",
+			"type": "process",
+			"command": "cmake",
+			"args": ["--build", "${workspaceFolder}/build", "--config", "Debug", "--parallel"],
+			"group": "build",
+			"problemMatcher": "$msCompile"
+		},
+		{
+			"label": "Build: Release",
+			"type": "process",
+			"command": "cmake",
+			"args": ["--build", "${workspaceFolder}/build", "--config", "Release", "--parallel"],
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			},
+			"problemMatcher": "$msCompile"
+		},
+		{
+			"label": "Build: RelWithDebInfo",
+			"type": "process",
+			"command": "cmake",
+			"args": ["--build", "${workspaceFolder}/build", "--config", "RelWithDebInfo", "--parallel"],
+			"group": "build",
+			"problemMatcher": "$msCompile"
+		}
+	]
+}
