@@ -58,7 +58,7 @@ void VBuffer::commit(i64 size){
 
 	if(size > virtualCapacity){
 		println("ERROR: VBuffer::commit - requested {} bytes exceeds reserved capacity of {} bytes.", size, virtualCapacity);
-		__debugbreak();
+		// __debugbreak();
 		exit(4314);
 	}
 
@@ -133,7 +133,7 @@ void VBuffer::memcpy(u64 byteOffset, void* source, u64 numBytes){
 
 	if(requiredSize > comittedCapacity){
 		println("ERROR: VBuffer::memcpy - writing {} bytes at offset {} exceeds comitted capacity of {} bytes.", numBytes, byteOffset, comittedCapacity);
-		__debugbreak();
+		// __debugbreak();
 		exit(4317);
 	}
 

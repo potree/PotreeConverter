@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.6)
 set(CMAKE_SUPPRESS_REGENERATION true)
 
 project(PotreeConverter LANGUAGES CXX)
