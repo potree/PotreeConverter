@@ -4,6 +4,7 @@
 #include <filesystem>
 
 #include "structures.h"
+#include "VBuffer.h"
 
 namespace fs = std::filesystem;
 
@@ -24,9 +25,9 @@ namespace dbgwriter{
 			int64_t offset = i * attributes.bytes;
 
 			int32_t sX, sY, sZ;
-			memcpy(&sX, node->points->data_u8 + offset + 0, 4);
-			memcpy(&sY, node->points->data_u8 + offset + 4, 4);
-			memcpy(&sZ, node->points->data_u8 + offset + 8, 4);
+			memcpy(&sX, node->points->ptr + offset + 0, 4);
+			memcpy(&sY, node->points->ptr + offset + 4, 4);
+			memcpy(&sZ, node->points->ptr + offset + 8, 4);
 
 			Point p;
 			p.x = sX;
@@ -150,9 +151,9 @@ namespace dbgwriter{
 			int64_t offset = i * attributes.bytes;
 
 			int32_t sX, sY, sZ;
-			memcpy(&sX, node->points->data_u8 + offset + 0, 4);
-			memcpy(&sY, node->points->data_u8 + offset + 4, 4);
-			memcpy(&sZ, node->points->data_u8 + offset + 8, 4);
+			memcpy(&sX, node->points->ptr + offset + 0, 4);
+			memcpy(&sY, node->points->ptr + offset + 4, 4);
+			memcpy(&sZ, node->points->ptr + offset + 8, 4);
 
 			minX = std::min(minX, int64_t(sX));
 			minY = std::min(minY, int64_t(sY));
@@ -194,9 +195,9 @@ namespace dbgwriter{
 			int64_t offset = i * attributes.bytes;
 
 			int32_t sX, sY, sZ;
-			memcpy(&sX, node->points->data_u8 + offset + 0, 4);
-			memcpy(&sY, node->points->data_u8 + offset + 4, 4);
-			memcpy(&sZ, node->points->data_u8 + offset + 8, 4);
+			memcpy(&sX, node->points->ptr + offset + 0, 4);
+			memcpy(&sY, node->points->ptr + offset + 4, 4);
+			memcpy(&sZ, node->points->ptr + offset + 8, 4);
 
 			int32_t oX = sX - minX;
 			int32_t oY = sY - minY;
@@ -405,7 +406,7 @@ namespace dbgwriter{
 
 		Buffer I(numPoints * 2);
 
-		memcpy(I.data, node->points->data_u8 + attributeOffset, 2);
+		memcpy(I.data, node->points->ptr + attributeOffset, 2);
 
 		int64_t intensity_previous = I.data_u16[0];
 		int64_t intensity_current;
@@ -414,7 +415,7 @@ namespace dbgwriter{
 			int64_t offset = i * attributes.bytes;
 
 			int16_t intensity_1_u16;
-			memcpy(&intensity_1_u16, node->points->data_u8 + offset + attributeOffset, 2);
+			memcpy(&intensity_1_u16, node->points->ptr + offset + attributeOffset, 2);
 
 			intensity_current = intensity_1_u16;
 
@@ -438,7 +439,7 @@ namespace dbgwriter{
 		int64_t numBytes = attribute.size * node->numPoints;
 		Buffer buffer(numBytes);
 
-		uint8_t* source = node->points->data_u8;
+		uint8_t* source = node->points->ptr;
 		uint8_t* target = buffer.data_u8;
 
 		for (int64_t i = 0; i < node->numPoints; i++) {
@@ -460,7 +461,7 @@ namespace dbgwriter{
 		//int64_t numBytes = 4 * numPoints;
 		//Buffer buffer(numBytes);
 
-		uint8_t* source = node->points->data_u8;
+		uint8_t* source = node->points->ptr;
 		//uint8_t* target = buffer.data_u8;
 
 		int64_t dimx = ceil(sqrt(numPoints));
@@ -528,7 +529,7 @@ namespace dbgwriter{
 		}
 
 
-		writeBinaryFile(dir + "/all.bin", *node->points);
+		writeBinaryFile(dir + "/all.bin", node->points->ptr, node->points->size);
 
 
 	}

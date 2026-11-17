@@ -11,6 +11,8 @@
 #include "Vector3.h"
 #include "unsuck/unsuck.hpp"
 #include "Attributes.h"
+#include "converter_utils.h"
+#include "VBuffer.h"
 
 using std::vector;
 using std::shared_ptr;
@@ -29,7 +31,7 @@ struct Node {
 	vector<shared_ptr<Node>> children;
 
 	string name;
-	shared_ptr<Buffer> points;
+	shared_ptr<VBuffer> points;
 	vector<CumulativeColor> colors;
 	Vector3 min;
 	Vector3 max;
@@ -150,6 +152,8 @@ struct SamplerState {
 
 
 struct Sampler {
+	
+	bool enableTrace = false;
 
 
 	Sampler() {

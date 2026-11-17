@@ -3,7 +3,7 @@ set(CMAKE_SUPPRESS_REGENERATION true)
 
 project(PotreeConverter LANGUAGES CXX)
 
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 set(CMAKE_BUILD_TYPE "Release" CACHE STRING "" FORCE)
 
@@ -18,7 +18,6 @@ set(HEADER_FILES
 	./Converter/include/indexer.h
 	./Converter/include/prototyping.h
 	./Converter/include/sampler_poisson.h
-	./Converter/include/sampler_poisson_average.h
 	./Converter/include/sampler_random.h
 	./Converter/include/structures.h
 	./Converter/include/Vector3.h
@@ -33,6 +32,8 @@ add_executable(PotreeConverter
 	./Converter/src/indexer.cpp 
 	./Converter/src/main.cpp
 	./Converter/src/logger.cpp
+	./Converter/src/VBuffer.cpp
+	./Converter/src/Writer.cpp
 	./Converter/modules/LasLoader/LasLoader.cpp
 	./Converter/modules/unsuck/unsuck_platform_specific.cpp
 	${HEADER_FILES}

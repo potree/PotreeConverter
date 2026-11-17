@@ -67,7 +67,6 @@ struct State {
 	}
 };
 
-
 struct BoundingBox {
 	Vector3 min;
 	Vector3 max;
@@ -159,6 +158,7 @@ inline void dbgPrint_ts_later(string message, bool now = false) {
 struct Options {
 	vector<string> source;
 	string encoding = "DEFAULT"; // "BROTLI", "UNCOMPRESSED"
+	string chunkdir = "";
 	string outdir = "";
 	string name = "";
 	string method = "";
@@ -169,9 +169,11 @@ struct Options {
 	string pageName = "";
 	string pageTitle = "";
 	string projection = "";
+	string stage = "";
 
 	bool keepChunks = false;
 	bool noChunking = false;
 	bool noIndexing = false;
+	bool compressChunks = false;
 
 };

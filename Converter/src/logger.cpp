@@ -8,6 +8,10 @@
 #include <sstream>
 #include <mutex>
 #include <thread>
+#include <format>
+#include <print>
+
+#include "../modules/unsuck/unsuck.hpp"
 
 using std::ofstream;
 using std::fstream;
@@ -19,6 +23,8 @@ using std::cout;
 using std::endl;
 using std::mutex;
 using std::lock_guard;
+using std::format;
+using std::println;
 
 namespace fs = std::filesystem;
 
@@ -39,16 +45,20 @@ void addOutputFile(string path) {
 
 }
 
+string formatTime(double duration){
+
+	int hours = duration / 3600.0;
+	int minutes = fmodf(duration, 3600.0) / 60.0;
+	int seconds = fmodf(duration, 60.0);
+
+	return format("{}h {}m {}s", hours, minutes, seconds);
+}
+
 void info(string msg, string file, int line) {
 
 	string filename = fs::path(file).filename().string();
-
-	stringstream ss;
-	ss << "INFO(" << filename << ":" << line << "): " << msg;
-
-	string str = ss.str();
-
-	//cout << str << endl;
+	string duration = formatTime(now());
+	string str = format("INFO({}; {}:{}); {}", duration, filename, line, msg);
 
 	if (fout != nullptr) {
 		lock_guard<mutex> lock(mtx);
@@ -61,11 +71,8 @@ void info(string msg, string file, int line) {
 void warn(string msg, string file, int line) {
 
 	string filename = fs::path(file).filename().string();
-
-	stringstream ss;
-	ss << "WARN(" << filename << ":" << line << "): " << msg;
-
-	string str = ss.str();
+	string duration = formatTime(now());
+	string str = format("WARN({}; {}:{}); {}", duration, filename, line, msg);
 
 	cout << str << endl;
 
@@ -80,11 +87,8 @@ void warn(string msg, string file, int line) {
 void error(string msg, string file, int line) {
 
 	string filename = fs::path(file).filename().string();
-
-	stringstream ss;
-	ss << "ERROR(" << filename << ":" << line << "): " << msg;
-
-	string str = ss.str();
+	string duration = formatTime(now());
+	string str = format("ERROR({}; {}:{}); {}", duration, filename, line, msg);
 
 	cout << str << endl;
 

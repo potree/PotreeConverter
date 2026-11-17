@@ -336,6 +336,9 @@ BOOL LASreadPoint::seek(const U32 current, const U32 target)
       init_dec();
       chunk_count = 0;
     }
+
+    if(number_chunks == 0) throw 6345;
+
     if (chunk_starts)
     {
       U32 target_chunk;
@@ -705,6 +708,8 @@ BOOL LASreadPoint::read_chunk_table()
           throw 1;
         }
       }
+    } else {
+        throw 1;
     }
   }
   catch (...)

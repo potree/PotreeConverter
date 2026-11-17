@@ -9,6 +9,7 @@
 #include <mutex>
 #include <chrono>
 #include <fstream>
+#include <print>
 
 #include "unsuck/unsuck.hpp"
 #include "converter_utils.h"
@@ -23,6 +24,7 @@ using std::lock_guard;
 using std::fstream;
 using std::ios;
 using std::atomic_int64_t;
+using std::println;
 
 struct ConcurrentWriter {
 
@@ -75,8 +77,6 @@ struct ConcurrentWriter {
 
 					state.name = "DISTRIBUTING";
 				}
-
-				
 
 				std::this_thread::sleep_for(100ms);
 			}
@@ -186,6 +186,9 @@ struct ConcurrentWriter {
 		todoBytes += data->size;
 
 		todo[path].push_back(data);
+
+		string filename = fs::path(path).filename().string();
+		//println("ConcurrentWriter::write({}, Buffer({}))", filename, data->size);
 	}
 
 	void join() {

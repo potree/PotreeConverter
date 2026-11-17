@@ -95,7 +95,8 @@ inline vector<Attribute> parseExtraAttributes(LasHeader& header) {
 				uint8_t type = read<uint8_t>(extraData, offset + 2);
 				uint8_t options = read<uint8_t>(extraData, offset + 3);
 				
-				char chrName[32];
+				char chrName[33];
+				memset(chrName, 0, 33);
 				memcpy(chrName, extraData.data() + offset + 4, 32);
 				string name(chrName);
 
@@ -108,7 +109,8 @@ inline vector<Attribute> parseExtraAttributes(LasHeader& header) {
 					memcpy(&aOffset, extraData.data() + offset + 136, 24);
 				}
 
-				char chrDescription[32];
+				char chrDescription[33];
+				memset(chrDescription, 0, 33);
 				memcpy(chrDescription, extraData.data() + offset + 160, 32);
 				string description(chrDescription);
 
@@ -154,6 +156,7 @@ inline vector<Attribute> computeOutputAttributes(LasHeader& header) {
 	Attribute XYZt("XYZ(t)", 12, 3, 4, AttributeType::FLOAT);
 	Attribute classificationFlags("classification flags", 1, 1, 1, AttributeType::UINT8);
 	Attribute scanAngle("scan angle", 2, 1, 2, AttributeType::INT16);
+	Attribute NIR("NIR", 2, 1, 2, AttributeType::UINT16);
 
 	vector<Attribute> list;
 
@@ -179,6 +182,8 @@ inline vector<Attribute> computeOutputAttributes(LasHeader& header) {
 		list = { xyz, intensity, returnNumber, numberOfReturns, classificationFlags, classification, userData, scanAngle, pointSourceId, gpsTime };
 	} else if (format == 7) {
 		list = { xyz, intensity, returnNumber, numberOfReturns, classificationFlags, classification, userData, scanAngle, pointSourceId, gpsTime, rgb };
+	} else if (format == 8) {
+		list = { xyz, intensity, returnNumber, numberOfReturns, classificationFlags, classification, userData, scanAngle, pointSourceId, gpsTime, rgb, NIR};
 	} else {
 		cout << "ERROR: currently unsupported LAS format: " << int(format) << endl;
 
