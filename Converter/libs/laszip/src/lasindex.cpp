@@ -469,9 +469,9 @@ BOOL LASindex::append(const char* file_name) const
   bytestreamout->seek(offset_to_special_evlrs);
 
   LASevlr lax_evlr;
-  sprintf(lax_evlr.user_id, "LAStools");
+  snprintf(lax_evlr.user_id, sizeof(lax_evlr.user_id),  "LAStools");
   lax_evlr.record_id = 30;
-  sprintf(lax_evlr.description, "LAX spatial indexing (LASindex)");
+  snprintf(lax_evlr.description, sizeof(lax_evlr.description),  "LAX spatial indexing (LASindex)");
 
   bytestreamout->put16bitsLE((const U8*)&(lax_evlr.reserved));
   bytestreamout->putBytes((const U8*)lax_evlr.user_id, 16);

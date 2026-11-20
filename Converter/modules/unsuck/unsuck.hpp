@@ -17,6 +17,9 @@
 #include <cstring>
 #include <print>
 
+#include "cpu.h"
+#include "memory.h"
+
 using std::cout;
 using std::endl;
 using std::to_string;
@@ -54,6 +57,8 @@ using u8  =  uint8_t;
 constexpr auto fseek_64_all_platforms = fseeko64;
 #elif defined(WIN32)
 constexpr auto fseek_64_all_platforms = _fseeki64;
+#elif defined(__APPLE__)
+constexpr auto fseek_64_all_platforms = fseeko;
 #endif
 
 
@@ -624,4 +629,3 @@ inline string rightPad(string in, int64_t length, const char character = ' ') {
 
 #define GENERATE_ERROR_MESSAGE cout << "ERROR(" << __FILE__ << ":" << __LINE__ << "): "
 #define GENERATE_WARN_MESSAGE cout << "WARNING: "
-
