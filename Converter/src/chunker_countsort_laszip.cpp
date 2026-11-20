@@ -244,7 +244,7 @@ namespace chunker_countsort_laszip {
 					// we compare bounds of scaled values, 
 					// but scaled values may move slightly out of bounds due to float errors
 					// Try to fix by allowing points which are a tiny bit outside the box. 
-					double upperBound = std::nextafter(1.0, 2.0);
+					double upperBound = std::nextafter(1.0001, 2.0);
 
 					bool inBox = ux >= 0.0 && uy >= 0.0 && uz >= 0.0;
 					inBox = inBox && ux <= upperBound && uy <= upperBound && uz <= upperBound;
