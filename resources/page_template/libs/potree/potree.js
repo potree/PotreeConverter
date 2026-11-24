@@ -55670,7 +55670,7 @@
 			this._title = args.title || 'No Title';
 			this._description = args.description || '';
 			this.offset = new Vector3();
-			this.uuid = MathUtils.generateUUID();
+			this.uuid = args.uuid || MathUtils.generateUUID();
 
 			if (!args.position) {
 				this.position = null;
@@ -80592,8 +80592,10 @@ ENDSEC
 
 			let annotation = new Annotation({
 				position: [589748.270, 231444.540, 753.675],
-				title: "Annotation Title",
-				description: `Annotation Description`
+				title: args.title || "Annotation Title",
+				description: args.description || `Annotation Description`,
+				cameraPosition: args.cameraPosition || undefined,
+				cameraTarget: args.cameraTarget || undefined
 			});
 			this.dispatchEvent({type: 'start_inserting_annotation', annotation: annotation});
 
