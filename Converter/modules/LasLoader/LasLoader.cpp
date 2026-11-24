@@ -102,6 +102,17 @@ LasHeader loadLasHeader(string path) {
 
 	result.numPoints = std::max(header->extended_number_of_point_records, uint64_t(header->number_of_point_records));
 
+	if (result.numPoints > UINT32_MAX)
+	{
+		cout << "ERROR: encountered input file (" 
+			 << path 
+			 << ") with " 
+			 << result.numPoints 
+			 << " points which is more than UINT_MAX number of points (4294967295), this is not supported by laszip (see https ://github.com/LASzip/LASzip/issues/76)" 
+			 << endl;
+		exit(123);
+	}
+
 	result.pointDataFormat = header->point_data_format;
 
 	int numVlrs = header->number_of_variable_length_records;
