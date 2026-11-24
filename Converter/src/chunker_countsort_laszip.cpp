@@ -1396,7 +1396,7 @@ namespace chunker_countsort_laszip {
 		// COUNT
 		auto grid = countPointsInCells(sources, min, max, gridSize, state, outputAttributes, monitor);
 
-		{ // DISTIRBUTE
+		{ // DISTRIBUTE
 			auto tStartDistribute = now();
 
 			auto lut = createLUT(grid, gridSize);
