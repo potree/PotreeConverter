@@ -41,7 +41,11 @@ target_include_directories(laszip PRIVATE
 	../
 )
 
-set(CMAKE_BUILD_TYPE "Release" CACHE STRING "" FORCE)
+# Set the default build type in a way that keeps it overridable from the CLI.
+# From: https://stackoverflow.com/questions/48832233/have-a-cmake-project-default-to-the-release-build-type/48832234#48832234
+if (NOT CMAKE_BUILD_TYPE OR CMAKE_BUILD_TYPE STREQUAL "")
+    set(CMAKE_BUILD_TYPE "Release" CACHE STRING "" FORCE)
+endif()
 
 add_compile_definitions(OPENCV_VERSION=${OpenCV_VERSION})
 add_compile_definitions(_CRT_SECURE_NO_DEPRECATE)
