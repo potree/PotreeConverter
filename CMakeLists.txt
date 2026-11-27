@@ -54,6 +54,28 @@ target_include_directories(PotreeConverter PRIVATE "./Converter/modules")
 target_include_directories(PotreeConverter PRIVATE "./Converter/libs")
 
 
+add_executable(PotreeToLas 
+	./Converter/include/parallel_potree_to_las.h
+	./Converter/src/parallel_potree_to_las.cpp
+	./Converter/src/potree_to_las.cpp
+	./Converter/src/logger.cpp
+	./Converter/modules/LasLoader/LasLoader.cpp
+	./Converter/modules/unsuck/unsuck_platform_specific.cpp
+	${HEADER_FILES}
+)
+
+target_include_directories(PotreeToLas PRIVATE "./Converter/include")
+target_include_directories(PotreeToLas PRIVATE "./Converter/modules")
+target_include_directories(PotreeToLas PRIVATE "./Converter/libs")
+
+target_link_libraries(PotreeToLas laszip)
+target_link_libraries(PotreeToLas brotlidec-static)
+
+#set(BROTLI_DIR "${PROJECT_SOURCE_DIR}/Converter/libs/brotli")
+#add_subdirectory(${BROTLI_DIR})
+#target_link_libraries(PotreeToLas brotlienc-static)
+#target_link_libraries(PotreeToLas brotlidec-static)
+
 if (UNIX)
 	find_package(Threads REQUIRED)
 	find_package(TBB REQUIRED)
@@ -61,6 +83,8 @@ if (UNIX)
 	target_link_libraries(${PROJECT_NAME} Threads::Threads)
 	target_link_libraries(${PROJECT_NAME} tbb)
 
+	target_link_libraries(PotreeToLas Threads::Threads)
+	target_link_libraries(PotreeToLas tbb)
 
 	#SET(CMAKE_CXX_FLAGS "-pthread -ltbb")
 endif (UNIX)

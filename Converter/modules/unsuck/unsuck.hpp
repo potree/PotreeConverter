@@ -17,6 +17,11 @@
 #include <cstring>
 #include <print>
 
+// __debugbreak() is MSVC only.
+#ifndef _WIN32
+#define __debugbreak() __builtin_trap()
+#endif
+
 using std::cout;
 using std::endl;
 using std::to_string;

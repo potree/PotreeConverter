@@ -113,6 +113,7 @@ struct Attribute {
 	int numElements = 0;
 	int elementSize = 0;
 	AttributeType type = AttributeType::UNDEFINED;
+	int byte_index = -1;
 
 	// TODO: should be type-dependent, not always double. won't work properly with 64 bit integers
 	Vector3 min = {Infinity, Infinity, Infinity};
@@ -156,6 +157,27 @@ struct Attributes {
 		for (auto& attribute : attributes) {
 			bytes += attribute.size;
 		}
+	}
+
+	std::vector<Attribute> getExtraAttributes()
+	{
+		std::vector<Attribute> extraAttributes;
+
+		for (Attribute attribute : this->list)
+		{
+			if (attribute.byte_index >= 0)
+			{
+				extraAttributes.push_back(attribute);
+			}
+		}
+
+		std::sort(extraAttributes.begin(), 
+			extraAttributes.end(), 
+			[](Attribute& a, Attribute& b) {
+			return a.byte_index < b.byte_index;
+		});
+
+		return extraAttributes;
 	}
 
 	int getOffset(string name) {
