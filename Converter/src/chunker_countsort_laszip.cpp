@@ -233,21 +233,19 @@ namespace chunker_countsort_laszip {
 					double y = coordinates[1];
 					double z = coordinates[2];
 
-					int32_t X = int32_t((x - posOffset.x) / posScale.x);
-					int32_t Y = int32_t((y - posOffset.y) / posScale.y);
-					int32_t Z = int32_t((z - posOffset.z) / posScale.z);
+					// round instead of truncating, otherwise (x - offset) / scale = 4.9999999 shifts the point by one step.
+					int32_t X = int32_t(std::round((x - posOffset.x) / posScale.x));
+					int32_t Y = int32_t(std::round((y - posOffset.y) / posScale.y));
+					int32_t Z = int32_t(std::round((z - posOffset.z) / posScale.z));
 
 					double ux = (double(X) * posScale.x + posOffset.x - min.x) / size.x;
 					double uy = (double(Y) * posScale.y + posOffset.y - min.y) / size.y;
 					double uz = (double(Z) * posScale.z + posOffset.z - min.z) / size.z;
 
-					// we compare bounds of scaled values, 
-					// but scaled values may move slightly out of bounds due to float errors
-					// Try to fix by allowing points which are a tiny bit outside the box. 
-					double upperBound = std::nextafter(1.0, 2.0);
-
-					bool inBox = ux >= 0.0 && uy >= 0.0 && uz >= 0.0;
-					inBox = inBox && ux <= upperBound && uy <= upperBound && uz <= upperBound;
+					// rounding may place points on the box boundary a floating point epsilon outside of it.
+					constexpr double epsilon = 1e-9;
+					bool inBox = ux >= -epsilon && uy >= -epsilon && uz >= -epsilon;
+					inBox = inBox && ux <= 1.0 + epsilon && uy <= 1.0 + epsilon && uz <= 1.0 + epsilon;
 
 					if (!inBox) {
 						stringstream ss;
@@ -559,7 +557,8 @@ namespace chunker_countsort_laszip {
 			int offsetReturnNumber = outputAttributes.getOffset("return number");
 			Attribute* attributeReturnNumber = outputAttributes.get("return number");
 			auto returnNumber = [data, point, header, offsetReturnNumber, attributeReturnNumber](int64_t offset) {
-				uint8_t value = point->return_number;
+				// the legacy field only has 3 bits, point formats 6+ store up to 15 returns.
+				uint8_t value = point->extended_point_type ? point->extended_return_number : point->return_number;
 
 				memcpy(data + offset + offsetReturnNumber, &value, 1);
 
@@ -570,7 +569,7 @@ namespace chunker_countsort_laszip {
 			int offsetNumberOfReturns = outputAttributes.getOffset("number of returns");
 			Attribute* attributeNumberOfReturns = outputAttributes.get("number of returns");
 			auto numberOfReturns = [data, point, header, offsetNumberOfReturns, attributeNumberOfReturns](int64_t offset) {
-				uint8_t value = point->number_of_returns;
+				uint8_t value = point->extended_point_type ? point->extended_number_of_returns : point->number_of_returns;
 
 				memcpy(data + offset + offsetNumberOfReturns, &value, 1);
 
@@ -933,9 +932,9 @@ namespace chunker_countsort_laszip {
 						double y = coordinates[1];
 						double z = coordinates[2];
 
-						int32_t X = int32_t((x - outputAttributes.posOffset.x) / scale.x);
-						int32_t Y = int32_t((y - outputAttributes.posOffset.y) / scale.y);
-						int32_t Z = int32_t((z - outputAttributes.posOffset.z) / scale.z);
+						int32_t X = int32_t(std::round((x - outputAttributes.posOffset.x) / scale.x));
+						int32_t Y = int32_t(std::round((y - outputAttributes.posOffset.y) / scale.y));
+						int32_t Z = int32_t(std::round((z - outputAttributes.posOffset.z) / scale.z));
 
 						memcpy(data + offset + 0, &X, 4);
 						memcpy(data + offset + 4, &Y, 4);
